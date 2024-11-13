@@ -123,7 +123,7 @@ TEST_CASE("Dynamics") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dsm");
       Dynamics dynamics{graph};
-      dynamics.addItinerary(Itinerary{2, 2});
+      dynamics.addItinerary(Itinerary{2});
       WHEN("We add the agent") {
         dynamics.addAgent(0, 2);
         THEN("The agent is added") {
@@ -134,16 +134,6 @@ TEST_CASE("Dynamics") {
           CHECK_EQ(agent->itineraryId(), 2);
         }
       }
-      WHEN("We try to add an agent with a non-existing source node") {
-        THEN("An exception is thrown") {
-          CHECK_THROWS_AS(dynamics.addAgent(3, 2), std::invalid_argument);
-        }
-      }
-      WHEN("We try to add an agent with a non-existing itinerary") {
-        THEN("An exception is thrown") {
-          CHECK_THROWS_AS(dynamics.addAgent(0, 0), std::invalid_argument);
-        }
-      }
     }
   }
   SUBCASE("addAgentsUniformly") {
@@ -151,12 +141,7 @@ TEST_CASE("Dynamics") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dsm");
       Dynamics dynamics(graph);
-      WHEN("We add agents without adding itineraries") {
-        THEN("An exception is thrown") {
-          CHECK_THROWS_AS(dynamics.addAgentsUniformly(1), std::invalid_argument);
-        }
-      }
-      Itinerary itinerary{0, 2};
+      Itinerary itinerary{2};
       WHEN("We add a random agent") {
         dynamics.addItinerary(itinerary);
         dynamics.addAgentsUniformly(1);
@@ -164,10 +149,9 @@ TEST_CASE("Dynamics") {
             "The number of agents is 1 and the destination is the same as the "
             "itinerary") {
           CHECK_EQ(dynamics.agents().size(), 1);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(0)->itineraryId())
-                       ->destination(),
-                   itinerary.destination());
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(0)->itineraryId())->destination(),
+              itinerary.destination());
         }
       }
     }
@@ -176,7 +160,7 @@ TEST_CASE("Dynamics") {
       graph.importMatrix("./data/matrix.dsm");
       Dynamics dynamics(graph);
       dynamics.setSeed(69);
-      Itinerary Itinerary1{0, 2}, Itinerary2{1, 1};
+      Itinerary Itinerary1{2}, Itinerary2{1};
       dynamics.addItinerary(Itinerary1);
       dynamics.addItinerary(Itinerary2);
       WHEN("We add many agents") {
@@ -186,22 +170,19 @@ TEST_CASE("Dynamics") {
             "same as "
             "the itinerary") {
           CHECK_EQ(dynamics.agents().size(), 3);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(0)->itineraryId())
-                       ->destination(),
-                   Itinerary1.destination());
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(0)->itineraryId())->destination(),
+              Itinerary2.destination());
           CHECK(dynamics.agents().at(0)->streetId().has_value());
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 3);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(1)->itineraryId())
-                       ->destination(),
-                   Itinerary1.destination());
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(1)->itineraryId())->destination(),
+              Itinerary2.destination());
           CHECK(dynamics.agents().at(1)->streetId().has_value());
           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 8);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(2)->itineraryId())
-                       ->destination(),
-                   Itinerary2.destination());
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(2)->itineraryId())->destination(),
+              Itinerary1.destination());
           CHECK(dynamics.agents().at(2)->streetId().has_value());
           CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 1);
         }
@@ -217,48 +198,37 @@ TEST_CASE("Dynamics") {
       WHEN("We add one agent for existing itinerary") {
         std::unordered_map<uint32_t, double> src{{0, 1.}};
         std::unordered_map<uint32_t, double> dst{{2, 1.}};
-        dynamics.addItinerary(Itinerary{0, 2});
+        dynamics.addItinerary(Itinerary{2});
         dynamics.addAgentsRandomly(1, src, dst);
         THEN("The agents are correctly set") {
           CHECK_EQ(dynamics.agents().size(), 1);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(0)->itineraryId())
-                       ->destination(),
-                   2);
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(0)->itineraryId())->destination(),
+              2);
           CHECK_EQ(dynamics.agents().at(0)->srcNodeId().value(), 0);
         }
       }
       WHEN("We add agents for existing itineraries") {
         std::unordered_map<uint32_t, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
         std::unordered_map<uint32_t, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
-        dynamics.addItinerary(Itinerary{0, 14});
-        dynamics.addItinerary(Itinerary{1, 102});
-        dynamics.addItinerary(Itinerary{2, 107});
+        dynamics.addItinerary(Itinerary{14});
+        dynamics.addItinerary(Itinerary{102});
+        dynamics.addItinerary(Itinerary{107});
         dynamics.addAgentsRandomly(3, src, dst);
         THEN("The agents are correctly set") {
           CHECK_EQ(dynamics.agents().size(), 3);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(0)->itineraryId())
-                       ->destination(),
-                   107);
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(0)->itineraryId())->destination(),
+              107);
           CHECK_EQ(dynamics.agents().at(0)->srcNodeId().value(), 27);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(1)->itineraryId())
-                       ->destination(),
-                   14);
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(1)->itineraryId())->destination(),
+              14);
           CHECK_EQ(dynamics.agents().at(1)->srcNodeId().value(), 1);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(2)->itineraryId())
-                       ->destination(),
-                   14);
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(2)->itineraryId())->destination(),
+              14);
           CHECK_EQ(dynamics.agents().at(2)->srcNodeId().value(), 118);
-        }
-      }
-      WHEN("We add agents without adding itineraries") {
-        THEN("An exception is thrown") {
-          std::unordered_map<uint32_t, double> src{{0, 1.}};
-          std::unordered_map<uint32_t, double> dst{{10, 1.}};
-          CHECK_THROWS_AS(dynamics.addAgentsRandomly(1, src, dst), std::invalid_argument);
         }
       }
     }
@@ -268,27 +238,21 @@ TEST_CASE("Dynamics") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dsm");
       Dynamics dynamics{graph};
-      Itinerary itinerary{0, 2};
+      Itinerary itinerary{2};
       dynamics.addItinerary(itinerary);
-      WHEN("We add an agent with itinerary 1") {
-        THEN("An exception is thrown") {
-          CHECK_THROWS_AS(dynamics.addAgents(1), std::invalid_argument);
-        }
-      }
-      WHEN("We add and agent with itinerary 0") {
-        dynamics.addAgents(0);
+      WHEN("We add and agent with itinerary 2") {
+        dynamics.addAgents(2);
         THEN(
             "The number of agents is 1 and the destination is the same as the "
             "itinerary") {
           CHECK_EQ(dynamics.agents().size(), 1);
-          CHECK_EQ(dynamics.itineraries()
-                       .at(dynamics.agents().at(0)->itineraryId())
-                       ->destination(),
-                   itinerary.destination());
+          CHECK_EQ(
+              dynamics.itinerary(dynamics.agents().at(0)->itineraryId())->destination(),
+              itinerary.destination());
         }
       }
-      WHEN("We add 69 agents with itinerary 0") {
-        dynamics.addAgents(0, 69);
+      WHEN("We add 69 agents with itinerary 2") {
+        dynamics.addAgents(2, 69);
         THEN("The number of agents is 69") { CHECK_EQ(dynamics.agents().size(), 69); }
       }
     }
@@ -300,8 +264,7 @@ TEST_CASE("Dynamics") {
       graph2.addStreets(s);
       graph2.buildAdj();
       Dynamics dynamics{graph2};
-      Itinerary itinerary{0, 1};
-      dynamics.addItinerary(itinerary);
+      dynamics.addItinerary(Itinerary{1});
       dynamics.updatePaths();
       dynamics.addAgentsUniformly(1);
       WHEN("We add more than one agent") {
@@ -324,8 +287,7 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       Dynamics dynamics{graph2};
       WHEN("We add a topologically impossible itinerary") {
-        Itinerary itinerary{0, 0};
-        dynamics.addItinerary(itinerary);
+        dynamics.addItinerary(Itinerary{0});
         THEN("When updating paths, empty itinerary throws exception") {
           CHECK_THROWS_AS(dynamics.updatePaths(), std::runtime_error);
         }
@@ -339,7 +301,7 @@ TEST_CASE("Dynamics") {
       graph2.addStreets(s1, s2, s3);
       graph2.buildAdj();
       Dynamics dynamics{graph2};
-      Itinerary itinerary{0, 2};
+      Itinerary itinerary{2};
       WHEN("We add an itinerary and update the paths") {
         dynamics.addItinerary(itinerary);
         dynamics.updatePaths();
@@ -351,41 +313,15 @@ TEST_CASE("Dynamics") {
           CHECK(dynamics.itineraries().at(0)->path()(0, 1));
           CHECK(dynamics.itineraries().at(0)->path()(1, 2));
           CHECK_FALSE(dynamics.itineraries().at(0)->path()(0, 2));
-          for (auto const& it : dynamics.itineraries()) {
-            auto const& path = it.second->path();
+          for (auto const& itinerary : dynamics.itineraries()) {
+            auto const& path = itinerary->path();
             for (uint16_t i{0}; i < path.getRowDim(); ++i) {
-              if (i == it.second->destination()) {
+              if (i == itinerary->destination()) {
                 CHECK_FALSE(path.getRow(i).size());
               } else {
                 CHECK(path.getRow(i).size());
               }
             }
-          }
-        }
-      }
-    }
-    GIVEN(
-        "A dynamics objects, many streets and many itinearies with same "
-        "destination") {
-      Graph graph2{};
-      graph2.importMatrix("./data/matrix.dat");
-      Itinerary it1{0, 118};
-      Itinerary it2{1, 118};
-      Itinerary it3{2, 118};
-      Itinerary it4{3, 118};
-      Dynamics dynamics{graph2};
-      dynamics.addItinerary(it1);
-      dynamics.addItinerary(it2);
-      dynamics.addItinerary(it3);
-      dynamics.addItinerary(it4);
-      dynamics.updatePaths();
-      for (auto const& it : dynamics.itineraries()) {
-        auto const& path = it.second->path();
-        for (uint16_t i{0}; i < path.getRowDim(); ++i) {
-          if (i == it.second->destination()) {
-            CHECK_FALSE(path.getRow(i).size());
-          } else {
-            CHECK(path.getRow(i).size());
           }
         }
       }
@@ -399,8 +335,7 @@ TEST_CASE("Dynamics") {
       graph.addStreets(s1, s2, s3, s4);
       graph.buildAdj();
       Dynamics dynamics{graph};
-      Itinerary itinerary{0, 2};
-      dynamics.addItinerary(itinerary);
+      dynamics.addItinerary(Itinerary{2});
       WHEN("We update the paths") {
         dynamics.updatePaths();
         THEN("The path is updated and correctly formed") {
@@ -412,10 +347,10 @@ TEST_CASE("Dynamics") {
           CHECK(dynamics.itineraries().at(0)->path()(1, 2));
           CHECK(dynamics.itineraries().at(0)->path()(0, 3));
           CHECK(dynamics.itineraries().at(0)->path()(3, 2));
-          for (auto const& it : dynamics.itineraries()) {
-            auto const& path = it.second->path();
+          for (auto const& itinerary : dynamics.itineraries()) {
+            auto const& path = itinerary->path();
             for (uint16_t i{0}; i < path.getRowDim(); ++i) {
-              if (i == it.second->destination()) {
+              if (i == itinerary->destination()) {
                 CHECK_FALSE(path.getRow(i).size());
               } else {
                 CHECK(path.getRow(i).size());
@@ -436,7 +371,7 @@ TEST_CASE("Dynamics") {
       graph.buildAdj();
       Dynamics dynamics{graph};
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 2};
+      Itinerary itinerary{2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
       WHEN("We add an agent randomly and evolve the dynamics") {
@@ -471,8 +406,7 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       Dynamics dynamics{graph2};
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 1};
-      dynamics.addItinerary(itinerary);
+      dynamics.addItinerary(Itinerary{1});
       dynamics.updatePaths();
       dynamics.addAgent(Agent(0, 0, 0));
       WHEN("We evolve the dynamics") {
@@ -499,8 +433,7 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       Dynamics dynamics{graph2};
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 1};
-      dynamics.addItinerary(itinerary);
+      dynamics.addItinerary(Itinerary{1});
       dynamics.updatePaths();
       dynamics.addAgent(Agent(0, 0, 0));
       WHEN("We evolve the dynamics with reinsertion") {
@@ -542,7 +475,7 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       Dynamics dynamics{graph2};
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 2};
+      Itinerary itinerary{2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
       dynamics.addAgent(Agent(0, 0, 0));
@@ -722,12 +655,8 @@ TEST_CASE("Dynamics") {
       graph2.addStreets(s_01, s_10, s_12, s_21, s_13, s_31, s_14, s_41);
       graph2.buildAdj();
       Dynamics dynamics{graph2};
-      Itinerary it_0{0, 0}, it_1{1, 2}, it_2{2, 3}, it_3{3, 4};
-      dynamics.addItinerary(it_0);
-      dynamics.addItinerary(it_1);
-      dynamics.addItinerary(it_2);
-      dynamics.addItinerary(it_3);
-      dynamics.updatePaths();
+      std::array<uint32_t, 4> destinationNodes{0, 2, 3, 4};
+      dynamics.setDestinationNodes(destinationNodes);
       dynamics.addAgents(0, 7, 2);
       dynamics.addAgents(1, 7, 0);
       dynamics.setDataUpdatePeriod(1);
@@ -783,8 +712,8 @@ TEST_CASE("Dynamics") {
       graph2.adjustNodeCapacities();
       Dynamics dynamics{graph2};
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 2};
-      Itinerary itinerary2{1, 0};
+      Itinerary itinerary{2};
+      Itinerary itinerary2{0};
       dynamics.addItinerary(itinerary);
       dynamics.addItinerary(itinerary2);
       dynamics.updatePaths();
@@ -824,7 +753,7 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       Dynamics dynamics{graph2};
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 2};
+      Itinerary itinerary{2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
       dynamics.addAgent(Agent(0, 0, 0));
@@ -859,7 +788,7 @@ TEST_CASE("Dynamics") {
     Dynamics dynamics{graph2};
     dynamics.setMinSpeedRateo(0.5);
     dynamics.setSeed(69);
-    Itinerary itinerary{0, 2};
+    Itinerary itinerary{2};
     dynamics.addItinerary(itinerary);
     dynamics.updatePaths();
     dynamics.addAgents(0, 4, 0);
@@ -927,8 +856,8 @@ TEST_CASE("Dynamics") {
       Dynamics dynamics{graph2};
       dynamics.graph().nodeSet().at(0)->setCapacity(3);
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 2};
-      Itinerary itinerary2{1, 1};
+      Itinerary itinerary{2};
+      Itinerary itinerary2{1};
       dynamics.addItinerary(itinerary);
       dynamics.addItinerary(itinerary2);
       dynamics.updatePaths();
@@ -990,7 +919,7 @@ TEST_CASE("Dynamics") {
       graph2.makeSpireStreet(1);
       Dynamics dynamics{graph2};
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 2};
+      Itinerary itinerary{2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
       dynamics.addAgent(Agent(0, 0, 0));
@@ -1023,7 +952,7 @@ TEST_CASE("Dynamics") {
       graph2.makeSpireStreet(1);
       Dynamics dynamics{graph2};
       dynamics.setSeed(69);
-      Itinerary itinerary{0, 2};
+      Itinerary itinerary{2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
       dynamics.addAgent(Agent(0, 0, 0));

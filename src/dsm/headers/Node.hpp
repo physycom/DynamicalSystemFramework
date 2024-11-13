@@ -52,25 +52,19 @@ namespace dsm {
     void setId(Id id) { m_id = id; }
     /// @brief Set the node's coordinates
     /// @param coords A std::pair containing the node's coordinates (lat, lon)
-    void setCoords(std::pair<double, double> coords) {
-      m_coords = std::move(coords);
-    }
+    void setCoords(std::pair<double, double> coords) { m_coords = std::move(coords); }
     /// @brief Set the node's capacity
     /// @param capacity The node's capacity
     virtual void setCapacity(Size capacity) { m_capacity = capacity; }
     /// @brief Set the node's transport capacity
     /// @param capacity The node's transport capacity
-    virtual void setTransportCapacity(Size capacity) {
-      m_transportCapacity = capacity;
-    }
+    virtual void setTransportCapacity(Size capacity) { m_transportCapacity = capacity; }
     /// @brief Get the node's id
     /// @return Id The node's id
     Id id() const { return m_id; }
     /// @brief Get the node's coordinates
     /// @return std::optional<std::pair<double, double>> A std::pair containing the node's coordinates
-    const std::optional<std::pair<double, double>>& coords() const {
-      return m_coords;
-    }
+    const std::optional<std::pair<double, double>>& coords() const { return m_coords; }
     /// @brief Get the node's capacity
     /// @return Size The node's capacity
     Size capacity() const { return m_capacity; }
@@ -146,9 +140,7 @@ namespace dsm {
     ///        If a street has priority, it means that the agents that are on that street
     ///        have priority over the agents that are on the other streets.
     /// @return std::set<Id> A std::set containing the node's street priorities
-    virtual const std::set<Id>& streetPriorities() const {
-      return m_streetPriorities;
-    };
+    virtual const std::set<Id>& streetPriorities() const { return m_streetPriorities; };
     /// @brief Get the node's agent ids
     /// @return std::set<Id> A std::set containing the node's agent ids
     const std::multimap<int16_t, Id>& agents() { return m_agents; };

@@ -110,9 +110,7 @@ namespace dsm {
     /// @brief Set the street's node pair
     /// @param node1 The source node of the street
     /// @param node2 The destination node of the street
-    void setNodePair(Id node1, Id node2) {
-      m_nodePair = std::make_pair(node1, node2);
-    }
+    void setNodePair(Id node1, Id node2) { m_nodePair = std::make_pair(node1, node2); }
     /// @brief Set the street's node pair
     /// @param node1 The source node of the street
     /// @param node2 The destination node of the street
@@ -158,14 +156,10 @@ namespace dsm {
     const std::set<Id>& waitingAgents() const { return m_waitingAgents; }
     /// @brief Get the street's queue
     /// @return dsm::queue<Size>, The street's queue
-    const dsm::queue<Size>& queue(size_t index) const {
-      return m_exitQueues[index];
-    }
+    const dsm::queue<Size>& queue(size_t index) const { return m_exitQueues[index]; }
     /// @brief Get the street's queues
     /// @return std::vector<dsm::queue<Size>> The street's queues
-    const std::vector<dsm::queue<Size>>& exitQueues() const {
-      return m_exitQueues;
-    }
+    const std::vector<dsm::queue<Size>>& exitQueues() const { return m_exitQueues; }
     /// @brief Get the street's node pair
     /// @return std::pair<Id, Id>, The street's node pair
     const std::pair<Id, Id>& nodePair() const { return m_nodePair; }
@@ -177,9 +171,7 @@ namespace dsm {
     double density() const { return nAgents() / (m_len * m_nLanes); }
     /// @brief Get the street's normalized density
     /// @return double, The street's normalized density
-    double normDensity() const {
-      return nAgents() / static_cast<double>(m_capacity);
-    }
+    double normDensity() const { return nAgents() / static_cast<double>(m_capacity); }
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
     bool isFull() const { return nAgents() == m_capacity; }
