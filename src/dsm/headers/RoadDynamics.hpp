@@ -681,16 +681,13 @@ namespace dsm {
       Size greenSum{0}, greenQueue{0};
       Size redSum{0}, redQueue{0};
       for (const auto& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
+        auto const& pStreet{this->m_graph.streetSet()[streetId]};
         if (streetPriorities.contains(streetId)) {
           greenSum += m_streetTails[streetId];
-          for (auto const& queue : this->m_graph.streetSet()[streetId]->exitQueues()) {
-            greenQueue += queue.size();
-          }
+          greenQueue += pStreet->nExitingAgents();
         } else {
           redSum += m_streetTails[streetId];
-          for (auto const& queue : this->m_graph.streetSet()[streetId]->exitQueues()) {
-            redQueue += queue.size();
-          }
+          redQueue += pStreet->nExitingAgents();
         }
       }
       const auto nCycles =
