@@ -3,7 +3,7 @@ This script is used to get the OSM data of a place and save it in a csv file.
 The place is passed as a command line argument.
 
 Example:
-python get_osm_data.py --place "Bologna, Emilia-Romagna, Italy" --exclude-residential True
+python get_osm_data.py --place "Bologna, Emilia-Romagna, Italy" --exclude-residential
 
 The output files are:
 - nodes.csv
@@ -219,14 +219,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--exclude-motorway",
-        required=False,
-        default=False,
+        action="store_true",
         help="Exclude motorways from the data",
     )
     parser.add_argument(
         "--exclude-residential",
-        required=False,
-        default=False,
+        action="store_true",
         help="Exclude residential roads from the data",
     )
     parser = parser.parse_args()
