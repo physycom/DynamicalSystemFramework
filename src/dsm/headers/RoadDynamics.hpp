@@ -678,8 +678,8 @@ namespace dsm {
       }
       auto& tl = dynamic_cast<TrafficLight&>(*pNode);
       const auto& streetPriorities = tl.streetPriorities();
-      Size greenSum{0}, greenQueue{0};
-      Size redSum{0}, redQueue{0};
+      double greenSum{0.}, greenQueue{0.};
+      double redSum{0.}, redQueue{0.};
       for (const auto& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
         auto const& pStreet{this->m_graph.streetSet()[streetId]};
         if (streetPriorities.contains(streetId)) {
@@ -693,15 +693,13 @@ namespace dsm {
       const auto nCycles =
           static_cast<double>(this->m_time - m_previousOptimizationTime) /
           m_dataUpdatePeriod.value();
-      const delay_t delta =
-          std::floor(std::fabs(static_cast<int>(greenQueue - redQueue)) / nCycles);
+      const delay_t delta = std::floor(std::abs(greenQueue - redQueue) / nCycles);
       // std::cout << std::format("GreenSum: {}, RedSum: {}, Delta: {}, nCycles: {}\n",
       //  greenQueue, redQueue, delta, nCycles);
-      const Size smallest = std::min(greenSum, redSum);
+      auto const smallest = std::min(greenSum, redSum);
       // std::cout << std::format("GreenSum: {}, RedSum: {}, Smallest: {}\n", greenSum, redSum, smallest);
       // std::cout << std::format("Diff: {}, Threshold * Smallest: {}\n", std::abs(static_cast<int>(greenSum - redSum)), threshold * smallest);
-      if (delta == 0 ||
-          std::abs(static_cast<int>(greenSum - redSum)) < threshold * smallest) {
+      if (delta == 0 || std::abs(greenSum - redSum) < threshold * smallest) {
         tl.resetCycles();
         continue;
       }
