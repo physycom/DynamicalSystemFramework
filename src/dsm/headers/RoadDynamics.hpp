@@ -420,14 +420,14 @@ namespace dsm {
               auto const deltaAngle{pNextStreet->deltaAngle(street->angle())};
               if (std::abs(deltaAngle) < std::numbers::pi) {
                 // Lanes are counted as 0 is the far right lane
-                if (deltaAngle < 0.) {                   // Right
-                  street->enqueue(agentId, 0);           // Always the first lane
-                } else if (deltaAngle > 0.) {            // Left
-                  street->enqueue(agentId, nLanes - 1);  // Always the last lane
-                } else {                                 // Straight
+                if (std::abs(deltaAngle) < std::numbers::pi / 4) {
                   std::uniform_int_distribution<size_t> laneDist{
-                      0, static_cast<size_t>(nLanes - 2)};
+                      0, static_cast<size_t>(nLanes - 1)};
                   street->enqueue(agentId, laneDist(this->m_generator));
+                } else if (deltaAngle < 0.) {            // Right
+                  street->enqueue(agentId, 0);           // Always the first lane
+                } else {                                 // Left (deltaAngle > 0.)
+                  street->enqueue(agentId, nLanes - 1);  // Always the last lane
                 }
               } else {                                 // U turn
                 street->enqueue(agentId, nLanes - 1);  // Always the last lane
