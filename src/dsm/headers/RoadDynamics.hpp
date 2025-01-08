@@ -659,7 +659,7 @@ namespace dsm {
       double const threshold,
       double const densityTolerance,
       TrafficLightOptimization const optimizationType) {
-    if (threshold < 0 || threshold > 1) {
+    if (threshold < 0) {
       throw std::invalid_argument(
           buildLog(std::format("The threshold parameter is a percentage and must be "
                                "bounded between 0-1. Inserted value: {}",
@@ -700,13 +700,11 @@ namespace dsm {
           std::floor(std::fabs(static_cast<int>(greenQueue - redQueue)) / nCycles);
       // std::cout << std::format("GreenSum: {}, RedSum: {}, Delta: {}, nCycles: {}\n",
       //  greenQueue, redQueue, delta, nCycles);
-      if (delta == 0) {
-        continue;
-      }
       const Size smallest = std::min(greenSum, redSum);
       // std::cout << std::format("GreenSum: {}, RedSum: {}, Smallest: {}\n", greenSum, redSum, smallest);
       // std::cout << std::format("Diff: {}, Threshold * Smallest: {}\n", std::abs(static_cast<int>(greenSum - redSum)), threshold * smallest);
-      if (std::abs(static_cast<int>(greenSum - redSum)) < threshold * smallest) {
+      if (delta == 0 ||
+          std::abs(static_cast<int>(greenSum - redSum)) < threshold * smallest) {
         tl.resetCycles();
         continue;
       }
