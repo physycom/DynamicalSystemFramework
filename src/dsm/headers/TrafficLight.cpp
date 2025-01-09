@@ -98,6 +98,22 @@ namespace dsm {
     return maxTime;
   }
 
+  Delay TrafficLight::minGreenTime(bool priorityStreets) const {
+    Delay minTime{std::numeric_limits<Delay>::max()};
+    for (auto const& [streetId, cycles] : m_cycles) {
+      if (priorityStreets && m_streetPriorities.contains(streetId)) {
+        for (auto const& cycle : cycles) {
+          minTime = std::min(minTime, cycle.greenTime());
+        }
+      } else {
+        for (auto const& cycle : cycles) {
+          minTime = std::min(minTime, cycle.greenTime());
+        }
+      }
+    }
+    return minTime;
+  }
+
   void TrafficLight::increaseGreenTimes(Delay const delta) {
     for (auto& [streetId, cycles] : m_cycles) {
       if (m_streetPriorities.contains(streetId)) {
