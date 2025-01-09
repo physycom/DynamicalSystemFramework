@@ -693,7 +693,7 @@ namespace dsm {
       const auto nCycles =
           static_cast<double>(this->m_time - m_previousOptimizationTime) /
           m_dataUpdatePeriod.value();
-      const delay_t delta = std::floor(std::abs(greenQueue - redQueue) / nCycles);
+      delay_t delta = std::floor(std::abs(greenQueue - redQueue) / nCycles);
       // std::cout << std::format("GreenSum: {}, RedSum: {}, Delta: {}, nCycles: {}\n",
       //  greenQueue, redQueue, delta, nCycles);
       auto const smallest = std::min(greenSum, redSum);
@@ -732,30 +732,20 @@ namespace dsm {
             meanDensity_streets /= nStreets;
           }
         }
-        auto const ratio = meanDensityGlob / meanDensity_streets;
+        double const ratio = meanDensityGlob / meanDensity_streets;
         // densityTolerance represents the max border we want to consider
-        auto const dyn_thresh = std::tanh(ratio) * densityTolerance;
+        double const dyn_thresh = std::tanh(ratio) * densityTolerance;
         if (meanDensityGlob * (1. + dyn_thresh) > meanDensity_streets) {
-          if (meanDensityGlob > meanDensity_streets) {
-            // Smaller than max density
-            if (!(redTime > greenTime) && (redSum > greenSum) && (greenTime > delta)) {
-              tl.decreaseGreenTimes(delta);
-            } else if (!(redTime < greenTime) && (greenSum > redSum) &&
-                       (redTime > delta)) {
-              tl.increaseGreenTimes(delta);
-            } else {
-              tl.resetCycles();
-            }
+          if (!(meanDensityGlob > meanDensity_streets)) {
+            // Greater than the mean density -> remodulate the delta
+            delta = std::floor(delta * dyn_thresh);
+          }
+          if (!(redTime > greenTime) && (redSum > greenSum) && (greenTime > delta)) {
+            tl.decreaseGreenTimes(delta);
+          } else if (!(redTime < greenTime) && (greenSum > redSum) && (redTime > delta)) {
+            tl.increaseGreenTimes(delta);
           } else {
-            // Greater than max density
-            if (!(redTime > greenTime) && (redSum > greenSum) && (greenTime > delta)) {
-              tl.decreaseGreenTimes(delta * dyn_thresh);
-            } else if (!(redTime < greenTime) && (greenSum > redSum) &&
-                       (redTime > delta)) {
-              tl.increaseGreenTimes(delta * dyn_thresh);
-            } else {
-              tl.resetCycles();
-            }
+            tl.resetCycles();
           }
         }
       }
