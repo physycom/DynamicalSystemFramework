@@ -142,6 +142,17 @@ namespace dsm {
     }
   }
 
+  bool TrafficLight::isDefault() const {
+    for (auto const& [streetId, cycles] : m_cycles) {
+      for (auto const& cycle : cycles) {
+        if (!cycle.isDefault()) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   bool TrafficLight::isGreen(Id const streetId, Direction direction) const {
     if (!m_cycles.contains(streetId)) {
       throw std::invalid_argument(buildLog(

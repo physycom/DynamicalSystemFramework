@@ -29,6 +29,10 @@ namespace dsm {
 
     inline Delay greenTime() const { return m_greenTime; }
     inline Delay phase() const { return m_phase; }
+    /// @brief Returns true if the cycle has its default values
+    inline bool isDefault() const {
+      return m_greenTime == m_defaultValues.first && m_phase == m_defaultValues.second;
+    }
     /// @brief Returns true if the traffic light is green
     /// @param cycleTime Delay, the total time of a red-green cycle
     /// @param counter Delay, the current counter
@@ -111,6 +115,8 @@ namespace dsm {
     inline std::unordered_map<Id, std::vector<TrafficLightCycle>> const& cycles() const {
       return m_cycles;
     }
+    /// @brief Returns true if all the cycles are set to their default values
+    bool isDefault() const;
     /// @brief Returns true if the traffic light is green for a street and a direction
     /// @param streetId Id, the street's id
     /// @param direction Direction, the direction
