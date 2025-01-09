@@ -751,9 +751,9 @@ namespace dsm {
           // std::clog << std::format("GreenTime: {}, RedTime: {} - Total cycle time: {}\n", greenTime, redTime, tl.cycleTime());
           if (meanDensityGlobal <= meanDenstityLocal) {
             //I'm on the border of the cluster -> shrinking delta using dyn_thresh
-            std::clog << std::format("Remodulating delta: {} -> ", delta);
+            // std::clog << std::format("Remodulating delta: {} -> ", delta);
             delta = std::floor(delta * dyn_thresh);
-            std::clog << delta << std::endl;
+            // std::clog << delta << std::endl;
           }
           if (delta == 0) {
             continue;
