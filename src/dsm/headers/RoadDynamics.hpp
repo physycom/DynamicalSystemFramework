@@ -736,9 +736,15 @@ namespace dsm {
         // densityTolerance represents the max border we want to consider
         double const dyn_thresh = std::tanh(ratio) * densityTolerance;
         if (meanDensityGlob * (1. + dyn_thresh) > meanDensity_streets) {
+          std::clog << std::format("Time: {} - TrafficLight: {} - Delta: {}\n",
+                                   this->m_time,
+                                   nodeId,
+                                   delta);
+          std::clog << std::format("GreenTime: {}, RedTime: {} - Total cycle time: {}\n", greenTime, redTime, tl.cycleTime());
           if (!(meanDensityGlob > meanDensity_streets)) {
             // Greater than the mean density -> remodulate the delta
             delta = std::floor(delta * dyn_thresh);
+            std::cout << std::format("Remodulated delta: {}\n", delta);
           }
           if (!(redTime > greenTime) && (redSum > greenSum) && (greenTime > delta)) {
             tl.decreaseGreenTimes(delta);
