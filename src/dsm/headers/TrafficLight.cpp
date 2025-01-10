@@ -114,6 +114,22 @@ namespace dsm {
     return minTime;
   }
 
+  double TrafficLight::meanGreenTime(bool priorityStreets) const {
+    double meanTime{0.};
+    for (auto const& [streetId, cycles] : m_cycles) {
+      if (priorityStreets && m_streetPriorities.contains(streetId)) {
+        for (auto const& cycle : cycles) {
+          meanTime += cycle.greenTime();
+        }
+      } else {
+        for (auto const& cycle : cycles) {
+          meanTime += cycle.greenTime();
+        }
+      }
+    }
+    return meanTime / m_cycles.size();
+  }
+
   void TrafficLight::increaseGreenTimes(Delay const delta) {
     for (auto& [streetId, cycles] : m_cycles) {
       if (m_streetPriorities.contains(streetId)) {

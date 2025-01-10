@@ -63,7 +63,7 @@ namespace dsm {
         : Intersection{node}, m_cycleTime{cycleTime}, m_counter{counter} {}
 
     TrafficLight& operator++();
-    /// @brief Get the maximum green time of every cycle
+    /// @brief Get the maximum green time over every cycle
     /// @param priorityStreets bool, if true, only the priority streets are considered;
     ///        if false, only the non-priority streets are considered
     /// @return Delay The maximum green time
@@ -71,13 +71,22 @@ namespace dsm {
     ///          the priority streets if priorityStreets is true, or for the non-priority
     ///          streets if priorityStreets is false.
     Delay maxGreenTime(bool priorityStreets) const;
-    /// @brief Get the minimum green time of every cycle
+    /// @brief Get the minimum green time over every cycle
     /// @param priorityStreets bool, if true, only the priority streets are considered;
     ///        if false, only the non-priority streets are considered
     /// @return Delay The minimum green time
     /// @details The minimum green time is the minimum green time of all the cycles for
     ///          the priority streets if priorityStreets is true, or for the non-priority
+    ///          streets if priorityStreets is false.
     Delay minGreenTime(bool priorityStreets) const;
+    /// @brief Get the mean green time over every cycle
+    /// @param priorityStreets bool, if true, only the priority streets are considered;
+    ///        if false, only the non-priority streets are considered
+    /// @return double The mean green time
+    /// @details The mean green time is the mean green time of all the cycles for
+    ///          the priority streets if priorityStreets is true, or for the non-priority
+    ///          streets if priorityStreets is false.
+    double meanGreenTime(bool priorityStreets) const;
     /// @brief Get the traffic light's total cycle time
     /// @return Delay The traffic light's cycle time
     inline Delay cycleTime() const { return m_cycleTime; }

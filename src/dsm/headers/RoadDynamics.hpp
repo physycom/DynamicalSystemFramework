@@ -424,7 +424,7 @@ namespace dsm {
                   auto const dstNodeId = pNextStreet->nodePair().first;
                   std::vector<double> weights;
                   for (auto const& queue : street->exitQueues()) {
-                    weights.push_back(1. / queue.size());
+                    weights.push_back(1. / (queue.size() + 1));
                   }
                   // Normalize the weights
                   auto const sum = std::accumulate(weights.begin(), weights.end(), 0.);
@@ -681,14 +681,18 @@ namespace dsm {
                       "bounded between 0-1.",
                       boundaryThreshold)));
     }
-    auto const meanDensityGlobal = this->streetMeanDensity(true).mean;  // Measurement
+    auto const meanDensityGlobal = this->streetMeanDensity(true).mean;
+    auto const nCycles{static_cast<double>(this->m_time - m_previousOptimizationTime) /
+                       m_dataUpdatePeriod.value()};
     for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
       if (!pNode->isTrafficLight()) {
         continue;
       }
       auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-      tl.resetCycles();
-      const auto& streetPriorities = tl.streetPriorities();
+      auto const& streetPriorities = tl.streetPriorities();
+      auto const meanGreenFraction{tl.meanGreenTime(true) / tl.cycleTime()};
+      auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
+
       double greenSum{0.}, redSum{0.};
       for (const auto& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
         auto const& pStreet{this->m_graph.streetSet()[streetId]};
@@ -698,28 +702,34 @@ namespace dsm {
           redSum += m_streetTails[streetId] / pStreet->nLanes();
         }
       }
-      const auto nCycles =
-          static_cast<double>(this->m_time - m_previousOptimizationTime) /
-          m_dataUpdatePeriod.value();
-      delay_t delta =
-          std::floor(std::abs(greenSum - redSum) /
-                     (nCycles * this->m_graph.adjMatrix().getCol(nodeId).size()));
-      // std::cout << std::format("GreenSum: {}, RedSum: {}, Delta: {}, nCycles: {}\n",
-      //  greenQueue, redQueue, delta, nCycles);
-      double smallerSum = std::min(greenSum, redSum);
-      if (smallerSum == 0.) {
-        smallerSum = 1;
-      }
-      double const sumRatio = std::abs(greenSum - redSum) / smallerSum;
-      if (delta == 0 || sumRatio < threshold) {
+      greenSum /= meanGreenFraction;
+      redSum /= meanRedFraction;
+      // std::clog << std::format("Traffic Light: {} - Green: {} - Red: {}\n",
+      //                          nodeId,
+      //                          greenSum,
+      //                          redSum);
+
+      auto const difference{(greenSum - redSum) / nCycles};
+      delay_t delta = std::round(std::abs(difference) /
+                                 (this->m_graph.adjMatrix().getCol(nodeId).size()));
+      if (delta == 0 || std::abs(difference) < threshold) {
+        tl.resetCycles();
         continue;
       }
+      if (!tl.isDefault()) {
+        continue;
+      }
+      std::clog << std::format("TL: {}, current delta {}, difference: {}",
+                               nodeId,
+                               delta,
+                               difference)
+                << std::endl;
       auto const greenTime = tl.minGreenTime(true);
       auto const redTime = tl.minGreenTime(false);
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-        if ((greenSum > redSum) && (redTime > delta)) {
+        if ((difference > 0) && (redTime > delta)) {
           tl.increaseGreenTimes(delta);
-        } else if ((redSum > greenSum) && (greenTime > delta)) {
+        } else if ((difference < 0) && (greenTime > delta)) {
           tl.decreaseGreenTimes(delta);
         }
       } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
@@ -752,16 +762,13 @@ namespace dsm {
           if (meanDensityGlobal <= meanDenstityLocal) {
             //I'm on the border of the cluster -> shrinking delta using dyn_thresh
             // std::clog << std::format("Remodulating delta: {} -> ", delta);
-            delta = std::floor(delta * dyn_thresh);
+            delta = std::round(delta * dyn_thresh);
             // std::clog << delta << std::endl;
           }
-          if (delta == 0) {
-            continue;
-          }
-          if ((redSum > greenSum) && (greenTime > delta)) {
-            tl.decreaseGreenTimes(delta);
-          } else if ((greenSum > redSum) && (redTime > delta)) {
+          if ((difference > 0) && (redTime > delta)) {
             tl.increaseGreenTimes(delta);
+          } else if ((difference < 0) && (greenTime > delta)) {
+            tl.decreaseGreenTimes(delta);
           }
         }
       }
