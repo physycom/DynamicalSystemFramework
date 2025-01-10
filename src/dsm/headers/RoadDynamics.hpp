@@ -681,7 +681,6 @@ namespace dsm {
                       "bounded between 0-1.",
                       boundaryThreshold)));
     }
-    auto const meanDensityGlobal = this->streetMeanDensity(true).mean;
     auto const nCycles{static_cast<double>(this->m_time - m_previousOptimizationTime) /
                        m_dataUpdatePeriod.value()};
     for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
@@ -693,83 +692,80 @@ namespace dsm {
       auto const meanGreenFraction{tl.meanGreenTime(true) / tl.cycleTime()};
       auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
 
-      double greenSum{0.}, redSum{0.};
+      double inputGreenSum{0.}, inputRedSum{0.};
       for (const auto& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
         auto const& pStreet{this->m_graph.streetSet()[streetId]};
         if (streetPriorities.contains(streetId)) {
-          greenSum += m_streetTails[streetId] / pStreet->nLanes();
+          inputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
         } else {
-          redSum += m_streetTails[streetId] / pStreet->nLanes();
+          inputRedSum += m_streetTails[streetId] / pStreet->nLanes();
         }
       }
-      greenSum /= meanGreenFraction;
-      redSum /= meanRedFraction;
+      inputGreenSum /= meanGreenFraction;
+      inputRedSum /= meanRedFraction;
       // std::clog << std::format("Traffic Light: {} - Green: {} - Red: {}\n",
       //                          nodeId,
       //                          greenSum,
       //                          redSum);
 
-      auto const difference{(greenSum - redSum) / nCycles};
-      delay_t delta = std::round(std::abs(difference) /
+      auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
+      delay_t delta = std::round(std::abs(inputDifference) /
                                  (this->m_graph.adjMatrix().getCol(nodeId).size()));
-      if (delta == 0 || std::abs(difference) < threshold) {
+      if (delta == 0) {
         tl.resetCycles();
         continue;
       }
-      if (!tl.isDefault()) {
-        continue;
-      }
-      std::clog << std::format("TL: {}, current delta {}, difference: {}",
-                               nodeId,
-                               delta,
-                               difference)
-                << std::endl;
+      // std::clog << std::format("TL: {}, current delta {}, difference: {}",
+      //                          nodeId,
+      //                          delta,
+      //                          difference)
+      //           << std::endl;
       auto const greenTime = tl.minGreenTime(true);
       auto const redTime = tl.minGreenTime(false);
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-        if ((difference > 0) && (redTime > delta)) {
+        if (std::abs(inputDifference) < threshold) {
+          tl.resetCycles();
+          continue;
+        }
+        if ((inputDifference > 0) && (redTime > delta)) {
           tl.increaseGreenTimes(delta);
-        } else if ((difference < 0) && (greenTime > delta)) {
+        } else if ((inputDifference < 0) && (greenTime > delta)) {
           tl.decreaseGreenTimes(delta);
         }
       } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
         // If the difference is not less than the threshold
         //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
         //    - If the previous check fails, do nothing
-        double meanDenstityLocal{0.};
-        {
-          // Store the ids of outgoing streets
-          const auto& row{this->m_graph.adjMatrix().getRow(nodeId, true)};
-          for (const auto& [streetId, _] : row) {
-            meanDenstityLocal += this->m_graph.streetSet()[streetId]->density(true);
-          }
-          // Take the mean density of the outgoing streets
-          const auto nStreets = row.size();
-          if (nStreets > 1) {
-            meanDenstityLocal /= nStreets;
+        double outputGreenSum{0.}, outputRedSum{0.};
+        for (const auto& [streetId, _] : this->m_graph.adjMatrix().getRow(nodeId, true)) {
+          auto const& pStreet{this->m_graph.streetSet()[streetId]};
+          if (streetPriorities.contains(streetId)) {
+            outputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
+          } else {
+            outputRedSum += m_streetTails[streetId] / pStreet->nLanes();
           }
         }
-        double const ratio = meanDensityGlobal / meanDenstityLocal;
-        // boundaryThreshold represents the max border we want to consider
-        double const dyn_thresh = std::tanh(ratio) * boundaryThreshold;
-        if (meanDensityGlobal * (1. + dyn_thresh) >
-            meanDenstityLocal) {  // Considering all streets outside or on the border of the congested cluster
-          // std::clog << std::format("Time: {} - TrafficLight: {} - Delta: {}\n",
-          //                          this->m_time,
-          //                          nodeId,
-          //                          delta);
-          // std::clog << std::format("GreenTime: {}, RedTime: {} - Total cycle time: {}\n", greenTime, redTime, tl.cycleTime());
-          if (meanDensityGlobal <= meanDenstityLocal) {
-            //I'm on the border of the cluster -> shrinking delta using dyn_thresh
-            // std::clog << std::format("Remodulating delta: {} -> ", delta);
-            delta = std::round(delta * dyn_thresh);
-            // std::clog << delta << std::endl;
-          }
-          if ((difference > 0) && (redTime > delta)) {
-            tl.increaseGreenTimes(delta);
-          } else if ((difference < 0) && (greenTime > delta)) {
-            tl.decreaseGreenTimes(delta);
-          }
+        auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
+        auto const ratio{inputDifference / outputDifference};
+        if (std::abs(ratio) < threshold) {
+          tl.resetCycles();
+          continue;
+        }
+        std::clog << std::format("TL: {}, input difference: {}, output difference: {}, ratio: {}",
+                                 nodeId,
+                                 inputDifference,
+                                 outputDifference,
+                                 ratio)
+                  << std::endl;
+        // delta = std::abs(inputDifference - outputDifference);
+        delta = 2*std::round(std::abs(ratio / threshold) * delta);
+        std::clog << delta << std::endl;
+        if ((inputDifference > 0) && (redTime > delta)) {
+          tl.increaseGreenTimes(delta);
+        } else if ((inputDifference < 0) && (greenTime > delta)) {
+          tl.decreaseGreenTimes(delta);
+        } else {
+          tl.resetCycles();
         }
       }
     }
