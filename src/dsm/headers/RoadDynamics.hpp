@@ -614,10 +614,6 @@ namespace dsm {
           auto result{this->m_graph.shortestPath(srcId, id)};
           if (result.has_value() && result.value().path().size() < minNodeDistance &&
               dst_weights.size() > 1) {
-            std::clog << std::format("Distance from {} to {} is {}.\n",
-                                     srcId,
-                                     id,
-                                     result.value().path().size());
             continue;
           }
           dstId = id;
@@ -763,14 +759,15 @@ namespace dsm {
           tl.resetCycles();
           continue;
         }
-        std::clog << std::format("TL: {}, input difference: {}, output difference: {}, ratio: {}",
-                                 nodeId,
-                                 inputDifference,
-                                 outputDifference,
-                                 ratio)
+        std::clog << std::format(
+                         "TL: {}, input difference: {}, output difference: {}, ratio: {}",
+                         nodeId,
+                         inputDifference,
+                         outputDifference,
+                         ratio)
                   << std::endl;
         // delta = std::abs(inputDifference - outputDifference);
-        delta = 2*std::round(std::abs(ratio / threshold) * delta);
+        delta = 2 * std::round(std::abs(ratio / threshold) * delta);
         std::clog << delta << std::endl;
         if ((inputDifference > 0) && (redTime > delta)) {
           tl.increaseGreenTimes(delta);
