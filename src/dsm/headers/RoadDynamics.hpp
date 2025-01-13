@@ -116,7 +116,8 @@ namespace dsm {
                std::is_same_v<TContainer, std::map<Id, double>>)
     void addAgentsRandomly(Size nAgents,
                            const TContainer& src_weights,
-                           const TContainer& dst_weights);
+                           const TContainer& dst_weights,
+                           const size_t minNodeDistance = 0);
 
     /// @brief Evolve the simulation
     /// @details Evolve the simulation by moving the agents and updating the travel times.
@@ -548,7 +549,8 @@ namespace dsm {
              std::is_same_v<TContainer, std::map<Id, double>>)
   void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
                                                 const TContainer& src_weights,
-                                                const TContainer& dst_weights) {
+                                                const TContainer& dst_weights,
+                                                const size_t minNodeDistance) {
     if (src_weights.size() == 1 && dst_weights.size() == 1 &&
         src_weights.begin()->first == dst_weights.begin()->first) {
       throw std::invalid_argument(buildLog(
@@ -608,6 +610,16 @@ namespace dsm {
         dRand = dstUniformDist(this->m_generator);
         sum = 0.;
         for (const auto& [id, weight] : dst_weights) {
+          // if the node is at a minimum distance from the destination, skip it
+          auto result{this->m_graph.shortestPath(srcId, id)};
+          if (result.has_value() && result.value().path().size() < minNodeDistance &&
+              dst_weights.size() > 1) {
+            std::clog << std::format("Distance from {} to {} is {}.\n",
+                                     srcId,
+                                     id,
+                                     result.value().path().size());
+            continue;
+          }
           dstId = id;
           sum += weight;
           if (dRand < sum) {
@@ -719,11 +731,11 @@ namespace dsm {
       if (!tl.isDefault()) {
         continue;
       }
-      std::clog << std::format("TL: {}, current delta {}, difference: {}",
-                               nodeId,
-                               delta,
-                               difference)
-                << std::endl;
+      // std::clog << std::format("TL: {}, current delta {}, difference: {}",
+      //                          nodeId,
+      //                          delta,
+      //                          difference)
+      //           << std::endl;
       auto const greenTime = tl.minGreenTime(true);
       auto const redTime = tl.minGreenTime(false);
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
