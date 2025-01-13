@@ -717,12 +717,12 @@ namespace dsm {
       //                          redSum);
 
       auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
-      delay_t delta = std::round(std::abs(inputDifference) /
-                                 (this->m_graph.adjMatrix().getCol(nodeId).size()));
-      if (delta == 0) {
-        tl.resetCycles();
-        continue;
-      }
+      delay_t const delta = std::round(std::abs(inputDifference) /
+                                       (this->m_graph.adjMatrix().getCol(nodeId).size()));
+      // if (delta == 0) {
+      //   tl.resetCycles();
+      //   continue;
+      // }
       // std::clog << std::format("TL: {}, current delta {}, difference: {}",
       //                          nodeId,
       //                          delta,
@@ -731,7 +731,7 @@ namespace dsm {
       auto const greenTime = tl.minGreenTime(true);
       auto const redTime = tl.minGreenTime(false);
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-        if (std::abs(inputDifference) < threshold) {
+        if (delta == 0 || std::abs(inputDifference) < threshold) {
           tl.resetCycles();
           continue;
         }
@@ -754,27 +754,24 @@ namespace dsm {
           }
         }
         auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
-        auto const ratio{inputDifference / outputDifference};
-        if (std::abs(ratio) < threshold) {
+        if ((inputDifference * outputDifference > 0) ||
+            std::max(std::abs(inputDifference), std::abs(outputDifference)) < threshold ||
+            delta == 0) {
           tl.resetCycles();
           continue;
         }
-        std::clog << std::format(
-                         "TL: {}, input difference: {}, output difference: {}, ratio: {}",
-                         nodeId,
-                         inputDifference,
-                         outputDifference,
-                         ratio)
-                  << std::endl;
-        // delta = std::abs(inputDifference - outputDifference);
-        delta = 2 * std::round(std::abs(ratio / threshold) * delta);
-        std::clog << delta << std::endl;
-        if ((inputDifference > 0) && (redTime > delta)) {
-          tl.increaseGreenTimes(delta);
-        } else if ((inputDifference < 0) && (greenTime > delta)) {
-          tl.decreaseGreenTimes(delta);
+        if (std::abs(inputDifference) > std::abs(outputDifference)) {
+          if ((inputDifference > 0) && (redTime > delta)) {
+            tl.increaseGreenTimes(delta);
+          } else if ((inputDifference < 0) && (greenTime > delta)) {
+            tl.decreaseGreenTimes(delta);
+          }
         } else {
-          tl.resetCycles();
+          if ((outputDifference < 0) && (redTime > delta)) {
+            tl.increaseGreenTimes(delta);
+          } else if ((outputDifference > 0) && (greenTime > delta)) {
+            tl.decreaseGreenTimes(delta);
+          }
         }
       }
     }
