@@ -654,7 +654,7 @@ TEST_CASE("Dynamics") {
       nodes.at(4)->setCoords({1., 0.});
       graph2.buildStreetAngles();
 
-      Dynamics dynamics{graph2, 42};
+      Dynamics dynamics{graph2, 2364586};
 
       std::vector<uint32_t> destinationNodes{0, 2, 3, 4};
       dynamics.setDestinationNodes(destinationNodes);
