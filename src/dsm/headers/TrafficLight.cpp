@@ -1,6 +1,7 @@
 #include "TrafficLight.hpp"
 
 #include <format>
+#include <numeric>
 #include <stdexcept>
 
 namespace dsm {
@@ -118,16 +119,15 @@ namespace dsm {
     double meanTime{0.};
     size_t nCycles{0};
     for (auto const& [streetId, cycles] : m_cycles) {
-      if (priorityStreets && m_streetPriorities.contains(streetId)) {
-        for (auto const& cycle : cycles) {
-          meanTime += cycle.greenTime();
-          ++nCycles;
-        }
-      } else if (!priorityStreets && !m_streetPriorities.contains(streetId)) {
-        for (auto const& cycle : cycles) {
-          meanTime += cycle.greenTime();
-          ++nCycles;
-        }
+      if ((priorityStreets && m_streetPriorities.contains(streetId)) ||
+          (!priorityStreets && !m_streetPriorities.contains(streetId))) {
+        meanTime += std::accumulate(cycles.begin(),
+                                    cycles.end(),
+                                    0.,
+                                    [](double acc, TrafficLightCycle const& cycle) {
+                                      return acc + cycle.greenTime();
+                                    });
+        nCycles += cycles.size();
       }
     }
     return meanTime / nCycles;
