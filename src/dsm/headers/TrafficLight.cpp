@@ -116,18 +116,21 @@ namespace dsm {
 
   double TrafficLight::meanGreenTime(bool priorityStreets) const {
     double meanTime{0.};
+    size_t nCycles{0};
     for (auto const& [streetId, cycles] : m_cycles) {
       if (priorityStreets && m_streetPriorities.contains(streetId)) {
         for (auto const& cycle : cycles) {
           meanTime += cycle.greenTime();
+          ++nCycles;
         }
-      } else {
+      } else if (!priorityStreets && !m_streetPriorities.contains(streetId)) {
         for (auto const& cycle : cycles) {
           meanTime += cycle.greenTime();
+          ++nCycles;
         }
       }
     }
-    return meanTime / m_cycles.size();
+    return meanTime / nCycles;
   }
 
   void TrafficLight::increaseGreenTimes(Delay const delta) {

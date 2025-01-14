@@ -130,14 +130,12 @@ namespace dsm {
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
     void evolve(bool reinsert_agents = false) override;
     /// @brief Optimize the traffic lights by changing the green and red times
-    /// @param threshold double, The percentage of the mean capacity of the streets used as threshold for the delta between the two tails.
-    /// @param boundaryThreshold double, The algorithm will consider all streets with density up to boundaryThreshold*meanDensity
+    /// @param threshold double, The minimum difference between green and red queues to trigger the optimization (n agents - default is 0)
     /// @param optimizationType TrafficLightOptimization, The type of optimization. Default is DOUBLE_TAIL
     /// @details The function cycles over the traffic lights and, if the difference between the two tails is greater than
     ///   the threshold multiplied by the mean capacity of the streets, it changes the green and red times of the traffic light, keeping the total cycle time constant.
     ///   The optimizationType parameter can be set to SINGLE_TAIL to use an algorith which looks only at the incoming street tails or to DOUBLE_TAIL to consider both incoming and outgoing street tails.
     void optimizeTrafficLights(double const threshold = 0.,
-                               double const boundaryThreshold = 0.,
                                TrafficLightOptimization optimizationType =
                                    TrafficLightOptimization::DOUBLE_TAIL);
     /// @brief Get the mean travel time of the agents in \f$s\f$
@@ -674,20 +672,12 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::optimizeTrafficLights(
-      double const threshold,
-      double const boundaryThreshold,
-      TrafficLightOptimization const optimizationType) {
+      double const threshold, TrafficLightOptimization const optimizationType) {
     if (threshold < 0) {
       throw std::invalid_argument(
           buildLog(std::format("The threshold parameter is a percentage and must be "
                                "bounded between 0-1. Inserted value: {}",
                                threshold)));
-    }
-    if (boundaryThreshold < 0 || boundaryThreshold > 1) {
-      throw std::invalid_argument(buildLog(
-          std::format("The boundaryThreshold parameter ({}) is a percentage and must be "
-                      "bounded between 0-1.",
-                      boundaryThreshold)));
     }
     auto const nCycles{static_cast<double>(this->m_time - m_previousOptimizationTime) /
                        m_dataUpdatePeriod.value()};
@@ -713,20 +703,15 @@ namespace dsm {
       inputRedSum /= meanRedFraction;
       // std::clog << std::format("Traffic Light: {} - Green: {} - Red: {}\n",
       //                          nodeId,
-      //                          greenSum,
-      //                          redSum);
-
+      //                          inputGreenSum,
+      //                          inputRedSum);
       auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
       delay_t const delta = std::round(std::abs(inputDifference) /
                                        (this->m_graph.adjMatrix().getCol(nodeId).size()));
-      // if (delta == 0) {
-      //   tl.resetCycles();
-      //   continue;
-      // }
       // std::clog << std::format("TL: {}, current delta {}, difference: {}",
       //                          nodeId,
       //                          delta,
-      //                          difference)
+      //                          inputDifference)
       //           << std::endl;
       auto const greenTime = tl.minGreenTime(true);
       auto const redTime = tl.minGreenTime(false);
@@ -735,6 +720,11 @@ namespace dsm {
           tl.resetCycles();
           continue;
         }
+        // std::clog << std::format("TL: {}, difference: {}, red time: {}",
+        //                          nodeId,
+        //                          inputDifference,
+        //                          redTime)
+        //           << std::endl;
         if ((inputDifference > 0) && (redTime > delta)) {
           tl.increaseGreenTimes(delta);
         } else if ((inputDifference < 0) && (greenTime > delta)) {
