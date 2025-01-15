@@ -660,8 +660,8 @@ TEST_CASE("Dynamics") {
       dynamics.setDestinationNodes(destinationNodes);
 
       WHEN("We add agents and make the system evolve") {
-        Agent agent1{0, 4, 0};
-        Agent agent2{1, 2, 0};
+        Agent agent1{0, 2, 0};
+        Agent agent2{1, 4, 0};
         dynamics.addAgents(agent1, agent2);
         dynamics.evolve(false);  // Counter 0
         THEN("The agents are not yet on the streets") {
@@ -675,14 +675,14 @@ TEST_CASE("Dynamics") {
         }
         dynamics.evolve(false);  // Counter 2
         dynamics.evolve(false);  // Counter 3
-        THEN("The agent 1 passes and agent 0 waits") {
-          CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 7);
-          CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
+        THEN("The agent 0 passes and agent 1 waits") {
+          CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 7);
+          CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
         }
         dynamics.evolve(false);  // Counter 4
-        THEN("The agent 0 passes") {
-          CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 7);
-          CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 9);
+        THEN("The agent 1 passes") {
+          CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 7);
+          CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 9);
         }
       }
     }
