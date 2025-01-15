@@ -50,7 +50,7 @@ namespace dsm {
     std::optional<delay_t> m_dataUpdatePeriod;
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
-    std::unordered_map<Id, Size> m_streetTails;
+    std::unordered_map<Id, double> m_streetTails;
 
     /// @brief Get the next street id
     /// @param agentId The id of the agent
@@ -116,7 +116,8 @@ namespace dsm {
                std::is_same_v<TContainer, std::map<Id, double>>)
     void addAgentsRandomly(Size nAgents,
                            const TContainer& src_weights,
-                           const TContainer& dst_weights);
+                           const TContainer& dst_weights,
+                           const size_t minNodeDistance = 0);
 
     /// @brief Evolve the simulation
     /// @details Evolve the simulation by moving the agents and updating the travel times.
@@ -129,14 +130,12 @@ namespace dsm {
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
     void evolve(bool reinsert_agents = false) override;
     /// @brief Optimize the traffic lights by changing the green and red times
-    /// @param threshold double, The percentage of the mean capacity of the streets used as threshold for the delta between the two tails.
-    /// @param densityTolerance double, The algorithm will consider all streets with density up to densityTolerance*meanDensity
+    /// @param threshold double, The minimum difference between green and red queues to trigger the optimization (n agents - default is 0)
     /// @param optimizationType TrafficLightOptimization, The type of optimization. Default is DOUBLE_TAIL
     /// @details The function cycles over the traffic lights and, if the difference between the two tails is greater than
     ///   the threshold multiplied by the mean capacity of the streets, it changes the green and red times of the traffic light, keeping the total cycle time constant.
     ///   The optimizationType parameter can be set to SINGLE_TAIL to use an algorith which looks only at the incoming street tails or to DOUBLE_TAIL to consider both incoming and outgoing street tails.
     void optimizeTrafficLights(double const threshold = 0.,
-                               double const densityTolerance = 0.,
                                TrafficLightOptimization optimizationType =
                                    TrafficLightOptimization::DOUBLE_TAIL);
     /// @brief Get the mean travel time of the agents in \f$s\f$
@@ -421,8 +420,18 @@ namespace dsm {
               if (std::abs(deltaAngle) < std::numbers::pi) {
                 // Lanes are counted as 0 is the far right lane
                 if (std::abs(deltaAngle) < std::numbers::pi / 4) {
-                  std::uniform_int_distribution<size_t> laneDist{
-                      0, static_cast<size_t>(nLanes - 1)};
+                  auto const dstNodeId = pNextStreet->nodePair().first;
+                  std::vector<double> weights;
+                  for (auto const& queue : street->exitQueues()) {
+                    weights.push_back(1. / (queue.size() + 1));
+                  }
+                  // Normalize the weights
+                  auto const sum = std::accumulate(weights.begin(), weights.end(), 0.);
+                  for (auto& w : weights) {
+                    w /= sum;
+                  }
+                  std::discrete_distribution<size_t> laneDist{weights.begin(),
+                                                              weights.end()};
                   street->enqueue(agentId, laneDist(this->m_generator));
                 } else if (deltaAngle < 0.) {            // Right
                   street->enqueue(agentId, 0);           // Always the first lane
@@ -538,7 +547,8 @@ namespace dsm {
              std::is_same_v<TContainer, std::map<Id, double>>)
   void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
                                                 const TContainer& src_weights,
-                                                const TContainer& dst_weights) {
+                                                const TContainer& dst_weights,
+                                                const size_t minNodeDistance) {
     if (src_weights.size() == 1 && dst_weights.size() == 1 &&
         src_weights.begin()->first == dst_weights.begin()->first) {
       throw std::invalid_argument(buildLog(
@@ -598,6 +608,12 @@ namespace dsm {
         dRand = dstUniformDist(this->m_generator);
         sum = 0.;
         for (const auto& [id, weight] : dst_weights) {
+          // if the node is at a minimum distance from the destination, skip it
+          auto result{this->m_graph.shortestPath(srcId, id)};
+          if (result.has_value() && result.value().path().size() < minNodeDistance &&
+              dst_weights.size() > 1) {
+            continue;
+          }
           dstId = id;
           sum += weight;
           if (dRand < sum) {
@@ -656,120 +672,102 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::optimizeTrafficLights(
-      double const threshold,
-      double const densityTolerance,
-      TrafficLightOptimization const optimizationType) {
-    if (threshold < 0 || threshold > 1) {
+      double const threshold, TrafficLightOptimization const optimizationType) {
+    if (threshold < 0) {
       throw std::invalid_argument(
           buildLog(std::format("The threshold parameter is a percentage and must be "
                                "bounded between 0-1. Inserted value: {}",
                                threshold)));
     }
-    if (densityTolerance < 0 || densityTolerance > 1) {
-      throw std::invalid_argument(buildLog(
-          std::format("The densityTolerance parameter is a percentage and must be "
-                      "bounded between 0-1. Inserted value: {}",
-                      densityTolerance)));
-    }
-    auto const meanDensityGlob = this->streetMeanDensity().mean;  // Measurement
+    auto const nCycles{static_cast<double>(this->m_time - m_previousOptimizationTime) /
+                       m_dataUpdatePeriod.value()};
     for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
       if (!pNode->isTrafficLight()) {
         continue;
       }
       auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-      const auto& streetPriorities = tl.streetPriorities();
-      Size greenSum{0}, greenQueue{0};
-      Size redSum{0}, redQueue{0};
+      auto const& streetPriorities = tl.streetPriorities();
+      auto const meanGreenFraction{tl.meanGreenTime(true) / tl.cycleTime()};
+      auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
+
+      double inputGreenSum{0.}, inputRedSum{0.};
       for (const auto& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
+        auto const& pStreet{this->m_graph.streetSet()[streetId]};
         if (streetPriorities.contains(streetId)) {
-          greenSum += m_streetTails[streetId];
-          for (auto const& queue : this->m_graph.streetSet()[streetId]->exitQueues()) {
-            greenQueue += queue.size();
-          }
+          inputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
         } else {
-          redSum += m_streetTails[streetId];
-          for (auto const& queue : this->m_graph.streetSet()[streetId]->exitQueues()) {
-            redQueue += queue.size();
-          }
+          inputRedSum += m_streetTails[streetId] / pStreet->nLanes();
         }
       }
-      const auto nCycles =
-          static_cast<double>(this->m_time - m_previousOptimizationTime) /
-          m_dataUpdatePeriod.value();
-      const delay_t delta =
-          std::floor(std::fabs(static_cast<int>(greenQueue - redQueue)) / nCycles);
-      // std::cout << std::format("GreenSum: {}, RedSum: {}, Delta: {}, nCycles: {}\n",
-      //  greenQueue, redQueue, delta, nCycles);
-      if (delta == 0) {
-        continue;
-      }
-      const Size smallest = std::min(greenSum, redSum);
-      // std::cout << std::format("GreenSum: {}, RedSum: {}, Smallest: {}\n", greenSum, redSum, smallest);
-      // std::cout << std::format("Diff: {}, Threshold * Smallest: {}\n", std::abs(static_cast<int>(greenSum - redSum)), threshold * smallest);
-      if (std::abs(static_cast<int>(greenSum - redSum)) < threshold * smallest) {
-        tl.resetCycles();
-        continue;
-      }
-      auto const greenTime = tl.maxGreenTime(true);
-      auto const redTime = tl.maxGreenTime(false);
+      inputGreenSum /= meanGreenFraction;
+      inputRedSum /= meanRedFraction;
+      // std::clog << std::format("Traffic Light: {} - Green: {} - Red: {}\n",
+      //                          nodeId,
+      //                          inputGreenSum,
+      //                          inputRedSum);
+      auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
+      delay_t const delta = std::round(std::abs(inputDifference) /
+                                       (this->m_graph.adjMatrix().getCol(nodeId).size()));
+      // std::clog << std::format("TL: {}, current delta {}, difference: {}",
+      //                          nodeId,
+      //                          delta,
+      //                          inputDifference)
+      //           << std::endl;
+      auto const greenTime = tl.minGreenTime(true);
+      auto const redTime = tl.minGreenTime(false);
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-        if ((greenSum > redSum) && !(greenTime > redTime) && (redTime > delta) &&
-            (greenQueue > redQueue)) {
-          tl.increaseGreenTimes(delta);
-        } else if ((redSum > greenSum) && !(redTime > greenTime) && (greenTime > delta) &&
-                   (redQueue > greenQueue)) {
-          tl.decreaseGreenTimes(delta);
-        } else {
+        if (delta == 0 || std::abs(inputDifference) < threshold) {
           tl.resetCycles();
+          continue;
+        }
+        // std::clog << std::format("TL: {}, difference: {}, red time: {}",
+        //                          nodeId,
+        //                          inputDifference,
+        //                          redTime)
+        //           << std::endl;
+        if ((inputDifference > 0) && (redTime > delta)) {
+          tl.increaseGreenTimes(delta);
+        } else if ((inputDifference < 0) && (greenTime > delta)) {
+          tl.decreaseGreenTimes(delta);
         }
       } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
         // If the difference is not less than the threshold
         //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
         //    - If the previous check fails, do nothing
-        double meanDensity_streets{0.};
-        {
-          // Store the ids of outgoing streets
-          const auto& row{this->m_graph.adjMatrix().getRow(nodeId, true)};
-          for (const auto& [streetId, _] : row) {
-            meanDensity_streets += this->m_graph.streetSet()[streetId]->density();
-          }
-          // Take the mean density of the outgoing streets
-          const auto nStreets = row.size();
-          if (nStreets > 1) {
-            meanDensity_streets /= nStreets;
+        double outputGreenSum{0.}, outputRedSum{0.};
+        for (const auto& [streetId, _] : this->m_graph.adjMatrix().getRow(nodeId, true)) {
+          auto const& pStreet{this->m_graph.streetSet()[streetId]};
+          if (streetPriorities.contains(streetId)) {
+            outputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
+          } else {
+            outputRedSum += m_streetTails[streetId] / pStreet->nLanes();
           }
         }
-        auto const ratio = meanDensityGlob / meanDensity_streets;
-        // densityTolerance represents the max border we want to consider
-        auto const dyn_thresh = std::tanh(ratio) * densityTolerance;
-        if (meanDensityGlob * (1. + dyn_thresh) > meanDensity_streets) {
-          if (meanDensityGlob > meanDensity_streets) {
-            // Smaller than max density
-            if (!(redTime > greenTime) && (redSum > greenSum) && (greenTime > delta)) {
-              tl.decreaseGreenTimes(delta);
-            } else if (!(redTime < greenTime) && (greenSum > redSum) &&
-                       (redTime > delta)) {
-              tl.increaseGreenTimes(delta);
-            } else {
-              tl.resetCycles();
-            }
-          } else {
-            // Greater than max density
-            if (!(redTime > greenTime) && (redSum > greenSum) && (greenTime > delta)) {
-              tl.decreaseGreenTimes(delta * dyn_thresh);
-            } else if (!(redTime < greenTime) && (greenSum > redSum) &&
-                       (redTime > delta)) {
-              tl.increaseGreenTimes(delta * dyn_thresh);
-            } else {
-              tl.resetCycles();
-            }
+        auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
+        if ((inputDifference * outputDifference > 0) ||
+            std::max(std::abs(inputDifference), std::abs(outputDifference)) < threshold ||
+            delta == 0) {
+          tl.resetCycles();
+          continue;
+        }
+        if (std::abs(inputDifference) > std::abs(outputDifference)) {
+          if ((inputDifference > 0) && (redTime > delta)) {
+            tl.increaseGreenTimes(delta);
+          } else if ((inputDifference < 0) && (greenTime > delta)) {
+            tl.decreaseGreenTimes(delta);
+          }
+        } else {
+          if ((outputDifference < 0) && (redTime > delta)) {
+            tl.increaseGreenTimes(delta);
+          } else if ((outputDifference > 0) && (greenTime > delta)) {
+            tl.decreaseGreenTimes(delta);
           }
         }
       }
     }
     // Cleaning variables
     for (auto& [id, element] : m_streetTails) {
-      element = 0;
+      element = 0.;
     }
     m_previousOptimizationTime = this->m_time;
   }

@@ -784,27 +784,19 @@ TEST_CASE("Dynamics") {
         Dynamics dynamics{graph2, 69};
         std::vector<dsm::Id> destinationNodes{0, 2, 3, 4};
         dynamics.setDestinationNodes(destinationNodes);
-        dynamics.addAgents(7, 0, 2);
-        dynamics.addAgents(7, 2, 0);
-        dynamics.setDataUpdatePeriod(4);
         auto const& cycles{tl.cycles()};
         WHEN("We evolve the dynamics and optimize traffic lights") {
+          dynamics.addAgents(7, 0, 2);
+          dynamics.addAgents(7, 2, 0);
+          dynamics.setDataUpdatePeriod(4);
           for (int i = 0; i < 9; ++i) {
             dynamics.evolve(false);
           }
-          dynamics.optimizeTrafficLights(0.1, 0.);
+          dynamics.optimizeTrafficLights(0, dsm::TrafficLightOptimization::SINGLE_TAIL);
           THEN("Green and red time are different") {
-            auto sum1{0.}, sum2{0.};
-            for (auto const& cycle : cycles.at(1)) {
-              sum1 += cycle.greenTime();
-            }
-            for (auto const& cycle : cycles.at(16)) {
-              sum2 += cycle.greenTime();
-            }
-            CHECK(sum1 > sum2);
+            CHECK(tl.meanGreenTime(true) > tl.meanGreenTime(false));
           }
         }
-        dynamics.setDataUpdatePeriod(8);
         WHEN(
             "We evolve the dynamics and optimize traffic lights with outgoing "
             "streets "
@@ -813,19 +805,13 @@ TEST_CASE("Dynamics") {
           dynamics.addAgents(5, 2, 1);
           dynamics.addAgents(5, 3, 1);
           dynamics.addAgents(5, 4, 1);
+          dynamics.setDataUpdatePeriod(8);
           for (int i = 0; i < 15; ++i) {
             dynamics.evolve(false);
           }
-          dynamics.optimizeTrafficLights(0.1, 0.);
+          dynamics.optimizeTrafficLights(0, dsm::TrafficLightOptimization::SINGLE_TAIL);
           THEN("Green and red time are equal") {
-            auto sum1{0.}, sum2{0.};
-            for (auto const& cycle : cycles.at(1)) {
-              sum1 += cycle.greenTime();
-            }
-            for (auto const& cycle : cycles.at(16)) {
-              sum2 += cycle.greenTime();
-            }
-            CHECK_EQ(sum1, sum2);
+            CHECK_EQ(tl.meanGreenTime(true), tl.meanGreenTime(false));
           }
         }
       }

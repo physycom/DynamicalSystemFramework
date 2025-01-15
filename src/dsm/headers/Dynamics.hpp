@@ -464,8 +464,21 @@ namespace dsm {
     }
     std::vector<double> densities;
     densities.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
-      densities.push_back(street->density(normalized));
+    if (normalized) {
+      for (const auto& [streetId, street] : m_graph.streetSet()) {
+        densities.push_back(street->density(true));
+      }
+    } else {
+      double sum{0.};
+      for (const auto& [streetId, street] : m_graph.streetSet()) {
+        densities.push_back(street->density(false) * street->length());
+        sum += street->length();
+      }
+      if (sum == 0) {
+        return Measurement(0., 0.);
+      }
+      auto meanDensity{std::accumulate(densities.begin(), densities.end(), 0.) / sum};
+      return Measurement(meanDensity, 0.);
     }
     return Measurement<double>(densities);
   }

@@ -1,6 +1,7 @@
 #include "TrafficLight.hpp"
 
 #include <format>
+#include <numeric>
 #include <stdexcept>
 
 namespace dsm {
@@ -112,6 +113,24 @@ namespace dsm {
       }
     }
     return minTime;
+  }
+
+  double TrafficLight::meanGreenTime(bool priorityStreets) const {
+    double meanTime{0.};
+    size_t nCycles{0};
+    for (auto const& [streetId, cycles] : m_cycles) {
+      if ((priorityStreets && m_streetPriorities.contains(streetId)) ||
+          (!priorityStreets && !m_streetPriorities.contains(streetId))) {
+        meanTime += std::accumulate(cycles.begin(),
+                                    cycles.end(),
+                                    0.,
+                                    [](double acc, TrafficLightCycle const& cycle) {
+                                      return acc + cycle.greenTime();
+                                    });
+        nCycles += cycles.size();
+      }
+    }
+    return meanTime / nCycles;
   }
 
   void TrafficLight::increaseGreenTimes(Delay const delta) {
