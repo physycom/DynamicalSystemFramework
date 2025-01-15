@@ -33,6 +33,12 @@ namespace dsm {
     inline bool isDefault() const {
       return m_greenTime == m_defaultValues.first && m_phase == m_defaultValues.second;
     }
+    /// @brief Returns true if the current green time is greater than the default one
+    inline bool isGreenTimeIncreased() const {
+      return m_greenTime > m_defaultValues.first;
+    }
+    /// @brief Returns true if the current green time is smaller than the default one
+    inline bool isRedTimeIncreased() const { return m_greenTime < m_defaultValues.first; }
     /// @brief Returns true if the traffic light is green
     /// @param cycleTime Delay, the total time of a red-green cycle
     /// @param counter Delay, the current counter
@@ -131,6 +137,10 @@ namespace dsm {
     /// @param direction Direction, the direction
     /// @return true if the traffic light is green for the street and direction
     bool isGreen(Id const streetId, Direction direction) const;
+    /// @brief Returns true if the traffic light has green increased for all the cycles with priority
+    /// @param priority bool, if true, only the priority streets are considered; else, only the non-priority streets are considered
+    /// @return true if the traffic light has green increased for all the cycles with priority
+    bool isFavouringDirection(bool const priority) const;
     /// @brief Resets all traffic light cycles
     /// @details For more info, see @ref TrafficLightCycle::reset()
     void resetCycles();

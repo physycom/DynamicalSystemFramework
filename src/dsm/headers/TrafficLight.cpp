@@ -198,6 +198,20 @@ namespace dsm {
     return m_cycles.at(streetId)[direction].isGreen(m_cycleTime, m_counter);
   }
 
+  bool TrafficLight::isFavouringDirection(bool const priority) const {
+    for (auto const& [streetId, cycles] : m_cycles) {
+      if ((priority && m_streetPriorities.contains(streetId) ||
+           (!priority && !m_streetPriorities.contains(streetId)))) {
+        for (auto const& cycle : cycles) {
+          if (!cycle.isGreenTimeIncreased()) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   void TrafficLight::resetCycles() {
     for (auto& [streetId, cycles] : m_cycles) {
       for (auto& cycle : cycles) {
