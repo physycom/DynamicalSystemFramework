@@ -654,14 +654,14 @@ TEST_CASE("Dynamics") {
       nodes.at(4)->setCoords({1., 0.});
       graph2.buildStreetAngles();
 
-      Dynamics dynamics{graph2, 2364586};
+      Dynamics dynamics{graph2, 69};
 
       std::vector<uint32_t> destinationNodes{0, 2, 3, 4};
       dynamics.setDestinationNodes(destinationNodes);
 
       WHEN("We add agents and make the system evolve") {
-        Agent agent1{0, 2, 0};
         Agent agent2{1, 4, 0};
+        Agent agent1{0, 2, 0};
         dynamics.addAgents(agent1, agent2);
         dynamics.evolve(false);  // Counter 0
         THEN("The agents are not yet on the streets") {
