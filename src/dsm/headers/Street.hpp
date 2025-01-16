@@ -98,19 +98,6 @@ namespace dsm {
     inline void setQueue(dsm::queue<Size> queue, size_t index) {
       m_exitQueues[index] = std::move(queue);
     }
-    /// @brief Set the street's node pair
-    /// @param node1 The source node of the street
-    /// @param node2 The destination node of the street
-    void setNodePair(Id node1, Id node2) { m_nodePair = std::make_pair(node1, node2); }
-    /// @brief Set the street's node pair
-    /// @param node1 The source node of the street
-    /// @param node2 The destination node of the street
-    void setNodePair(const Node& node1, const Node& node2) {
-      m_nodePair = std::make_pair(node1.id(), node2.id());
-    }
-    /// @brief Set the street's node pair
-    /// @param pair The street's node pair
-    void setNodePair(std::pair<Id, Id> pair) { m_nodePair = std::move(pair); }
     /// @brief Set the street's speed limit
     /// @param speed The street's speed limit
     /// @throw std::invalid_argument, If the speed is negative

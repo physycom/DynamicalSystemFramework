@@ -76,28 +76,6 @@ TEST_CASE("Street") {
         street.setNLanes(3);
         THEN("The number of lanes is set correctly") { CHECK_EQ(street.nLanes(), 3); }
       }
-      WHEN("The node pair is set using ids") {
-        street.setNodePair(4, 5);
-        THEN("The node pair is set correctly") {
-          CHECK_EQ(street.nodePair().first, 4);
-          CHECK_EQ(street.nodePair().second, 5);
-        }
-      }
-      WHEN("The node pair is set using ids pair") {
-        street.setNodePair(std::make_pair(4, 5));
-        THEN("The node pair is set correctly") {
-          CHECK_EQ(street.nodePair().first, 4);
-          CHECK_EQ(street.nodePair().second, 5);
-        }
-      }
-      WHEN("The node pair is set suing nodes") {
-        Intersection node1{4}, node2{5};
-        street.setNodePair(node1, node2);
-        THEN("The node pair is set correctly") {
-          CHECK_EQ(street.nodePair().first, 4);
-          CHECK_EQ(street.nodePair().second, 5);
-        }
-      }
     }
   }
 
