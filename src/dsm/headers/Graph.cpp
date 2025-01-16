@@ -374,7 +374,7 @@ namespace dsm {
 
         Id streetId = std::stoul(sourceId) + std::stoul(targetId) * m_nodes.size();
         addEdge<Street>(streetId,
-                        std::stod(length) / 5,
+                        std::ceil(std::stod(length) * std::stoul(lanes) / 5),
                         std::stod(maxspeed),
                         std::stod(length),
                         std::make_pair(m_nodeMapping[std::stoul(sourceId)],
