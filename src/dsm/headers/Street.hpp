@@ -87,8 +87,6 @@ namespace dsm {
            int16_t nLanes,
            std::string const& name = std::string());
 
-    virtual ~Street() = default;
-
     /// @brief Set the street's length
     /// @param len The street's length
     /// @throw std::invalid_argument, If the length is negative
@@ -127,9 +125,6 @@ namespace dsm {
     /// @brief Get the street's queues
     /// @return std::vector<dsm::queue<Size>> The street's queues
     const std::vector<dsm::queue<Size>>& exitQueues() const { return m_exitQueues; }
-    /// @brief Get the street's node pair
-    /// @return std::pair<Id, Id>, The street's node pair
-    const std::pair<Id, Id>& nodePair() const { return m_nodePair; }
     /// @brief  Get the number of agents on the street
     /// @return Size, The number of agents on the street
     Size nAgents() const;
@@ -139,7 +134,7 @@ namespace dsm {
     double density(bool normalized = false) const;
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
-    bool isFull() const { return nAgents() == m_capacity; }
+    bool isFull() const final { return nAgents() == m_capacity; }
     /// @brief Get the street's speed limit
     /// @return double, The street's speed limit
     double maxSpeed() const { return m_maxSpeed; }
