@@ -27,6 +27,10 @@ examples/sctl*
 examples/scrb*
 examples/*.csv
 
+# Utils generated files
+utils/*.csv
+utils/*.png
+
 # Utils generated folders
 __pycache__
 images
