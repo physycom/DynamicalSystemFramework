@@ -36,6 +36,8 @@ namespace dsm {
   }
 
   Id Edge::id() const { return m_id; }
+  Id Edge::u() const { return m_nodePair.first; }
+  Id Edge::v() const { return m_nodePair.second; }
   std::pair<Id, Id> Edge::nodePair() const { return m_nodePair; }
   int Edge::capacity() const { return m_capacity; }
   int Edge::transportCapacity() const { return m_transportCapacity; }

@@ -18,6 +18,8 @@ namespace dsm {
     void setTransportCapacity(int capacity);
 
     Id id() const;
+    Id u() const;
+    Id v() const;
     std::pair<Id, Id> nodePair() const;
     int capacity() const;
     int transportCapacity() const;
