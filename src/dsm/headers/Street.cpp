@@ -3,13 +3,10 @@
 
 namespace dsm {
   Street::Street(Id id, const Street& street)
-      : m_nodePair{street.nodePair()},
+      : Edge(id, street.nodePair(), street.capacity(), street.transportCapacity()),
         m_len{street.length()},
         m_maxSpeed{street.maxSpeed()},
         m_angle{street.angle()},
-        m_id{id},
-        m_capacity{street.capacity()},
-        m_transportCapacity{street.transportCapacity()},
         m_nLanes{street.nLanes()},
         m_name{street.name()} {
     for (auto i{0}; i < street.nLanes(); ++i) {
@@ -19,26 +16,20 @@ namespace dsm {
   }
 
   Street::Street(Id index, std::pair<Id, Id> pair)
-      : m_nodePair{std::move(pair)},
+      : Edge(index, std::move(pair)),
         m_len{1.},
         m_maxSpeed{13.8888888889},
         m_angle{0.},
-        m_id{index},
-        m_capacity{1},
-        m_transportCapacity{1},
         m_nLanes{1} {
     m_exitQueues.push_back(dsm::queue<Size>());
     m_laneMapping.emplace_back(Direction::ANY);
   }
 
   Street::Street(Id id, Size capacity, double len, std::pair<Id, Id> nodePair)
-      : m_nodePair{std::move(nodePair)},
+      : Edge(id, std::move(nodePair), capacity),
         m_len{len},
         m_maxSpeed{13.8888888889},
         m_angle{0.},
-        m_id{id},
-        m_capacity{capacity},
-        m_transportCapacity{1},
         m_nLanes{1} {
     m_exitQueues.push_back(dsm::queue<Size>());
     m_laneMapping.emplace_back(Direction::ANY);
@@ -46,13 +37,7 @@ namespace dsm {
 
   Street::Street(
       Id id, Size capacity, double len, double maxSpeed, std::pair<Id, Id> nodePair)
-      : m_nodePair{std::move(nodePair)},
-        m_len{len},
-        m_angle{0.},
-        m_id{id},
-        m_capacity{capacity},
-        m_transportCapacity{1},
-        m_nLanes{1} {
+      : Edge(id, std::move(nodePair), capacity), m_len{len}, m_angle{0.}, m_nLanes{1} {
     this->setMaxSpeed(maxSpeed);
     m_exitQueues.push_back(dsm::queue<Size>());
     m_laneMapping.emplace_back(Direction::ANY);
@@ -65,12 +50,9 @@ namespace dsm {
                  std::pair<Id, Id> nodePair,
                  int16_t nLanes,
                  std::string const& name)
-      : m_nodePair{std::move(nodePair)},
+      : Edge(id, std::move(nodePair), capacity),
         m_len{len},
         m_angle{0.},
-        m_id{id},
-        m_capacity{capacity},
-        m_transportCapacity{1},
         m_name{name}
 
   {

@@ -20,6 +20,7 @@
 #include <cassert>
 #include <string>
 
+#include "Edge.hpp"
 #include "Agent.hpp"
 #include "Node.hpp"
 #include "../utility/TypeTraits/is_numeric.hpp"
@@ -31,19 +32,15 @@ namespace dsm {
   /// @brief The Street class represents a street in the network.
   /// @tparam Id, The type of the street's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the street's capacity. It must be an unsigned integral type.
-  class Street {
+  class Street : public Edge {
   private:
     std::vector<dsm::queue<Size>> m_exitQueues;
     std::vector<Direction> m_laneMapping;
     std::set<Id> m_waitingAgents;
-    std::pair<Id, Id> m_nodePair;
     double m_len;
     double m_maxSpeed;
     double m_angle;
-    Id m_id;
     std::string m_name;
-    Size m_capacity;
-    int16_t m_transportCapacity;
     int16_t m_nLanes;
 
   public:
@@ -92,17 +89,6 @@ namespace dsm {
 
     virtual ~Street() = default;
 
-    /// @brief Set the street's id
-    /// @param id The street's id
-    void setId(Id id) { m_id = id; }
-    /// @brief Set the street's capacity
-    /// @param capacity The street's capacity
-    void setCapacity(Size capacity) { m_capacity = capacity; }
-    /// @brief Set the street's transport capacity
-    /// @details The transport capacity is the maximum number of agents that can traverse the street
-    ///          in a time step.
-    /// @param capacity The street's transport capacity
-    void setTransportCapacity(int16_t capacity) { m_transportCapacity = capacity; }
     /// @brief Set the street's length
     /// @param len The street's length
     /// @throw std::invalid_argument, If the length is negative
@@ -142,17 +128,6 @@ namespace dsm {
     /// @throw std::invalid_argument If the number of lanes is 0
     void setNLanes(const int16_t nLanes);
 
-    /// @brief Get the street's id
-    /// @return Id, The street's id
-    Id id() const { return m_id; }
-    /// @brief Get the street's capacity
-    /// @return Size, The street's capacity
-    Size capacity() const { return m_capacity; }
-    /// @brief Get the street's transport capacity
-    /// @details The transport capacity is the maximum number of agents that can traverse the street
-    ///          in a time step.
-    /// @return Size, The street's transport capacity
-    int16_t transportCapacity() const { return m_transportCapacity; }
     /// @brief Get the street's length
     /// @return double, The street's length
     double length() const { return m_len; }
