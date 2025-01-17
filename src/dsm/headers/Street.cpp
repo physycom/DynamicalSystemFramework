@@ -2,9 +2,11 @@
 #include "Street.hpp"
 
 namespace dsm {
+  double Street::m_meanVehicleLength = 5.;
+
   Street::Street(Id id, const Street& street)
       : Edge(id, street.nodePair(), street.capacity(), street.transportCapacity()),
-        m_len{street.length()},
+        m_length{street.length()},
         m_maxSpeed{street.maxSpeed()},
         m_angle{street.angle()},
         m_nLanes{street.nLanes()},
@@ -15,50 +17,35 @@ namespace dsm {
     m_laneMapping = street.laneMapping();
   }
 
-  Street::Street(Id index, std::pair<Id, Id> pair)
-      : Edge(index, std::move(pair)),
-        m_len{1.},
-        m_maxSpeed{13.8888888889},
-        m_angle{0.},
-        m_nLanes{1} {
-    m_exitQueues.push_back(dsm::queue<Size>());
-    m_laneMapping.emplace_back(Direction::ANY);
-  }
-
-  Street::Street(Id id, Size capacity, double len, std::pair<Id, Id> nodePair)
-      : Edge(id, std::move(nodePair), capacity),
-        m_len{len},
-        m_maxSpeed{13.8888888889},
-        m_angle{0.},
-        m_nLanes{1} {
-    m_exitQueues.push_back(dsm::queue<Size>());
-    m_laneMapping.emplace_back(Direction::ANY);
-  }
-
-  Street::Street(
-      Id id, Size capacity, double len, double maxSpeed, std::pair<Id, Id> nodePair)
-      : Edge(id, std::move(nodePair), capacity), m_len{len}, m_angle{0.}, m_nLanes{1} {
-    this->setMaxSpeed(maxSpeed);
-    m_exitQueues.push_back(dsm::queue<Size>());
-    m_laneMapping.emplace_back(Direction::ANY);
-  }
-
   Street::Street(Id id,
-                 Size capacity,
-                 double len,
-                 double maxSpeed,
                  std::pair<Id, Id> nodePair,
-                 int16_t nLanes,
-                 std::string const& name)
-      : Edge(id, std::move(nodePair), capacity),
-        m_len{len},
-        m_angle{0.},
-        m_name{name}
-
-  {
-    this->setMaxSpeed(maxSpeed);
-    this->setCapacity(capacity);
-    this->setNLanes(nLanes);
+                 double length,
+                 double maxSpeed,
+                 int nLanes,
+                 std::string name,
+                 std::optional<int> capacity,
+                 int transportCapacity)
+      : Edge(id,
+             std::move(nodePair),
+             capacity.value_or(std::ceil((length * nLanes) / m_meanVehicleLength)),
+             transportCapacity),
+        m_length{length},
+        m_maxSpeed{maxSpeed},
+        m_nLanes{nLanes},
+        m_name{std::move(name)},
+        m_angle{0.} {
+    if (!(length > 0.)) {
+      throw std::invalid_argument(buildLog(
+          std::format("The length of a street ({}) must be greater than 0.", length)));
+    }
+    if (!(maxSpeed > 0.)) {
+      throw std::invalid_argument(buildLog(std::format(
+          "The maximum speed of a street ({}) must be greater than 0.", maxSpeed)));
+    }
+    if (nLanes < 1) {
+      throw std::invalid_argument(buildLog(std::format(
+          "The number of lanes of a street ({}) must be greater than 0.", nLanes)));
+    }
     m_exitQueues.resize(nLanes);
     for (auto i{0}; i < nLanes; ++i) {
       m_exitQueues.push_back(dsm::queue<Size>());
@@ -91,7 +78,7 @@ namespace dsm {
       throw std::invalid_argument(
           buildLog(std::format("The length of a street ({}) cannot be negative.", len)));
     }
-    m_len = len;
+    m_length = len;
   }
   void Street::setMaxSpeed(double speed) {
     if (speed < 0.) {
@@ -124,6 +111,13 @@ namespace dsm {
                           static_cast<int>(m_id))),
          nLanes > 0));
     m_nLanes = nLanes;
+  }
+  void Street::setMeanVehicleLength(double meanVehicleLength) {
+    if (!(meanVehicleLength > 0.)) {
+      throw std::invalid_argument(buildLog(std::format(
+          "The mean vehicle length ({}) must be greater than 0.", meanVehicleLength)));
+    }
+    m_meanVehicleLength = meanVehicleLength;
   }
 
   void Street::addAgent(Id agentId) {
@@ -165,7 +159,7 @@ namespace dsm {
 
   double Street::density(bool normalized) const {
     return normalized ? nAgents() / static_cast<double>(m_capacity)
-                      : nAgents() / (m_len * m_nLanes);
+                      : nAgents() / (m_length * m_nLanes);
   }
 
   Size Street::nExitingAgents() const {
@@ -185,18 +179,6 @@ namespace dsm {
     }
     return deltaAngle;
   }
-
-  SpireStreet::SpireStreet(Id id, const Street& street)
-      : Street(id, street), m_agentCounterIn{0}, m_agentCounterOut{0} {}
-
-  SpireStreet::SpireStreet(Id id, Size capacity, double len, std::pair<Id, Id> nodePair)
-      : Street(id, capacity, len, nodePair), m_agentCounterIn{0}, m_agentCounterOut{0} {}
-
-  SpireStreet::SpireStreet(
-      Id id, Size capacity, double len, double maxSpeed, std::pair<Id, Id> nodePair)
-      : Street(id, capacity, len, maxSpeed, nodePair),
-        m_agentCounterIn{0},
-        m_agentCounterOut{0} {}
 
   void SpireStreet::addAgent(Id agentId) {
     Street::addAgent(agentId);

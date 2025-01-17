@@ -37,11 +37,12 @@ namespace dsm {
     std::vector<dsm::queue<Size>> m_exitQueues;
     std::vector<Direction> m_laneMapping;
     std::set<Id> m_waitingAgents;
-    double m_len;
+    double m_length;
     double m_maxSpeed;
     double m_angle;
     std::string m_name;
-    int16_t m_nLanes;
+    int m_nLanes;
+    static double m_meanVehicleLength;
 
   public:
     /// @brief Construct a new Street object starting from an existing street
@@ -53,39 +54,20 @@ namespace dsm {
     /// @brief Construct a new Street object
     /// @param id The street's id
     /// @param nodePair The street's node pair
-    Street(Id id, std::pair<Id, Id> nodePair);
-    /// @brief Construct a new Street object
-    /// @details The default capacity is 1, the default length is 1, and the default speed limit is
-    ///          50 km/h, i.e. 13.8888888889 m/s.
-    /// @param id The street's id
-    /// @param capacity The street's capacity
-    /// @param len The street's length
-    /// @param nodePair The street's node pair
-    Street(Id id, Size capacity, double len, std::pair<Id, Id> nodePair);
-    /// @brief Construct a new Street object
-    /// @details The default speed limit is 50 km/h, i.e. 13.8888888889 m/s.
-    /// @param id The street's id
-    /// @param capacity The street's capacity
-    /// @param len The street's length
-    /// @param maxSpeed The street's speed limit
-    /// @param nodePair The street's node pair
-    Street(Id id, Size capacity, double len, double maxSpeed, std::pair<Id, Id> nodePair);
-    /// @brief Construct a new Street object
-    /// @details The default speed limit is 50 km/h, i.e. 13.8888888889 m/s.
-    /// @param id The street's id
-    /// @param capacity The street's capacity
-    /// @param len The street's length
-    /// @param lanes The street's number of lanes
-    /// @param maxSpeed The street's speed limit
-    /// @param nodePair The street's node pair
-    /// @param name The street's name (default is "")
+    /// @param length The street's length, in meters (default is the mean vehicle length)
+    /// @param nLanes The street's number of lanes (default is 1)
+    /// @param maxSpeed The street's speed limit, in m/s (default is 50 km/h)
+    /// @param name The street's name (default is an empty string)
+    /// @param capacity The street's capacity (default is the maximum number of vehicles that can fit in the street)
+    /// @param transportCapacity The street's transport capacity (default is 1)
     Street(Id id,
-           Size capacity,
-           double len,
-           double maxSpeed,
            std::pair<Id, Id> nodePair,
-           int16_t nLanes,
-           std::string const& name = std::string());
+           double length = m_meanVehicleLength,
+           double maxSpeed = 13.8888888889,
+           int nLanes = 1,
+           std::string name = std::string(),
+           std::optional<int> capacity = std::nullopt,
+           int transportCapacity = 1);
 
     /// @brief Set the street's length
     /// @param len The street's length
@@ -112,10 +94,14 @@ namespace dsm {
     /// @param nLanes The street's number of lanes
     /// @throw std::invalid_argument If the number of lanes is 0
     void setNLanes(const int16_t nLanes);
+    /// @brief Set the mean vehicle length
+    /// @param meanVehicleLength The mean vehicle length
+    /// @throw std::invalid_argument If the mean vehicle length is negative
+    static void setMeanVehicleLength(double meanVehicleLength);
 
     /// @brief Get the street's length
     /// @return double, The street's length
-    double length() const { return m_len; }
+    double length() const { return m_length; }
     /// @brief Get the street's waiting agents
     /// @return std::set<Id>, The street's waiting agents
     const std::set<Id>& waitingAgents() const { return m_waitingAgents; }
@@ -174,28 +160,11 @@ namespace dsm {
   /// @tparam Size The type of the street's capacity
   class SpireStreet : public Street {
   private:
-    Size m_agentCounterIn;
-    Size m_agentCounterOut;
+    Size m_agentCounterIn = 0;
+    Size m_agentCounterOut = 0;
 
   public:
-    /// @brief Construct a new SpireStreet object starting from an existing street
-    /// @param id The street's id
-    /// @param street The existing street
-    SpireStreet(Id id, const Street& street);
-    /// @brief Construct a new SpireStreet object
-    /// @param id The street's id
-    /// @param capacity The street's capacity
-    /// @param len The street's length
-    /// @param nodePair The street's node pair
-    SpireStreet(Id id, Size capacity, double len, std::pair<Id, Id> nodePair);
-    /// @brief Construct a new SpireStreet object
-    /// @param id The street's id
-    /// @param capacity The street's capacity
-    /// @param len The street's length
-    /// @param maxSpeed The street's speed limit
-    /// @param nodePair The street's node pair
-    SpireStreet(
-        Id id, Size capacity, double len, double maxSpeed, std::pair<Id, Id> nodePair);
+    using Street::Street;
     ~SpireStreet() = default;
 
     /// @brief Add an agent to the street's queue
