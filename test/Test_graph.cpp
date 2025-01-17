@@ -615,9 +615,9 @@ TEST_CASE("Dijkstra") {
         THEN("The transport capacities are correct") {
           CHECK_EQ(nodes.at(0)->transportCapacity(), 1);
           CHECK_EQ(nodes.at(1)->transportCapacity(), 3);
-          CHECK_EQ(nodes.at(2)->transportCapacity(), 0);
+          CHECK_EQ(nodes.at(2)->transportCapacity(), 1);
           CHECK_EQ(nodes.at(3)->transportCapacity(), 3);
-          CHECK_EQ(nodes.at(4)->transportCapacity(), 0);
+          CHECK_EQ(nodes.at(4)->transportCapacity(), 1);
         }
       }
       WHEN("We normalize street capacities") {

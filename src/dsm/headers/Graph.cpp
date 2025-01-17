@@ -126,7 +126,7 @@ namespace dsm {
       for (const auto& [streetId, _] : m_adjacency.getRow(nodeId, true)) {
         value += m_streets[streetId]->nLanes() * m_streets[streetId]->transportCapacity();
       }
-      m_nodes[nodeId]->setTransportCapacity(value);
+      m_nodes[nodeId]->setTransportCapacity(value == 0 ? 1 : value);
       if (m_nodes[nodeId]->capacity() == 0) {
         m_nodes[nodeId]->setCapacity(value);
       }
