@@ -70,15 +70,6 @@ TEST_CASE("Street") {
     CHECK_EQ(street.maxSpeed(), 40.);
     CHECK_EQ(street.nLanes(), 1);
   }
-  SUBCASE("Street API") {
-    GIVEN("A street") {
-      Street street{1, std::make_pair(0, 1)};
-      WHEN("The number of lanes is set") {
-        street.setNLanes(3);
-        THEN("The number of lanes is set correctly") { CHECK_EQ(street.nLanes(), 3); }
-      }
-    }
-  }
 
   SUBCASE("Enqueue") {
     /*This tests the insertion of an agent in a street's queue*/

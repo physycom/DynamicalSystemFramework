@@ -105,29 +105,38 @@ TEST_CASE("Graph") {
     // GIVEN: a graph
     // WHEN: we import a .dsm file
     // THEN: the graph's adjacency matrix is the same as the one in the file
-    Graph graph{};
-    graph.importMatrix("./data/matrix.dsm");
-    CHECK_EQ(graph.adjMatrix().max_size(), 9);
-    CHECK_EQ(graph.adjMatrix().getRowDim(), 3);
-    CHECK_EQ(graph.adjMatrix().getColDim(), 3);
-    CHECK(graph.adjMatrix().operator()(8));
-    CHECK(graph.adjMatrix().operator()(6));
-    CHECK(graph.adjMatrix().operator()(3));
-    CHECK(graph.adjMatrix().operator()(1));
-    CHECK_EQ(graph.nNodes(), 3);
-    CHECK_EQ(graph.nEdges(), 4);
-    graph.exportMatrix("./data/temp.dsm", false);
-    Graph graph2{};
-    graph2.importMatrix("./data/temp.dsm");
-    CHECK_EQ(graph2.adjMatrix().max_size(), 9);
-    CHECK_EQ(graph2.adjMatrix().getRowDim(), 3);
-    CHECK_EQ(graph2.adjMatrix().getColDim(), 3);
-    CHECK(graph2.adjMatrix().operator()(8));
-    CHECK(graph2.adjMatrix().operator()(6));
-    CHECK(graph2.adjMatrix().operator()(3));
-    CHECK(graph2.adjMatrix().operator()(1));
-    CHECK_EQ(graph2.nNodes(), 3);
-    CHECK_EQ(graph2.nEdges(), 4);
+    GIVEN("An empty graph") {
+      Graph graph{};
+      WHEN("A matrix in dsm format is imported") {
+        graph.importMatrix("./data/matrix.dsm");
+        THEN("The graph is correctly built") {
+          CHECK_EQ(graph.adjMatrix().max_size(), 9);
+          CHECK_EQ(graph.adjMatrix().getRowDim(), 3);
+          CHECK_EQ(graph.adjMatrix().getColDim(), 3);
+          CHECK(graph.adjMatrix().operator()(8));
+          CHECK(graph.adjMatrix().operator()(6));
+          CHECK(graph.adjMatrix().operator()(3));
+          CHECK(graph.adjMatrix().operator()(1));
+          CHECK_EQ(graph.nNodes(), 3);
+          CHECK_EQ(graph.nEdges(), 4);
+        }
+        THEN("It is correctly exported") { graph.exportMatrix("./data/temp.dsm", true); }
+      }
+      WHEN("The exported one is imported") {
+        graph.importMatrix("./data/temp.dsm");
+        THEN("The graph is correctly built") {
+          CHECK_EQ(graph.adjMatrix().max_size(), 9);
+          CHECK_EQ(graph.adjMatrix().getRowDim(), 3);
+          CHECK_EQ(graph.adjMatrix().getColDim(), 3);
+          CHECK(graph.adjMatrix().operator()(8));
+          CHECK(graph.adjMatrix().operator()(6));
+          CHECK(graph.adjMatrix().operator()(3));
+          CHECK(graph.adjMatrix().operator()(1));
+          CHECK_EQ(graph.nNodes(), 3);
+          CHECK_EQ(graph.nEdges(), 4);
+        }
+      }
+    }
   }
   SUBCASE("Coordinates import/export") {
     GIVEN("A Graph object with the adj matrix imported") {

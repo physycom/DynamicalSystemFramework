@@ -162,11 +162,11 @@ namespace dsm {
         if (!m_nodes.contains(dstId)) {
           m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
         }
-        m_streets.emplace(index,
-                          std::make_unique<Street>(index, std::make_pair(srcId, dstId)));
         assert(index == srcId * n + dstId);
-        if (!isAdj) {
-          m_streets[index]->setLength(val);
+        if (isAdj) {
+          addEdge<Street>(index, std::make_pair(srcId, dstId));
+        } else {
+          addEdge<Street>(index, std::make_pair(srcId, dstId), val);
         }
         m_streets[index]->setMaxSpeed(defaultSpeed);
       }
@@ -208,11 +208,11 @@ namespace dsm {
           if (!m_nodes.contains(dstId)) {
             m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
           }
-          m_streets.emplace(
-              index, std::make_unique<Street>(index, std::make_pair(srcId, dstId)));
           assert(index == srcId * n + dstId);
-          if (!isAdj) {
-            m_streets[index]->setLength(value);
+          if (isAdj) {
+            addEdge<Street>(index, std::make_pair(srcId, dstId));
+          } else {
+            addEdge<Street>(index, std::make_pair(srcId, dstId), value);
           }
           m_streets[index]->setMaxSpeed(defaultSpeed);
         }
@@ -382,14 +382,14 @@ namespace dsm {
       throw std::invalid_argument(buildLog("Cannot open file: " + path));
     }
     if (isAdj) {
-      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim() << '\n';
+      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
       for (const auto& [id, value] : m_adjacency) {
-        file << id << '\t' << value << '\n';
+        file << '\n' << id << '\t' << value;
       }
     } else {
-      file << m_adjacency.getRowDim() << " " << m_adjacency.getColDim() << '\n';
+      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
       for (const auto& [id, street] : m_streets) {
-        file << id << '\t' << street->length() << '\n';
+        file << '\n' << id << '\t' << street->length();
       }
     }
   }

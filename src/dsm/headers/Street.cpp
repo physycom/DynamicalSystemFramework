@@ -73,13 +73,6 @@ namespace dsm {
     }
   }
 
-  void Street::setLength(double len) {
-    if (len < 0.) {
-      throw std::invalid_argument(
-          buildLog(std::format("The length of a street ({}) cannot be negative.", len)));
-    }
-    m_length = len;
-  }
   void Street::setMaxSpeed(double speed) {
     if (speed < 0.) {
       throw std::invalid_argument(buildLog(
@@ -104,13 +97,6 @@ namespace dsm {
           "The angle of a street ({}) must be between - 2 * pi and 2 * pi.", angle)));
     }
     m_angle = angle;
-  }
-  void Street::setNLanes(const int16_t nLanes) {
-    assert(
-        (void(std::format("The number of lanes of the street {} must be greater than 0",
-                          static_cast<int>(m_id))),
-         nLanes > 0));
-    m_nLanes = nLanes;
   }
   void Street::setMeanVehicleLength(double meanVehicleLength) {
     if (!(meanVehicleLength > 0.)) {

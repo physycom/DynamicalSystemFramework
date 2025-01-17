@@ -69,10 +69,6 @@ namespace dsm {
            std::optional<int> capacity = std::nullopt,
            int transportCapacity = 1);
 
-    /// @brief Set the street's length
-    /// @param len The street's length
-    /// @throw std::invalid_argument, If the length is negative
-    void setLength(double len);
     /// @brief Set the street's queue
     /// @param queue The street's queue
     inline void setQueue(dsm::queue<Size> queue, size_t index) {
@@ -90,10 +86,6 @@ namespace dsm {
     /// @param angle The street's angle
     /// @throw std::invalid_argument If the angle is negative or greater than 2 * pi
     void setAngle(double angle);
-    /// @brief Set the street's number of lanes
-    /// @param nLanes The street's number of lanes
-    /// @throw std::invalid_argument If the number of lanes is 0
-    void setNLanes(const int16_t nLanes);
     /// @brief Set the mean vehicle length
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
@@ -128,8 +120,8 @@ namespace dsm {
     /// @return double The street's angle
     double angle() const { return m_angle; }
     /// @brief Get the street's number of lanes
-    /// @return int16_t The street's number of lanes
-    int16_t nLanes() const { return m_nLanes; }
+    /// @return int The street's number of lanes
+    int nLanes() const { return m_nLanes; }
     /// @brief Get the street's name
     /// @return std::string_view The street's name
     std::string_view name() const { return m_name; }
