@@ -420,7 +420,6 @@ namespace dsm {
               if (std::abs(deltaAngle) < std::numbers::pi) {
                 // Lanes are counted as 0 is the far right lane
                 if (std::abs(deltaAngle) < std::numbers::pi / 4) {
-                  auto const dstNodeId = pNextStreet->nodePair().first;
                   std::vector<double> weights;
                   for (auto const& queue : street->exitQueues()) {
                     weights.push_back(1. / (queue.size() + 1));

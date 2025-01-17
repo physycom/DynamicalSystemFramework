@@ -39,9 +39,9 @@ namespace dsm {
     std::set<Id> m_waitingAgents;
     double m_length;
     double m_maxSpeed;
-    double m_angle;
-    std::string m_name;
     int m_nLanes;
+    std::string m_name;
+    double m_angle;
     static double m_meanVehicleLength;
 
   public:
@@ -105,7 +105,7 @@ namespace dsm {
     const std::vector<dsm::queue<Size>>& exitQueues() const { return m_exitQueues; }
     /// @brief  Get the number of agents on the street
     /// @return Size, The number of agents on the street
-    Size nAgents() const;
+    int nAgents() const;
     /// @brief Get the street's density in \f$m^{-1}\f$ or in \f$a.u.\f$, if normalized
     /// @param normalized If true, the street's density is normalized by the street's capacity
     /// @return double, The street's density

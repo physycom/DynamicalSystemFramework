@@ -221,7 +221,7 @@ namespace dsm {
     const std::map<Id, std::unique_ptr<agent_t>>& agents() const { return m_agents; }
     /// @brief Get the number of agents currently in the simulation
     /// @return Size The number of agents
-    const Size nAgents() const { return m_agents.size(); }
+    Size nAgents() const { return m_agents.size(); }
     /// @brief Get the time
     /// @return Time The time
     Time time() const { return m_time; }

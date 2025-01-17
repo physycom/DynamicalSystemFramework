@@ -8,9 +8,9 @@ namespace dsm {
       : Edge(id, street.nodePair(), street.capacity(), street.transportCapacity()),
         m_length{street.length()},
         m_maxSpeed{street.maxSpeed()},
-        m_angle{street.angle()},
         m_nLanes{street.nLanes()},
-        m_name{street.name()} {
+        m_name{street.name()},
+        m_angle{street.angle()} {
     for (auto i{0}; i < street.nLanes(); ++i) {
       m_exitQueues.push_back(dsm::queue<Size>());
     }
@@ -135,8 +135,8 @@ namespace dsm {
     return id;
   }
 
-  Size Street::nAgents() const {
-    Size nAgents{static_cast<Size>(m_waitingAgents.size())};
+  int Street::nAgents() const {
+    auto nAgents{static_cast<int>(m_waitingAgents.size())};
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }

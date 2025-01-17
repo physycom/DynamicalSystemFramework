@@ -30,7 +30,7 @@ namespace dsm {
     std::optional<std::pair<double, double>> m_coords;
     std::string m_name;
     Size m_capacity;
-    Size m_transportCapacity;
+    int m_transportCapacity;
 
   public:
     /// @brief Construct a new Node object with capacity 1
@@ -79,7 +79,13 @@ namespace dsm {
     virtual void setCapacity(Size capacity) { m_capacity = capacity; }
     /// @brief Set the node's transport capacity
     /// @param capacity The node's transport capacity
-    virtual void setTransportCapacity(Size capacity) { m_transportCapacity = capacity; }
+    virtual void setTransportCapacity(int capacity) {
+      if (capacity < 1) {
+        throw std::invalid_argument(buildLog(std::format(
+            "The transport capacity of a node ({}) must be greater than 0.", capacity)));
+      }
+      m_transportCapacity = capacity;
+    }
     /// @brief Get the node's id
     /// @return Id The node's id
     Id id() const { return m_id; }
@@ -94,7 +100,7 @@ namespace dsm {
     Size capacity() const { return m_capacity; }
     /// @brief Get the node's transport capacity
     /// @return Size The node's transport capacity
-    Size transportCapacity() const { return m_transportCapacity; }
+    int transportCapacity() const { return m_transportCapacity; }
 
     virtual double density() const = 0;
     virtual bool isFull() const = 0;
