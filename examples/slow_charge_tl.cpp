@@ -90,12 +90,7 @@ int main(int argc, char** argv) {
   graph.importMatrix(IN_MATRIX, false);
   graph.importCoordinates(IN_COORDS);
   std::cout << "Setting street parameters..." << '\n';
-  for (const auto& [streetId, street] : graph.streetSet()) {
-    street->setTransportCapacity(1);
-    street->setMaxSpeed(13.9);
-  }
   graph.buildAdj();
-  graph.normalizeStreetCapacities();
   const auto dv = graph.adjMatrix().getDegreeVector();
 
   // graph.addStreet(Street(100002, std::make_pair(0, 108)));

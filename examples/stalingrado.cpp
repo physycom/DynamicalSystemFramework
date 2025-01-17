@@ -49,10 +49,11 @@ int main() {
   Graph graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
-  Street s01{1, 2281 / 8, 2281., 13.9, std::make_pair(0, 1)};
-  Street s12{7, 118 / 8, 118., 13.9, std::make_pair(1, 2)};
-  Street s23{13, 222 / 8, 222., 13.9, std::make_pair(2, 3)};
-  Street s34{19, 1, 651., 13.9, std::make_pair(3, 4), 2};
+  Street::setMeanVehicleLength(8.);
+  Street s01{1, std::make_pair(0, 1), 2281.};
+  Street s12{7, std::make_pair(1, 2), 118.};
+  Street s23{13, std::make_pair(2, 3), 222.};
+  Street s34{19, std::make_pair(3, 4), 651., 13.9, 2};
   // Viale Aldo Moro
   auto& tl1 = graph.addNode<TrafficLight>(1, 132);
   tl1.setCycle(s01.id(), dsm::Direction::ANY, {62, 0});
@@ -73,7 +74,6 @@ int main() {
   graph.addStreets(s01, s12, s23, s34);
   graph.buildAdj();
   graph.adjustNodeCapacities();
-  graph.normalizeStreetCapacities();
   auto& spire = graph.makeSpireStreet(19);
 
   std::cout << "Intersections: " << graph.nNodes() << '\n';
