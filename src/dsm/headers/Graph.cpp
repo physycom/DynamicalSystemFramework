@@ -133,16 +133,6 @@ namespace dsm {
     }
   }
 
-  void Graph::normalizeStreetCapacities(double meanVehicleLength) {
-    m_maxAgentCapacity = 0;
-    for (const auto& [_, street] : m_streets) {
-      auto const maxCapacity{
-          static_cast<Size>(street->length() * street->nLanes() / meanVehicleLength)};
-      m_maxAgentCapacity += maxCapacity;
-      street->setCapacity(maxCapacity);
-    }
-  }
-
   void Graph::importMatrix(const std::string& fileName, bool isAdj, double defaultSpeed) {
     // check the file extension
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
@@ -374,11 +364,10 @@ namespace dsm {
 
         Id streetId = std::stoul(sourceId) + std::stoul(targetId) * m_nodes.size();
         addEdge<Street>(streetId,
-                        std::ceil(std::stod(length) * std::stoul(lanes) / 5),
-                        std::stod(maxspeed),
-                        std::stod(length),
                         std::make_pair(m_nodeMapping[std::stoul(sourceId)],
                                        m_nodeMapping[std::stoul(targetId)]),
+                        std::stod(length),
+                        std::stod(maxspeed),
                         std::stoul(lanes),
                         name);
       }
