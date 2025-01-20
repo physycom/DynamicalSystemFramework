@@ -140,16 +140,6 @@ namespace dsm {
     return nAgents;
   }
 
-  double Street::deltaAngle(double const previousStreetAngle) const {
-    double deltaAngle{this->m_angle - previousStreetAngle};
-    if (deltaAngle > std::numbers::pi) {
-      deltaAngle -= 2 * std::numbers::pi;
-    } else if (deltaAngle < -std::numbers::pi) {
-      deltaAngle += 2 * std::numbers::pi;
-    }
-    return deltaAngle;
-  }
-
   void SpireStreet::addAgent(Id agentId) {
     Street::addAgent(agentId);
     ++m_agentCounterIn;

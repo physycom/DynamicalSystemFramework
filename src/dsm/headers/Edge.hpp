@@ -33,5 +33,7 @@ namespace dsm {
     double angle() const;
 
     virtual bool isFull() const = 0;
+
+    double deltaAngle(double const previousEdgeAngle) const;
   };
 };  // namespace dsm

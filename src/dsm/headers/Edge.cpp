@@ -66,4 +66,14 @@ namespace dsm {
   int Edge::capacity() const { return m_capacity; }
   int Edge::transportCapacity() const { return m_transportCapacity; }
   double Edge::angle() const { return m_angle; }
+
+  double Edge::deltaAngle(double const previousEdgeAngle) const {
+    double deltaAngle{this->m_angle - previousEdgeAngle};
+    if (deltaAngle > std::numbers::pi) {
+      deltaAngle -= 2 * std::numbers::pi;
+    } else if (deltaAngle < -std::numbers::pi) {
+      deltaAngle += 2 * std::numbers::pi;
+    }
+    return deltaAngle;
+  }
 };  // namespace dsm
