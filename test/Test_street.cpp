@@ -12,10 +12,11 @@
 using Agent = dsm::Agent<double>;
 using Intersection = dsm::Intersection;
 using Street = dsm::Street;
+using Road = dsm::Road;
 using SpireStreet = dsm::SpireStreet;
 
 TEST_CASE("Street") {
-  Street::setMeanVehicleLength(1.);
+  Road::setMeanVehicleLength(1.);
   SUBCASE("Constructor_1") {
     /*This tests the constructor that takes an Id, capacity, and length.
     GIVEN: An Id, capacity, and length

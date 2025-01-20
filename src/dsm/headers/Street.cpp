@@ -2,18 +2,15 @@
 #include "Street.hpp"
 
 namespace dsm {
-  double Street::m_meanVehicleLength = 5.;
-
   Street::Street(Id id, const Street& street)
-      : Edge(id,
+      : Road(id,
              street.nodePair(),
+             street.length(),
+             street.maxSpeed(),
+             street.nLanes(),
+             street.name(),
              street.capacity(),
-             street.transportCapacity(),
-             street.angle()),
-        m_length{street.length()},
-        m_maxSpeed{street.maxSpeed()},
-        m_nLanes{street.nLanes()},
-        m_name{street.name()} {
+             street.transportCapacity()) {
     for (auto i{0}; i < street.nLanes(); ++i) {
       m_exitQueues.push_back(dsm::queue<Size>());
     }
@@ -28,26 +25,14 @@ namespace dsm {
                  std::string name,
                  std::optional<int> capacity,
                  int transportCapacity)
-      : Edge(id,
+      : Road(id,
              std::move(nodePair),
-             capacity.value_or(std::ceil((length * nLanes) / m_meanVehicleLength)),
-             transportCapacity),
-        m_length{length},
-        m_maxSpeed{maxSpeed},
-        m_nLanes{nLanes},
-        m_name{std::move(name)} {
-    if (!(length > 0.)) {
-      throw std::invalid_argument(buildLog(
-          std::format("The length of a street ({}) must be greater than 0.", length)));
-    }
-    if (!(maxSpeed > 0.)) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The maximum speed of a street ({}) must be greater than 0.", maxSpeed)));
-    }
-    if (nLanes < 1) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The number of lanes of a street ({}) must be greater than 0.", nLanes)));
-    }
+             length,
+             maxSpeed,
+             nLanes,
+             std::move(name),
+             capacity,
+             transportCapacity) {
     m_exitQueues.resize(nLanes);
     for (auto i{0}; i < nLanes; ++i) {
       m_exitQueues.push_back(dsm::queue<Size>());
@@ -73,21 +58,6 @@ namespace dsm {
         m_laneMapping.emplace_back(Direction::LEFT);
         break;
     }
-  }
-
-  void Street::setMaxSpeed(double speed) {
-    if (speed < 0.) {
-      throw std::invalid_argument(buildLog(
-          std::format("The maximum speed of a street ({}) cannot be negative.", speed)));
-    }
-    m_maxSpeed = speed;
-  }
-  void Street::setMeanVehicleLength(double meanVehicleLength) {
-    if (!(meanVehicleLength > 0.)) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The mean vehicle length ({}) must be greater than 0.", meanVehicleLength)));
-    }
-    m_meanVehicleLength = meanVehicleLength;
   }
 
   void Street::addAgent(Id agentId) {
@@ -175,5 +145,4 @@ namespace dsm {
     }
     return id;
   }
-
 };  // namespace dsm

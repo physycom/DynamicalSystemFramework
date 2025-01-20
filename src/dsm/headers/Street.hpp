@@ -20,7 +20,7 @@
 #include <cassert>
 #include <string>
 
-#include "Edge.hpp"
+#include "Road.hpp"
 #include "Agent.hpp"
 #include "Node.hpp"
 #include "../utility/TypeTraits/is_numeric.hpp"
@@ -32,16 +32,11 @@ namespace dsm {
   /// @brief The Street class represents a street in the network.
   /// @tparam Id, The type of the street's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the street's capacity. It must be an unsigned integral type.
-  class Street : public Edge {
+  class Street : public Road {
   private:
     std::vector<dsm::queue<Size>> m_exitQueues;
     std::vector<Direction> m_laneMapping;
     std::set<Id> m_waitingAgents;
-    double m_length;
-    double m_maxSpeed;
-    int m_nLanes;
-    std::string m_name;
-    static double m_meanVehicleLength;
 
   public:
     /// @brief Construct a new Street object starting from an existing street
@@ -61,7 +56,7 @@ namespace dsm {
     /// @param transportCapacity The street's transport capacity (default is 1)
     Street(Id id,
            std::pair<Id, Id> nodePair,
-           double length = m_meanVehicleLength,
+           double length = Road::meanVehicleLength(),
            double maxSpeed = 13.8888888889,
            int nLanes = 1,
            std::string name = std::string(),
@@ -73,18 +68,11 @@ namespace dsm {
     inline void setQueue(dsm::queue<Size> queue, size_t index) {
       m_exitQueues[index] = std::move(queue);
     }
-    /// @brief Set the street's speed limit
-    /// @param speed The street's speed limit
-    /// @throw std::invalid_argument, If the speed is negative
-    void setMaxSpeed(double speed);
     /// @brief Set the mean vehicle length
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
     static void setMeanVehicleLength(double meanVehicleLength);
 
-    /// @brief Get the street's length
-    /// @return double, The street's length
-    double length() const { return m_length; }
     /// @brief Get the street's waiting agents
     /// @return std::set<Id>, The street's waiting agents
     const std::set<Id>& waitingAgents() const { return m_waitingAgents; }
@@ -96,7 +84,7 @@ namespace dsm {
     const std::vector<dsm::queue<Size>>& exitQueues() const { return m_exitQueues; }
     /// @brief  Get the number of agents on the street
     /// @return Size, The number of agents on the street
-    int nAgents() const;
+    int nAgents() const final;
     /// @brief Get the street's density in \f$m^{-1}\f$ or in \f$a.u.\f$, if normalized
     /// @param normalized If true, the street's density is normalized by the street's capacity
     /// @return double, The street's density
@@ -104,15 +92,6 @@ namespace dsm {
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
     bool isFull() const final { return nAgents() == m_capacity; }
-    /// @brief Get the street's speed limit
-    /// @return double, The street's speed limit
-    double maxSpeed() const { return m_maxSpeed; }
-    /// @brief Get the street's number of lanes
-    /// @return int The street's number of lanes
-    int nLanes() const { return m_nLanes; }
-    /// @brief Get the street's name
-    /// @return std::string_view The street's name
-    std::string_view name() const { return m_name; }
     /// @brief Get the number of agents on all queues
     /// @return Size The number of agents on all queues
     Size nExitingAgents() const;
