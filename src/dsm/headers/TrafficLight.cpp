@@ -200,8 +200,8 @@ namespace dsm {
 
   bool TrafficLight::isFavouringDirection(bool const priority) const {
     for (auto const& [streetId, cycles] : m_cycles) {
-      if ((priority && m_streetPriorities.contains(streetId) ||
-           (!priority && !m_streetPriorities.contains(streetId)))) {
+      if ((priority && m_streetPriorities.contains(streetId)) ||
+          (!priority && !m_streetPriorities.contains(streetId))) {
         for (auto const& cycle : cycles) {
           if (!cycle.isGreenTimeIncreased()) {
             return false;

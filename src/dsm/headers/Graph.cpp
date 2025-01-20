@@ -126,20 +126,10 @@ namespace dsm {
       for (const auto& [streetId, _] : m_adjacency.getRow(nodeId, true)) {
         value += m_streets[streetId]->nLanes() * m_streets[streetId]->transportCapacity();
       }
-      m_nodes[nodeId]->setTransportCapacity(value);
+      m_nodes[nodeId]->setTransportCapacity(value == 0 ? 1 : value);
       if (m_nodes[nodeId]->capacity() == 0) {
         m_nodes[nodeId]->setCapacity(value);
       }
-    }
-  }
-
-  void Graph::normalizeStreetCapacities(double meanVehicleLength) {
-    m_maxAgentCapacity = 0;
-    for (const auto& [_, street] : m_streets) {
-      auto const maxCapacity{
-          static_cast<Size>(street->length() * street->nLanes() / meanVehicleLength)};
-      m_maxAgentCapacity += maxCapacity;
-      street->setCapacity(maxCapacity);
     }
   }
 
@@ -172,11 +162,11 @@ namespace dsm {
         if (!m_nodes.contains(dstId)) {
           m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
         }
-        m_streets.emplace(index,
-                          std::make_unique<Street>(index, std::make_pair(srcId, dstId)));
         assert(index == srcId * n + dstId);
-        if (!isAdj) {
-          m_streets[index]->setLength(val);
+        if (isAdj) {
+          addEdge<Street>(index, std::make_pair(srcId, dstId));
+        } else {
+          addEdge<Street>(index, std::make_pair(srcId, dstId), val);
         }
         m_streets[index]->setMaxSpeed(defaultSpeed);
       }
@@ -218,11 +208,11 @@ namespace dsm {
           if (!m_nodes.contains(dstId)) {
             m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
           }
-          m_streets.emplace(
-              index, std::make_unique<Street>(index, std::make_pair(srcId, dstId)));
           assert(index == srcId * n + dstId);
-          if (!isAdj) {
-            m_streets[index]->setLength(value);
+          if (isAdj) {
+            addEdge<Street>(index, std::make_pair(srcId, dstId));
+          } else {
+            addEdge<Street>(index, std::make_pair(srcId, dstId), value);
           }
           m_streets[index]->setMaxSpeed(defaultSpeed);
         }
@@ -374,11 +364,10 @@ namespace dsm {
 
         Id streetId = std::stoul(sourceId) + std::stoul(targetId) * m_nodes.size();
         addEdge<Street>(streetId,
-                        std::stod(length) / 5,
-                        std::stod(maxspeed),
-                        std::stod(length),
                         std::make_pair(m_nodeMapping[std::stoul(sourceId)],
                                        m_nodeMapping[std::stoul(targetId)]),
+                        std::stod(length),
+                        std::stod(maxspeed),
                         std::stoul(lanes),
                         name);
       }
@@ -393,14 +382,14 @@ namespace dsm {
       throw std::invalid_argument(buildLog("Cannot open file: " + path));
     }
     if (isAdj) {
-      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim() << '\n';
+      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
       for (const auto& [id, value] : m_adjacency) {
-        file << id << '\t' << value << '\n';
+        file << '\n' << id << '\t' << value;
       }
     } else {
-      file << m_adjacency.getRowDim() << " " << m_adjacency.getColDim() << '\n';
+      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
       for (const auto& [id, street] : m_streets) {
-        file << id << '\t' << street->length() << '\n';
+        file << '\n' << id << '\t' << street->length();
       }
     }
   }
