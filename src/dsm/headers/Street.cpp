@@ -80,24 +80,6 @@ namespace dsm {
     }
     m_maxSpeed = speed;
   }
-  void Street::setAngle(std::pair<double, double> srcNode,
-                        std::pair<double, double> dstNode) {
-    // N.B.: lat, lon <==> y, x
-    double delta_y{dstNode.first - srcNode.first};
-    double delta_x{dstNode.second - srcNode.second};
-    double angle{std::atan2(delta_y, delta_x)};
-    if (angle < 0.) {
-      angle += 2 * std::numbers::pi;
-    }
-    this->setAngle(angle);
-  }
-  void Street::setAngle(double angle) {
-    if (std::abs(angle) > 2 * std::numbers::pi) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The angle of a street ({}) must be between - 2 * pi and 2 * pi.", angle)));
-    }
-    m_angle = angle;
-  }
   void Street::setMeanVehicleLength(double meanVehicleLength) {
     if (!(meanVehicleLength > 0.)) {
       throw std::invalid_argument(buildLog(std::format(
@@ -157,7 +139,7 @@ namespace dsm {
   }
 
   double Street::deltaAngle(double const previousStreetAngle) const {
-    double deltaAngle{m_angle - previousStreetAngle};
+    double deltaAngle{this->m_angle - previousStreetAngle};
     if (deltaAngle > std::numbers::pi) {
       deltaAngle -= 2 * std::numbers::pi;
     } else if (deltaAngle < -std::numbers::pi) {

@@ -41,7 +41,6 @@ namespace dsm {
     double m_maxSpeed;
     int m_nLanes;
     std::string m_name;
-    double m_angle;
     static double m_meanVehicleLength;
 
   public:
@@ -78,14 +77,6 @@ namespace dsm {
     /// @param speed The street's speed limit
     /// @throw std::invalid_argument, If the speed is negative
     void setMaxSpeed(double speed);
-    /// @brief Set the street's angle
-    /// @param srcNode The source node of the street
-    /// @param dstNode The destination node of the street
-    void setAngle(std::pair<double, double> srcNode, std::pair<double, double> dstNode);
-    /// @brief Set the street's angle
-    /// @param angle The street's angle
-    /// @throw std::invalid_argument If the angle is negative or greater than 2 * pi
-    void setAngle(double angle);
     /// @brief Set the mean vehicle length
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
@@ -116,9 +107,6 @@ namespace dsm {
     /// @brief Get the street's speed limit
     /// @return double, The street's speed limit
     double maxSpeed() const { return m_maxSpeed; }
-    /// @brief Get the street's angle
-    /// @return double The street's angle
-    double angle() const { return m_angle; }
     /// @brief Get the street's number of lanes
     /// @return int The street's number of lanes
     int nLanes() const { return m_nLanes; }

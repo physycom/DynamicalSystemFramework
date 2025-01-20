@@ -10,12 +10,14 @@ namespace dsm {
     std::pair<Id, Id> m_nodePair;
     int m_capacity;
     int m_transportCapacity;
+    double m_angle;
 
   public:
     Edge(Id id, std::pair<Id, Id> nodePair, int capacity = 1, int transportCapacity = 1);
 
     void setCapacity(int capacity);
     void setTransportCapacity(int capacity);
+    void setAngle(std::pair<double, double> srcNodeCoordinates, std::pair<double, double> dstNodeCoordinates);
 
     Id id() const;
     Id u() const;
@@ -23,6 +25,7 @@ namespace dsm {
     std::pair<Id, Id> nodePair() const;
     int capacity() const;
     int transportCapacity() const;
+    double angle() const;
 
     virtual bool isFull() const = 0;
   };
