@@ -5,12 +5,15 @@ namespace dsm {
   double Street::m_meanVehicleLength = 5.;
 
   Street::Street(Id id, const Street& street)
-      : Edge(id, street.nodePair(), street.capacity(), street.transportCapacity()),
+      : Edge(id,
+             street.nodePair(),
+             street.capacity(),
+             street.transportCapacity(),
+             street.angle()),
         m_length{street.length()},
         m_maxSpeed{street.maxSpeed()},
         m_nLanes{street.nLanes()},
-        m_name{street.name()},
-        m_angle{street.angle()} {
+        m_name{street.name()} {
     for (auto i{0}; i < street.nLanes(); ++i) {
       m_exitQueues.push_back(dsm::queue<Size>());
     }
@@ -32,8 +35,7 @@ namespace dsm {
         m_length{length},
         m_maxSpeed{maxSpeed},
         m_nLanes{nLanes},
-        m_name{std::move(name)},
-        m_angle{0.} {
+        m_name{std::move(name)} {
     if (!(length > 0.)) {
       throw std::invalid_argument(buildLog(
           std::format("The length of a street ({}) must be greater than 0.", length)));

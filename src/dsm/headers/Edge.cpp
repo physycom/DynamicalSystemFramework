@@ -7,12 +7,16 @@
 #include <stdexcept>
 
 namespace dsm {
-  Edge::Edge(Id id, std::pair<Id, Id> nodePair, int capacity, int transportCapacity)
+  Edge::Edge(Id id,
+             std::pair<Id, Id> nodePair,
+             int capacity,
+             int transportCapacity,
+             double angle)
       : m_id(id),
         m_nodePair(nodePair),
         m_capacity{capacity},
         m_transportCapacity{transportCapacity},
-        m_angle{0.0} {
+        m_angle{angle} {
     if (capacity < 1) {
       throw std::invalid_argument(
           buildLog(std::format("Edge capacity ({}) must be greater than 0.", capacity)));
@@ -20,6 +24,10 @@ namespace dsm {
     if (transportCapacity < 1) {
       throw std::invalid_argument(buildLog(std::format(
           "Edge transport capacity ({}) must be greater than 0.", transportCapacity)));
+    }
+    if (std::abs(angle) > 2 * std::numbers::pi) {
+      throw std::invalid_argument(buildLog(
+          std::format("Edge angle ({}) must be in the range [-2pi, 2pi].", angle)));
     }
   }
 
@@ -38,7 +46,8 @@ namespace dsm {
     m_transportCapacity = capacity;
   }
 
-  void Edge::setAngle(std::pair<double, double> srcNodeCoordinates, std::pair<double, double> dstNodeCoordinates) {
+  void Edge::setAngle(std::pair<double, double> srcNodeCoordinates,
+                      std::pair<double, double> dstNodeCoordinates) {
     // N.B.: lat, lon <==> y, x
     double const dy{dstNodeCoordinates.first - srcNodeCoordinates.first};
     double const dx{dstNodeCoordinates.second - srcNodeCoordinates.second};

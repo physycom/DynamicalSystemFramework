@@ -13,11 +13,16 @@ namespace dsm {
     double m_angle;
 
   public:
-    Edge(Id id, std::pair<Id, Id> nodePair, int capacity = 1, int transportCapacity = 1);
+    Edge(Id id,
+         std::pair<Id, Id> nodePair,
+         int capacity = 1,
+         int transportCapacity = 1,
+         double angle = 0.0);
 
     void setCapacity(int capacity);
     void setTransportCapacity(int capacity);
-    void setAngle(std::pair<double, double> srcNodeCoordinates, std::pair<double, double> dstNodeCoordinates);
+    void setAngle(std::pair<double, double> srcNodeCoordinates,
+                  std::pair<double, double> dstNodeCoordinates);
 
     Id id() const;
     Id u() const;
