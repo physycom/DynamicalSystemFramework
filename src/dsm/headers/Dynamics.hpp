@@ -426,7 +426,7 @@ namespace dsm {
       return 0.;
     }
     double speed{0.};
-    for (auto const& agentId : pStreet->waitingAgents()) {
+    for (auto const& agentId : pStreet->movingAgents()) {
       speed += m_agents.at(agentId)->speed();
     }
     return speed / nAgents;

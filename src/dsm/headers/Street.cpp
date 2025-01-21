@@ -61,23 +61,23 @@ namespace dsm {
   }
 
   void Street::addAgent(Id agentId) {
-    assert((void("Agent is already on the street."), !m_waitingAgents.contains(agentId)));
+    assert((void("Agent is already on the street."), !m_movingAgents.contains(agentId)));
     for (auto const& queue : m_exitQueues) {
       for (auto const& id : queue) {
         assert((void("Agent is already in queue."), id != agentId));
       }
     }
-    m_waitingAgents.insert(agentId);
+    m_movingAgents.insert(agentId);
     ;
   }
   void Street::enqueue(Id agentId, size_t index) {
-    assert((void("Agent is not on the street."), m_waitingAgents.contains(agentId)));
+    assert((void("Agent is not on the street."), m_movingAgents.contains(agentId)));
     for (auto const& queue : m_exitQueues) {
       for (auto const& id : queue) {
         assert((void("Agent is already in queue."), id != agentId));
       }
     }
-    m_waitingAgents.erase(agentId);
+    m_movingAgents.erase(agentId);
     m_exitQueues[index].push(agentId);
   }
   std::optional<Id> Street::dequeue(size_t index) {
@@ -90,7 +90,7 @@ namespace dsm {
   }
 
   int Street::nAgents() const {
-    auto nAgents{static_cast<int>(m_waitingAgents.size())};
+    auto nAgents{static_cast<int>(m_movingAgents.size())};
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }

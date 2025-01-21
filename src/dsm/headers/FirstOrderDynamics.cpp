@@ -54,11 +54,11 @@ namespace dsm {
     double meanSpeed{0.};
     Size n{0};
     if (street->nExitingAgents() == 0) {
-      n = static_cast<Size>(street->waitingAgents().size());
+      n = static_cast<Size>(street->movingAgents().size());
       double alpha{m_alpha / street->capacity()};
       meanSpeed = street->maxSpeed() * n * (1. - 0.5 * alpha * (n - 1.));
     } else {
-      for (const auto& agentId : street->waitingAgents()) {
+      for (const auto& agentId : street->movingAgents()) {
         meanSpeed += this->m_agents.at(agentId)->speed();
         ++n;
       }

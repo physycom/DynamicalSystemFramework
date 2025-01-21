@@ -914,7 +914,7 @@ TEST_CASE("Dynamics") {
       meanSpeed += agent->speed();
     }
     meanSpeed /= (dynamics.graph().streetSet().at(1)->nExitingAgents() +
-                  dynamics.graph().streetSet().at(1)->waitingAgents().size());
+                  dynamics.graph().streetSet().at(1)->movingAgents().size());
     CHECK_EQ(dynamics.streetMeanSpeed(1), meanSpeed);
     // I don't think the mean speed of agents should be equal to the street's
     // one... CHECK_EQ(dynamics.streetMeanSpeed().mean,
