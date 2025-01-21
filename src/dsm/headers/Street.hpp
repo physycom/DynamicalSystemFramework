@@ -92,13 +92,14 @@ namespace dsm {
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
     bool isFull() const final { return nAgents() == m_capacity; }
+    int nMovingAgents() const override { return m_movingAgents.size(); }
     /// @brief Get the number of agents on all queues
     /// @return Size The number of agents on all queues
-    Size nExitingAgents() const;
+    int nExitingAgents() const final;
 
     inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
 
-    virtual void addAgent(Id agentId);
+    void addAgent(Id agentId) override;
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full

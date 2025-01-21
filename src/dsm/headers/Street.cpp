@@ -102,8 +102,8 @@ namespace dsm {
                       : nAgents() / (m_length * m_nLanes);
   }
 
-  Size Street::nExitingAgents() const {
-    Size nAgents{0};
+  int Street::nExitingAgents() const {
+    int nAgents{0};
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }
