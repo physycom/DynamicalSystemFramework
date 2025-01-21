@@ -286,7 +286,9 @@ namespace dsm {
         }
       }
       if (bArrived) {
-        pStreet->dequeue(queueIndex);
+        if (pStreet->dequeue(queueIndex) == std::nullopt) {
+          continue;
+        }
         m_travelTimes.push_back(pAgent->time());
         if (reinsert_agents) {
           // reset Agent's values
@@ -300,7 +302,9 @@ namespace dsm {
       if (nextStreet->isFull()) {
         continue;
       }
-      pStreet->dequeue(queueIndex);
+      if (pStreet->dequeue(queueIndex) == std::nullopt) {
+        continue;
+      }
       assert(destinationNode->id() == nextStreet->nodePair().first);
       if (destinationNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
