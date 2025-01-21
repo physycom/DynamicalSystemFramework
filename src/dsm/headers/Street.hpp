@@ -19,6 +19,7 @@
 #include <format>
 #include <cassert>
 #include <string>
+#include <vector>
 
 #include "Road.hpp"
 #include "Agent.hpp"
@@ -36,7 +37,7 @@ namespace dsm {
   private:
     std::vector<dsm::queue<Size>> m_exitQueues;
     std::vector<Direction> m_laneMapping;
-    std::set<Id> m_movingAgents;
+    std::vector<Id> m_movingAgents;
 
   public:
     /// @brief Construct a new Street object starting from an existing street
@@ -75,7 +76,7 @@ namespace dsm {
 
     /// @brief Get the street's waiting agents
     /// @return std::set<Id>, The street's waiting agents
-    const std::set<Id>& movingAgents() const { return m_movingAgents; }
+    std::vector<Id> const& movingAgents() const;
     /// @brief Get the street's queue
     /// @return dsm::queue<Size>, The street's queue
     const dsm::queue<Size>& queue(size_t index) const { return m_exitQueues[index]; }

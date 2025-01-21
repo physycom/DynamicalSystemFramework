@@ -1,6 +1,9 @@
 
 #include "Street.hpp"
 
+#include <algorithm>
+#include <cassert>
+
 namespace dsm {
   Street::Street(Id id, const Street& street)
       : Road(id,
@@ -60,24 +63,32 @@ namespace dsm {
     }
   }
 
+  std::vector<Id> const& Street::movingAgents() const { return m_movingAgents; }
+
   void Street::addAgent(Id agentId) {
-    assert((void("Agent is already on the street."), !m_movingAgents.contains(agentId)));
+    assert((void("Agent is already on the street."),
+            std::find(m_movingAgents.cbegin(), m_movingAgents.cend(), agentId) ==
+                m_movingAgents.cend()));
     for (auto const& queue : m_exitQueues) {
       for (auto const& id : queue) {
         assert((void("Agent is already in queue."), id != agentId));
       }
     }
-    m_movingAgents.insert(agentId);
+    m_movingAgents.push_back(agentId);
     ;
   }
   void Street::enqueue(Id agentId, size_t index) {
-    assert((void("Agent is not on the street."), m_movingAgents.contains(agentId)));
+    assert((void("Agent is not on the street."),
+            std::find(m_movingAgents.cbegin(), m_movingAgents.cend(), agentId) !=
+                m_movingAgents.cend()));
     for (auto const& queue : m_exitQueues) {
       for (auto const& id : queue) {
         assert((void("Agent is already in queue."), id != agentId));
       }
     }
-    m_movingAgents.erase(agentId);
+    m_movingAgents.erase(
+        std::remove(m_movingAgents.begin(), m_movingAgents.end(), agentId),
+        m_movingAgents.end());
     m_exitQueues[index].push(agentId);
   }
   std::optional<Id> Street::dequeue(size_t index) {
