@@ -147,6 +147,7 @@ namespace dsm {
   private:
   public:
     using Street::Street;
+    ~SpireStreet() = default;
 
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue

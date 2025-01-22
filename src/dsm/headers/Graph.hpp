@@ -159,10 +159,6 @@ namespace dsm {
                std::constructible_from<node_t, Id, TArgs...>)
     node_t& addNode(Id id, TArgs&&... args);
 
-    template <typename... Tn>
-      requires(is_node_v<std::remove_reference_t<Tn>> && ...)
-    void addNodes(Tn&&... nodes);
-
     template <typename T1, typename... Tn>
       requires is_node_v<std::remove_reference_t<T1>> &&
                (is_node_v<std::remove_reference_t<Tn>> && ...)
@@ -287,9 +283,6 @@ namespace dsm {
     addNode(std::make_unique<node_t>(id, std::forward<TArgs>(args)...));
     return dynamic_cast<node_t&>(*m_nodes[id]);
   }
-  template <typename... Tn>
-    requires(is_node_v<std::remove_reference_t<Tn>> && ...)
-  void Graph::addNodes(Tn&&... nodes) {}
   template <typename T1, typename... Tn>
     requires is_node_v<std::remove_reference_t<T1>> &&
              (is_node_v<std::remove_reference_t<Tn>> && ...)
