@@ -248,6 +248,11 @@ namespace dsm {
                                              bool reinsert_agents) {
     auto const nLanes = pStreet->nLanes();
     std::uniform_real_distribution<double> uniformDist{0., 1.};
+    if (pStreet->isStochastic() &&
+        (uniformDist(this->m_generator) >
+         dynamic_cast<StochasticStreet&>(*pStreet).flowRate())) {
+      return;
+    }
     for (auto queueIndex = 0; queueIndex < nLanes; ++queueIndex) {
       if (pStreet->queue(queueIndex).empty()) {
         continue;

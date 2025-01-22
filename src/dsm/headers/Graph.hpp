@@ -182,11 +182,12 @@ namespace dsm {
     /// @return A reference to the roundabout
     /// @throws std::invalid_argument if the node does not exist
     Roundabout& makeRoundabout(Id nodeId);
+
+    StochasticStreet& makeStochasticStreet(Id streetId, double const flowRate);
     /// @brief Convert an existing street into a spire street
     /// @param streetId The id of the street to convert to a spire street
-    /// @return A reference to the spire street
     /// @throws std::invalid_argument if the street does not exist
-    SpireStreet& makeSpireStreet(Id streetId);
+    void makeSpireStreet(Id streetId);
     /// @brief Convert an existing node into a station
     /// @param nodeId The id of the node to convert to a station
     /// @param managementTime The station's management time
@@ -313,8 +314,8 @@ namespace dsm {
           buildLog(std::format("Street with id {} already exists.", street.id())));
     }
     // emplace nodes
-    const auto srcId{street.nodePair().first};
-    const auto dstId{street.nodePair().second};
+    auto const srcId{street.u()};
+    auto const dstId{street.v()};
     if (!m_nodes.contains(srcId)) {
       m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
     }

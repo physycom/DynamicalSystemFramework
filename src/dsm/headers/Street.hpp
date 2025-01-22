@@ -23,7 +23,7 @@
 
 #include "Road.hpp"
 #include "Agent.hpp"
-#include "Node.hpp"
+#include "Sensors.hpp"
 #include "../utility/TypeTraits/is_numeric.hpp"
 #include "../utility/queue.hpp"
 #include "../utility/Logger.hpp"
@@ -31,8 +31,6 @@
 
 namespace dsm {
   /// @brief The Street class represents a street in the network.
-  /// @tparam Id, The type of the street's id. It must be an unsigned integral type.
-  /// @tparam Size, The type of the street's capacity. It must be an unsigned integral type.
   class Street : public Road {
   private:
     std::vector<dsm::queue<Size>> m_exitQueues;
@@ -110,33 +108,44 @@ namespace dsm {
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     virtual bool isSpire() const { return false; };
+    virtual bool isStochastic() const { return false; };
+  };
+
+  class StochasticStreet : public Street {
+  private:
+    double m_flowRate;
+
+  public:
+    StochasticStreet(Id id, const Street& street, double flowRate);
+    StochasticStreet(Id id,
+                     std::pair<Id, Id> nodePair,
+                     double length = Road::meanVehicleLength(),
+                     double maxSpeed = 13.8888888889,
+                     int nLanes = 1,
+                     std::string name = std::string(),
+                     double flowRate = 1.,
+                     std::optional<int> capacity = std::nullopt,
+                     int transportCapacity = 1);
+
+    void setFlowRate(double const flowRate);
+    double flowRate() const;
+
+    bool isStochastic() const final;
   };
 
   /// @brief The SpireStreet class represents a street which is able to count agent flows in both input and output.
   /// @tparam Id The type of the street's id
   /// @tparam Size The type of the street's capacity
-  class SpireStreet : public Street {
+  class SpireStreet : public Street, public Counter {
   private:
-    Size m_agentCounterIn = 0;
-    Size m_agentCounterOut = 0;
-
   public:
     using Street::Street;
-    ~SpireStreet() = default;
 
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
-    void addAgent(Id agentId) override;
+    void addAgent(Id agentId) final;
 
-    /// @brief Get the input counts of the street
-    /// @param resetValue If true, the counter is reset to 0 together with the output counter.
-    /// @return Size The input counts of the street
-    Size inputCounts(bool resetValue = false);
-    /// @brief Get the output counts of the street
-    /// @param resetValue If true, the counter is reset to 0 together with the input counter.
-    /// @return Size The output counts of the street
-    Size outputCounts(bool resetValue = false);
     /// @brief Get the mean flow of the street
     /// @return int The flow of the street, i.e. the difference between input and output flows
     /// @details Once the flow is retrieved, bothh the input and output flows are reset to 0.
@@ -144,7 +153,28 @@ namespace dsm {
     int meanFlow();
     /// @brief Remove an agent from the street's queue
     /// @return std::optional<Id> The id of the agent removed from the street's queue
-    std::optional<Id> dequeue(size_t index) override;
+    std::optional<Id> dequeue(size_t index) final;
+    /// @brief Check if the street is a spire
+    /// @return bool True if the street is a spire, false otherwise
+    bool isSpire() const final { return true; };
+  };
+
+  class StochasticSpireStreet : public StochasticStreet, public Counter {
+  public:
+    using StochasticStreet::StochasticStreet;
+    /// @brief Add an agent to the street's queue
+    /// @param agentId The id of the agent to add to the street's queue
+    /// @throw std::runtime_error If the street's queue is full
+    void addAgent(Id agentId) final;
+
+    /// @brief Get the mean flow of the street
+    /// @return int The flow of the street, i.e. the difference between input and output flows
+    /// @details Once the flow is retrieved, bothh the input and output flows are reset to 0.
+    ///     Notice that this flow is positive iff the input flow is greater than the output flow.
+    int meanFlow();
+    /// @brief Remove an agent from the street's queue
+    /// @return std::optional<Id> The id of the agent removed from the street's queue
+    std::optional<Id> dequeue(size_t index) final;
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     bool isSpire() const final { return true; };
