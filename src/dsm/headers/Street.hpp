@@ -87,7 +87,7 @@ namespace dsm {
     /// @brief Get the street's density in \f$m^{-1}\f$ or in \f$a.u.\f$, if normalized
     /// @param normalized If true, the street's density is normalized by the street's capacity
     /// @return double, The street's density
-    double density(bool normalized = false) const;
+    double density(bool normalized = false) const final;
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
     bool isFull() const final { return nAgents() == m_capacity; }
