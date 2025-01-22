@@ -68,6 +68,7 @@ namespace dsm {
            std::string name = std::string(),
            std::optional<int> capacity = std::nullopt,
            int transportCapacity = 1);
+    virtual ~Street() = default;
 
     /// @brief Set the street's queue
     /// @param queue The street's queue

@@ -64,9 +64,11 @@ namespace dsm {
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
   template <typename agent_t>
   class Dynamics {
+  private:
+    std::map<Id, std::unique_ptr<agent_t>> m_agents;
+
   protected:
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
-    std::map<Id, std::unique_ptr<agent_t>> m_agents;
     Graph m_graph;
     Time m_time, m_previousSpireTime;
     std::mt19937_64 m_generator;
