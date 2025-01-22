@@ -52,9 +52,8 @@ namespace dsm {
         throw std::invalid_argument(buildLog("Street with same id already exists."));
       }
       if (street->isSpire()) {
-        m_streets.emplace(
-            newStreetId,
-            std::make_unique<SpireStreet>(SpireStreet{newStreetId, *street}));
+        m_streets.emplace(newStreetId,
+                          std::make_unique<SpireStreet>(newStreetId, *street));
       } else {
         m_streets.emplace(newStreetId,
                           std::make_unique<Street>(Street{newStreetId, *street}));
