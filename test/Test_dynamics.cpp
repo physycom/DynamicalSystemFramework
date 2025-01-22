@@ -645,7 +645,6 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       graph2.adjustNodeCapacities();
       auto const& nodes = graph2.nodeSet();
-      auto& tl = dynamic_cast<TrafficLight&>(*nodes.at(1));
       nodes.at(0)->setCoords({0., -1.});
       nodes.at(2)->setCoords({0., 1.});
       nodes.at(3)->setCoords({-1., 0.});
@@ -715,7 +714,6 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       graph2.adjustNodeCapacities();
       auto const& nodes = graph2.nodeSet();
-      auto& tl = dynamic_cast<TrafficLight&>(*nodes.at(1));
       nodes.at(0)->setCoords({0., -1.});
       nodes.at(2)->setCoords({0., 1.});
       nodes.at(3)->setCoords({-1., 0.});
@@ -781,7 +779,6 @@ TEST_CASE("Dynamics") {
         Dynamics dynamics{graph2, 69};
         std::vector<dsm::Id> destinationNodes{0, 2, 3, 4};
         dynamics.setDestinationNodes(destinationNodes);
-        auto const& cycles{tl.cycles()};
         WHEN("We evolve the dynamics and optimize traffic lights") {
           dynamics.addAgents(7, 0, 2);
           dynamics.addAgents(7, 2, 0);
@@ -923,7 +920,6 @@ TEST_CASE("Dynamics") {
     CHECK_EQ(dynamics.streetMeanSpeed(0.2, true).std, 0.);
     CHECK_EQ(dynamics.streetMeanSpeed(0.2, false).mean, 15.);
     CHECK_EQ(dynamics.streetMeanSpeed(0.2, false).std, 0.);
-    (10, 0, 0);
     dynamics.evolve(false);
     meanSpeed = 0.;
     for (const auto& [agentId, agent] : dynamics.agents()) {
@@ -940,19 +936,19 @@ TEST_CASE("Dynamics") {
   SUBCASE("Intersection priorities") {
     GIVEN("A dynamics object with five nodes and eight streets") {
       Graph graph2;
-      auto& nodeO = graph2.addNode<Intersection>(0, std::make_pair(0, 0));
-      auto& nodeA = graph2.addNode<Intersection>(1, std::make_pair(-1, 1));
-      auto& nodeB = graph2.addNode<Intersection>(2, std::make_pair(1, 1));
-      auto& nodeC = graph2.addNode<Intersection>(3, std::make_pair(1, -1));
-      auto& nodeD = graph2.addNode<Intersection>(4, std::make_pair(-1, -1));
-      auto& sOA = graph2.addEdge<Street>(0, std::make_pair(0, 1), 10., 10.);
-      auto& sOB = graph2.addEdge<Street>(1, std::make_pair(0, 2), 10., 10.);
-      auto& sOC = graph2.addEdge<Street>(2, std::make_pair(0, 3), 10., 10.);
-      auto& sOD = graph2.addEdge<Street>(3, std::make_pair(0, 4), 10., 10.);
-      auto& sAO = graph2.addEdge<Street>(4, std::make_pair(1, 0), 10., 10.);
-      auto& sBO = graph2.addEdge<Street>(5, std::make_pair(2, 0), 10., 10.);
-      auto& sCO = graph2.addEdge<Street>(6, std::make_pair(3, 0), 10., 10.);
-      auto& sDO = graph2.addEdge<Street>(7, std::make_pair(4, 0), 10., 10.);
+      graph2.addNode<Intersection>(0, std::make_pair(0, 0));
+      graph2.addNode<Intersection>(1, std::make_pair(-1, 1));
+      graph2.addNode<Intersection>(2, std::make_pair(1, 1));
+      graph2.addNode<Intersection>(3, std::make_pair(1, -1));
+      graph2.addNode<Intersection>(4, std::make_pair(-1, -1));
+      graph2.addEdge<Street>(0, std::make_pair(0, 1), 10., 10.);
+      graph2.addEdge<Street>(1, std::make_pair(0, 2), 10., 10.);
+      graph2.addEdge<Street>(2, std::make_pair(0, 3), 10., 10.);
+      graph2.addEdge<Street>(3, std::make_pair(0, 4), 10., 10.);
+      graph2.addEdge<Street>(4, std::make_pair(1, 0), 10., 10.);
+      graph2.addEdge<Street>(5, std::make_pair(2, 0), 10., 10.);
+      graph2.addEdge<Street>(6, std::make_pair(3, 0), 10., 10.);
+      graph2.addEdge<Street>(7, std::make_pair(4, 0), 10., 10.);
       graph2.buildAdj();
       Dynamics dynamics{graph2, 69};
       dynamics.graph().nodeSet().at(0)->setCapacity(3);
