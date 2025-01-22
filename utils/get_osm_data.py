@@ -6,8 +6,8 @@ Example:
 python get_osm_data.py --place "Bologna, Emilia-Romagna, Italy" --exclude-residential
 
 The output files are:
-- nodes.csv
-- edges.csv
+- {place}_nodes.csv
+- {place}_edges.csv
 
 The files are saved in the current directory.
 """

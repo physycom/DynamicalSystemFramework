@@ -27,7 +27,7 @@ namespace dsm {
   }
 
   void FirstOrderDynamics::setAgentSpeed(Size agentId) {
-    const auto& agent{this->m_agents[agentId]};
+    const auto& agent{this->agents().at(agentId)};
     const auto& street{this->m_graph.streetSet()[agent->streetId().value()]};
     double speed{street->maxSpeed() * (1. - m_alpha * street->density(true))};
     if (m_speedFluctuationSTD > 0.) {
@@ -59,12 +59,12 @@ namespace dsm {
       meanSpeed = street->maxSpeed() * n * (1. - 0.5 * alpha * (n - 1.));
     } else {
       for (const auto& agentId : street->movingAgents()) {
-        meanSpeed += this->m_agents.at(agentId)->speed();
+        meanSpeed += this->agents().at(agentId)->speed();
         ++n;
       }
       for (auto const& queue : street->exitQueues()) {
         for (const auto& agentId : queue) {
-          meanSpeed += this->m_agents.at(agentId)->speed();
+          meanSpeed += this->agents().at(agentId)->speed();
           ++n;
         }
       }
@@ -73,7 +73,7 @@ namespace dsm {
     if (node->isIntersection()) {
       auto& intersection = dynamic_cast<Intersection&>(*node);
       for (const auto& [angle, agentId] : intersection.agents()) {
-        const auto& agent{this->m_agents.at(agentId)};
+        const auto& agent{this->agents().at(agentId)};
         if (agent->streetId().has_value() && agent->streetId().value() == streetId) {
           meanSpeed += agent->speed();
           ++n;
@@ -82,7 +82,7 @@ namespace dsm {
     } else if (node->isRoundabout()) {
       auto& roundabout = dynamic_cast<Roundabout&>(*node);
       for (const auto& agentId : roundabout.agents()) {
-        const auto& agent{this->m_agents.at(agentId)};
+        const auto& agent{this->agents().at(agentId)};
         if (agent->streetId().has_value() && agent->streetId().value() == streetId) {
           meanSpeed += agent->speed();
           ++n;
@@ -93,7 +93,7 @@ namespace dsm {
   }
 
   Measurement<double> FirstOrderDynamics::streetMeanSpeed() const {
-    if (this->m_agents.size() == 0) {
+    if (this->agents().empty()) {
       return Measurement(0., 0.);
     }
     std::vector<double> speeds;
@@ -105,7 +105,7 @@ namespace dsm {
   }
   Measurement<double> FirstOrderDynamics::streetMeanSpeed(double threshold,
                                                           bool above) const {
-    if (this->m_agents.size() == 0) {
+    if (this->agents().empty()) {
       return Measurement(0., 0.);
     }
     std::vector<double> speeds;

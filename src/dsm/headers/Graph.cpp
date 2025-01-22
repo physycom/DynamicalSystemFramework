@@ -53,23 +53,21 @@ namespace dsm {
       }
       if (street->isSpire() && street->isStochastic()) {
         m_streets.emplace(newStreetId,
-                          std::make_unique<StochasticSpireStreet>(StochasticSpireStreet{
+                          std::make_unique<StochasticSpireStreet>(
                               newStreetId,
                               *street,
-                              dynamic_cast<StochasticSpireStreet&>(*street).flowRate()}));
+                              dynamic_cast<StochasticSpireStreet&>(*street).flowRate()));
       } else if (street->isStochastic()) {
         m_streets.emplace(newStreetId,
-                          std::make_unique<StochasticStreet>(StochasticStreet{
+                          std::make_unique<StochasticStreet>(
                               newStreetId,
                               *street,
-                              dynamic_cast<StochasticStreet&>(*street).flowRate()}));
+                              dynamic_cast<StochasticStreet&>(*street).flowRate()));
       } else if (street->isSpire()) {
-        m_streets.emplace(
-            newStreetId,
-            std::make_unique<SpireStreet>(SpireStreet{newStreetId, *street}));
-      } else {
         m_streets.emplace(newStreetId,
-                          std::make_unique<Street>(Street{newStreetId, *street}));
+                          std::make_unique<SpireStreet>(newStreetId, *street));
+      } else {
+        m_streets.emplace(newStreetId, std::make_unique<Street>(newStreetId, *street));
       }
       newStreetIds.emplace(streetId, newStreetId);
     }
