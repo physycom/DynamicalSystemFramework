@@ -232,7 +232,7 @@ namespace dsm {
     // TODO: implement the following functions
     // We can implement the base version of these functions by cycling over agents... I won't do it for now.
     // Grufoony - 19/02/2024
-    virtual double streetMeanSpeed(Id streetId) const;
+    virtual double streetMeanSpeed(std::unique_ptr<Street> const& pStreet) const;
     virtual Measurement<double> streetMeanSpeed() const;
     virtual Measurement<double> streetMeanSpeed(double, bool) const;
     /// @brief Get the mean density of the streets in \f$m^{-1}\f$
@@ -419,8 +419,7 @@ namespace dsm {
   }
 
   template <typename agent_t>
-  double Dynamics<agent_t>::streetMeanSpeed(Id streetId) const {
-    auto const& pStreet{m_graph.streetSet().at(streetId)};
+  double Dynamics<agent_t>::streetMeanSpeed(std::unique_ptr<Street> const& pStreet) const {
     auto const nAgents{pStreet->nAgents()};
     if (nAgents == 0) {
       return 0.;
@@ -435,9 +434,9 @@ namespace dsm {
   template <typename agent_t>
   Measurement<double> Dynamics<agent_t>::streetMeanSpeed() const {
     std::vector<double> speeds;
-    speeds.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
-      speeds.push_back(streetMeanSpeed(streetId));
+    speeds.reserve(m_graph.nEdges());
+    for (auto const& street : m_graph.streetSet()) {
+      speeds.push_back(streetMeanSpeed(street));
     }
     return Measurement<double>(speeds);
   }
@@ -446,12 +445,12 @@ namespace dsm {
   Measurement<double> Dynamics<agent_t>::streetMeanSpeed(double threshold,
                                                          bool above) const {
     std::vector<double> speeds;
-    speeds.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
+    speeds.reserve(m_graph.nEdges());
+    for (const auto& street : m_graph.streetSet()) {
       if (above && (street->density(true) > threshold)) {
-        speeds.push_back(streetMeanSpeed(streetId));
+        speeds.push_back(streetMeanSpeed(street));
       } else if (!above && (street->density(true) < threshold)) {
-        speeds.push_back(streetMeanSpeed(streetId));
+        speeds.push_back(streetMeanSpeed(street));
       }
     }
     return Measurement<double>(speeds);
@@ -465,12 +464,12 @@ namespace dsm {
     std::vector<double> densities;
     densities.reserve(m_graph.streetSet().size());
     if (normalized) {
-      for (const auto& [streetId, street] : m_graph.streetSet()) {
+      for (auto const& street : m_graph.streetSet()) {
         densities.push_back(street->density(true));
       }
     } else {
       double sum{0.};
-      for (const auto& [streetId, street] : m_graph.streetSet()) {
+      for (auto const& street : m_graph.streetSet()) {
         densities.push_back(street->density(false) * street->length());
         sum += street->length();
       }
@@ -487,8 +486,8 @@ namespace dsm {
   Measurement<double> Dynamics<agent_t>::streetMeanFlow() const {
     std::vector<double> flows;
     flows.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
-      flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+    for (auto const& street : m_graph.streetSet()) {
+      flows.push_back(street->density() * this->streetMeanSpeed(street));
     }
     return Measurement<double>(flows);
   }
@@ -498,11 +497,11 @@ namespace dsm {
                                                         bool above) const {
     std::vector<double> flows;
     flows.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
+    for (auto const& street : m_graph.streetSet()) {
       if (above && (street->density(true) > threshold)) {
-        flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+        flows.push_back(street->density() * this->streetMeanSpeed(street));
       } else if (!above && (street->density(true) < threshold)) {
-        flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+        flows.push_back(street->density() * this->streetMeanSpeed(street));
       }
     }
     return Measurement<double>(flows);
@@ -517,7 +516,7 @@ namespace dsm {
     m_previousSpireTime = m_time;
     std::vector<double> flows;
     flows.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
+    for (auto const& street : m_graph.streetSet()) {
       if (street->isSpire()) {
         auto& spire = dynamic_cast<SpireStreet&>(*street);
         flows.push_back(static_cast<double>(spire.inputCounts(resetValue)) / deltaTime);
@@ -534,8 +533,8 @@ namespace dsm {
     }
     m_previousSpireTime = m_time;
     std::vector<double> flows;
-    flows.reserve(m_graph.streetSet().size());
-    for (auto const& [streetId, street] : m_graph.streetSet()) {
+    flows.reserve(m_graph.nEdges());
+    for (auto const& street : m_graph.streetSet()) {
       if (street->isSpire()) {
         auto& spire = dynamic_cast<SpireStreet&>(*street);
         flows.push_back(static_cast<double>(spire.outputCounts(resetValue)) / deltaTime);

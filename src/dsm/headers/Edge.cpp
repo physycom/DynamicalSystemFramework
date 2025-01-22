@@ -8,13 +8,8 @@
 #include <stdexcept>
 
 namespace dsm {
-  Edge::Edge(Id id,
-             std::pair<Id, Id> nodePair,
-             int capacity,
-             int transportCapacity,
-             double angle)
-      : m_id(id),
-        m_nodePair(nodePair),
+  Edge::Edge(EdgeId nodePair, int capacity, int transportCapacity, double angle)
+      : m_nodePair(nodePair),
         m_capacity{capacity},
         m_transportCapacity{transportCapacity},
         m_angle{angle} {
@@ -60,10 +55,9 @@ namespace dsm {
     m_angle = angle;
   }
 
-  Id Edge::id() const { return m_id; }
   Id Edge::u() const { return m_nodePair.first; }
   Id Edge::v() const { return m_nodePair.second; }
-  std::pair<Id, Id> const& Edge::nodePair() const { return m_nodePair; }
+  EdgeId const& Edge::nodePair() const { return m_nodePair; }
   int Edge::capacity() const { return m_capacity; }
   int Edge::transportCapacity() const { return m_transportCapacity; }
   double Edge::angle() const { return m_angle; }

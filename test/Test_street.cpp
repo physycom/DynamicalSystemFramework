@@ -24,8 +24,7 @@ TEST_CASE("Street") {
     THEN: The Id, capacity, and length are set correctly
     */
 
-    Street street{1, std::make_pair(0, 1)};
-    CHECK_EQ(street.id(), 1);
+    Street street{std::make_pair(0, 1)};
     CHECK_EQ(street.capacity(), 1);
     CHECK_EQ(street.transportCapacity(), 1);
     CHECK_EQ(street.length(), 1.);
@@ -42,8 +41,7 @@ TEST_CASE("Street") {
     THEN: The Id, capacity, length and nodePair are set correctly
     */
 
-    Street street{1, std::make_pair(4, 5), 1.5};
-    CHECK_EQ(street.id(), 1);
+    Street street{std::make_pair(4, 5), 1.5};
     CHECK_EQ(street.capacity(), 2);
     CHECK_EQ(street.transportCapacity(), 1);
     CHECK_EQ(street.length(), 1.5);
@@ -60,8 +58,7 @@ TEST_CASE("Street") {
     THEN: The Id, capacity, length, nodePair, and maxSpeed are set correctly
     */
 
-    Street street{1, std::make_pair(4, 5), 1.5, 40.};
-    CHECK_EQ(street.id(), 1);
+    Street street{std::make_pair(4, 5), 1.5, 40.};
     CHECK_EQ(street.capacity(), 2);
     CHECK_EQ(street.transportCapacity(), 1);
     CHECK_EQ(street.length(), 1.5);
@@ -81,7 +78,7 @@ TEST_CASE("Street") {
     Agent a3{3, 1, 0};
     Agent a4{4, 1, 0};
 
-    Street street{1, std::make_pair(0, 1), 3.5};
+    Street street{std::make_pair(0, 1), 3.5};
     // fill the queue
     street.addAgent(a1.id());
     street.enqueue(a1.id(), 0);
@@ -109,7 +106,7 @@ TEST_CASE("Street") {
     Agent a3{3, 1, 0};
     Agent a4{4, 1, 0};
 
-    Street street{1, std::make_pair(0, 1), 3.5};
+    Street street{std::make_pair(0, 1), 3.5};
     // fill the queue
     street.addAgent(a1.id());
     street.enqueue(a1.id(), 0);
@@ -140,7 +137,7 @@ TEST_CASE("Street") {
     /// GIVEN: A street
     /// WHEN: The angle method is called
     /// THEN: The angle is returned and is correct
-    Street street{1, std::make_pair(0, 1), 3.5};
+    Street street{std::make_pair(0, 1), 3.5};
     CHECK_EQ(street.angle(), 0);
     street.setAngle(std::make_pair(0, 1), std::make_pair(1, 0));
     CHECK_EQ(street.angle(), 3 * std::numbers::pi / 4);
@@ -150,7 +147,7 @@ TEST_CASE("Street") {
 TEST_CASE("SpireStreet") {
   SUBCASE("Input flow") {
     GIVEN("A spire street") {
-      SpireStreet street{1, std::make_pair(0, 1), 3.5};
+      SpireStreet street{std::make_pair(0, 1), 3.5};
       WHEN("An agent is enqueued") {
         street.addAgent(1);
         THEN("The input flow is one") { CHECK_EQ(street.inputCounts(), 1); }

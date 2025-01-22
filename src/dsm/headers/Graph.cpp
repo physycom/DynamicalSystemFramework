@@ -20,89 +20,55 @@ namespace dsm {
       if (!m_nodes.contains(dstId)) {
         m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
       }
-      m_streets.emplace(id, std::make_unique<Street>(id, std::make_pair(srcId, dstId)));
+      m_edges.push_back(std::make_unique<Street>(std::make_pair(srcId, dstId)));
     }
   }
 
   Graph::Graph(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet)
       : m_adjacency{SparseMatrix<bool>()} {
-    for (auto& street : streetSet) {
-      m_streets.emplace(street.second->id(), street.second.get());
+    // for (auto& street : streetSet) {
+    //   m_streets.emplace(street.second->id(), street.second.get());
 
-      Id node1 = street.second->nodePair().first;
-      Id node2 = street.second->nodePair().second;
-      m_nodes.emplace(node1, std::make_unique<Intersection>(node1));
-      m_nodes.emplace(node2, std::make_unique<Intersection>(node2));
-    }
+    //   Id node1 = street.second->nodePair().first;
+    //   Id node2 = street.second->nodePair().second;
+    //   m_nodes.emplace(node1, std::make_unique<Intersection>(node1));
+    //   m_nodes.emplace(node2, std::make_unique<Intersection>(node2));
+    // }
 
-    buildAdj();
-  }
-
-  void Graph::m_reassignIds() {
-    // not sure about this, might need a bit more work
-    const auto oldStreetSet{std::move(m_streets)};
-    m_streets.clear();
-    const auto n{static_cast<Size>(m_nodes.size())};
-    std::unordered_map<Id, Id> newStreetIds;
-    for (const auto& [streetId, street] : oldStreetSet) {
-      const auto srcId{street->u()};
-      const auto dstId{street->v()};
-      const auto newStreetId{static_cast<Id>(srcId * n + dstId)};
-      if (m_streets.contains(newStreetId)) {
-        throw std::invalid_argument(buildLog("Street with same id already exists."));
-      }
-      if (street->isSpire() && street->isStochastic()) {
-        m_streets.emplace(newStreetId,
-                          std::make_unique<StochasticSpireStreet>(StochasticSpireStreet{
-                              newStreetId,
-                              *street,
-                              dynamic_cast<StochasticSpireStreet&>(*street).flowRate()}));
-      } else if (street->isStochastic()) {
-        m_streets.emplace(newStreetId,
-                          std::make_unique<StochasticStreet>(StochasticStreet{
-                              newStreetId,
-                              *street,
-                              dynamic_cast<StochasticStreet&>(*street).flowRate()}));
-      } else if (street->isSpire()) {
-        m_streets.emplace(
-            newStreetId,
-            std::make_unique<SpireStreet>(SpireStreet{newStreetId, *street}));
-      } else {
-        m_streets.emplace(newStreetId,
-                          std::make_unique<Street>(Street{newStreetId, *street}));
-      }
-      newStreetIds.emplace(streetId, newStreetId);
-    }
-    for (const auto& [nodeId, node] : m_nodes) {
-      // This is probably not the best way to do this
-      if (node->isIntersection()) {
-        auto& intersection = dynamic_cast<Intersection&>(*node);
-        const auto& oldStreetPriorities{intersection.streetPriorities()};
-        std::set<Id> newStreetPriorities;
-        for (const auto streetId : oldStreetPriorities) {
-          newStreetPriorities.emplace(newStreetIds[streetId]);
-        }
-        intersection.setStreetPriorities(newStreetPriorities);
-      }
-      if (node->isTrafficLight()) {
-        auto& trafficLight = dynamic_cast<TrafficLight&>(*node);
-        std::unordered_map<Id, std::vector<TrafficLightCycle>> newCycles;
-        for (auto const& [streetId, cycles] : trafficLight.cycles()) {
-          newCycles.emplace(newStreetIds[streetId], std::move(cycles));
-        }
-        trafficLight.setCycles(newCycles);
-      }
-    }
+    // buildAdj();
   }
 
   void Graph::m_setStreetAngles() {
-    for (const auto& [streetId, street] : m_streets) {
-      const auto& srcNode{m_nodes[street->nodePair().first]};
-      const auto& dstNode{m_nodes[street->nodePair().second]};
+    for (auto const& edge : m_edges) {
+      const auto& srcNode{m_nodes[edge->u()]};
+      const auto& dstNode{m_nodes[edge->v()]};
       if (srcNode->coords().has_value() && dstNode->coords().has_value()) {
-        street->setAngle(srcNode->coords().value(), dstNode->coords().value());
+        edge->setAngle(srcNode->coords().value(), dstNode->coords().value());
       }
     }
+  }
+
+  std::unique_ptr<Street>& Graph::m_edge(Id u, Id v) {
+    auto const& it = std::find(m_edges.begin(), m_edges.end(), [u, v](const auto& edge) {
+      return edge->nodePair() == std::make_pair(u, v);
+    });
+    if (it == m_edges.end()) {
+      throw std::invalid_argument(buildLog(std::format("Edge {}->{} not found.", u, v)));
+    }
+    return *it;
+  }
+  std::unique_ptr<Street> const& Graph::edge(std::pair<Id, Id> const& pair) {
+    auto const& it = std::find(m_edges.begin(), m_edges.end(), [pair](const auto& edge) {
+      return edge->nodePair() == pair;
+    });
+    if (it == m_edges.end()) {
+      throw std::invalid_argument(
+          buildLog(std::format("Edge {}->{} not found.", pair.first, pair.second)));
+    }
+    return *it;
+  }
+  std::unique_ptr<Street> const& Graph::edge(Id u, Id v) {
+    return edge(std::make_pair(u, v));
   }
 
   void Graph::buildAdj() {
@@ -110,19 +76,18 @@ namespace dsm {
     m_maxAgentCapacity = 0;
     const auto maxNode{static_cast<Id>(m_nodes.size())};
     m_adjacency.reshape(maxNode, maxNode);
-    for (const auto& [streetId, street] : m_streets) {
-      m_maxAgentCapacity += street->capacity();
-      m_adjacency.insert(street->nodePair().first, street->nodePair().second, true);
+    for (auto const& edge : m_edges) {
+      m_maxAgentCapacity += edge->capacity();
+      m_adjacency.insert(edge->u(), edge->v(), true);
     }
-    this->m_reassignIds();
     this->m_setStreetAngles();
   }
 
   void Graph::buildStreetAngles() {
-    for (const auto& street : m_streets) {
-      const auto& node1{m_nodes[street.second->nodePair().first]};
-      const auto& node2{m_nodes[street.second->nodePair().second]};
-      street.second->setAngle(node1->coords().value(), node2->coords().value());
+    for (const auto& street : m_edges) {
+      const auto& node1{m_nodes[street->nodePair().first]};
+      const auto& node2{m_nodes[street->nodePair().second]};
+      street->setAngle(node1->coords().value(), node2->coords().value());
     }
   }
 
@@ -130,13 +95,15 @@ namespace dsm {
     int16_t value;
     for (Id nodeId = 0; nodeId < m_nodes.size(); ++nodeId) {
       value = 0;
-      for (const auto& [streetId, _] : m_adjacency.getCol(nodeId, true)) {
-        value += m_streets[streetId]->nLanes() * m_streets[streetId]->transportCapacity();
+      for (const auto& [srcId, _] : m_adjacency.getCol(nodeId)) {
+        auto const& e = edge(srcId, nodeId);
+        value += e->nLanes() * e->transportCapacity();
       }
       m_nodes[nodeId]->setCapacity(value);
       value = 0;
-      for (const auto& [streetId, _] : m_adjacency.getRow(nodeId, true)) {
-        value += m_streets[streetId]->nLanes() * m_streets[streetId]->transportCapacity();
+      for (const auto& [dstId, _] : m_adjacency.getRow(nodeId)) {
+        auto const& e = edge(nodeId, dstId);
+        value += e->nLanes() * e->transportCapacity();
       }
       m_nodes[nodeId]->setTransportCapacity(value == 0 ? 1 : value);
       if (m_nodes[nodeId]->capacity() == 0) {
@@ -174,13 +141,12 @@ namespace dsm {
         if (!m_nodes.contains(dstId)) {
           m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
         }
-        assert(index == srcId * n + dstId);
         if (isAdj) {
-          addEdge<Street>(index, std::make_pair(srcId, dstId));
+          addEdge<Street>(std::make_pair(srcId, dstId));
         } else {
-          addEdge<Street>(index, std::make_pair(srcId, dstId), val);
+          addEdge<Street>(std::make_pair(srcId, dstId), val);
         }
-        m_streets[index]->setMaxSpeed(defaultSpeed);
+        m_edges.back()->setMaxSpeed(defaultSpeed);
       }
     } else {
       // default case: read the file as a matrix with the first two elements being the number of rows and columns and
@@ -220,13 +186,12 @@ namespace dsm {
           if (!m_nodes.contains(dstId)) {
             m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
           }
-          assert(index == srcId * n + dstId);
           if (isAdj) {
-            addEdge<Street>(index, std::make_pair(srcId, dstId));
+            addEdge<Street>(std::make_pair(srcId, dstId));
           } else {
-            addEdge<Street>(index, std::make_pair(srcId, dstId), value);
+            addEdge<Street>(std::make_pair(srcId, dstId), value);
           }
-          m_streets[index]->setMaxSpeed(defaultSpeed);
+          m_edges.back()->setMaxSpeed(defaultSpeed);
         }
         ++index;
       }
@@ -374,9 +339,7 @@ namespace dsm {
           }
         }
 
-        Id streetId = std::stoul(sourceId) + std::stoul(targetId) * m_nodes.size();
-        addEdge<Street>(streetId,
-                        std::make_pair(m_nodeMapping[std::stoul(sourceId)],
+        addEdge<Street>(std::make_pair(m_nodeMapping[std::stoul(sourceId)],
                                        m_nodeMapping[std::stoul(targetId)]),
                         std::stod(length),
                         std::stod(maxspeed),
@@ -399,10 +362,10 @@ namespace dsm {
         file << '\n' << id << '\t' << value;
       }
     } else {
-      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
-      for (const auto& [id, street] : m_streets) {
-        file << '\n' << id << '\t' << street->length();
-      }
+      // file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
+      // for (const auto& edge : m_edges) {
+      //   file << '\n' << id << '\t' << street->length();
+      // }
     }
   }
 
@@ -457,40 +420,34 @@ namespace dsm {
     pNode = std::make_unique<Station>(*pNode, managementTime);
     return dynamic_cast<Station&>(*pNode);
   }
-  StochasticStreet& Graph::makeStochasticStreet(Id streetId, double const flowRate) {
-    if (!m_streets.contains(streetId)) {
-      throw std::invalid_argument(
-          buildLog(std::format("Street with id {} does not exist.", streetId)));
-    }
-    auto& pStreet = m_streets[streetId];
-    pStreet = std::make_unique<StochasticStreet>(pStreet->id(), *pStreet, flowRate);
+  StochasticStreet& Graph::makeStochasticStreet(Id source,
+                                                Id destination,
+                                                double const flowRate) {
+    auto& pStreet = m_edge(source, destination);
+    pStreet = std::make_unique<StochasticStreet>(*pStreet, flowRate);
     return dynamic_cast<StochasticStreet&>(*pStreet);
   }
-  void Graph::makeSpireStreet(Id streetId) {
-    if (!m_streets.contains(streetId)) {
-      throw std::invalid_argument(
-          buildLog(std::format("Street with id {} does not exist.", streetId)));
-    }
-    auto& pStreet = m_streets[streetId];
+  void Graph::makeSpireStreet(EdgeId streetId) {
+    auto& pStreet{m_edge(streetId.first, streetId.second)};
     if (pStreet->isStochastic()) {
       pStreet = std::make_unique<StochasticSpireStreet>(
-          pStreet->id(), *pStreet, dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
+          *pStreet, dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
       return;
     }
-    pStreet = std::make_unique<SpireStreet>(pStreet->id(), *pStreet);
+    pStreet = std::make_unique<SpireStreet>(*pStreet);
   }
 
   void Graph::addStreet(std::unique_ptr<Street> street) {
-    if (m_streets.contains(street->id())) {
-      throw std::invalid_argument(
-          buildLog(std::format("Street with id {} from {} to {} already exists.",
-                               street->id(),
-                               street->nodePair().first,
-                               street->nodePair().second)));
+    auto const& nodePair = street->nodePair();
+    if (std::find(m_edges.cbegin(), m_edges.cend(), [nodePair](auto const& edge) {
+          return edge->nodePair() == nodePair
+        }) != m_edges.cend()) {
+      throw std::invalid_argument(buildLog(
+          std::format("Street {}->{} already exists.", street->u(), street->v())));
     }
     // emplace nodes
-    const auto srcId{street->nodePair().first};
-    const auto dstId{street->nodePair().second};
+    const auto srcId{nodePair.first};
+    const auto dstId{nodePair.second};
     if (!m_nodes.contains(srcId)) {
       m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
     }
@@ -498,20 +455,19 @@ namespace dsm {
       m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
     }
     // emplace street
-    m_streets.emplace(std::make_pair(street->id(), std::move(street)));
+    m_edges.push_back(std::move(street));
   }
 
   void Graph::addStreet(const Street& street) {
-    if (m_streets.contains(street.id())) {
+    if (std::find(m_edges.cbegin(), m_edges.cend(), [street](auto const& edge) {
+          return edge->nodePair() == street.nodePair()
+        }) != m_edges.cend()) {
       throw std::invalid_argument(
-          buildLog(std::format("Street with id {} from {} to {} already exists.",
-                               street.id(),
-                               street.nodePair().first,
-                               street.nodePair().second)));
+          buildLog(std::format("Street {}->{} already exists.", street.u(), street.v())));
     }
     // emplace nodes
-    const auto srcId{street.nodePair().first};
-    const auto dstId{street.nodePair().second};
+    const auto srcId{street.u()};
+    const auto dstId{street.v()};
     if (!m_nodes.contains(srcId)) {
       m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
     }
@@ -519,39 +475,45 @@ namespace dsm {
       m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
     }
     // emplace street
-    m_streets.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
+    m_edges.push_back(std::make_unique<Street>(street));
   }
 
   const std::unique_ptr<Street>* Graph::street(Id source, Id destination) const {
-    auto streetIt = std::find_if(m_streets.begin(),
-                                 m_streets.end(),
-                                 [source, destination](const auto& street) -> bool {
-                                   return street.second->nodePair().first == source &&
-                                          street.second->nodePair().second == destination;
-                                 });
-    if (streetIt == m_streets.end()) {
-      return nullptr;
-    }
-    Size n = m_nodes.size();
-    auto id1 = streetIt->first;
-    auto id2 = source * n + destination;
-    assert(id1 == id2);
-    if (id1 != id2) {
-      std::cout << "node size: " << n << std::endl;
-      std::cout << "Street id: " << id1 << std::endl;
-      std::cout << "Nodes: " << id2 << std::endl;
-    }
-    return &(streetIt->second);
+    // auto streetIt = std::find_if(m_edges.begin(),
+    //                              m_edges.end(),
+    //                              [source, destination](const auto& street) -> bool {
+    //                                return street.second->nodePair().first == source &&
+    //                                       street.second->nodePair().second == destination;
+    //                              });
+    // if (streetIt == m_streets.end()) {
+    //   return nullptr;
+    // }
+    // Size n = m_nodes.size();
+    // auto id1 = streetIt->first;
+    // auto id2 = source * n + destination;
+    // assert(id1 == id2);
+    // if (id1 != id2) {
+    //   std::cout << "node size: " << n << std::endl;
+    //   std::cout << "Street id: " << id1 << std::endl;
+    //   std::cout << "Nodes: " << id2 << std::endl;
+    // }
+    // return &(streetIt->second);
   }
 
-  const std::unique_ptr<Street>* Graph::oppositeStreet(Id streetId) const {
-    if (!m_streets.contains(streetId)) {
+  std::unique_ptr<Street> const& Graph::oppositeStreet(Id source, Id destination) const {
+    auto const& it =
+        std::find(m_edges.cbegin(),
+                  m_edges.cend(),
+                  [source, destination](const auto& street) -> bool {
+                    return street->nodePair() == std::pair(destination, source);
+                  });
+    if (it == m_edges.cend()) {
       throw std::invalid_argument(
-          buildLog(std::format("Street with id {} does not exist: maybe it has changed "
+          buildLog(std::format("Street {}->{} does not exist: maybe it has changed "
                                "id once called buildAdj.",
-                               streetId)));
+                               destination,
+                               source)));
     }
-    const auto& nodePair = m_streets.at(streetId)->nodePair();
-    return this->street(nodePair.second, nodePair.first);
+    return *it;
   }
 };  // namespace dsm

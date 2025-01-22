@@ -46,8 +46,8 @@ namespace dsm {
     m_speedFluctuationSTD = speedFluctuationSTD;
   }
 
-  double FirstOrderDynamics::streetMeanSpeed(Id streetId) const {
-    const auto& street{this->m_graph.streetSet().at(streetId)};
+  double FirstOrderDynamics::streetMeanSpeed(std::pair<Id, Id> const& streetId) const {
+    const auto& street{this->m_graph.edge(streetId)};
     if (street->nAgents() == 0) {
       return street->maxSpeed();
     }

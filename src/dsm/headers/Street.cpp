@@ -121,8 +121,8 @@ namespace dsm {
     return nAgents;
   }
 
-  StochasticStreet::StochasticStreet(Id id, const Street& street, double flowRate)
-      : Street(id, street) {
+  StochasticStreet::StochasticStreet(const Street& street, double flowRate)
+      : Street(street) {
     setFlowRate(flowRate);
   }
   StochasticStreet::StochasticStreet(Id id,

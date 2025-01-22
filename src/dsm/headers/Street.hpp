@@ -42,10 +42,8 @@ namespace dsm {
     /// @details The new street has different id but same capacity, length, speed limit, and node pair as the
     ///          existing street.
     /// @param Street The existing street
-    /// @param id The new street's id
-    Street(Id id, const Street&);
+    Street(const Street&);
     /// @brief Construct a new Street object
-    /// @param id The street's id
     /// @param nodePair The street's node pair
     /// @param length The street's length, in meters (default is the mean vehicle length)
     /// @param nLanes The street's number of lanes (default is 1)
@@ -53,8 +51,7 @@ namespace dsm {
     /// @param name The street's name (default is an empty string)
     /// @param capacity The street's capacity (default is the maximum number of vehicles that can fit in the street)
     /// @param transportCapacity The street's transport capacity (default is 1)
-    Street(Id id,
-           std::pair<Id, Id> nodePair,
+    Street(std::pair<Id, Id> nodePair,
            double length = Road::meanVehicleLength(),
            double maxSpeed = 13.8888888889,
            int nLanes = 1,
@@ -122,9 +119,8 @@ namespace dsm {
     double m_flowRate;
 
   public:
-    StochasticStreet(Id id, const Street& street, double flowRate);
-    StochasticStreet(Id id,
-                     std::pair<Id, Id> nodePair,
+    StochasticStreet(const Street& street, double flowRate);
+    StochasticStreet(std::pair<Id, Id> nodePair,
                      double length = Road::meanVehicleLength(),
                      double maxSpeed = 13.8888888889,
                      int nLanes = 1,

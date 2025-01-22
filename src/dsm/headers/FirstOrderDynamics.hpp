@@ -27,7 +27,7 @@ namespace dsm {
     /// \f$ v_{\text{mean}} = v_{\text{max}} \left(1 - \frac{\alpha}{2} \left( n - 1\right)  \right) \f$
     /// where \f$ v_{\text{max}} \f$ is the maximum speed of the street, \f$ \alpha \f$ is the minimum speed rateo divided by the capacity
     /// and \f$ n \f$ is the number of agents in the street
-    double streetMeanSpeed(Id streetId) const override;
+    double streetMeanSpeed(std::pair<Id, Id> const& streetId) const override;
     /// @brief Get the mean speed of the streets in \f$m/s\f$
     /// @return Measurement The mean speed of the agents and the standard deviation
     Measurement<double> streetMeanSpeed() const override;

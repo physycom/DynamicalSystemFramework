@@ -2,10 +2,12 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 namespace dsm {
 
   using Id = uint32_t;
+  using EdgeId = std::pair<Id, Id>;
   using Size = uint32_t;
   using Delay = uint16_t;
   using Time = uint64_t;

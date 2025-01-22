@@ -270,7 +270,7 @@ namespace dsm {
       if (destinationNode->isTrafficLight()) {
         auto& tl = dynamic_cast<TrafficLight&>(*destinationNode);
         auto const direction{pStreet->laneMapping().at(queueIndex)};
-        if (!tl.isGreen(pStreet->id(), direction)) {
+        if (!tl.isGreen(pStreet->nodePair(), direction)) {
           continue;
         }
       }
@@ -314,7 +314,7 @@ namespace dsm {
       if (destinationNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
         auto const delta{nextStreet->deltaAngle(pStreet->angle())};
-        m_increaseTurnCounts(pStreet->id(), delta);
+        // m_increaseTurnCounts(pStreet->id(), delta);
         intersection.addAgent(delta, agentId);
       } else if (destinationNode->isRoundabout()) {
         auto& roundabout = dynamic_cast<Roundabout&>(*destinationNode);

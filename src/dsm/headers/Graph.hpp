@@ -48,18 +48,16 @@ namespace dsm {
   class Graph {
   private:
     std::unordered_map<Id, std::unique_ptr<Node>> m_nodes;
-    std::unordered_map<Id, std::unique_ptr<Street>> m_streets;
+    std::vector<std::unique_ptr<Street>> m_edges;
     std::unordered_map<Id, Id> m_nodeMapping;
     SparseMatrix<bool> m_adjacency;
     unsigned long long m_maxAgentCapacity;
 
-    /// @brief Reassign the street ids using the max node id
-    /// @details The street ids are reassigned using the max node id, i.e.
-    /// newStreetId = srcId * n + dstId, where n is the max node id.
-    void m_reassignIds();
     /// @brief If every node has coordinates, set the street angles
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
+
+    std::unique_ptr<Street>& m_edge(Id u, Id v);
 
   public:
     Graph();
@@ -71,29 +69,29 @@ namespace dsm {
     Graph(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
 
     Graph(const Graph& other) {
-      std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
-        this->m_nodes.emplace(pair.first, pair.second.get());
-      });
-      std::for_each(
-          other.m_streets.begin(), other.m_streets.end(), [this](const auto& pair) {
-            this->m_streets.emplace(pair.first, pair.second.get());
-          });
-      m_nodeMapping = other.m_nodeMapping;
-      m_adjacency = other.m_adjacency;
+      // std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
+      //   this->m_nodes.emplace(pair.first, pair.second.get());
+      // });
+      // std::for_each(
+      //     other.m_streets.begin(), other.m_streets.end(), [this](const auto& pair) {
+      //       this->m_streets.emplace(pair.first, pair.second.get());
+      //     });
+      // m_nodeMapping = other.m_nodeMapping;
+      // m_adjacency = other.m_adjacency;
     }
 
     Graph& operator=(const Graph& other) {
-      std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
-        this->m_nodes.insert_or_assign(pair.first,
-                                       std::unique_ptr<Node>(pair.second.get()));
-      });
-      std::for_each(
-          other.m_streets.begin(), other.m_streets.end(), [this](const auto& pair) {
-            this->m_streets.insert_or_assign(pair.first,
-                                             std::make_unique<Street>(*pair.second));
-          });
-      m_nodeMapping = other.m_nodeMapping;
-      m_adjacency = other.m_adjacency;
+      // std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
+      //   this->m_nodes.insert_or_assign(pair.first,
+      //                                  std::unique_ptr<Node>(pair.second.get()));
+      // });
+      // std::for_each(
+      //     other.m_streets.begin(), other.m_streets.end(), [this](const auto& pair) {
+      //       this->m_streets.insert_or_assign(pair.first,
+      //                                        std::make_unique<Street>(*pair.second));
+      //     });
+      // m_nodeMapping = other.m_nodeMapping;
+      // m_adjacency = other.m_adjacency;
 
       return *this;
     }
@@ -183,11 +181,13 @@ namespace dsm {
     /// @throws std::invalid_argument if the node does not exist
     Roundabout& makeRoundabout(Id nodeId);
 
-    StochasticStreet& makeStochasticStreet(Id streetId, double const flowRate);
+    StochasticStreet& makeStochasticStreet(Id source,
+                                           Id destination,
+                                           double const flowRate);
     /// @brief Convert an existing street into a spire street
     /// @param streetId The id of the street to convert to a spire street
     /// @throws std::invalid_argument if the street does not exist
-    void makeSpireStreet(Id streetId);
+    void makeSpireStreet(EdgeId streetId);
     /// @brief Convert an existing node into a station
     /// @param nodeId The id of the node to convert to a station
     /// @param managementTime The station's management time
@@ -201,8 +201,8 @@ namespace dsm {
     /// @return A reference to the added edge
     template <typename edge_t, typename... TArgs>
       requires(std::is_base_of_v<Street, edge_t>,
-               std::constructible_from<edge_t, Id, TArgs...>)
-    edge_t& addEdge(Id id, TArgs&&... args);
+               std::constructible_from<edge_t, TArgs...>)
+    edge_t& addEdge(TArgs&&... args);
     /// @brief Add a street to the graph
     /// @param street A std::unique_ptr to the street to add
     void addStreet(std::unique_ptr<Street> street);
@@ -235,15 +235,17 @@ namespace dsm {
     std::unordered_map<Id, std::unique_ptr<Node>>& nodeSet() { return m_nodes; }
     /// @brief Get the Graph's number of streets
     /// @return size_t The number of streets in the graph
-    size_t nEdges() const { return m_streets.size(); }
+    size_t nEdges() const { return m_edges.size(); }
     /// @brief Get the graph's street map
     /// @return A std::unordered_map containing the graph's streets
-    const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet() const {
-      return m_streets;
-    }
+    const std::vector<std::unique_ptr<Street>>& streetSet() const { return m_edges; }
     /// @brief Get the graph's street map
     /// @return A std::unordered_map containing the graph's streets
-    std::unordered_map<Id, std::unique_ptr<Street>>& streetSet() { return m_streets; }
+    std::vector<std::unique_ptr<Street>>& streetSet() { return m_edges; }
+
+    std::unique_ptr<Street> const& edge(std::pair<Id, Id> const& uv);
+
+    std::unique_ptr<Street> const& edge(Id u, Id v);
     /// @brief Get a street from the graph
     /// @param source The source node
     /// @param destination The destination node
@@ -253,7 +255,7 @@ namespace dsm {
     /// @param streetId The id of the street
     /// @throws std::invalid_argument if the street does not exist
     /// @return A std::unique_ptr to the street if it exists, nullptr otherwise
-    const std::unique_ptr<Street>* oppositeStreet(Id streetId) const;
+    std::unique_ptr<Street> const& oppositeStreet(Id source, Id destination) const;
 
     /// @brief Get the maximum agent capacity
     /// @return unsigned long long The maximum agent capacity of the graph
@@ -299,21 +301,15 @@ namespace dsm {
   }
 
   template <typename edge_t, typename... TArgs>
-    requires(std::is_base_of_v<Street, edge_t>,
-             std::constructible_from<edge_t, Id, TArgs...>)
-  edge_t& Graph::addEdge(Id id, TArgs&&... args) {
-    addStreet(std::make_unique<edge_t>(id, std::forward<TArgs>(args)...));
-    return dynamic_cast<edge_t&>(*m_streets[id]);
+    requires(std::is_base_of_v<Street, edge_t>, std::constructible_from<edge_t, TArgs...>)
+  edge_t& Graph::addEdge(TArgs&&... args) {
+    addStreet(std::make_unique<edge_t>(std::forward<TArgs>(args)...));
+    return dynamic_cast<edge_t&>(*m_edges.back());
   }
 
   template <typename T1>
     requires is_street_v<std::remove_reference_t<T1>>
   void Graph::addStreets(T1&& street) {
-    if (m_streets.contains(street.id())) {
-      throw std::invalid_argument(
-          buildLog(std::format("Street with id {} already exists.", street.id())));
-    }
-    // emplace nodes
     auto const srcId{street.u()};
     auto const dstId{street.v()};
     if (!m_nodes.contains(srcId)) {
@@ -322,8 +318,7 @@ namespace dsm {
     if (!m_nodes.contains(dstId)) {
       m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
     }
-    // emplace street
-    m_streets.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
+    addStreet(std::make_unique<Street>(street));
   }
 
   template <typename T1, typename... Tn>

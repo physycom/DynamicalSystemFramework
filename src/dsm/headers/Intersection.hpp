@@ -19,7 +19,7 @@ namespace dsm {
   class Intersection : public Node {
   protected:
     std::multimap<int16_t, Id> m_agents;
-    std::set<Id>
+    std::set<std::pair<Id, Id>>
         m_streetPriorities;  // A set containing the street ids that have priority - like main roads
     Size m_agentCounter;
 
@@ -60,12 +60,14 @@ namespace dsm {
     void removeAgent(Id agentId);
     /// @brief Set the node streets with priority
     /// @param streetPriorities A std::set containing the node's street priorities
-    void setStreetPriorities(std::set<Id> streetPriorities) {
+    void setStreetPriorities(std::set<std::pair<Id, Id>> streetPriorities) {
       m_streetPriorities = std::move(streetPriorities);
     }
     /// @brief Add a street to the node street priorities
     /// @param streetId The street's id
-    void addStreetPriority(Id streetId) { m_streetPriorities.emplace(streetId); }
+    void addStreetPriority(std::pair<Id, Id> const& streetId) {
+      m_streetPriorities.emplace(streetId);
+    }
     /// @brief Returns the node's density
     /// @return double The node's density
     double density() const override {
@@ -80,7 +82,9 @@ namespace dsm {
     ///        If a street has priority, it means that the agents that are on that street
     ///        have priority over the agents that are on the other streets.
     /// @return std::set<Id> A std::set containing the node's street priorities
-    virtual const std::set<Id>& streetPriorities() const { return m_streetPriorities; };
+    virtual std::set<std::pair<Id, Id>> const& streetPriorities() const {
+      return m_streetPriorities;
+    };
     /// @brief Get the node's agent ids
     /// @return std::set<Id> A std::set containing the node's agent ids
     const std::multimap<int16_t, Id>& agents() { return m_agents; };
