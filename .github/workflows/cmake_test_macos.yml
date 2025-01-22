@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-env:
-  BUILD_TYPE: Debug
-
 jobs:
   build:
     runs-on: macos-latest
@@ -18,12 +15,12 @@ jobs:
 
     - name: Configure CMake
       working-directory: ${{github.workspace}}/test
-      run: cmake -B ${{github.workspace}}/test/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -B ${{github.workspace}}/test/build
 
     - name: Build
       working-directory: ${{github.workspace}}/test
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/test/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/test/build
 
     - name: Run tests
       working-directory: ${{github.workspace}}/test
