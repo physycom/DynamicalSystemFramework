@@ -111,6 +111,12 @@ namespace dsm {
     virtual bool isStochastic() const { return false; };
   };
 
+  /// @brief A stochastic street is a street with a flow rate parameter
+  /// @details The Stochastic Street is used to replace traffic lights with a lower level of detail.
+  ///          The idea is to model the flow of agents in a street as a stochastic process, limiting
+  ///          the number of agents that can exit using a parameter in [0, 1].
+  ///          Thus, the flow rate parameter represents the ratio between the green time of the
+  ///          traffic light and the total time of the traffic light cycle.
   class StochasticStreet : public Street {
   private:
     double m_flowRate;
