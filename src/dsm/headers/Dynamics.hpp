@@ -66,9 +66,9 @@ namespace dsm {
   class Dynamics {
   private:
     std::map<Id, std::unique_ptr<agent_t>> m_agents;
+    std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
 
   protected:
-    std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
     Graph m_graph;
     Time m_time, m_previousSpireTime;
     std::mt19937_64 m_generator;
