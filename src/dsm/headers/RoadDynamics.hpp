@@ -208,7 +208,7 @@ namespace dsm {
       if (!(this->itineraries().empty())) {
         if (!(m_errorProbability.has_value() &&
               uniformDist(this->m_generator) < m_errorProbability)) {
-          const auto& it = this->m_itineraries[pAgent->itineraryId()];
+          const auto& it = this->itineraries().at(pAgent->itineraryId());
           if (it->destination() != nodeId) {
             possibleMoves = it->path().getRow(nodeId, true);
           }
@@ -295,7 +295,7 @@ namespace dsm {
       }
       if (!pAgent->isRandom()) {
         if (destinationNode->id() ==
-            this->m_itineraries[pAgent->itineraryId()]->destination()) {
+            this->itineraries().at(pAgent->itineraryId())->destination()) {
           bArrived = true;
         }
       }
@@ -413,11 +413,11 @@ namespace dsm {
           auto const nLanes = street->nLanes();
           bool bArrived{false};
           if (!agent->isRandom()) {
-            if (this->m_itineraries[agent->itineraryId()]->destination() ==
+            if (this->itineraries().at(agent->itineraryId())->destination() ==
                 street->nodePair().second) {
               agent->updateItinerary();
             }
-            if (this->m_itineraries[agent->itineraryId()]->destination() ==
+            if (this->itineraries().at(agent->itineraryId())->destination() ==
                 street->nodePair().second) {
               bArrived = true;
             }
@@ -524,7 +524,7 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::addAgentsUniformly(Size nAgents,
                                                  std::optional<Id> optItineraryId) {
-    if (this->m_itineraries.empty()) {
+    if (this->itineraries().empty()) {
       // TODO: make this possible for random agents
       throw std::invalid_argument(
           buildLog("It is not possible to add random agents without itineraries."));
@@ -535,17 +535,17 @@ namespace dsm {
       itineraryId = optItineraryId.value();
     }
     std::uniform_int_distribution<Size> itineraryDist{
-        0, static_cast<Size>(this->m_itineraries.size() - 1)};
+        0, static_cast<Size>(this->itineraries().size() - 1)};
     std::uniform_int_distribution<Size> streetDist{
         0, static_cast<Size>(this->m_graph.nEdges() - 1)};
     for (Size i{0}; i < nAgents; ++i) {
       if (randomItinerary) {
-        auto itineraryIt{this->m_itineraries.begin()};
+        auto itineraryIt{this->itineraries().cbegin()};
         std::advance(itineraryIt, itineraryDist(this->m_generator));
         itineraryId = itineraryIt->first;
       }
       Id agentId{0};
-      if (!this->agents().empty()) {
+      if (!(this->agents().empty())) {
         agentId = this->agents().rbegin()->first + 1;
       }
       Id streetId{0};
@@ -558,9 +558,10 @@ namespace dsm {
                this->nAgents() < this->m_graph.maxCapacity());
       const auto& street{this->m_graph.streetSet()[streetId]};
       this->addAgent(agentId, itineraryId, street->nodePair().first);
-      this->agents().at(agentId)->setStreetId(streetId);
+      auto const& pAgent{this->agents().at(agentId)};
+      pAgent->setStreetId(streetId);
       this->setAgentSpeed(agentId);
-      this->agents().at(agentId)->incrementDelay(
+      pAgent->incrementDelay(
           std::ceil(street->length() / this->agents().at(agentId)->speed()));
       street->addAgent(agentId);
       ++agentId;
@@ -649,12 +650,12 @@ namespace dsm {
         }
       }
       // find the itinerary with the given destination as destination
-      auto itineraryIt{std::find_if(this->m_itineraries.begin(),
-                                    this->m_itineraries.end(),
+      auto itineraryIt{std::find_if(this->itineraries().cbegin(),
+                                    this->itineraries().cend(),
                                     [dstId](const auto& itinerary) {
                                       return itinerary.second->destination() == dstId;
                                     })};
-      if (itineraryIt == this->m_itineraries.end()) {
+      if (itineraryIt == this->itineraries().cend()) {
         throw std::invalid_argument(
             buildLog(std::format("Itinerary with destination {} not found.", dstId)));
       }
