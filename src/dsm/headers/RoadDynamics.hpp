@@ -43,7 +43,7 @@ namespace dsm {
   protected:
     Time m_previousOptimizationTime;
     double m_errorProbability;
-    double m_passageProbability;
+    std::optional<double> m_passageProbability;
     std::vector<double> m_travelTimes;
     std::unordered_map<Id, Id> m_agentNextStreetId;
     bool m_forcePriorities;
@@ -164,7 +164,7 @@ namespace dsm {
       : Dynamics<Agent<delay_t>>(graph, seed),
         m_previousOptimizationTime{0},
         m_errorProbability{0.},
-        m_passageProbability{1.},
+        m_passageProbability{std::nullopt},
         m_forcePriorities{false} {
     for (const auto& [streetId, street] : this->m_graph.streetSet()) {
       m_streetTails.emplace(streetId, 0);
@@ -274,7 +274,10 @@ namespace dsm {
           continue;
         }
       }
-      auto const bCanPass = uniformDist(this->m_generator) < m_passageProbability;
+      bool bCanPass = true;
+      if (m_passageProbability.has_value()) {
+        bCanPass = uniformDist(this->m_generator) < m_passageProbability.value();
+      }
       bool bArrived{false};
       if (!bCanPass) {
         if (pAgent->isRandom()) {
