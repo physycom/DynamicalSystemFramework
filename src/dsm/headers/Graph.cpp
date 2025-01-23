@@ -49,7 +49,11 @@ namespace dsm {
       const auto dstId{street->v()};
       const auto newStreetId{static_cast<Id>(srcId * n + dstId)};
       if (m_streets.contains(newStreetId)) {
-        throw std::invalid_argument(buildLog("Street with same id already exists."));
+        throw std::invalid_argument(
+            buildLog(std::format("Street with same id ({}) from {} to {} already exists.",
+                                 newStreetId,
+                                 srcId,
+                                 dstId)));
       }
       if (street->isSpire() && street->isStochastic()) {
         m_streets.emplace(newStreetId,
@@ -346,6 +350,7 @@ namespace dsm {
 
   void Graph::importOSMEdges(const std::string& fileName) {
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
+    auto const nNodes{m_nodes.size()};
     if (fileExt == "csv") {
       std::ifstream file{fileName};
       if (!file.is_open()) {
@@ -389,11 +394,31 @@ namespace dsm {
             lanes = "1";  // Default to 1 lane if lanes is invalid
           }
         }
-
-        Id streetId = std::stoul(sourceId) + std::stoul(targetId) * m_nodes.size();
+        if (!m_nodeMapping.contains(std::stoul(sourceId))) {
+          std::cerr << std::format(
+                           "\033[38;5;196mERROR ({}:{}): Node with id {} not "
+                           "found.\033[0m",
+                           __FILE__,
+                           __LINE__,
+                           sourceId)
+                    << std::endl;
+          std::abort();
+        }
+        if (!m_nodeMapping.contains(std::stoul(targetId))) {
+          std::cerr << std::format(
+                           "\033[38;5;196mERROR ({}:{}): Node with id {} not "
+                           "found.\033[0m",
+                           __FILE__,
+                           __LINE__,
+                           targetId)
+                    << std::endl;
+          std::abort();
+        }
+        auto const srcId{m_nodeMapping.at(std::stoul(sourceId))};
+        auto const dstId{m_nodeMapping.at(std::stoul(targetId))};
+        Id streetId = srcId * nNodes + dstId;
         addEdge<Street>(streetId,
-                        std::make_pair(m_nodeMapping[std::stoul(sourceId)],
-                                       m_nodeMapping[std::stoul(targetId)]),
+                        std::make_pair(srcId, dstId),
                         std::stod(length),
                         std::stod(maxspeed),
                         std::stoul(lanes),
