@@ -10,6 +10,7 @@
 using Dynamics = dsm::FirstOrderDynamics;
 using Graph = dsm::Graph;
 using SparseMatrix = dsm::SparseMatrix<bool>;
+using Road = dsm::Road;
 using Street = dsm::Street;
 using SpireStreet = dsm::SpireStreet;
 using Agent = dsm::Agent<uint16_t>;
@@ -816,7 +817,7 @@ TEST_CASE("Dynamics") {
         "A dynamics object with four streets, one agent for each street, two "
         "itineraries "
         "and a roundabout") {
-      Street::setMeanVehicleLength(10.);
+      Road::setMeanVehicleLength(10.);
       Street s1{0, std::make_pair(0, 1), 10., 10.};
       Street s2{1, std::make_pair(2, 1), 10., 10.};
       Street s3{2, std::make_pair(1, 0), 10., 10.};
@@ -886,7 +887,7 @@ TEST_CASE("Dynamics") {
     /// GIVEN: a dynamics object
     /// WHEN: we evolve the dynamics
     /// THEN: the agent mean speed is the same as the street mean speed
-    Street::setMeanVehicleLength(2.);
+    Road::setMeanVehicleLength(2.);
     Street s1{0, std::make_pair(0, 1), 20., 20.};
     Street s2{1, std::make_pair(1, 2), 30., 15.};
     Street s3{2, std::make_pair(3, 1), 30., 15.};
@@ -910,7 +911,7 @@ TEST_CASE("Dynamics") {
       meanSpeed += agent->speed();
     }
     meanSpeed /= (dynamics.graph().streetSet().at(1)->nExitingAgents() +
-                  dynamics.graph().streetSet().at(1)->waitingAgents().size());
+                  dynamics.graph().streetSet().at(1)->movingAgents().size());
     CHECK_EQ(dynamics.streetMeanSpeed(1), meanSpeed);
     // I don't think the mean speed of agents should be equal to the street's
     // one... CHECK_EQ(dynamics.streetMeanSpeed().mean,

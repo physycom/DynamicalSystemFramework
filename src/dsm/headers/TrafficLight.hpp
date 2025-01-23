@@ -68,6 +68,8 @@ namespace dsm {
     TrafficLight(Node const& node, Delay const cycleTime, Delay const counter = 0)
         : Intersection{node}, m_cycleTime{cycleTime}, m_counter{counter} {}
 
+    ~TrafficLight() = default;
+
     TrafficLight& operator++();
     /// @brief Get the maximum green time over every cycle
     /// @param priorityStreets bool, if true, only the priority streets are considered;

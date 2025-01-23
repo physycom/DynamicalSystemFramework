@@ -4,6 +4,7 @@
 
 #include "Graph.hpp"
 #include "Node.hpp"
+#include "Road.hpp"
 #include "Street.hpp"
 #include "SparseMatrix.hpp"
 
@@ -12,6 +13,7 @@
 using Graph = dsm::Graph;
 using SparseMatrix = dsm::SparseMatrix<bool>;
 using Street = dsm::Street;
+using Road = dsm::Road;
 using Path = std::vector<uint>;
 
 template <typename T1, typename T2>
@@ -30,7 +32,7 @@ bool checkPath(const std::vector<T1>& path1, const std::vector<T2>& path2) {
 }
 
 TEST_CASE("Graph") {
-  Street::setMeanVehicleLength(5.);
+  Road::setMeanVehicleLength(5.);
   SUBCASE("Constructor_1") {
     Street street{1, std::make_pair(0, 1)};
     Graph graph{};

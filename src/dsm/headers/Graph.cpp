@@ -45,18 +45,29 @@ namespace dsm {
     const auto n{static_cast<Size>(m_nodes.size())};
     std::unordered_map<Id, Id> newStreetIds;
     for (const auto& [streetId, street] : oldStreetSet) {
-      const auto srcId{street->nodePair().first};
-      const auto dstId{street->nodePair().second};
+      const auto srcId{street->u()};
+      const auto dstId{street->v()};
       const auto newStreetId{static_cast<Id>(srcId * n + dstId)};
       if (m_streets.contains(newStreetId)) {
         throw std::invalid_argument(buildLog("Street with same id already exists."));
       }
-      if (street->isSpire()) {
+      if (street->isSpire() && street->isStochastic()) {
+        m_streets.emplace(newStreetId,
+                          std::make_unique<StochasticSpireStreet>(
+                              newStreetId,
+                              *street,
+                              dynamic_cast<StochasticSpireStreet&>(*street).flowRate()));
+      } else if (street->isStochastic()) {
+        m_streets.emplace(newStreetId,
+                          std::make_unique<StochasticStreet>(
+                              newStreetId,
+                              *street,
+                              dynamic_cast<StochasticStreet&>(*street).flowRate()));
+      } else if (street->isSpire()) {
         m_streets.emplace(newStreetId,
                           std::make_unique<SpireStreet>(newStreetId, *street));
       } else {
-        m_streets.emplace(newStreetId,
-                          std::make_unique<Street>(Street{newStreetId, *street}));
+        m_streets.emplace(newStreetId, std::make_unique<Street>(newStreetId, *street));
       }
       newStreetIds.emplace(streetId, newStreetId);
     }
@@ -444,15 +455,27 @@ namespace dsm {
     pNode = std::make_unique<Station>(*pNode, managementTime);
     return dynamic_cast<Station&>(*pNode);
   }
-
-  SpireStreet& Graph::makeSpireStreet(Id streetId) {
+  StochasticStreet& Graph::makeStochasticStreet(Id streetId, double const flowRate) {
     if (!m_streets.contains(streetId)) {
       throw std::invalid_argument(
           buildLog(std::format("Street with id {} does not exist.", streetId)));
     }
     auto& pStreet = m_streets[streetId];
+    pStreet = std::make_unique<StochasticStreet>(pStreet->id(), *pStreet, flowRate);
+    return dynamic_cast<StochasticStreet&>(*pStreet);
+  }
+  void Graph::makeSpireStreet(Id streetId) {
+    if (!m_streets.contains(streetId)) {
+      throw std::invalid_argument(
+          buildLog(std::format("Street with id {} does not exist.", streetId)));
+    }
+    auto& pStreet = m_streets[streetId];
+    if (pStreet->isStochastic()) {
+      pStreet = std::make_unique<StochasticSpireStreet>(
+          pStreet->id(), *pStreet, dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
+      return;
+    }
     pStreet = std::make_unique<SpireStreet>(pStreet->id(), *pStreet);
-    return dynamic_cast<SpireStreet&>(*pStreet);
   }
 
   void Graph::addStreet(std::unique_ptr<Street> street) {

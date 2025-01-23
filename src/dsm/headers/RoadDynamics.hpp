@@ -40,10 +40,15 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   class RoadDynamics : public Dynamics<Agent<delay_t>> {
+  private:
   protected:
     Time m_previousOptimizationTime;
-    double m_errorProbability;
-    double m_passageProbability;
+
+  private:
+    std::optional<double> m_errorProbability;
+    std::optional<double> m_passageProbability;
+
+  protected:
     std::vector<double> m_travelTimes;
     std::unordered_map<Id, Id> m_agentNextStreetId;
     bool m_forcePriorities;
@@ -163,8 +168,8 @@ namespace dsm {
   RoadDynamics<delay_t>::RoadDynamics(Graph& graph, std::optional<unsigned int> seed)
       : Dynamics<Agent<delay_t>>(graph, seed),
         m_previousOptimizationTime{0},
-        m_errorProbability{0.},
-        m_passageProbability{1.},
+        m_errorProbability{std::nullopt},
+        m_passageProbability{std::nullopt},
         m_forcePriorities{false} {
     for (const auto& [streetId, street] : this->m_graph.streetSet()) {
       m_streetTails.emplace(streetId, 0);
@@ -200,11 +205,13 @@ namespace dsm {
     auto possibleMoves = this->m_graph.adjMatrix().getRow(nodeId, true);
     if (!pAgent->isRandom()) {
       std::uniform_real_distribution<double> uniformDist{0., 1.};
-      if (this->m_itineraries.size() > 0 &&
-          uniformDist(this->m_generator) > m_errorProbability) {
-        const auto& it = this->m_itineraries[pAgent->itineraryId()];
-        if (it->destination() != nodeId) {
-          possibleMoves = it->path().getRow(nodeId, true);
+      if (!(this->itineraries().empty())) {
+        if (!(m_errorProbability.has_value() &&
+              uniformDist(this->m_generator) < m_errorProbability)) {
+          const auto& it = this->m_itineraries[pAgent->itineraryId()];
+          if (it->destination() != nodeId) {
+            possibleMoves = it->path().getRow(nodeId, true);
+          }
         }
       }
     }
@@ -248,6 +255,11 @@ namespace dsm {
                                              bool reinsert_agents) {
     auto const nLanes = pStreet->nLanes();
     std::uniform_real_distribution<double> uniformDist{0., 1.};
+    if (pStreet->isStochastic() &&
+        (uniformDist(this->m_generator) >
+         dynamic_cast<StochasticStreet&>(*pStreet).flowRate())) {
+      return;
+    }
     for (auto queueIndex = 0; queueIndex < nLanes; ++queueIndex) {
       if (pStreet->queue(queueIndex).empty()) {
         continue;
@@ -269,7 +281,10 @@ namespace dsm {
           continue;
         }
       }
-      auto const bCanPass = uniformDist(this->m_generator) < m_passageProbability;
+      bool bCanPass = true;
+      if (m_passageProbability.has_value()) {
+        bCanPass = uniformDist(this->m_generator) < m_passageProbability.value();
+      }
       bool bArrived{false};
       if (!bCanPass) {
         if (pAgent->isRandom()) {
@@ -286,7 +301,9 @@ namespace dsm {
         }
       }
       if (bArrived) {
-        pStreet->dequeue(queueIndex);
+        if (pStreet->dequeue(queueIndex) == std::nullopt) {
+          continue;
+        }
         m_travelTimes.push_back(pAgent->time());
         if (reinsert_agents) {
           // reset Agent's values
@@ -300,7 +317,9 @@ namespace dsm {
       if (nextStreet->isFull()) {
         continue;
       }
-      pStreet->dequeue(queueIndex);
+      if (pStreet->dequeue(queueIndex) == std::nullopt) {
+        continue;
+      }
       assert(destinationNode->id() == nextStreet->nodePair().first);
       if (destinationNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
@@ -423,6 +442,16 @@ namespace dsm {
                   std::vector<double> weights;
                   for (auto const& queue : street->exitQueues()) {
                     weights.push_back(1. / (queue.size() + 1));
+                  }
+                  // If all weights are the same, make the last 0
+                  if (std::all_of(weights.begin(), weights.end(), [&](double w) {
+                        return std::abs(w - weights.front()) <
+                               std::numeric_limits<double>::epsilon();
+                      })) {
+                    weights.back() = 0.;
+                    if (nLanes > 2) {
+                      weights.front() = 0.;
+                    }
                   }
                   // Normalize the weights
                   auto const sum = std::accumulate(weights.begin(), weights.end(), 0.);

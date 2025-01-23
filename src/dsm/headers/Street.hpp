@@ -19,10 +19,11 @@
 #include <format>
 #include <cassert>
 #include <string>
+#include <vector>
 
-#include "Edge.hpp"
+#include "Road.hpp"
 #include "Agent.hpp"
-#include "Node.hpp"
+#include "Sensors.hpp"
 #include "../utility/TypeTraits/is_numeric.hpp"
 #include "../utility/queue.hpp"
 #include "../utility/Logger.hpp"
@@ -30,19 +31,11 @@
 
 namespace dsm {
   /// @brief The Street class represents a street in the network.
-  /// @tparam Id, The type of the street's id. It must be an unsigned integral type.
-  /// @tparam Size, The type of the street's capacity. It must be an unsigned integral type.
-  class Street : public Edge {
+  class Street : public Road {
   private:
     std::vector<dsm::queue<Size>> m_exitQueues;
     std::vector<Direction> m_laneMapping;
-    std::set<Id> m_waitingAgents;
-    double m_length;
-    double m_maxSpeed;
-    int m_nLanes;
-    std::string m_name;
-    double m_angle;
-    static double m_meanVehicleLength;
+    std::vector<Id> m_movingAgents;
 
   public:
     /// @brief Construct a new Street object starting from an existing street
@@ -62,7 +55,7 @@ namespace dsm {
     /// @param transportCapacity The street's transport capacity (default is 1)
     Street(Id id,
            std::pair<Id, Id> nodePair,
-           double length = m_meanVehicleLength,
+           double length = Road::meanVehicleLength(),
            double maxSpeed = 13.8888888889,
            int nLanes = 1,
            std::string name = std::string(),
@@ -75,29 +68,14 @@ namespace dsm {
     inline void setQueue(dsm::queue<Size> queue, size_t index) {
       m_exitQueues[index] = std::move(queue);
     }
-    /// @brief Set the street's speed limit
-    /// @param speed The street's speed limit
-    /// @throw std::invalid_argument, If the speed is negative
-    void setMaxSpeed(double speed);
-    /// @brief Set the street's angle
-    /// @param srcNode The source node of the street
-    /// @param dstNode The destination node of the street
-    void setAngle(std::pair<double, double> srcNode, std::pair<double, double> dstNode);
-    /// @brief Set the street's angle
-    /// @param angle The street's angle
-    /// @throw std::invalid_argument If the angle is negative or greater than 2 * pi
-    void setAngle(double angle);
     /// @brief Set the mean vehicle length
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
     static void setMeanVehicleLength(double meanVehicleLength);
 
-    /// @brief Get the street's length
-    /// @return double, The street's length
-    double length() const { return m_length; }
     /// @brief Get the street's waiting agents
     /// @return std::set<Id>, The street's waiting agents
-    const std::set<Id>& waitingAgents() const { return m_waitingAgents; }
+    std::vector<Id> const& movingAgents() const;
     /// @brief Get the street's queue
     /// @return dsm::queue<Size>, The street's queue
     const dsm::queue<Size>& queue(size_t index) const { return m_exitQueues[index]; }
@@ -106,37 +84,22 @@ namespace dsm {
     const std::vector<dsm::queue<Size>>& exitQueues() const { return m_exitQueues; }
     /// @brief  Get the number of agents on the street
     /// @return Size, The number of agents on the street
-    int nAgents() const;
+    int nAgents() const final;
     /// @brief Get the street's density in \f$m^{-1}\f$ or in \f$a.u.\f$, if normalized
     /// @param normalized If true, the street's density is normalized by the street's capacity
     /// @return double, The street's density
-    double density(bool normalized = false) const;
+    double density(bool normalized = false) const final;
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
     bool isFull() const final { return nAgents() == m_capacity; }
-    /// @brief Get the street's speed limit
-    /// @return double, The street's speed limit
-    double maxSpeed() const { return m_maxSpeed; }
-    /// @brief Get the street's angle
-    /// @return double The street's angle
-    double angle() const { return m_angle; }
-    /// @brief Get the street's number of lanes
-    /// @return int The street's number of lanes
-    int nLanes() const { return m_nLanes; }
-    /// @brief Get the street's name
-    /// @return std::string_view The street's name
-    std::string_view name() const { return m_name; }
+    int nMovingAgents() const override { return m_movingAgents.size(); }
     /// @brief Get the number of agents on all queues
     /// @return Size The number of agents on all queues
-    Size nExitingAgents() const;
-    /// @brief Get the delta angle between the street and the previous street, normalized between -pi and pi
-    /// @param previousStreetAngle The angle of the previous street
-    /// @return double The delta angle between the street and the previous street
-    double deltaAngle(double const previousStreetAngle) const;
+    int nExitingAgents() const final;
 
     inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
 
-    virtual void addAgent(Id agentId);
+    void addAgent(Id agentId) override;
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
@@ -146,16 +109,42 @@ namespace dsm {
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     virtual bool isSpire() const { return false; };
+    virtual bool isStochastic() const { return false; };
+  };
+
+  /// @brief A stochastic street is a street with a flow rate parameter
+  /// @details The Stochastic Street is used to replace traffic lights with a lower level of detail.
+  ///          The idea is to model the flow of agents in a street as a stochastic process, limiting
+  ///          the number of agents that can exit using a parameter in [0, 1].
+  ///          Thus, the flow rate parameter represents the ratio between the green time of the
+  ///          traffic light and the total time of the traffic light cycle.
+  class StochasticStreet : public Street {
+  private:
+    double m_flowRate;
+
+  public:
+    StochasticStreet(Id id, const Street& street, double flowRate);
+    StochasticStreet(Id id,
+                     std::pair<Id, Id> nodePair,
+                     double length = Road::meanVehicleLength(),
+                     double maxSpeed = 13.8888888889,
+                     int nLanes = 1,
+                     std::string name = std::string(),
+                     double flowRate = 1.,
+                     std::optional<int> capacity = std::nullopt,
+                     int transportCapacity = 1);
+
+    void setFlowRate(double const flowRate);
+    double flowRate() const;
+
+    bool isStochastic() const final;
   };
 
   /// @brief The SpireStreet class represents a street which is able to count agent flows in both input and output.
   /// @tparam Id The type of the street's id
   /// @tparam Size The type of the street's capacity
-  class SpireStreet : public Street {
+  class SpireStreet : public Street, public Counter {
   private:
-    Size m_agentCounterIn = 0;
-    Size m_agentCounterOut = 0;
-
   public:
     using Street::Street;
     ~SpireStreet() = default;
@@ -163,16 +152,8 @@ namespace dsm {
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
-    void addAgent(Id agentId) override;
+    void addAgent(Id agentId) final;
 
-    /// @brief Get the input counts of the street
-    /// @param resetValue If true, the counter is reset to 0 together with the output counter.
-    /// @return Size The input counts of the street
-    Size inputCounts(bool resetValue = false);
-    /// @brief Get the output counts of the street
-    /// @param resetValue If true, the counter is reset to 0 together with the input counter.
-    /// @return Size The output counts of the street
-    Size outputCounts(bool resetValue = false);
     /// @brief Get the mean flow of the street
     /// @return int The flow of the street, i.e. the difference between input and output flows
     /// @details Once the flow is retrieved, bothh the input and output flows are reset to 0.
@@ -180,7 +161,28 @@ namespace dsm {
     int meanFlow();
     /// @brief Remove an agent from the street's queue
     /// @return std::optional<Id> The id of the agent removed from the street's queue
-    std::optional<Id> dequeue(size_t index) override;
+    std::optional<Id> dequeue(size_t index) final;
+    /// @brief Check if the street is a spire
+    /// @return bool True if the street is a spire, false otherwise
+    bool isSpire() const final { return true; };
+  };
+
+  class StochasticSpireStreet : public StochasticStreet, public Counter {
+  public:
+    using StochasticStreet::StochasticStreet;
+    /// @brief Add an agent to the street's queue
+    /// @param agentId The id of the agent to add to the street's queue
+    /// @throw std::runtime_error If the street's queue is full
+    void addAgent(Id agentId) final;
+
+    /// @brief Get the mean flow of the street
+    /// @return int The flow of the street, i.e. the difference between input and output flows
+    /// @details Once the flow is retrieved, bothh the input and output flows are reset to 0.
+    ///     Notice that this flow is positive iff the input flow is greater than the output flow.
+    int meanFlow();
+    /// @brief Remove an agent from the street's queue
+    /// @return std::optional<Id> The id of the agent removed from the street's queue
+    std::optional<Id> dequeue(size_t index) final;
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     bool isSpire() const final { return true; };

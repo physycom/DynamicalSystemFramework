@@ -1,16 +1,19 @@
 
 #include "Street.hpp"
 
-namespace dsm {
-  double Street::m_meanVehicleLength = 5.;
+#include <algorithm>
+#include <cassert>
 
+namespace dsm {
   Street::Street(Id id, const Street& street)
-      : Edge(id, street.nodePair(), street.capacity(), street.transportCapacity()),
-        m_length{street.length()},
-        m_maxSpeed{street.maxSpeed()},
-        m_nLanes{street.nLanes()},
-        m_name{street.name()},
-        m_angle{street.angle()} {
+      : Road(id,
+             street.nodePair(),
+             street.length(),
+             street.maxSpeed(),
+             street.nLanes(),
+             street.name(),
+             street.capacity(),
+             street.transportCapacity()) {
     for (auto i{0}; i < street.nLanes(); ++i) {
       m_exitQueues.push_back(dsm::queue<Size>());
     }
@@ -25,27 +28,14 @@ namespace dsm {
                  std::string name,
                  std::optional<int> capacity,
                  int transportCapacity)
-      : Edge(id,
+      : Road(id,
              std::move(nodePair),
-             capacity.value_or(std::ceil((length * nLanes) / m_meanVehicleLength)),
-             transportCapacity),
-        m_length{length},
-        m_maxSpeed{maxSpeed},
-        m_nLanes{nLanes},
-        m_name{std::move(name)},
-        m_angle{0.} {
-    if (!(length > 0.)) {
-      throw std::invalid_argument(buildLog(
-          std::format("The length of a street ({}) must be greater than 0.", length)));
-    }
-    if (!(maxSpeed > 0.)) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The maximum speed of a street ({}) must be greater than 0.", maxSpeed)));
-    }
-    if (nLanes < 1) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The number of lanes of a street ({}) must be greater than 0.", nLanes)));
-    }
+             length,
+             maxSpeed,
+             nLanes,
+             std::move(name),
+             capacity,
+             transportCapacity) {
     m_exitQueues.resize(nLanes);
     for (auto i{0}; i < nLanes; ++i) {
       m_exitQueues.push_back(dsm::queue<Size>());
@@ -73,57 +63,32 @@ namespace dsm {
     }
   }
 
-  void Street::setMaxSpeed(double speed) {
-    if (speed < 0.) {
-      throw std::invalid_argument(buildLog(
-          std::format("The maximum speed of a street ({}) cannot be negative.", speed)));
-    }
-    m_maxSpeed = speed;
-  }
-  void Street::setAngle(std::pair<double, double> srcNode,
-                        std::pair<double, double> dstNode) {
-    // N.B.: lat, lon <==> y, x
-    double delta_y{dstNode.first - srcNode.first};
-    double delta_x{dstNode.second - srcNode.second};
-    double angle{std::atan2(delta_y, delta_x)};
-    if (angle < 0.) {
-      angle += 2 * std::numbers::pi;
-    }
-    this->setAngle(angle);
-  }
-  void Street::setAngle(double angle) {
-    if (std::abs(angle) > 2 * std::numbers::pi) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The angle of a street ({}) must be between - 2 * pi and 2 * pi.", angle)));
-    }
-    m_angle = angle;
-  }
-  void Street::setMeanVehicleLength(double meanVehicleLength) {
-    if (!(meanVehicleLength > 0.)) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The mean vehicle length ({}) must be greater than 0.", meanVehicleLength)));
-    }
-    m_meanVehicleLength = meanVehicleLength;
-  }
+  std::vector<Id> const& Street::movingAgents() const { return m_movingAgents; }
 
   void Street::addAgent(Id agentId) {
-    assert((void("Agent is already on the street."), !m_waitingAgents.contains(agentId)));
+    assert((void("Agent is already on the street."),
+            std::find(m_movingAgents.cbegin(), m_movingAgents.cend(), agentId) ==
+                m_movingAgents.cend()));
     for (auto const& queue : m_exitQueues) {
       for (auto const& id : queue) {
         assert((void("Agent is already in queue."), id != agentId));
       }
     }
-    m_waitingAgents.insert(agentId);
+    m_movingAgents.push_back(agentId);
     ;
   }
   void Street::enqueue(Id agentId, size_t index) {
-    assert((void("Agent is not on the street."), m_waitingAgents.contains(agentId)));
+    assert((void("Agent is not on the street."),
+            std::find(m_movingAgents.cbegin(), m_movingAgents.cend(), agentId) !=
+                m_movingAgents.cend()));
     for (auto const& queue : m_exitQueues) {
       for (auto const& id : queue) {
         assert((void("Agent is already in queue."), id != agentId));
       }
     }
-    m_waitingAgents.erase(agentId);
+    m_movingAgents.erase(
+        std::remove(m_movingAgents.begin(), m_movingAgents.end(), agentId),
+        m_movingAgents.end());
     m_exitQueues[index].push(agentId);
   }
   std::optional<Id> Street::dequeue(size_t index) {
@@ -136,7 +101,7 @@ namespace dsm {
   }
 
   int Street::nAgents() const {
-    auto nAgents{static_cast<int>(m_waitingAgents.size())};
+    auto nAgents{static_cast<int>(m_movingAgents.size())};
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }
@@ -148,58 +113,73 @@ namespace dsm {
                       : nAgents() / (m_length * m_nLanes);
   }
 
-  Size Street::nExitingAgents() const {
-    Size nAgents{0};
+  int Street::nExitingAgents() const {
+    int nAgents{0};
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }
     return nAgents;
   }
 
-  double Street::deltaAngle(double const previousStreetAngle) const {
-    double deltaAngle{m_angle - previousStreetAngle};
-    if (deltaAngle > std::numbers::pi) {
-      deltaAngle -= 2 * std::numbers::pi;
-    } else if (deltaAngle < -std::numbers::pi) {
-      deltaAngle += 2 * std::numbers::pi;
-    }
-    return deltaAngle;
+  StochasticStreet::StochasticStreet(Id id, const Street& street, double flowRate)
+      : Street(id, street) {
+    setFlowRate(flowRate);
   }
+  StochasticStreet::StochasticStreet(Id id,
+                                     std::pair<Id, Id> nodePair,
+                                     double length,
+                                     double maxSpeed,
+                                     int nLanes,
+                                     std::string name,
+                                     double flowRate,
+                                     std::optional<int> capacity,
+                                     int transportCapacity)
+      : Street(id,
+               std::move(nodePair),
+               length,
+               maxSpeed,
+               nLanes,
+               std::move(name),
+               capacity,
+               transportCapacity) {
+    setFlowRate(flowRate);
+  }
+  void StochasticStreet::setFlowRate(double const flowRate) {
+    if (flowRate < 0. || flowRate > 1.) {
+      throw std::invalid_argument(
+          buildLog(std::format("Flow rate ({}) must be between 0 and 1", flowRate)));
+    }
+    m_flowRate = flowRate;
+  }
+  double StochasticStreet::flowRate() const { return m_flowRate; }
+  bool StochasticStreet::isStochastic() const { return true; }
 
   void SpireStreet::addAgent(Id agentId) {
     Street::addAgent(agentId);
-    ++m_agentCounterIn;
+    increaseInputCounter();
   }
 
-  Size SpireStreet::inputCounts(bool resetValue) {
-    if (!resetValue)
-      return m_agentCounterIn;
-    Size flow = m_agentCounterIn;
-    m_agentCounterIn = 0;
-    m_agentCounterOut = 0;
-    return flow;
-  }
-  Size SpireStreet::outputCounts(bool resetValue) {
-    if (!resetValue)
-      return m_agentCounterOut;
-    Size flow = m_agentCounterOut;
-    m_agentCounterIn = 0;
-    m_agentCounterOut = 0;
-    return flow;
-  }
-  int SpireStreet::meanFlow() {
-    int flow = static_cast<int>(m_agentCounterIn) - static_cast<int>(m_agentCounterOut);
-    m_agentCounterIn = 0;
-    m_agentCounterOut = 0;
-    return flow;
-  }
+  int SpireStreet::meanFlow() { return inputCounts() - outputCounts(); }
 
   std::optional<Id> SpireStreet::dequeue(size_t index) {
-    std::optional<Id> id = Street::dequeue(index);
+    auto const& id = Street::dequeue(index);
     if (id.has_value()) {
-      ++m_agentCounterOut;
+      increaseOutputCounter();
     }
     return id;
   }
+  void StochasticSpireStreet::addAgent(Id agentId) {
+    Street::addAgent(agentId);
+    increaseInputCounter();
+  }
 
+  int StochasticSpireStreet::meanFlow() { return inputCounts() - outputCounts(); }
+
+  std::optional<Id> StochasticSpireStreet::dequeue(size_t index) {
+    auto const& id = Street::dequeue(index);
+    if (id.has_value()) {
+      increaseOutputCounter();
+    }
+    return id;
+  }
 };  // namespace dsm

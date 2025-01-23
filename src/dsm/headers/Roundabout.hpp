@@ -30,7 +30,7 @@ namespace dsm {
     /// @param node An Intersection object
     Roundabout(const Node& node);
 
-    virtual ~Roundabout() = default;
+    ~Roundabout() = default;
 
     /// @brief Put an agent in the node
     /// @param agentId The agent's id

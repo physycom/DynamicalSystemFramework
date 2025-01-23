@@ -49,7 +49,7 @@ int main() {
   Graph graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
-  Street::setMeanVehicleLength(8.);
+  dsm::Road::setMeanVehicleLength(8.);
   Street s01{1, std::make_pair(0, 1), 2281.};
   Street s12{7, std::make_pair(1, 2), 118.};
   Street s23{13, std::make_pair(2, 3), 222.};
@@ -74,7 +74,8 @@ int main() {
   graph.addStreets(s01, s12, s23, s34);
   graph.buildAdj();
   graph.adjustNodeCapacities();
-  auto& spire = graph.makeSpireStreet(19);
+  graph.makeSpireStreet(19);
+  auto& spire = dynamic_cast<SpireStreet&>(*graph.streetSet().at(19));
 
   std::cout << "Intersections: " << graph.nNodes() << '\n';
   std::cout << "Streets: " << graph.nEdges() << '\n';
