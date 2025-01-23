@@ -178,14 +178,11 @@ int main(int argc, char** argv) {
     const auto& col = adj.getCol(nodeId, true);
     std::set<Unit> streets;
     const auto id = col.begin();
-    const auto& refLat = graph.nodeSet()
-                             .at(graph.street(id->first)->nodePair().second)
-                             ->coords()
-                             .value()
-                             .first;
+    const auto& refLat =
+        graph.node(graph.street(id->first)->nodePair().second)->coords().value().first;
     for (const auto& [c, value] : col) {
       const auto& lat =
-          graph.nodeSet().at(graph.street(c)->nodePair().first)->coords().value().first;
+          graph.node(graph.street(c)->nodePair().first)->coords().value().first;
       // std::cout << "Lat: " << lat << " RefLat: " << refLat << '\n';
       if (lat == refLat) {
         streets.emplace(c);
