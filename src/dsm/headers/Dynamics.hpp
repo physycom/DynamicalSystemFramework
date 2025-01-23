@@ -113,8 +113,12 @@ namespace dsm {
             }
           } else if ((nextNodeId != destinationID)) {
             std::cerr << std::format(
-                             "\033[38;2;130;30;180mWARNING: No path found from node {} "
+                             "\033[38;2;130;30;180mWARNING ({}:{}): No "
+                             "path found "
+                             "from node {} "
                              "to node {}\033[0m",
+                             __FILE__,
+                             __LINE__,
                              nextNodeId,
                              destinationID)
                       << std::endl;

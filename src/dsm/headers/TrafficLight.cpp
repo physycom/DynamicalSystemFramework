@@ -32,20 +32,20 @@ namespace dsm {
     }
     switch (direction) {
       case Direction::RIGHTANDSTRAIGHT:
-        m_cycles[streetId][Direction::RIGHT] = cycle;
-        m_cycles[streetId][Direction::STRAIGHT] = cycle;
+        m_cycles.at(streetId)[Direction::RIGHT] = cycle;
+        m_cycles.at(streetId)[Direction::STRAIGHT] = cycle;
         break;
       case Direction::LEFTANDSTRAIGHT:
-        m_cycles[streetId][Direction::LEFT] = cycle;
-        m_cycles[streetId][Direction::STRAIGHT] = cycle;
+        m_cycles.at(streetId)[Direction::LEFT] = cycle;
+        m_cycles.at(streetId)[Direction::STRAIGHT] = cycle;
         break;
       case Direction::ANY:
-        m_cycles[streetId][Direction::RIGHT] = cycle;
-        m_cycles[streetId][Direction::STRAIGHT] = cycle;
-        m_cycles[streetId][Direction::LEFT] = cycle;
+        m_cycles.at(streetId)[Direction::RIGHT] = cycle;
+        m_cycles.at(streetId)[Direction::STRAIGHT] = cycle;
+        m_cycles.at(streetId)[Direction::LEFT] = cycle;
         break;
       default:
-        m_cycles[streetId][direction] = cycle;
+        m_cycles.at(streetId)[direction] = cycle;
         break;
     }
   }
