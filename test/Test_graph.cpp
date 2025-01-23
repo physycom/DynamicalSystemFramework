@@ -271,9 +271,7 @@ TEST_CASE("Graph") {
       graph.buildAdj();
       WHEN("We make node 0 a traffic light") {
         auto& tl = graph.makeTrafficLight(0, 60);
-        THEN("The node 0 is a traffic light") {
-          CHECK(graph.nodeSet().at(0)->isTrafficLight());
-        }
+        THEN("The node 0 is a traffic light") { CHECK(graph.node(0)->isTrafficLight()); }
         THEN("The traffic light has the correct parameters") {
           CHECK_EQ(tl.id(), 0);
           CHECK_EQ(tl.cycleTime(), 60);
@@ -288,9 +286,7 @@ TEST_CASE("Graph") {
       graph.buildAdj();
       WHEN("We make node 0 a roundabout") {
         graph.makeRoundabout(0);
-        THEN("The node 0 is a roundabout") {
-          CHECK(graph.nodeSet().at(0)->isRoundabout());
-        }
+        THEN("The node 0 is a roundabout") { CHECK(graph.node(0)->isRoundabout()); }
       }
     }
   }
@@ -301,9 +297,7 @@ TEST_CASE("Graph") {
       graph.buildAdj();
       WHEN("We make the street a spire street") {
         graph.makeSpireStreet(1);
-        THEN("The street is a spire street") {
-          CHECK(graph.streetSet().at(1)->isSpire());
-        }
+        THEN("The street is a spire street") { CHECK(graph.street(1)->isSpire()); }
       }
     }
   }

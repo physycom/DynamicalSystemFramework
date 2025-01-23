@@ -75,7 +75,7 @@ TEST_CASE("Dynamics") {
         auto& tl = graph.makeTrafficLight(0, 2);
         Dynamics dynamics{graph, 69};
         THEN("The node is a traffic light") {
-          CHECK(dynamics.graph().nodeSet().at(0)->isTrafficLight());
+          CHECK(dynamics.graph().node(0)->isTrafficLight());
           CHECK_EQ(tl.cycleTime(), 2);
         }
       }
@@ -83,15 +83,13 @@ TEST_CASE("Dynamics") {
         graph.makeRoundabout(0);
         Dynamics dynamics{graph, 69};
         THEN("The node is a roundabout") {
-          CHECK(dynamics.graph().nodeSet().at(0)->isRoundabout());
+          CHECK(dynamics.graph().node(0)->isRoundabout());
         }
       }
       WHEN("We transorm a street into a spire and create the dynamcis") {
         graph.makeSpireStreet(8);
         Dynamics dynamics{graph, 69};
-        THEN("The street is a spire") {
-          CHECK(dynamics.graph().streetSet().at(8)->isSpire());
-        }
+        THEN("The street is a spire") { CHECK(dynamics.graph().street(8)->isSpire()); }
       }
     }
   }
@@ -910,8 +908,8 @@ TEST_CASE("Dynamics") {
     for (const auto& [agentId, agent] : dynamics.agents()) {
       meanSpeed += agent->speed();
     }
-    meanSpeed /= (dynamics.graph().streetSet().at(1)->nExitingAgents() +
-                  dynamics.graph().streetSet().at(1)->movingAgents().size());
+    auto const& pStreet{dynamics.graph().street(1)};
+    meanSpeed /= (pStreet->nExitingAgents() + pStreet->movingAgents().size());
     CHECK_EQ(dynamics.streetMeanSpeed(1), meanSpeed);
     // I don't think the mean speed of agents should be equal to the street's
     // one... CHECK_EQ(dynamics.streetMeanSpeed().mean,
@@ -930,8 +928,8 @@ TEST_CASE("Dynamics") {
         meanSpeed += agent->speed();
       }
     }
-    meanSpeed /= dynamics.graph().streetSet().at(1)->queue(0).size();
-    CHECK_EQ(dynamics.graph().streetSet().at(1)->queue(0).size(), 3);
+    meanSpeed /= pStreet->queue(0).size();
+    CHECK_EQ(pStreet->queue(0).size(), 3);
     CHECK_EQ(dynamics.streetMeanSpeed(1), meanSpeed);
   }
   SUBCASE("Intersection priorities") {
@@ -952,7 +950,7 @@ TEST_CASE("Dynamics") {
       graph2.addEdge<Street>(7, std::make_pair(4, 0), 10., 10.);
       graph2.buildAdj();
       Dynamics dynamics{graph2, 69};
-      dynamics.graph().nodeSet().at(0)->setCapacity(3);
+      dynamics.graph().node(0)->setCapacity(3);
       Itinerary itinerary{0, 2};
       Itinerary itinerary2{1, 1};
       dynamics.addItinerary(itinerary);

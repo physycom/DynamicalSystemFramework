@@ -229,6 +229,9 @@ namespace dsm {
     /// @brief Get the graph's node map
     /// @return A std::unordered_map containing the graph's nodes
     std::unordered_map<Id, std::unique_ptr<Node>>& nodeSet() { return m_nodes; }
+    /// @brief Get a node from the graph
+    /// @param id The node's id
+    const std::unique_ptr<Node>& node(Id id) const { return m_nodes.at(id); }
     /// @brief Get the Graph's number of streets
     /// @return size_t The number of streets in the graph
     size_t nEdges() const { return m_streets.size(); }
@@ -240,6 +243,9 @@ namespace dsm {
     /// @brief Get the graph's street map
     /// @return A std::unordered_map containing the graph's streets
     std::unordered_map<Id, std::unique_ptr<Street>>& streetSet() { return m_streets; }
+    /// @brief Get a street from the graph
+    /// @param id The street's id
+    const std::unique_ptr<Street>& street(Id id) const { return m_streets.at(id); }
     /// @brief Get a street from the graph
     /// @param source The source node
     /// @param destination The destination node

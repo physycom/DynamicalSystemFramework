@@ -179,13 +179,13 @@ int main(int argc, char** argv) {
     std::set<Unit> streets;
     const auto id = col.begin();
     const auto& refLat = graph.nodeSet()
-                             .at(graph.streetSet().at(id->first)->nodePair().second)
+                             .at(graph.street(id->first)->nodePair().second)
                              ->coords()
                              .value()
                              .first;
     for (const auto& [c, value] : col) {
       const auto& lat = graph.nodeSet()
-                            .at(graph.streetSet().at(c)->nodePair().first)
+                            .at(graph.street(c)->nodePair().first)
                             ->coords()
                             .value()
                             .first;
