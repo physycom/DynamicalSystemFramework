@@ -47,7 +47,7 @@ namespace dsm {
   }
 
   double FirstOrderDynamics::streetMeanSpeed(Id streetId) const {
-    const auto& street{this->m_graph.streetSet().at(streetId)};
+    const auto& street{this->m_graph.street(streetId)};
     if (street->nAgents() == 0) {
       return street->maxSpeed();
     }
@@ -69,7 +69,7 @@ namespace dsm {
         }
       }
     }
-    const auto& node = this->m_graph.nodeSet().at(street->nodePair().second);
+    const auto& node = this->m_graph.node(street->nodePair().second);
     if (node->isIntersection()) {
       auto& intersection = dynamic_cast<Intersection&>(*node);
       for (const auto& [angle, agentId] : intersection.agents()) {

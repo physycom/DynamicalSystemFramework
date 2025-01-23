@@ -75,7 +75,7 @@ int main() {
   graph.buildAdj();
   graph.adjustNodeCapacities();
   graph.makeSpireStreet(19);
-  auto& spire = dynamic_cast<SpireStreet&>(*graph.streetSet().at(19));
+  auto& spire = dynamic_cast<SpireStreet&>(*graph.street(19));
 
   std::cout << "Intersections: " << graph.nNodes() << '\n';
   std::cout << "Streets: " << graph.nEdges() << '\n';
