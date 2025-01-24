@@ -7,7 +7,7 @@
 namespace dsm {
   void Intersection::setCapacity(Size capacity) {
     if (capacity < m_agents.size()) {
-      throw std::runtime_error(logger.buildExceptionMessage(std::format(
+      throw std::runtime_error(Logger::buildExceptionMessage(std::format(
           "Intersection capacity ({}) is smaller than the current queue size ({}).",
           capacity,
           m_agents.size())));
@@ -17,11 +17,11 @@ namespace dsm {
 
   void Intersection::addAgent(double angle, Id agentId) {
     if (isFull()) {
-      throw std::runtime_error(logger.buildExceptionMessage("Intersection is full."));
+      throw std::runtime_error(Logger::buildExceptionMessage("Intersection is full."));
     }
     for (auto const [angle, id] : m_agents) {
       if (id == agentId) {
-        throw std::runtime_error(logger.buildExceptionMessage(
+        throw std::runtime_error(Logger::buildExceptionMessage(
             std::format("Agent with id {} is already on the node.", agentId)));
       }
     }

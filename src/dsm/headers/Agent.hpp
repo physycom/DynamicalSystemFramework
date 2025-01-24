@@ -159,7 +159,7 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void Agent<delay_t>::setSpeed(double speed) {
     if (speed < 0) {
-      logger.error(std::format("Speed ({}) of agent {} must be positive", speed, m_id));
+      Logger::error(std::format("Speed ({}) of agent {} must be positive", speed, m_id));
     }
     m_speed = speed;
   }
@@ -185,7 +185,7 @@ namespace dsm {
   void Agent<delay_t>::incrementDelay() {
     if (m_delay == std::numeric_limits<delay_t>::max()) {
       throw std::overflow_error(
-          logger.buildExceptionMessage("delay_t has reached its maximum value"));
+          Logger::buildExceptionMessage("delay_t has reached its maximum value"));
     }
     ++m_delay;
   }
@@ -194,7 +194,7 @@ namespace dsm {
   void Agent<delay_t>::incrementDelay(delay_t const delay) {
     if (m_delay + delay < m_delay) {
       throw std::overflow_error(
-          logger.buildExceptionMessage("delay_t has reached its maximum value"));
+          Logger::buildExceptionMessage("delay_t has reached its maximum value"));
     }
     m_delay += delay;
   }
@@ -203,7 +203,7 @@ namespace dsm {
   void Agent<delay_t>::decrementDelay() {
     if (m_delay == 0) {
       throw std::underflow_error(
-          logger.buildExceptionMessage("delay_t has reached its minimum value"));
+          Logger::buildExceptionMessage("delay_t has reached its minimum value"));
     }
     --m_delay;
   }
@@ -212,7 +212,7 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void Agent<delay_t>::incrementDistance(double distance) {
     if (distance < 0) {
-      logger.error(std::format(
+      Logger::error(std::format(
           "Distance travelled ({}) by agent {} must be positive", distance, m_id));
     }
     m_distance += distance;
@@ -223,7 +223,7 @@ namespace dsm {
   void Agent<delay_t>::incrementTime() {
     if (m_time == std::numeric_limits<unsigned int>::max()) {
       throw std::overflow_error(
-          logger.buildExceptionMessage("Time has reached its maximum value"));
+          Logger::buildExceptionMessage("Time has reached its maximum value"));
     }
     ++m_time;
   }
@@ -232,7 +232,7 @@ namespace dsm {
   void Agent<delay_t>::incrementTime(unsigned int const time) {
     if (m_time + time < m_time) {
       throw std::overflow_error(
-          logger.buildExceptionMessage("Time has reached its maximum value"));
+          Logger::buildExceptionMessage("Time has reached its maximum value"));
     }
     m_time += time;
   }

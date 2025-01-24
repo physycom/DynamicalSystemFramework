@@ -112,13 +112,13 @@ namespace dsm {
               path.insert(nodeId, nextNodeId, true);
             }
           } else if ((nextNodeId != destinationID)) {
-            logger.warning(std::format(
+            Logger::warning(std::format(
                 "No path found from node {} to node {}", nextNodeId, destinationID));
           }
         }
       }
       if (path.size() == 0) {
-        logger.error(
+        Logger::error(
             std::format("Path with id {} and destination {} is empty. Please "
                         "check the adjacency matrix.",
                         pItinerary->id(),
@@ -314,7 +314,7 @@ namespace dsm {
                                               bool updatePaths) {
     for (const auto& nodeId : destinationNodes) {
       if (!m_graph.nodeSet().contains(nodeId)) {
-        logger.error(std::format("Node with id {} not found", nodeId));
+        Logger::error(std::format("Node with id {} not found", nodeId));
       }
       this->addItinerary(Itinerary{nodeId, nodeId});
     }
@@ -326,12 +326,12 @@ namespace dsm {
   template <typename agent_t>
   void Dynamics<agent_t>::addAgent(std::unique_ptr<agent_t> agent) {
     if (m_agents.size() + 1 > m_graph.maxCapacity()) {
-      throw std::overflow_error(logger.buildExceptionMessage(
+      throw std::overflow_error(Logger::buildExceptionMessage(
           std::format("Graph is already holding the max possible number of agents ({})",
                       m_graph.maxCapacity())));
     }
     if (m_agents.contains(agent->id())) {
-      throw std::invalid_argument(logger.buildExceptionMessage(
+      throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Agent with id {} already exists.", agent->id())));
     }
     m_agents.emplace(agent->id(), std::move(agent));
@@ -566,7 +566,7 @@ namespace dsm {
     }
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
-      logger.error(std::format("Error opening file \"{}\" for writing.", filename));
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
     }
     if (bEmptyFile) {
       file << "time";
@@ -592,7 +592,7 @@ namespace dsm {
     }
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
-      logger.error(std::format("Error opening file \"{}\" for writing.", filename));
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
     }
     if (bEmptyFile) {
       file << "time";
@@ -623,7 +623,7 @@ namespace dsm {
     }
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
-      logger.error(std::format("Error opening file \"{}\" for writing.", filename));
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
     }
     if (bEmptyFile) {
       file << "time";

@@ -1,58 +1,44 @@
 
 #pragma once
 
-#include <cstdlib>
-#include <format>
-#include <iostream>
 #include <source_location>
 #include <string>
 
-static std::string buildMessage(const std::string& type,
-                                const std::string& message,
-                                const std::source_location& location) {
-  return std::format("{}({}:{}) \'{}\': {}",
-                     type,
-                     location.file_name(),
-                     location.line(),
-                     location.function_name(),
-                     message);
-}
-
 namespace dsm {
 
-  /// @brief The Logger class is a simple logging class.
-  struct Logger {
-    inline std::string buildExceptionMessage(
+  /// @brief The Logger class is a simple logging class which provides static methods to log messages on std::clog and std::cerr.
+  class Logger {
+  public:
+    /// @brief Build an exception message
+    /// @param message The message
+    /// @param location The location of the exception. Default is the current location
+    /// @return std::string The exception message
+    static std::string buildExceptionMessage(
         const std::string& message,
-        const std::source_location& location = std::source_location::current()) {
-      return buildMessage(std::string(), message, location);
-    };
-    inline void info(
+        const std::source_location& location = std::source_location::current());
+    /// @brief Log a debug message on std::clog, if NDEBUG is not defined
+    /// @param message The message
+    /// @param location The location of the message. Default is the current location
+    static void debug(
         const std::string& message,
-        const std::source_location& location = std::source_location::current()) {
-      std::clog << buildMessage("\033[1;32mINFO ", message, location) + "\033[1;0m\n";
-    };
-    inline void debug(
+        const std::source_location& location = std::source_location::current());
+    /// @brief Log an info message on std::clog
+    /// @param message The message
+    /// @param location The location of the message. Default is the current location
+    static void info(
         const std::string& message,
-        const std::source_location& location = std::source_location::current()) {
-#ifndef NDEBUG
-      std::clog << buildMessage("\033[38;2;0;255;0mDEBUG ", message, location) +
-                       "\033[0m\n";
-#endif
-    };
-    inline void warning(
+        const std::source_location& location = std::source_location::current());
+    /// @brief Log a warning message on std::clog
+    /// @param message The message
+    /// @param location The location of the message. Default is the current location
+    static void warning(
         const std::string& message,
-        const std::source_location& location = std::source_location::current()) {
-      std::clog << buildMessage("\033[38;2;130;30;180mWARNING ", message, location) +
-                       "\033[1;0m\n";
-    };
-    inline void error(
+        const std::source_location& location = std::source_location::current());
+    /// @brief Log an error message on std::cerr and abort the program
+    /// @param message The message
+    /// @param location The location of the message. Default is the current location
+    static void error(
         const std::string& message,
-        const std::source_location& location = std::source_location::current()) {
-      std::cerr << buildMessage("\033[1;31mERROR ", message, location) + "\033[1;0m\n";
-      std::abort();
-    }
+        const std::source_location& location = std::source_location::current());
   };
-
-  static Logger logger;
 }  // namespace dsm

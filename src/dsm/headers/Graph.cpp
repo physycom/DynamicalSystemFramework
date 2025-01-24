@@ -49,7 +49,7 @@ namespace dsm {
       const auto dstId{street->v()};
       const auto newStreetId{static_cast<Id>(srcId * n + dstId)};
       if (m_streets.contains(newStreetId)) {
-        throw std::invalid_argument(logger.buildExceptionMessage(
+        throw std::invalid_argument(Logger::buildExceptionMessage(
             std::format("Street with same id ({}) from {} to {} already exists.",
                         newStreetId,
                         srcId,
@@ -157,13 +157,13 @@ namespace dsm {
       std::ifstream file{fileName};
       if (!file.is_open()) {
         throw std::invalid_argument(
-            logger.buildExceptionMessage("Cannot find file: " + fileName));
+            Logger::buildExceptionMessage("Cannot find file: " + fileName));
       }
       Size rows, cols;
       file >> rows >> cols;
       if (rows != cols) {
         throw std::invalid_argument(
-            logger.buildExceptionMessage("Adjacency matrix must be square"));
+            Logger::buildExceptionMessage("Adjacency matrix must be square"));
       }
       Size n{rows};
       m_adjacency = SparseMatrix<bool>(n, n);
@@ -195,18 +195,18 @@ namespace dsm {
       std::ifstream file{fileName};
       if (!file.is_open()) {
         throw std::invalid_argument(
-            logger.buildExceptionMessage("Cannot find file: " + fileName));
+            Logger::buildExceptionMessage("Cannot find file: " + fileName));
       }
       Size rows, cols;
       file >> rows >> cols;
       if (rows != cols) {
-        throw std::invalid_argument(logger.buildExceptionMessage(
+        throw std::invalid_argument(Logger::buildExceptionMessage(
             "Adjacency matrix must be square. Rows: " + std::to_string(rows) +
             " Cols: " + std::to_string(cols)));
       }
       Size n{rows};
       if (n * n > std::numeric_limits<Id>::max()) {
-        throw std::invalid_argument(logger.buildExceptionMessage(
+        throw std::invalid_argument(Logger::buildExceptionMessage(
             "Matrix size is too large for the current type of Id."));
       }
       m_adjacency = SparseMatrix<bool>(n, n);
@@ -215,8 +215,8 @@ namespace dsm {
         double value;
         file >> value;
         if (value < 0) {
-          throw std::invalid_argument(
-              logger.buildExceptionMessage("Adjacency matrix elements must be positive"));
+          throw std::invalid_argument(Logger::buildExceptionMessage(
+              "Adjacency matrix elements must be positive"));
         }
         if (value > 0) {
           m_adjacency.insert(index, true);
@@ -250,7 +250,7 @@ namespace dsm {
       Size n;
       file >> n;
       if (n < m_nodes.size()) {
-        throw std::invalid_argument(logger.buildExceptionMessage(
+        throw std::invalid_argument(Logger::buildExceptionMessage(
             "Number of node cordinates in file is too small."));
       }
       double lat, lon;
@@ -260,20 +260,21 @@ namespace dsm {
         if (it != m_nodes.cend()) {
           it->second->setCoords(std::make_pair(lat, lon));
         } else {
-          logger.warning(std::format("Node with id {} not found.", i));
+          Logger::warning(std::format("Node with id {} not found.", i));
         }
       }
     } else if (fileExt == "csv") {
       std::ifstream ifs{fileName};
       if (!ifs.is_open()) {
         throw std::invalid_argument(
-            logger.buildExceptionMessage("Cannot find file: " + fileName));
+            Logger::buildExceptionMessage("Cannot find file: " + fileName));
       }
       // Check if the first line is nodeId;lat;lon
       std::string line;
       std::getline(ifs, line);
       if (line != "nodeId;lat;lon") {
-        throw std::invalid_argument(logger.buildExceptionMessage("Invalid file format."));
+        throw std::invalid_argument(
+            Logger::buildExceptionMessage("Invalid file format."));
       }
       double dLat, dLon;
       while (!ifs.eof()) {
@@ -303,7 +304,7 @@ namespace dsm {
       }
     } else {
       throw std::invalid_argument(
-          logger.buildExceptionMessage("File extension not supported."));
+          Logger::buildExceptionMessage("File extension not supported."));
     }
   }
 
@@ -313,7 +314,7 @@ namespace dsm {
       std::ifstream file{fileName};
       if (!file.is_open()) {
         throw std::invalid_argument(
-            logger.buildExceptionMessage("Cannot find file: " + fileName));
+            Logger::buildExceptionMessage("Cannot find file: " + fileName));
       }
       std::string line;
       std::getline(file, line);  // skip first line
@@ -343,7 +344,7 @@ namespace dsm {
         ++nodeIndex;
       }
     } else {
-      logger.error(std::format("File extension ({}) not supported", fileExt));
+      Logger::error(std::format("File extension ({}) not supported", fileExt));
     }
   }
 
@@ -353,8 +354,8 @@ namespace dsm {
     if (fileExt == "csv") {
       std::ifstream file{fileName};
       if (!file.is_open()) {
-        throw std::invalid_argument(
-            logger.buildExceptionMessage(std::format("File \'{}\' not found", fileName)));
+        throw std::invalid_argument(Logger::buildExceptionMessage(
+            std::format("File \'{}\' not found", fileName)));
       }
       std::string line;
       std::getline(file, line);  // skip first line
@@ -394,16 +395,16 @@ namespace dsm {
           }
         }
         if (!m_nodeMapping.contains(sourceId)) {
-          logger.error(std::format("Node with id {} not found.", sourceId));
+          Logger::error(std::format("Node with id {} not found.", sourceId));
         }
         if (!m_nodeMapping.contains(targetId)) {
-          logger.error(std::format("Node with id {} not found.", targetId));
+          Logger::error(std::format("Node with id {} not found.", targetId));
         }
         auto const srcId{m_nodeMapping.at(sourceId)};
         auto const dstId{m_nodeMapping.at(targetId)};
         if (static_cast<unsigned long long>(srcId * nNodes + dstId) >
             std::numeric_limits<Id>::max()) {
-          throw std::invalid_argument(logger.buildExceptionMessage(
+          throw std::invalid_argument(Logger::buildExceptionMessage(
               std::format("Street id {}->{} would too large for the current type of Id.",
                           srcId,
                           dstId)));
@@ -418,7 +419,7 @@ namespace dsm {
       }
     } else {
       throw std::invalid_argument(
-          logger.buildExceptionMessage("File extension not supported"));
+          Logger::buildExceptionMessage("File extension not supported"));
     }
   }
 
@@ -426,7 +427,7 @@ namespace dsm {
     std::ofstream file{path};
     if (!file.is_open()) {
       throw std::invalid_argument(
-          logger.buildExceptionMessage("Cannot open file: " + path));
+          Logger::buildExceptionMessage("Cannot open file: " + path));
     }
     if (isAdj) {
       file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
@@ -500,7 +501,7 @@ namespace dsm {
 
   void Graph::addStreet(std::unique_ptr<Street> street) {
     if (m_streets.contains(street->id())) {
-      throw std::invalid_argument(logger.buildExceptionMessage(
+      throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} from {} to {} already exists.",
                       street->id(),
                       street->nodePair().first,
@@ -521,7 +522,7 @@ namespace dsm {
 
   void Graph::addStreet(const Street& street) {
     if (m_streets.contains(street.id())) {
-      throw std::invalid_argument(logger.buildExceptionMessage(
+      throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} from {} to {} already exists.",
                       street.id(),
                       street.nodePair().first,
@@ -564,7 +565,7 @@ namespace dsm {
 
   const std::unique_ptr<Street>* Graph::oppositeStreet(Id streetId) const {
     if (!m_streets.contains(streetId)) {
-      throw std::invalid_argument(logger.buildExceptionMessage(
+      throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} does not exist: maybe it has changed "
                       "id once called buildAdj.",
                       streetId)));

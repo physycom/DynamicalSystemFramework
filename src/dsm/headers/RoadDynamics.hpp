@@ -525,7 +525,7 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setErrorProbability(double errorProbability) {
     if (errorProbability < 0. || errorProbability > 1.) {
-      logger.error(
+      Logger::error(
           std::format("The error probability ({}) must be in [0, 1]", errorProbability));
     }
     m_errorProbability = errorProbability;
@@ -535,8 +535,8 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setPassageProbability(double passageProbability) {
     if (passageProbability < 0. || passageProbability > 1.) {
-      logger.error(std::format("The passage probability ({}) must be between 0 and 1",
-                               passageProbability));
+      Logger::error(std::format("The passage probability ({}) must be between 0 and 1",
+                                passageProbability));
     }
     m_passageProbability = passageProbability;
   }
@@ -547,7 +547,7 @@ namespace dsm {
                                                  std::optional<Id> optItineraryId) {
     if (this->itineraries().empty()) {
       // TODO: make this possible for random agents
-      throw std::invalid_argument(logger.buildExceptionMessage(
+      throw std::invalid_argument(Logger::buildExceptionMessage(
           "It is not possible to add random agents without itineraries."));
     }
     Id itineraryId{0};
@@ -600,7 +600,7 @@ namespace dsm {
                                                 const size_t minNodeDistance) {
     if (src_weights.size() == 1 && dst_weights.size() == 1 &&
         src_weights.begin()->first == dst_weights.begin()->first) {
-      throw std::invalid_argument(logger.buildExceptionMessage(
+      throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("The only source node {} is also the only destination node.",
                       src_weights.begin()->first)));
     }
@@ -610,7 +610,7 @@ namespace dsm {
         0.,
         [](double sum, const std::pair<Id, double>& p) {
           if (p.second < 0.) {
-            logger.error(std::format(
+            Logger::error(std::format(
                 "Negative weight ({}) for source node {}.", p.second, p.first));
           }
           return sum + p.second;
@@ -621,7 +621,7 @@ namespace dsm {
         0.,
         [](double sum, const std::pair<Id, double>& p) {
           if (p.second < 0.) {
-            logger.error(std::format(
+            Logger::error(std::format(
                 "Negative weight ({}) for destination node {}.", p.second, p.first));
           }
           return sum + p.second;
@@ -677,7 +677,7 @@ namespace dsm {
                                       return itinerary.second->destination() == dstId;
                                     })};
       if (itineraryIt == this->itineraries().cend()) {
-        logger.error(std::format("Itinerary with destination {} not found.", dstId));
+        Logger::error(std::format("Itinerary with destination {} not found.", dstId));
       }
       this->addAgent(agentId, itineraryIt->first, srcId);
       --nAgents;
@@ -722,7 +722,7 @@ namespace dsm {
   void RoadDynamics<delay_t>::optimizeTrafficLights(
       double const threshold, TrafficLightOptimization const optimizationType) {
     if (threshold < 0) {
-      logger.error(
+      Logger::error(
           std::format("The threshold parameter ({}) must be greater than 0.", threshold));
     }
     auto const nCycles{static_cast<double>(this->m_time - m_previousOptimizationTime) /
@@ -901,7 +901,7 @@ namespace dsm {
     }
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
-      logger.error(std::format("Error opening file \"{}\" for writing.", filename));
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
     }
     if (bEmptyFile) {
       file << "time;speeds" << std::endl;

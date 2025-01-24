@@ -146,7 +146,7 @@ namespace dsm {
   }
   void StochasticStreet::setFlowRate(double const flowRate) {
     if (flowRate < 0. || flowRate > 1.) {
-      logger.error(std::format("Flow rate ({}) must be in [0, 1]", flowRate));
+      Logger::error(std::format("Flow rate ({}) must be in [0, 1]", flowRate));
     }
     m_flowRate = flowRate;
   }

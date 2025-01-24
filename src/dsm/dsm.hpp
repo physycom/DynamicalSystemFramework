@@ -6,7 +6,7 @@
 
 static constexpr uint8_t DSM_VERSION_MAJOR = 2;
 static constexpr uint8_t DSM_VERSION_MINOR = 3;
-static constexpr uint8_t DSM_VERSION_PATCH = 9;
+static constexpr uint8_t DSM_VERSION_PATCH = 10;
 
 static auto const DSM_VERSION =
     std::format("{}.{}.{}", DSM_VERSION_MAJOR, DSM_VERSION_MINOR, DSM_VERSION_PATCH);

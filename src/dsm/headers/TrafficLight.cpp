@@ -17,14 +17,14 @@ namespace dsm {
                               Direction direction,
                               TrafficLightCycle const& cycle) {
     if ((cycle.greenTime() > m_cycleTime)) {
-      logger.error(std::format("Green time ({}) must not exceed the cycle time ({}).",
-                               cycle.greenTime(),
-                               m_cycleTime));
+      Logger::error(std::format("Green time ({}) must not exceed the cycle time ({}).",
+                                cycle.greenTime(),
+                                m_cycleTime));
     }
     if (!(cycle.phase() < m_cycleTime)) {
-      logger.error(std::format("Phase ({}) must be less than the cycle time ({}).",
-                               cycle.phase(),
-                               m_cycleTime));
+      Logger::error(std::format("Phase ({}) must be less than the cycle time ({}).",
+                                cycle.phase(),
+                                m_cycleTime));
     }
     if (direction == Direction::UTURN) {
       direction = Direction::LEFT;
@@ -62,10 +62,10 @@ namespace dsm {
   void TrafficLight::setComplementaryCycle(Id const streetId, Id const existingCycle) {
     if (m_cycles.contains(streetId)) {
       throw std::invalid_argument(
-          logger.buildExceptionMessage("Street id already exists."));
+          Logger::buildExceptionMessage("Street id already exists."));
     }
     if (!m_cycles.contains(existingCycle)) {
-      throw std::invalid_argument(logger.buildExceptionMessage("Cycle does not exist."));
+      throw std::invalid_argument(Logger::buildExceptionMessage("Cycle does not exist."));
     }
     m_cycles.emplace(streetId, m_cycles.at(existingCycle));
     for (auto& cycle : m_cycles.at(streetId)) {
@@ -77,7 +77,7 @@ namespace dsm {
   void TrafficLight::moveCycle(Id const oldStreetId, Id const newStreetId) {
     if (!m_cycles.contains(oldStreetId)) {
       throw std::invalid_argument(
-          logger.buildExceptionMessage("Old street id does not exist."));
+          Logger::buildExceptionMessage("Old street id does not exist."));
     }
     auto handler{m_cycles.extract(oldStreetId)};
     handler.key() = newStreetId;
@@ -180,7 +180,7 @@ namespace dsm {
 
   bool TrafficLight::isGreen(Id const streetId, Direction direction) const {
     if (!m_cycles.contains(streetId)) {
-      throw std::invalid_argument(logger.buildExceptionMessage(
+      throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street id {} is not valid for node {}.", streetId, id())));
     }
     switch (direction) {

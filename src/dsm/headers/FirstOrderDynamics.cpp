@@ -6,7 +6,7 @@ namespace dsm {
                                          double alpha)
       : RoadDynamics<Delay>(graph, seed), m_alpha{alpha}, m_speedFluctuationSTD{0.} {
     if (alpha < 0. || alpha > 1.) {
-      logger.error(std::format("The minimum speed rateo ({}) must be in [0, 1[", alpha));
+      Logger::error(std::format("The minimum speed rateo ({}) must be in [0, 1[", alpha));
     }
     double globMaxTimePenalty{0.};
     for (const auto& [streetId, street] : this->m_graph.streetSet()) {
@@ -15,7 +15,7 @@ namespace dsm {
                    std::ceil(street->length() / ((1. - m_alpha) * street->maxSpeed())));
     }
     if (globMaxTimePenalty > static_cast<double>(std::numeric_limits<Delay>::max())) {
-      throw std::overflow_error(logger.buildExceptionMessage(
+      throw std::overflow_error(Logger::buildExceptionMessage(
           std::format("The maximum time penalty ({}) is greater than the "
                       "maximum value of delay_t ({})",
                       globMaxTimePenalty,
@@ -37,7 +37,7 @@ namespace dsm {
 
   void FirstOrderDynamics::setSpeedFluctuationSTD(double speedFluctuationSTD) {
     if (speedFluctuationSTD < 0.) {
-      logger.error(
+      Logger::error(
           std::format("The speed fluctuation standard deviation ({}) must be positive",
                       speedFluctuationSTD));
     }

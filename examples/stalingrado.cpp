@@ -82,8 +82,8 @@ int main() {
   graph.makeSpireStreet(19);
   auto& spire = dynamic_cast<SpireStreet&>(*graph.street(19));
 
-  dsm::logger.info(std::format("Intersections: {}", graph.nNodes()));
-  dsm::logger.info(std::format("Streets: {}", graph.nEdges()));
+  dsm::Logger::info(std::format("Intersections: {}", graph.nNodes()));
+  dsm::Logger::info(std::format("Streets: {}", graph.nEdges()));
 
   // Create the dynamics
   Dynamics dynamics{graph, 69, 0.95};

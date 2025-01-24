@@ -33,21 +33,21 @@ namespace dsm {
         m_nLanes{nLanes},
         m_name{std::move(name)} {
     if (!(length > 0.)) {
-      logger.error(std::format("The road length ({}) must be greater than 0.", length));
+      Logger::error(std::format("The road length ({}) must be greater than 0.", length));
     }
     if (!(maxSpeed > 0.)) {
-      logger.error(std::format("The maximum speed of a road ({}) must be greater than 0.",
-                               maxSpeed));
+      Logger::error(std::format(
+          "The maximum speed of a road ({}) must be greater than 0.", maxSpeed));
     }
     if (nLanes < 1) {
-      logger.error(std::format(
+      Logger::error(std::format(
           "The number of lanes of a road ({}) must be greater than 0.", nLanes));
     }
   }
   void Road::setMeanVehicleLength(double meanVehicleLength) {
     if (!(meanVehicleLength > 0.)) {
-      logger.error(std::format("The mean vehicle length ({}) must be greater than 0.",
-                               meanVehicleLength));
+      Logger::error(std::format("The mean vehicle length ({}) must be greater than 0.",
+                                meanVehicleLength));
     }
     m_meanVehicleLength = meanVehicleLength;
   }
@@ -55,7 +55,7 @@ namespace dsm {
 
   void Road::setMaxSpeed(double speed) {
     if (speed < 0.) {
-      logger.error(
+      Logger::error(
           std::format("The maximum speed of a road ({}) cannot be negative.", speed));
     }
     m_maxSpeed = speed;
