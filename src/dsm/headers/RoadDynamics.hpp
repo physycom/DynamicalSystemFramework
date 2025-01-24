@@ -50,6 +50,7 @@ namespace dsm {
 
   protected:
     std::vector<double> m_travelTimes;
+    std::vector<double> m_travelDistances;
     std::unordered_map<Id, Id> m_agentNextStreetId;
     bool m_forcePriorities;
     std::optional<delay_t> m_dataUpdatePeriod;
@@ -145,8 +146,20 @@ namespace dsm {
                                    TrafficLightOptimization::DOUBLE_TAIL);
     /// @brief Get the mean travel time of the agents in \f$s\f$
     /// @param clearData If true, the travel times are cleared after the computation
-    /// @return Measurement<double> The mean travel time of the agents and the standard
+    /// @return Measurement<double> The mean travel time of the agents and the standard deviation
     Measurement<double> meanTravelTime(bool clearData = false);
+    /// @brief Get the mean travel distance of the agents in \f$m\f$
+    /// @param clearData If true, the travel distances are cleared after the computation
+    /// @return Measurement<double> The mean travel distance of the agents and the standard deviation
+    Measurement<double> meanTravelDistance(bool clearData = false);
+    /// @brief Get the mean travel speed of the agents in \f$m/s\f$
+    /// @param clearData If true, the travel times and distances are cleared after the computation
+    /// @return Measurement<double> The mean travel speed of the agents and the standard deviation
+    Measurement<double> meanTravelSpeed(bool clearData = false);
+    /// @brief Get the travel speeds of the agents
+    /// @return std::vector<double> The travel speeds
+    /// @details The travel speed is computed as the travel distance divided by the travel time
+    std::vector<double> travelSpeeds() const;
     /// @brief Get the turn counts of the agents
     /// @return const std::array<unsigned long long, 3>& The turn counts
     /// @details The array contains the counts of left (0), straight (1), right (2) and U (3) turns
@@ -304,6 +317,7 @@ namespace dsm {
           continue;
         }
         m_travelTimes.push_back(pAgent->time());
+        m_travelDistances.push_back(pAgent->distance());
         if (reinsert_agents) {
           // reset Agent's values
           pAgent->reset();
@@ -803,15 +817,48 @@ namespace dsm {
     std::vector<double> travelTimes;
     if (!m_travelTimes.empty()) {
       if (clearData) {
-        std::swap(travelTimes, m_travelTimes);
+        travelTimes = std::move(m_travelTimes);
       } else {
-        travelTimes.reserve(m_travelTimes.size());
-        for (const auto& time : m_travelTimes) {
-          travelTimes.push_back(time);
-        }
+        travelTimes = m_travelTimes;
       }
     }
     return Measurement<double>(travelTimes);
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::meanTravelDistance(bool clearData) {
+    std::vector<double> travelDistances;
+    if (!m_travelDistances.empty()) {
+      if (clearData) {
+        travelDistances = std::move(m_travelDistances);
+      } else {
+        travelDistances = m_travelDistances;
+      }
+    }
+    return Measurement<double>(travelDistances);
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::meanTravelSpeed(bool clearData) {
+    std::vector<double> travelSpeeds;
+    for (auto i{0}; i < m_travelTimes.size(); ++i) {
+      travelSpeeds.push_back(m_travelDistances[i] / m_travelTimes[i]);
+    }
+    if (clearData) {
+      m_travelTimes.clear();
+      m_travelDistances.clear();
+    }
+    return Measurement<double>(travelSpeeds);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  std::vector<double> RoadDynamics<delay_t>::travelSpeeds() const {
+    std::vector<double> travelSpeeds;
+    for (auto i{0}; i < m_travelTimes.size(); ++i) {
+      travelSpeeds.push_back(m_travelDistances[i] / m_travelTimes[i]);
+    }
+    return std::move(travelSpeeds);
   }
 
   template <typename delay_t>
