@@ -30,8 +30,7 @@ namespace dsm {
     inline void info(
         const std::string& message,
         const std::source_location& location = std::source_location::current()) {
-      std::clog << buildMessage("\033[38;2;0;0;255mINFO ", message, location) +
-                       "\033[0m\n";
+      std::clog << buildMessage("\033[1;32mINFO ", message, location) + "\033[1;0m\n";
     };
     inline void debug(
         const std::string& message,
@@ -45,12 +44,12 @@ namespace dsm {
         const std::string& message,
         const std::source_location& location = std::source_location::current()) {
       std::clog << buildMessage("\033[38;2;130;30;180mWARNING ", message, location) +
-                       "\033[0m\n";
+                       "\033[1;0m\n";
     };
     inline void error(
         const std::string& message,
         const std::source_location& location = std::source_location::current()) {
-      std::cerr << buildMessage("\033[38;5;196mERROR ", message, location) + "\033[0m\n";
+      std::cerr << buildMessage("\033[1;31mERROR ", message, location) + "\033[1;0m\n";
       std::abort();
     }
   };

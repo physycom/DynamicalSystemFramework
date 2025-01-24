@@ -112,16 +112,8 @@ namespace dsm {
               path.insert(nodeId, nextNodeId, true);
             }
           } else if ((nextNodeId != destinationID)) {
-            std::cerr << std::format(
-                             "\033[38;2;130;30;180mWARNING ({}:{}): No "
-                             "path found "
-                             "from node {} "
-                             "to node {}\033[0m",
-                             __FILE__,
-                             __LINE__,
-                             nextNodeId,
-                             destinationID)
-                      << std::endl;
+            logger.warning(std::format(
+                "No path found from node {} to node {}", nextNodeId, destinationID));
           }
         }
       }
