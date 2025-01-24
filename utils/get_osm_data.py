@@ -13,10 +13,11 @@ The files are saved in the current directory.
 """
 
 from argparse import ArgumentParser
+import ast
 import logging
 import osmnx as ox
 
-__version__ = "2025.1.16"
+__version__ = "2025.1.24"
 
 RGBA_RED = (1, 0, 0, 1)
 RGBA_WHITE = (1, 1, 1, 1)
@@ -69,6 +70,9 @@ if __name__ == "__main__":
         type=int,
         default=20,
         help="Radius in meters to merge intersections. For more info, see osmnx documentation.",
+    )
+    parser.add_argument(
+        "--use-original-ids", action="store_true", help="Use the original ids from OSM."
     )
     parser = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -123,19 +127,51 @@ if __name__ == "__main__":
     gdf_nodes.reset_index(inplace=True)
     gdf_edges.reset_index(inplace=True)
 
-    # Prepare node dataframe
-    gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
-    # Prepare edge dataframe
+    if parser.use_original_ids:
+        for index, row in gdf_nodes.iterrows():
+            # if "osmid_original" is a list, keep the first element
+            old_list = ast.literal_eval(str(row["osmid_original"]))
+            if isinstance(old_list, list):
+                new_id = old_list[0]
+                # update the edges with u_original or v_original in old_list, with new_id
+                gdf_edges.loc[gdf_edges["u_original"].isin(old_list), "u_original"] = (
+                    new_id
+                )
+                gdf_edges.loc[gdf_edges["v_original"].isin(old_list), "v_original"] = (
+                    new_id
+                )
+                # update the node with new_id
+                gdf_nodes.loc[index, "osmid_original"] = new_id
 
-    gdf_edges.to_csv("edges_ALL.csv", sep=";", index=False)
-    gdf_edges = gdf_edges[
-        ["u", "v", "length", "oneway", "lanes", "highway", "maxspeed", "name"]
-    ]
+        gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
+        gdf_edges = gdf_edges[
+            [
+                "u_original",
+                "v_original",
+                "length",
+                "oneway",
+                "lanes",
+                "highway",
+                "maxspeed",
+                "name",
+            ]
+        ]
+
+    else:
+        gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
+
+        gdf_edges = gdf_edges[
+            ["u", "v", "length", "oneway", "lanes", "highway", "maxspeed", "name"]
+        ]
+
     if parser.allow_duplicates:
         N_DUPLICATES = 0
     else:
         # Check for duplicate edges
-        duplicated_mask = gdf_edges.duplicated(subset=["u", "v"])
+        if parser.use_original_ids:
+            duplicated_mask = gdf_edges.duplicated(subset=["u_original", "v_original"])
+        else:
+            duplicated_mask = gdf_edges.duplicated(subset=["u", "v"])
         N_DUPLICATES = duplicated_mask.sum()
 
     if N_DUPLICATES > 0:
@@ -152,7 +188,11 @@ if __name__ == "__main__":
         ox.plot_graph(GRAPH, edge_color=edge_colors)
 
         # Remove duplicated edges
-        gdf_edges = gdf_edges.drop_duplicates(subset=["u", "v"])
+        if parser.use_original_ids:
+            gdf_edges = gdf_edges.drop_duplicates(subset=["u_original", "v_original"])
+        else:
+            gdf_edges = gdf_edges.drop_duplicates(subset=["u", "v"])
+
     # Save the data
     place = parser.place.split(",")[0].strip().lower()
     gdf_nodes.to_csv(f"{place}_nodes.csv", sep=";", index=False)
