@@ -13,11 +13,11 @@ namespace dsm {
 
   void Roundabout::enqueue(Id agentId) {
     if (isFull()) {
-      throw std::runtime_error(buildLog("Roundabout is full."));
+      throw std::runtime_error(logger.buildExceptionMessage("Roundabout is full."));
     }
     for (const auto id : m_agents) {
       if (id == agentId) {
-        throw std::runtime_error(buildLog(
+        throw std::runtime_error(logger.buildExceptionMessage(
             std::format("Agent with id {} is already on the roundabout.", agentId)));
       }
     }
@@ -26,7 +26,7 @@ namespace dsm {
 
   Id Roundabout::dequeue() {
     if (m_agents.empty()) {
-      throw std::runtime_error(buildLog("Roundabout is empty."));
+      throw std::runtime_error(logger.buildExceptionMessage("Roundabout is empty."));
     }
     Id agentId{m_agents.front()};
     m_agents.pop();

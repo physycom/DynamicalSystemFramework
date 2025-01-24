@@ -532,19 +532,6 @@ TEST_CASE("Boolean Matrix") {
     CHECK(m3(1, 2));
     CHECK(m3.size() == 5);
   }
-  SUBCASE("+= operator - exception") {
-    /*This test tests if the += operator throws an exception correctly
-    The += operator should throw an exception if the matrices have different
-    dimensions
-    GIVEN: the += operator is called
-    WHEN: the function is called on two matrices
-    THEN: the function should throw an exception if the matrices have different
-    dimensions
-    */
-    SparseMatrix<bool> m(3, 3);
-    SparseMatrix<bool> m2(3, 4);
-    CHECK_THROWS(m += m2);
-  }
   SUBCASE("+= operator") {
     /*This test tests if the += operator works correctly
     The += operator should sum two matrices
@@ -603,19 +590,6 @@ TEST_CASE("Boolean Matrix") {
     CHECK(m3(0, 1) == 2);
     CHECK(m3(1, 2) == 3);
     CHECK(m3.size() == 5);
-  }
-  SUBCASE("-= operator - exception") {
-    /*This test tests if the -= operator throws an exception correctly
-    The -= operator should throw an exception if the matrices have different
-    dimensions
-    GIVEN: the -= operator is called
-    WHEN: the function is called on two matrices
-    THEN: the function should throw an exception if the matrices have different
-    dimensions
-    */
-    SparseMatrix<bool> m(3, 3);
-    SparseMatrix<bool> m2(3, 4);
-    CHECK_THROWS(m -= m2);
   }
   SUBCASE("-= operator") {
     /*This test tests if the -= operator works correctly

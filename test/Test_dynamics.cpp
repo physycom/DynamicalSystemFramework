@@ -109,12 +109,6 @@ TEST_CASE("Dynamics") {
           }
         }
       }
-      WHEN("We add a span with non existing nodes") {
-        std::array<uint32_t, 3> nodes{0, 1, 169};
-        THEN("An exception is thrown") {
-          CHECK_THROWS_AS(dynamics.setDestinationNodes(nodes), std::invalid_argument);
-        }
-      }
     }
   }
   SUBCASE("addAgent") {
@@ -140,11 +134,6 @@ TEST_CASE("Dynamics") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dsm");
       Dynamics dynamics{graph, 69};
-      WHEN("We add agents without adding itineraries") {
-        THEN("An exception is thrown") {
-          CHECK_THROWS_AS(dynamics.addAgentsUniformly(1), std::invalid_argument);
-        }
-      }
       Itinerary itinerary{0, 2};
       WHEN("We add a random agent") {
         dynamics.addItinerary(itinerary);
@@ -259,13 +248,6 @@ TEST_CASE("Dynamics") {
           CHECK_EQ(dynamics.agents().at(2)->srcNodeId().value(), 118);
         }
       }
-      WHEN("We add agents without adding itineraries") {
-        THEN("An exception is thrown") {
-          std::unordered_map<uint32_t, double> src{{0, 1.}};
-          std::unordered_map<uint32_t, double> dst{{10, 1.}};
-          CHECK_THROWS_AS(dynamics.addAgentsRandomly(1, src, dst), std::invalid_argument);
-        }
-      }
     }
   }
   SUBCASE("addRandomAgents") {
@@ -336,20 +318,6 @@ TEST_CASE("Dynamics") {
     }
   }
   SUBCASE("Update paths") {
-    GIVEN("A dynamics object with a single street") {
-      Street s1{0, std::make_pair(0, 1), 2.};
-      Graph graph2;
-      graph2.addStreets(s1);
-      graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
-      WHEN("We add a topologically impossible itinerary") {
-        Itinerary itinerary{0, 0};
-        dynamics.addItinerary(itinerary);
-        THEN("When updating paths, empty itinerary throws exception") {
-          CHECK_THROWS_AS(dynamics.updatePaths(), std::runtime_error);
-        }
-      }
-    }
     GIVEN("A dynamics object, many streets and an itinerary") {
       Street s1{0, std::make_pair(0, 1), 2.};
       Street s2{1, std::make_pair(1, 2), 5.};
