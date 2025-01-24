@@ -401,9 +401,8 @@ namespace dsm {
           Logger::error(std::format("Node with id {} not found.", targetId));
         }
         if (sourceId == targetId) {
-          Logger::warning(std::format("Self loop detected: {}->{}. Skipping.",
-                                      sourceId,
-                                      targetId));
+          Logger::warning(
+              std::format("Self loop detected: {}->{}. Skipping.", sourceId, targetId));
           continue;
         }
         auto const srcId{m_nodeMapping.at(sourceId)};
