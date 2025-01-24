@@ -11,7 +11,11 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
@@ -23,7 +27,7 @@ jobs:
     - name: Build
       working-directory: ${{github.workspace}}/examples
       run: cmake --build build
-    
+
     - name: Stalingrado
       working-directory: ${{github.workspace}}/examples
       run: make stalingrado
