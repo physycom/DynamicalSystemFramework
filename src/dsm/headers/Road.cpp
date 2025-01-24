@@ -33,22 +33,21 @@ namespace dsm {
         m_nLanes{nLanes},
         m_name{std::move(name)} {
     if (!(length > 0.)) {
-      throw std::invalid_argument(buildLog(
-          std::format("The length of a road ({}) must be greater than 0.", length)));
+      logger.error(std::format("The road length ({}) must be greater than 0.", length));
     }
     if (!(maxSpeed > 0.)) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The maximum speed of a road ({}) must be greater than 0.", maxSpeed)));
+      logger.error(std::format("The maximum speed of a road ({}) must be greater than 0.",
+                               maxSpeed));
     }
     if (nLanes < 1) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The number of lanes of a road ({}) must be greater than 0.", nLanes)));
+      logger.error(std::format(
+          "The number of lanes of a road ({}) must be greater than 0.", nLanes));
     }
   }
   void Road::setMeanVehicleLength(double meanVehicleLength) {
     if (!(meanVehicleLength > 0.)) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The mean vehicle length ({}) must be greater than 0.", meanVehicleLength)));
+      logger.error(std::format("The mean vehicle length ({}) must be greater than 0.",
+                               meanVehicleLength));
     }
     m_meanVehicleLength = meanVehicleLength;
   }
@@ -56,8 +55,8 @@ namespace dsm {
 
   void Road::setMaxSpeed(double speed) {
     if (speed < 0.) {
-      throw std::invalid_argument(buildLog(
-          std::format("The maximum speed of a road ({}) cannot be negative.", speed)));
+      logger.error(
+          std::format("The maximum speed of a road ({}) cannot be negative.", speed));
     }
     m_maxSpeed = speed;
   }

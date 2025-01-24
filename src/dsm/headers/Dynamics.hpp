@@ -112,25 +112,17 @@ namespace dsm {
               path.insert(nodeId, nextNodeId, true);
             }
           } else if ((nextNodeId != destinationID)) {
-            std::cerr << std::format(
-                             "\033[38;2;130;30;180mWARNING ({}:{}): No "
-                             "path found "
-                             "from node {} "
-                             "to node {}\033[0m",
-                             __FILE__,
-                             __LINE__,
-                             nextNodeId,
-                             destinationID)
-                      << std::endl;
+            logger.warning(std::format(
+                "No path found from node {} to node {}", nextNodeId, destinationID));
           }
         }
       }
       if (path.size() == 0) {
-        throw std::runtime_error(
-            buildLog(std::format("Path with id {} and destination {} is empty. Please "
-                                 "check the adjacency matrix.",
-                                 pItinerary->id(),
-                                 pItinerary->destination())));
+        logger.error(
+            std::format("Path with id {} and destination {} is empty. Please "
+                        "check the adjacency matrix.",
+                        pItinerary->id(),
+                        pItinerary->destination()));
       }
       pItinerary->setPath(path);
     }
@@ -307,8 +299,7 @@ namespace dsm {
                                               bool updatePaths) {
     for (const auto& nodeId : destinationNodes) {
       if (!m_graph.nodeSet().contains(nodeId)) {
-        throw std::invalid_argument(
-            buildLog(std::format("Node with id {} not found", nodeId)));
+        logger.error(std::format("Node with id {} not found", nodeId));
       }
       this->addItinerary(Itinerary{nodeId, nodeId});
     }
@@ -320,13 +311,13 @@ namespace dsm {
   template <typename agent_t>
   void Dynamics<agent_t>::addAgent(std::unique_ptr<agent_t> agent) {
     if (m_agents.size() + 1 > m_graph.maxCapacity()) {
-      throw std::overflow_error(buildLog(
+      throw std::overflow_error(logger.buildExceptionMessage(
           std::format("Graph is already holding the max possible number of agents ({})",
                       m_graph.maxCapacity())));
     }
     if (m_agents.contains(agent->id())) {
-      throw std::invalid_argument(
-          buildLog(std::format("Agent with id {} already exists.", agent->id())));
+      throw std::invalid_argument(logger.buildExceptionMessage(
+          std::format("Agent with id {} already exists.", agent->id())));
     }
     m_agents.emplace(agent->id(), std::move(agent));
   }

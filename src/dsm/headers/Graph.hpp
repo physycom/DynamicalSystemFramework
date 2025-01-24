@@ -309,8 +309,8 @@ namespace dsm {
     requires is_street_v<std::remove_reference_t<T1>>
   void Graph::addStreets(T1&& street) {
     if (m_streets.contains(street.id())) {
-      throw std::invalid_argument(
-          buildLog(std::format("Street with id {} already exists.", street.id())));
+      throw std::invalid_argument(logger.buildExceptionMessage(
+          std::format("Street with id {} already exists.", street.id())));
     }
     // emplace nodes
     auto const srcId{street.u()};

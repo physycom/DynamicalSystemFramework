@@ -19,30 +19,28 @@ namespace dsm {
         m_transportCapacity{transportCapacity},
         m_angle{angle} {
     if (capacity < 1) {
-      throw std::invalid_argument(
-          buildLog(std::format("Edge capacity ({}) must be greater than 0.", capacity)));
+      logger.error(std::format("Edge capacity ({}) must be greater than 0.", capacity));
     }
     if (transportCapacity < 1) {
-      throw std::invalid_argument(buildLog(std::format(
-          "Edge transport capacity ({}) must be greater than 0.", transportCapacity)));
+      logger.error(std::format("Edge transport capacity ({}) must be greater than 0.",
+                               transportCapacity));
     }
     if (std::abs(angle) > 2 * std::numbers::pi) {
-      throw std::invalid_argument(buildLog(
-          std::format("Edge angle ({}) must be in the range [-2pi, 2pi].", angle)));
+      logger.error(
+          std::format("Edge angle ({}) must be in the range [-2pi, 2pi].", angle));
     }
   }
 
   void Edge::setCapacity(int capacity) {
     if (capacity < 1) {
-      throw std::invalid_argument(
-          buildLog(std::format("Edge capacity ({}) must be greater than 0.", capacity)));
+      logger.error(std::format("Edge capacity ({}) must be greater than 0.", capacity));
     }
     m_capacity = capacity;
   }
   void Edge::setTransportCapacity(int capacity) {
     if (capacity < 1) {
-      throw std::invalid_argument(buildLog(
-          std::format("Edge transport capacity ({}) must be greater than 0.", capacity)));
+      logger.error(
+          std::format("Edge transport capacity ({}) must be greater than 0.", capacity));
     }
     m_transportCapacity = capacity;
   }

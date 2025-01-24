@@ -4,12 +4,9 @@ namespace dsm {
   FirstOrderDynamics::FirstOrderDynamics(Graph& graph,
                                          std::optional<unsigned int> seed,
                                          double alpha)
-      : RoadDynamics<Delay>(graph, seed), m_alpha{0.}, m_speedFluctuationSTD{0.} {
+      : RoadDynamics<Delay>(graph, seed), m_alpha{alpha}, m_speedFluctuationSTD{0.} {
     if (alpha < 0. || alpha > 1.) {
-      throw std::invalid_argument(buildLog(std::format(
-          "The minimum speed rateo must be between 0 and 1, but it is {}", alpha)));
-    } else {
-      m_alpha = alpha;
+      logger.error(std::format("The minimum speed rateo ({}) must be in [0, 1[", alpha));
     }
     double globMaxTimePenalty{0.};
     for (const auto& [streetId, street] : this->m_graph.streetSet()) {
@@ -18,11 +15,11 @@ namespace dsm {
                    std::ceil(street->length() / ((1. - m_alpha) * street->maxSpeed())));
     }
     if (globMaxTimePenalty > static_cast<double>(std::numeric_limits<Delay>::max())) {
-      throw std::overflow_error(
-          buildLog(std::format("The maximum time penalty ({}) is greater than the "
-                               "maximum value of delay_t ({})",
-                               globMaxTimePenalty,
-                               std::numeric_limits<Delay>::max())));
+      throw std::overflow_error(logger.buildExceptionMessage(
+          std::format("The maximum time penalty ({}) is greater than the "
+                      "maximum value of delay_t ({})",
+                      globMaxTimePenalty,
+                      std::numeric_limits<Delay>::max())));
     }
   }
 
@@ -40,8 +37,9 @@ namespace dsm {
 
   void FirstOrderDynamics::setSpeedFluctuationSTD(double speedFluctuationSTD) {
     if (speedFluctuationSTD < 0.) {
-      throw std::invalid_argument(
-          buildLog("The speed fluctuation standard deviation must be positive."));
+      logger.error(
+          std::format("The speed fluctuation standard deviation ({}) must be positive",
+                      speedFluctuationSTD));
     }
     m_speedFluctuationSTD = speedFluctuationSTD;
   }
