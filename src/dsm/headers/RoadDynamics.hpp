@@ -21,6 +21,8 @@
 #include <format>
 #include <thread>
 #include <exception>
+#include <fstream>
+#include <iomanip>
 
 #include "Dynamics.hpp"
 #include "Agent.hpp"
@@ -174,6 +176,11 @@ namespace dsm {
     std::unordered_map<Id, std::array<long, 4>> turnMapping() const {
       return m_turnMapping;
     }
+
+    /// @brief Save the travel speeds of the agents in csv format
+    /// @param filename The name of the file
+    /// @param reset If true, the travel speeds are cleared after the computation
+    void saveTravelSpeeds(const std::string& filename, bool reset = false);
   };
 
   template <typename delay_t>
@@ -884,4 +891,34 @@ namespace dsm {
     return res;
   }
 
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::saveTravelSpeeds(const std::string& filename, bool reset) {
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      logger.error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    if (bEmptyFile) {
+      file << "time;speeds" << std::endl;
+    }
+    file << this->time() << ';';
+    for (auto i{0}; i < m_travelTimes.size(); ++i) {
+      file << std::fixed << std::setprecision(2)
+           << m_travelDistances[i] / m_travelTimes[i];
+      if (i < m_travelTimes.size() - 1) {
+        file << ',';
+      }
+    }
+    file << std::endl;
+    file.close();
+    if (reset) {
+      m_travelTimes.clear();
+      m_travelDistances.clear();
+    }
+  }
 };  // namespace dsm
