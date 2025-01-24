@@ -330,7 +330,6 @@ namespace dsm {
         std::getline(iss, lon, ';');
         std::getline(iss, lat, ';');
         std::getline(iss, highway, ';');
-        auto const nodeId{static_cast<Id>(std::stoul(id))};
         if (highway.find("traffic_signals") != std::string::npos) {
           addNode<TrafficLight>(
               nodeIndex, 60, std::make_pair(std::stod(lat), std::stod(lon)));
@@ -340,7 +339,7 @@ namespace dsm {
           addNode<Intersection>(nodeIndex,
                                 std::make_pair(std::stod(lat), std::stod(lon)));
         }
-        m_nodeMapping.emplace(std::make_pair(nodeId, nodeIndex));
+        m_nodeMapping.emplace(std::make_pair(id, nodeIndex));
         ++nodeIndex;
       }
     } else {
@@ -394,7 +393,7 @@ namespace dsm {
             lanes = "1";  // Default to 1 lane if lanes is invalid
           }
         }
-        if (!m_nodeMapping.contains(std::stoul(sourceId))) {
+        if (!m_nodeMapping.contains(sourceId)) {
           std::cerr << std::format(
                            "\033[38;5;196mERROR ({}:{}): Node with id {} not "
                            "found.\033[0m",
@@ -404,7 +403,7 @@ namespace dsm {
                     << std::endl;
           std::abort();
         }
-        if (!m_nodeMapping.contains(std::stoul(targetId))) {
+        if (!m_nodeMapping.contains(targetId)) {
           std::cerr << std::format(
                            "\033[38;5;196mERROR ({}:{}): Node with id {} not "
                            "found.\033[0m",
@@ -414,8 +413,15 @@ namespace dsm {
                     << std::endl;
           std::abort();
         }
-        auto const srcId{m_nodeMapping.at(std::stoul(sourceId))};
-        auto const dstId{m_nodeMapping.at(std::stoul(targetId))};
+        auto const srcId{m_nodeMapping.at(sourceId)};
+        auto const dstId{m_nodeMapping.at(targetId)};
+        if (static_cast<unsigned long long>(srcId * nNodes + dstId) >
+            std::numeric_limits<Id>::max()) {
+          throw std::invalid_argument(buildLog(
+              std::format("Street id {}->{} would too large for the current type of Id.",
+                          srcId,
+                          dstId)));
+        }
         Id streetId = srcId * nNodes + dstId;
         addEdge<Street>(streetId,
                         std::make_pair(srcId, dstId),
