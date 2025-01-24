@@ -258,6 +258,21 @@ namespace dsm {
     /// @param clearData If true, the travel times are cleared after the computation
     /// @return Measurement<double> The mean travel time of the agents and the standard
     Measurement<double> meanTravelTime(bool clearData = false);
+
+    /// @brief Save the street densities in csv format
+    /// @param filename The name of the file
+    /// @param normalized If true, the densities are normalized in [0, 1]
+    void saveStreetDensities(const std::string& filename, bool normalized = true) const;
+    /// @brief Save the street input counts in csv format
+    /// @param filename The name of the file
+    /// @param reset If true, the input counts are cleared after the computation
+    /// @details NOTE: counts are printed only if the street is a spire
+    void saveInputStreetCounts(const std::string& filename, bool reset = false);
+    /// @brief Save the street output counts in csv format
+    /// @param filename The name of the file
+    /// @param reset If true, the output counts are cleared after the computation
+    /// @details NOTE: counts are printed only if the street is a spire
+    void saveOutputStreetCounts(const std::string& filename, bool reset = false);
   };
 
   template <typename agent_t>
@@ -539,5 +554,94 @@ namespace dsm {
       }
     }
     return Measurement<double>(flows);
+  }
+
+  template <typename agent_t>
+  void Dynamics<agent_t>::saveStreetDensities(const std::string& filename,
+                                              bool normalized) const {
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      logger.error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    if (bEmptyFile) {
+      file << "time";
+      for (auto const& [streetId, _] : this->m_graph.streetSet()) {
+        file << ';' << streetId;
+      }
+      file << std::endl;
+    }
+    file << this->time();
+    for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
+      // keep 2 decimal digits;
+      file << ';' << std::fixed << std::setprecision(2) << pStreet->density(normalized);
+    }
+    file << std::endl;
+    file.close();
+  }
+  template <typename agent_t>
+  void Dynamics<agent_t>::saveInputStreetCounts(const std::string& filename, bool reset) {
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      logger.error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    if (bEmptyFile) {
+      file << "time";
+      for (auto const& [streetId, _] : this->m_graph.streetSet()) {
+        file << ';' << streetId;
+      }
+      file << std::endl;
+    }
+    file << this->time();
+    for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
+      if (pStreet->isSpire()) {
+        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
+        file << ';' << spire.inputCounts(reset);
+      } else {
+        file << ';' << 0;
+      }
+    }
+    file << std::endl;
+    file.close();
+  }
+  template <typename agent_t>
+  void Dynamics<agent_t>::saveOutputStreetCounts(const std::string& filename,
+                                                 bool reset) {
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      logger.error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    if (bEmptyFile) {
+      file << "time";
+      for (auto const& [streetId, _] : this->m_graph.streetSet()) {
+        file << ';' << streetId;
+      }
+      file << std::endl;
+    }
+    file << this->time();
+    for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
+      if (pStreet->isSpire()) {
+        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
+        file << ';' << spire.outputCounts(reset);
+      } else {
+        file << ';' << 0;
+      }
+    }
+    file << std::endl;
+    file.close();
   }
 };  // namespace dsm
