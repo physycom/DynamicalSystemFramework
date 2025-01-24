@@ -13,7 +13,7 @@ string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -Os")
 # Set the folder for the executable
 set(EXECUTABLE_OUTPUT_PATH ../)
 
-file(GLOB SOURCES "../src/dsm/headers/*.cpp")
+file(GLOB SOURCES "../src/dsm/sources/*.cpp" "../src/dsm/utility/*.cpp")
 
 # Define the executable
 add_executable(prof.out main.cpp ${SOURCES})

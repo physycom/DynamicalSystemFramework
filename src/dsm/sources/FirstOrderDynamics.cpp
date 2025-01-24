@@ -1,4 +1,4 @@
-#include "FirstOrderDynamics.hpp"
+#include "../headers/FirstOrderDynamics.hpp"
 
 namespace dsm {
   FirstOrderDynamics::FirstOrderDynamics(Graph& graph,

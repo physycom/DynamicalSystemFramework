@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-file(GLOB SOURCES "src/dsm/headers/*.cpp" "src/dsm/utility/*.cpp")
+file(GLOB SOURCES "src/dsm/sources/*.cpp" "src/dsm/utility/*.cpp")
 
 add_library(dsm STATIC ${SOURCES})
 target_include_directories(dsm PUBLIC 

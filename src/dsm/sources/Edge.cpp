@@ -1,5 +1,5 @@
-#include "Edge.hpp"
-#include "../utility/Logger.hpp"
+#include "../headers/Edge.hpp"
+#include "../headers/../utility/Logger.hpp"
 
 #include <cassert>
 #include <cmath>

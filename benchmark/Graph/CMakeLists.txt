@@ -14,7 +14,7 @@ set(EXECUTABLE_OUTPUT_PATH ../../)
 include_directories(../../src/dsm/headers/)
 include_directories(../../src/dsm/utility/)
 
-file(GLOB SOURCES "../../src/dsm/headers/*.cpp")
+file(GLOB SOURCES "../../src/dsm/sources/*.cpp", "../../src/dsm/utility/*.cpp")
 
 # Compile
 add_executable(bench_graph.out BenchGraph.cpp ${SOURCES})

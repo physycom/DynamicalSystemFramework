@@ -1,5 +1,5 @@
 
-#include "Graph.hpp"
+#include "../headers/Graph.hpp"
 
 namespace dsm {
   Graph::Graph()

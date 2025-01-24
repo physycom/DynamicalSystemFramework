@@ -1,4 +1,4 @@
-#include "Sensors.hpp"
+#include "../headers/Sensors.hpp"
 
 namespace dsm {
   void Counter::increaseInputCounter() { m_counters.first++; }

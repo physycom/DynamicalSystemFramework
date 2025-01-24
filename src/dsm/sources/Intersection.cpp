@@ -1,4 +1,4 @@
-#include "Intersection.hpp"
+#include "../headers/Intersection.hpp"
 
 #include <algorithm>
 #include <format>

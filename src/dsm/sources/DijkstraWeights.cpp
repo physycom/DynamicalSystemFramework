@@ -1,6 +1,6 @@
 
-#include "DijkstraWeights.hpp"
-#include "Graph.hpp"
+#include "../headers/DijkstraWeights.hpp"
+#include "../headers/Graph.hpp"
 
 namespace dsm {
 

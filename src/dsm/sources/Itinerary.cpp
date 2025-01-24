@@ -1,5 +1,5 @@
 
-#include "Itinerary.hpp"
+#include "../headers/Itinerary.hpp"
 
 namespace dsm {
   Itinerary::Itinerary(Id id, Id destination) : m_id{id}, m_destination{destination} {}
