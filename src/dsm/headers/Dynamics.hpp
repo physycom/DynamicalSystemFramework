@@ -603,12 +603,15 @@ namespace dsm {
     }
     file << this->time();
     for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
+      int value{0};
       if (pStreet->isSpire()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
-        file << ';' << spire.inputCounts(reset);
-      } else {
-        file << ';' << 0;
+        if (pStreet->isStochastic()) {
+          value = dynamic_cast<StochasticSpireStreet&>(*pStreet).inputCounts(reset);
+        } else {
+          value = dynamic_cast<SpireStreet&>(*pStreet).inputCounts(reset);
+        }
       }
+      file << ';' << value;
     }
     file << std::endl;
     file.close();
@@ -634,12 +637,15 @@ namespace dsm {
     }
     file << this->time();
     for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
+      int value{0};
       if (pStreet->isSpire()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
-        file << ';' << spire.outputCounts(reset);
-      } else {
-        file << ';' << 0;
+        if (pStreet->isStochastic()) {
+          value = dynamic_cast<StochasticSpireStreet&>(*pStreet).outputCounts(reset);
+        } else {
+          value = dynamic_cast<SpireStreet&>(*pStreet).outputCounts(reset);
+        }
       }
+      file << ';' << value;
     }
     file << std::endl;
     file.close();
