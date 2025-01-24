@@ -9,7 +9,7 @@ on:
 jobs:
   formatting-check:
     name: Formatting Check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         path:
