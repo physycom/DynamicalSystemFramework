@@ -32,7 +32,7 @@ endif()
 
 # add as executable all cpp files into '.' folder
 file(GLOB TEST_SOURCES "*.cpp")
-file(GLOB SRC_SOURCES "../src/dsm/sources/*.cpp", "../src/dsm/utility/*.cpp")
+file(GLOB SRC_SOURCES "../src/dsm/sources/*.cpp" "../src/dsm/utility/*.cpp")
 list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 
 # Define the executable
