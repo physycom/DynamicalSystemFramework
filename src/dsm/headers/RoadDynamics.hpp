@@ -51,8 +51,7 @@ namespace dsm {
     std::optional<double> m_passageProbability;
 
   protected:
-    std::vector<double> m_travelTimes;
-    std::vector<double> m_travelDistances;
+    std::vector<std::pair<double, double>> m_travelDTs;
     std::unordered_map<Id, Id> m_agentNextStreetId;
     bool m_forcePriorities;
     std::optional<delay_t> m_dataUpdatePeriod;
@@ -158,10 +157,6 @@ namespace dsm {
     /// @param clearData If true, the travel times and distances are cleared after the computation
     /// @return Measurement<double> The mean travel speed of the agents and the standard deviation
     Measurement<double> meanTravelSpeed(bool clearData = false);
-    /// @brief Get the travel speeds of the agents
-    /// @return std::vector<double> The travel speeds
-    /// @details The travel speed is computed as the travel distance divided by the travel time
-    std::vector<double> travelSpeeds() const;
     /// @brief Get the turn counts of the agents
     /// @return const std::array<unsigned long long, 3>& The turn counts
     /// @details The array contains the counts of left (0), straight (1), right (2) and U (3) turns
@@ -322,8 +317,7 @@ namespace dsm {
         if (pStreet->dequeue(queueIndex) == std::nullopt) {
           continue;
         }
-        m_travelTimes.push_back(pAgent->time());
-        m_travelDistances.push_back(pAgent->distance());
+        m_travelDTs.push_back({pAgent->distance(), static_cast<double>(pAgent->time())});
         if (reinsert_agents) {
           // reset Agent's values
           pAgent->reset();
@@ -821,11 +815,13 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::meanTravelTime(bool clearData) {
     std::vector<double> travelTimes;
-    if (!m_travelTimes.empty()) {
+    if (!m_travelDTs.empty()) {
+      travelTimes.reserve(m_travelDTs.size());
+      for (auto const& [distance, time] : m_travelDTs) {
+        travelTimes.push_back(time);
+      }
       if (clearData) {
-        travelTimes = std::move(m_travelTimes);
-      } else {
-        travelTimes = m_travelTimes;
+        m_travelDTs.clear();
       }
     }
     return Measurement<double>(travelTimes);
@@ -834,11 +830,13 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::meanTravelDistance(bool clearData) {
     std::vector<double> travelDistances;
-    if (!m_travelDistances.empty()) {
+    if (!m_travelDTs.empty()) {
+      travelDistances.reserve(m_travelDTs.size());
+      for (auto const& [distance, time] : m_travelDTs) {
+        travelDistances.push_back(distance);
+      }
       if (clearData) {
-        travelDistances = std::move(m_travelDistances);
-      } else {
-        travelDistances = m_travelDistances;
+        m_travelDTs.clear();
       }
     }
     return Measurement<double>(travelDistances);
@@ -847,24 +845,14 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::meanTravelSpeed(bool clearData) {
     std::vector<double> travelSpeeds;
-    for (auto i{0}; i < m_travelTimes.size(); ++i) {
-      travelSpeeds.push_back(m_travelDistances[i] / m_travelTimes[i]);
+    travelSpeeds.reserve(m_travelDTs.size());
+    for (auto const& [distance, time] : m_travelDTs) {
+      travelSpeeds.push_back(distance / time);
     }
     if (clearData) {
-      m_travelTimes.clear();
-      m_travelDistances.clear();
+      m_travelDTs.clear();
     }
     return Measurement<double>(travelSpeeds);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  std::vector<double> RoadDynamics<delay_t>::travelSpeeds() const {
-    std::vector<double> travelSpeeds;
-    for (auto i{0}; i < m_travelTimes.size(); ++i) {
-      travelSpeeds.push_back(m_travelDistances[i] / m_travelTimes[i]);
-    }
-    return std::move(travelSpeeds);
   }
 
   template <typename delay_t>
@@ -906,18 +894,16 @@ namespace dsm {
       file << "time;speeds" << std::endl;
     }
     file << this->time() << ';';
-    for (auto i{0}; i < m_travelTimes.size(); ++i) {
-      file << std::fixed << std::setprecision(2)
-           << m_travelDistances[i] / m_travelTimes[i];
-      if (i < m_travelTimes.size() - 1) {
+    for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
+      file << std::fixed << std::setprecision(2) << it->first / it->second;
+      if (it != m_travelDTs.cend() - 1) {
         file << ',';
       }
     }
     file << std::endl;
     file.close();
     if (reset) {
-      m_travelTimes.clear();
-      m_travelDistances.clear();
+      m_travelDTs.clear();
     }
   }
 };  // namespace dsm
