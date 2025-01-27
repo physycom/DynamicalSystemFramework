@@ -848,6 +848,36 @@ TEST_CASE("Dynamics") {
         }
       }
     }
+    GIVEN(
+        "A dynamics with one stochastic street and one normal street network and an "
+        "agent") {
+      Street s1{0, std::make_pair(0, 1), 3.};
+      Street s2{1, std::make_pair(1, 2), 1.};
+      Graph graph2;
+      graph2.addStreets(s1, s2);
+      graph2.buildAdj();
+      graph2.makeStochasticStreet(1, 0.3);
+      Dynamics dynamics{graph2, 69};
+      Itinerary itinerary{0, 2};
+      dynamics.addItinerary(itinerary);
+      dynamics.updatePaths();
+      dynamics.addAgent(0, 0, 0);
+      WHEN("We evolve the dynamics") {
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        THEN("The agent has travelled the correct distance") {
+          CHECK_EQ(dynamics.agents().at(0)->time(), 6);
+          CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
+          CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
+          CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
+          CHECK_EQ(dynamics.agents().at(0)->distance(), 4.);
+        }
+      }
+    }
   }
   SUBCASE("streetMeanSpeed") {
     /// GIVEN: a dynamics object

@@ -274,10 +274,11 @@ namespace dsm {
                                              bool reinsert_agents) {
     auto const nLanes = pStreet->nLanes();
     std::uniform_real_distribution<double> uniformDist{0., 1.};
+    bool bCanPass{true};
     if (pStreet->isStochastic() &&
         (uniformDist(this->m_generator) >
          dynamic_cast<StochasticStreet&>(*pStreet).flowRate())) {
-      return;
+      bCanPass = false;
     }
     for (auto queueIndex = 0; queueIndex < nLanes; ++queueIndex) {
       if (pStreet->queue(queueIndex).empty()) {
@@ -300,10 +301,8 @@ namespace dsm {
           continue;
         }
       }
-      bool bCanPass = true;
-      if (m_passageProbability.has_value()) {
-        bCanPass = uniformDist(this->m_generator) < m_passageProbability.value();
-      }
+      bCanPass = bCanPass &&
+                 (uniformDist(this->m_generator) < m_passageProbability.value_or(1.1));
       bool bArrived{false};
       if (!bCanPass) {
         if (pAgent->isRandom()) {
