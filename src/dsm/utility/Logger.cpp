@@ -30,10 +30,10 @@ namespace dsm {
   };
 
   void Logger::debug(const std::string& message, const std::source_location& location) {
-#ifndef NDEBUG
-    std::clog << buildMessage("\033[38;2;0;255;0mDEBUG", message, location, m_verbose) +
-                     "\033[0m\n";
-#endif
+    if (m_verbose) {
+      std::clog << buildMessage("\033[38;2;0;255;0mDEBUG", message, location, m_verbose) +
+                       "\033[0m\n";
+    }
   };
   void Logger::info(const std::string& message, const std::source_location& location) {
     std::clog << buildMessage("\033[1;32mINFO", message, location, m_verbose) +

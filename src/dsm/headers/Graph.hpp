@@ -82,6 +82,8 @@ namespace dsm {
           });
       m_nodeMapping = other.m_nodeMapping;
       m_adjacency = other.m_adjacency;
+      m_inputNodes = other.m_inputNodes;
+      m_outputNodes = other.m_outputNodes;
     }
 
     Graph& operator=(const Graph& other) {
@@ -96,6 +98,8 @@ namespace dsm {
           });
       m_nodeMapping = other.m_nodeMapping;
       m_adjacency = other.m_adjacency;
+      m_inputNodes = other.m_inputNodes;
+      m_outputNodes = other.m_outputNodes;
 
       return *this;
     }

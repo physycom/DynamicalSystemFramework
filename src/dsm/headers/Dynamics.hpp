@@ -284,7 +284,7 @@ namespace dsm {
     if (seed.has_value()) {
       m_generator.seed(seed.value());
     }
-    for (const auto& nodeId : graph.outputNodes()) {
+    for (const auto& nodeId : m_graph.outputNodes()) {
       if (!m_graph.nodeSet().contains(nodeId)) {
         Logger::error(std::format("Node with id {} not found", nodeId));
       }
@@ -298,6 +298,7 @@ namespace dsm {
     std::vector<std::thread> threads;
     threads.reserve(m_itineraries.size());
     std::exception_ptr pThreadException;
+    Logger::info(std::format("Init computing {} paths", m_itineraries.size()));
     for (const auto& [itineraryId, itinerary] : m_itineraries) {
       threads.emplace_back(std::thread([this, &itinerary, &pThreadException] {
         try {
@@ -314,6 +315,8 @@ namespace dsm {
     // Throw the exception launched first
     if (pThreadException)
       std::rethrow_exception(pThreadException);
+
+    Logger::info("End computing paths");
   }
 
   template <typename agent_t>
