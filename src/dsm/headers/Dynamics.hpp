@@ -84,46 +84,60 @@ namespace dsm {
       Size const dimension = m_graph.adjMatrix().getRowDim();
       auto const destinationID = pItinerary->destination();
       SparseMatrix<bool> path{dimension, dimension};
-      // cycle over the nodes
+
+      // Cache shortest paths to avoid redundant calculations
+      std::unordered_map<Id, std::optional<DijkstraResult>> shortestPaths;
+
       for (const auto& [nodeId, node] : m_graph.nodeSet()) {
         if (nodeId == destinationID) {
           continue;
         }
-        auto result{m_graph.shortestPath(nodeId, destinationID)};
+
+        // Compute and cache shortest path from nodeId to destination
+        auto result = m_graph.shortestPath(nodeId, destinationID);
         if (!result.has_value()) {
+          Logger::warning(
+              std::format("No path found from node {} to {}", nodeId, destinationID));
           continue;
         }
-        // save the minimum distance between i and the destination
-        const auto minDistance{result.value().distance()};
-        for (const auto [nextNodeId, _] : m_graph.adjMatrix().getRow(nodeId)) {
-          if (nextNodeId == destinationID &&
-              minDistance ==
-                  m_graph.streetSet()[nodeId * dimension + nextNodeId]->length()) {
-            path.insert(nodeId, nextNodeId, true);
+
+        const auto minDistance = result.value().distance();
+        shortestPaths[nodeId] = result;  // Cache for reuse
+
+        for (const auto& [nextNodeId, _] : m_graph.adjMatrix().getRow(nodeId)) {
+          if (nextNodeId == destinationID) {
+            if (minDistance ==
+                m_graph.streetSet()[nodeId * dimension + nextNodeId]->length()) {
+              path.insert(nodeId, nextNodeId, true);
+            }
             continue;
           }
-          result = m_graph.shortestPath(nextNodeId, destinationID);
 
-          if (result.has_value()) {
-            // if the shortest path exists, save the distance
+          // Use cached shortest path if available
+          auto it = shortestPaths.find(nextNodeId);
+          if (it == shortestPaths.end()) {
+            shortestPaths[nextNodeId] = m_graph.shortestPath(nextNodeId, destinationID);
+          }
+
+          if (shortestPaths[nextNodeId].has_value()) {
+            const auto nextDistance = shortestPaths[nextNodeId].value().distance();
             if (minDistance ==
-                result.value().distance() +
+                nextDistance +
                     m_graph.streetSet()[nodeId * dimension + nextNodeId]->length()) {
               path.insert(nodeId, nextNodeId, true);
             }
-          } else if ((nextNodeId != destinationID)) {
-            Logger::warning(std::format(
-                "No path found from node {} to node {}", nextNodeId, destinationID));
           }
         }
       }
+
       if (path.size() == 0) {
         Logger::error(
-            std::format("Path with id {} and destination {} is empty. Please "
-                        "check the adjacency matrix.",
+            std::format("Path with id {} and destination {} is empty. Please check the "
+                        "adjacency matrix.",
                         pItinerary->id(),
                         pItinerary->destination()));
       }
+
       pItinerary->setPath(path);
     }
 
@@ -284,10 +298,7 @@ namespace dsm {
     if (seed.has_value()) {
       m_generator.seed(seed.value());
     }
-    for (const auto& nodeId : m_graph.outputNodes()) {
-      if (!m_graph.nodeSet().contains(nodeId)) {
-        Logger::error(std::format("Node with id {} not found", nodeId));
-      }
+    for (const auto& nodeId : this->m_graph.outputNodes()) {
       this->addItinerary(Itinerary{nodeId, nodeId});
     }
     this->updatePaths();
