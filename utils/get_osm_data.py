@@ -3,7 +3,7 @@ This script is used to get the OSM data of a place and save it in a csv file.
 The place is passed as a command line argument.
 
 Example:
-python get_osm_data.py --place "Bologna, Emilia-Romagna, Italy" --exclude-residential
+python get_osm_data.py -p "Bologna, Emilia-Romagna, Italy" -er
 
 The output files are:
 - {place}_nodes.csv
@@ -13,11 +13,12 @@ The files are saved in the current directory.
 """
 
 from argparse import ArgumentParser
+from pathlib import Path
 import ast
 import logging
 import osmnx as ox
 
-__version__ = "2025.1.24"
+__version__ = "2025.1.30"
 
 RGBA_RED = (1, 0, 0, 1)
 RGBA_WHITE = (1, 1, 1, 1)
@@ -45,16 +46,19 @@ FLAGS_RESIDENTIAL = [
 if __name__ == "__main__":
     parser = ArgumentParser("Script to get the OSM data of a place.")
     parser.add_argument(
+        "-p",
         "--place",
         required=True,
         help="Place to get the OSM data in the format: city, province, country",
     )
     parser.add_argument(
+        "-em",
         "--exclude-motorway",
         action="store_true",
         help="Exclude motorways from the data. Default is False",
     )
     parser.add_argument(
+        "-er",
         "--exclude-residential",
         action="store_true",
         help="Exclude residential roads from the data. Default is False",
@@ -73,6 +77,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--use-original-ids", action="store_true", help="Use the original ids from OSM."
+    )
+    parser.add_argument(
+        "-of",
+        "--output-folder",
+        type=str,
+        default=".",
+        help="Folder where the output files will be saved. Default is the current folder.",
     )
     parser = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -98,7 +109,13 @@ if __name__ == "__main__":
     CUSTOM_FILTER = f"[\"highway\"~\"{'|'.join(FLAGS)}\"]"
     logging.info("Custom filter: %s", CUSTOM_FILTER)
     GRAPH = ox.graph_from_place(parser.place, network_type="drive")
-    ox.plot_graph(GRAPH, show=False, close=True, save=True, filepath="./original.png")
+    ox.plot_graph(
+        GRAPH,
+        show=False,
+        close=True,
+        save=True,
+        filepath=Path(parser.output_folder) / "original.png",
+    )
     logging.info(
         "Original network has %d nodes and %d edges.",
         len(GRAPH.nodes),
@@ -121,7 +138,13 @@ if __name__ == "__main__":
         len(GRAPH.edges),
     )
     # plot graph on a 16x9 figure and save into file
-    ox.plot_graph(GRAPH, show=False, close=True, save=True, filepath="./final.png")
+    ox.plot_graph(
+        GRAPH,
+        show=False,
+        close=True,
+        save=True,
+        filepath=Path(parser.output_folder) / "final.png",
+    )
     gdf_nodes, gdf_edges = ox.graph_to_gdfs(ox.project_graph(GRAPH, to_latlong=True))
     # notice that osmnid is the index of the gdf_nodes DataFrame, so take it as a column
     gdf_nodes.reset_index(inplace=True)
@@ -195,7 +218,17 @@ if __name__ == "__main__":
 
     # Save the data
     place = parser.place.split(",")[0].strip().lower()
-    gdf_nodes.to_csv(f"{place}_nodes.csv", sep=";", index=False)
-    logging.info('Nodes correctly saved in "%s_nodes.csv"', place)
-    gdf_edges.to_csv(f"{place}_edges.csv", sep=";", index=False)
-    logging.info('Edges correctly saved in "%s_edges.csv"', place)
+    gdf_nodes.to_csv(
+        Path(parser.output_folder) / f"{place}_nodes.csv", sep=";", index=False
+    )
+    logging.info(
+        'Nodes correctly saved in "%s"',
+        Path(parser.output_folder) / f"{place}_nodes.csv",
+    )
+    gdf_edges.to_csv(
+        Path(parser.output_folder) / f"{place}_edges.csv", sep=";", index=False
+    )
+    logging.info(
+        'Edges correctly saved in "%s"',
+        Path(parser.output_folder) / f"{place}_edges.csv",
+    )
