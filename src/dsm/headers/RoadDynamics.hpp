@@ -126,6 +126,8 @@ namespace dsm {
                            const TContainer& dst_weights,
                            const size_t minNodeDistance = 0);
 
+    void addAgentsRandomly(Size nAgents, const size_t minNodeDistance = 0);
+
     /// @brief Evolve the simulation
     /// @details Evolve the simulation by moving the agents and updating the travel times.
     /// In particular:
@@ -676,6 +678,19 @@ namespace dsm {
       --nAgents;
       ++agentId;
     }
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents, const size_t minNodeDistance) {
+    std::unordered_map<Id, double> src_weights, dst_weights;
+    for (auto const& id : graph.inputNodes()) {
+      src_weights[id] = 1.;
+    }
+    for (auto const& id : graph.outputNodes()) {
+      dst_weights[id] = 1.;
+    }
+    addAgentsRandomly(nAgents, src_weights, dst_weights, minNodeDistance);
   }
 
   template <typename delay_t>
