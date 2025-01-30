@@ -682,7 +682,8 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents, const size_t minNodeDistance) {
+  void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
+                                                const size_t minNodeDistance) {
     std::unordered_map<Id, double> src_weights, dst_weights;
     for (auto const& id : this->m_graph.inputNodes()) {
       src_weights[id] = 1.;
