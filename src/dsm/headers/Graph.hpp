@@ -50,6 +50,8 @@ namespace dsm {
     std::unordered_map<Id, std::unique_ptr<Node>> m_nodes;
     std::unordered_map<Id, std::unique_ptr<Street>> m_streets;
     std::unordered_map<std::string, Id> m_nodeMapping;
+    std::vector<Id> m_inputNodes;
+    std::vector<Id> m_outputNodes;
     SparseMatrix<bool> m_adjacency;
     unsigned long long m_maxAgentCapacity;
 
@@ -260,6 +262,9 @@ namespace dsm {
     /// @brief Get the maximum agent capacity
     /// @return unsigned long long The maximum agent capacity of the graph
     unsigned long long maxCapacity() const { return m_maxAgentCapacity; }
+
+    std::vector<Id> const& inputNodes() const { return m_inputNodes; }
+    std::vector<Id> const& outputNodes() const { return m_outputNodes; }
 
     /// @brief Get the shortest path between two nodes using dijkstra algorithm
     /// @param source The source node

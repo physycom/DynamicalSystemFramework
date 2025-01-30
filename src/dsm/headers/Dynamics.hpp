@@ -284,6 +284,13 @@ namespace dsm {
     if (seed.has_value()) {
       m_generator.seed(seed.value());
     }
+    for (const auto& nodeId : graph.outputNodes()) {
+      if (!m_graph.nodeSet().contains(nodeId)) {
+        Logger::error(std::format("Node with id {} not found", nodeId));
+      }
+      this->addItinerary(Itinerary{nodeId, nodeId});
+    }
+    this->updatePaths();
   }
 
   template <typename agent_t>

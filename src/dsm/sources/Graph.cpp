@@ -339,6 +339,12 @@ namespace dsm {
         } else {
           addNode<Intersection>(nodeIndex,
                                 std::make_pair(std::stod(lat), std::stod(lon)));
+          if ((highway.find("in_out") != std::string::npos) || (highway.find("outgoing_only") != std::string::npos)) {
+            m_outputNodes.push_back(nodeIndex);
+          }
+          if ((highway.find("in_out") != std::string::npos) || (highway.find("incoming_only") != std::string::npos)) {
+            m_inputNodes.push_back(nodeIndex);
+          }
         }
         m_nodeMapping.emplace(std::make_pair(id, nodeIndex));
         ++nodeIndex;
