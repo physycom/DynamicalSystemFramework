@@ -378,12 +378,11 @@ namespace dsm {
           continue;
         }
         std::istringstream iss{line};
-        std::string sourceId, targetId, length, oneway, lanes, highway, maxspeed, name;
-        // u;v;length;oneway;highway;maxspeed;name
+        std::string sourceId, targetId, length, lanes, highway, maxspeed, name;
+        // u;v;length;highway;maxspeed;name
         std::getline(iss, sourceId, ';');
         std::getline(iss, targetId, ';');
         std::getline(iss, length, ';');
-        std::getline(iss, oneway, ';');
         std::getline(iss, lanes, ';');
         std::getline(iss, highway, ';');
         std::getline(iss, maxspeed, ';');
