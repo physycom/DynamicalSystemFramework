@@ -21,6 +21,8 @@
 #include <format>
 #include <thread>
 #include <exception>
+#include <fstream>
+#include <filesystem>
 
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
@@ -30,6 +32,8 @@
 #include "../utility/TypeTraits/is_itinerary.hpp"
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
+
+static auto constexpr g_cacheFolder = "./dsmcache/";
 
 namespace dsm {
   /// @brief The Measurement struct represents the mean of a quantity and its standard deviation
@@ -67,6 +71,7 @@ namespace dsm {
   private:
     std::map<Id, std::unique_ptr<agent_t>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
+    bool m_bCacheEnabled;
 
   protected:
     Graph m_graph;
@@ -81,6 +86,16 @@ namespace dsm {
     /// @brief Update the path of a single itinerary using Dijsktra's algorithm
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
+      if (m_bCacheEnabled) {
+        // Check if g_cacheFolder/it{itinerary_id}.dsmcache exists
+        auto const& file = std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id());
+        if (std::filesystem::exists(file)) {
+          auto path = SparseMatrix<bool>{};
+          path.load(file);
+          pItinerary->setPath(path);
+          return;
+        }
+      }
       Size const dimension = m_graph.adjMatrix().getRowDim();
       auto const destinationID = pItinerary->destination();
       SparseMatrix<bool> path{dimension, dimension};
@@ -125,6 +140,9 @@ namespace dsm {
                         pItinerary->destination()));
       }
       pItinerary->setPath(path);
+      if (m_bCacheEnabled) {
+        pItinerary->path().cache(std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id()));
+      }
     }
 
   public:
@@ -203,6 +221,8 @@ namespace dsm {
     /// @param itineraries Generic container of itineraries, represented by an std::span
     void addItineraries(std::span<Itinerary> itineraries);
 
+    void enableCache();
+
     /// @brief Reset the simulation time
     void resetTime();
 
@@ -277,7 +297,8 @@ namespace dsm {
 
   template <typename agent_t>
   Dynamics<agent_t>::Dynamics(Graph& graph, std::optional<unsigned int> seed)
-      : m_graph{std::move(graph)},
+      : m_bCacheEnabled{false},
+        m_graph{std::move(graph)},
         m_time{0},
         m_previousSpireTime{0},
         m_generator{std::random_device{}()} {
@@ -288,6 +309,11 @@ namespace dsm {
 
   template <typename agent_t>
   void Dynamics<agent_t>::updatePaths() {
+    if (m_bCacheEnabled) {
+      if (!std::filesystem::exists(g_cacheFolder)) {
+        std::filesystem::create_directory(g_cacheFolder);
+      }
+    }
     std::vector<std::thread> threads;
     threads.reserve(m_itineraries.size());
     std::exception_ptr pThreadException;
@@ -411,6 +437,12 @@ namespace dsm {
     std::ranges::for_each(itineraries, [this](const auto& itinerary) -> void {
       m_itineraries.insert(std::make_unique<Itinerary>(itinerary));
     });
+  }
+
+  template <typename agent_t>
+  void Dynamics<agent_t>::enableCache() {
+    m_bCacheEnabled = true;
+    Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
   }
 
   template <typename agent_t>
