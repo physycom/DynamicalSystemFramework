@@ -88,8 +88,11 @@ namespace dsm {
   public:
     /// @brief Construct a new RoadDynamics object
     /// @param graph The graph representing the network
-    /// @param seed The seed for the random number generator
-    RoadDynamics(Graph& graph, std::optional<unsigned int> seed);
+    /// @param useCache If true, the cache is used (default is false)
+    /// @param seed The seed for the random number generator (default is std::nullopt)
+    RoadDynamics(Graph& graph,
+                 bool useCache = false,
+                 std::optional<unsigned int> seed = std::nullopt);
 
     /// @brief Set the error probability
     /// @param errorProbability The error probability
@@ -182,8 +185,10 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  RoadDynamics<delay_t>::RoadDynamics(Graph& graph, std::optional<unsigned int> seed)
-      : Dynamics<Agent<delay_t>>(graph, seed),
+  RoadDynamics<delay_t>::RoadDynamics(Graph& graph,
+                                      bool useCache,
+                                      std::optional<unsigned int> seed)
+      : Dynamics<Agent<delay_t>>(graph, useCache, seed),
         m_previousOptimizationTime{0},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},

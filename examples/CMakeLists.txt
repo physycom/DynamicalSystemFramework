@@ -19,7 +19,7 @@ set(EXECUTABLE_OUTPUT_PATH ../)
 
 # add as executable all cpp files into '.' folder
 file(GLOB SOURCES "*.cpp")
-file(GLOB SRC_SOURCES "../src/dsm/sources/*.cpp", "../src/dsm/utility/*.cpp")
+file(GLOB SRC_SOURCES "../src/dsm/sources/*.cpp" "../src/dsm/utility/*.cpp")
 
 # Loop through each source file and create an executable
 foreach(SOURCE ${SOURCES})

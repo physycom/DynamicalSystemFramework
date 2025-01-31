@@ -9,8 +9,12 @@ namespace dsm {
 
   public:
     /// @brief Construct a new First Order Dynamics object
-    /// @param graph, The graph representing the network
+    /// @param graph The graph representing the network
+    /// @param useCache If true, the cache is used (default is false)
+    /// @param seed The seed for the random number generator (default is std::nullopt)
+    /// @param alpha The minimum speed rate (default is 0)
     explicit FirstOrderDynamics(Graph& graph,
+                                bool useCache = false,
                                 std::optional<unsigned int> seed = std::nullopt,
                                 double alpha = 0.);
     /// @brief Set the speed of an agent
