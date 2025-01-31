@@ -418,8 +418,8 @@ namespace dsm {
               std::format("Self loop detected: {}->{}. Skipping.", sourceId, targetId));
           continue;
         }
-        auto const srcId{m_nodeMapping.at(sourceId)};
-        auto const dstId{m_nodeMapping.at(targetId)};
+        auto srcId{m_nodeMapping.at(sourceId)};
+        auto dstId{m_nodeMapping.at(targetId)};
         if (static_cast<unsigned long long>(srcId * nNodes + dstId) >
             std::numeric_limits<Id>::max()) {
           throw std::invalid_argument(Logger::buildExceptionMessage(

@@ -324,9 +324,9 @@ namespace dsm {
     }
     for (const auto& nodeId : this->m_graph.outputNodes()) {
       addItinerary(Itinerary{nodeId, nodeId});
-      // m_updatePath(m_itineraries.at(nodeId));
+      m_updatePath(m_itineraries.at(nodeId));
     }
-    updatePaths();
+    // updatePaths();
   }
 
   template <typename agent_t>
