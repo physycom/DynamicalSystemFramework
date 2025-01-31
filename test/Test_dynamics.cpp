@@ -879,8 +879,9 @@ TEST_CASE("Dynamics") {
         }
 #else
         dynamics.evolve(false);
+        dynamics.evolve(false);
         THEN("The agent has travelled the correct distance") {
-          CHECK_EQ(dynamics.agents().at(0)->time(), 7);
+          CHECK_EQ(dynamics.agents().at(0)->time(), 8);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
