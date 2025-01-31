@@ -86,7 +86,7 @@ int main() {
   dsm::Logger::info(std::format("Streets: {}", graph.nEdges()));
 
   // Create the dynamics
-  Dynamics dynamics{graph, 69, 0.95};
+  Dynamics dynamics{graph, false, 69, 0.95};
   dynamics.setSpeedFluctuationSTD(0.2);
   Itinerary itinerary{4, 4};
   dynamics.addItinerary(itinerary);

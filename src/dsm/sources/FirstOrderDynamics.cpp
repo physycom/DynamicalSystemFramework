@@ -2,9 +2,12 @@
 
 namespace dsm {
   FirstOrderDynamics::FirstOrderDynamics(Graph& graph,
+                                         bool useCache,
                                          std::optional<unsigned int> seed,
                                          double alpha)
-      : RoadDynamics<Delay>(graph, seed), m_alpha{alpha}, m_speedFluctuationSTD{0.} {
+      : RoadDynamics<Delay>(graph, useCache, seed),
+        m_alpha{alpha},
+        m_speedFluctuationSTD{0.} {
     if (alpha < 0. || alpha > 1.) {
       Logger::error(std::format("The minimum speed rateo ({}) must be in [0, 1[", alpha));
     }
