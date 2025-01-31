@@ -55,7 +55,7 @@ TEST_CASE("Dynamics") {
       graph.importMatrix("./data/matrix.dsm");
       graph.buildAdj();
       WHEN("A dynamics object is created") {
-        Dynamics dynamics{graph, 69};
+        Dynamics dynamics{graph, false, 69};
         THEN("The node and the street sets are the same") {
           CHECK_EQ(dynamics.graph().nNodes(), 3);
           CHECK_EQ(dynamics.graph().nEdges(), 4);
@@ -73,7 +73,7 @@ TEST_CASE("Dynamics") {
       }
       WHEN("We transform a node into a traffic light and create the dynamics") {
         auto& tl = graph.makeTrafficLight(0, 2);
-        Dynamics dynamics{graph, 69};
+        Dynamics dynamics{graph, false, 69};
         THEN("The node is a traffic light") {
           CHECK(dynamics.graph().node(0)->isTrafficLight());
           CHECK_EQ(tl.cycleTime(), 2);
@@ -81,14 +81,14 @@ TEST_CASE("Dynamics") {
       }
       WHEN("We transform a node into a roundabout and create the dynamics") {
         graph.makeRoundabout(0);
-        Dynamics dynamics{graph, 69};
+        Dynamics dynamics{graph, false, 69};
         THEN("The node is a roundabout") {
           CHECK(dynamics.graph().node(0)->isRoundabout());
         }
       }
       WHEN("We transorm a street into a spire and create the dynamcis") {
         graph.makeSpireStreet(8);
-        Dynamics dynamics{graph, 69};
+        Dynamics dynamics{graph, false, 69};
         THEN("The street is a spire") { CHECK(dynamics.graph().street(8)->isSpire()); }
       }
     }
@@ -97,7 +97,7 @@ TEST_CASE("Dynamics") {
     GIVEN("A dynamics object and a destination node") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dat");
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       WHEN("We add a span of destination nodes") {
         std::array<uint32_t, 3> nodes{0, 1, 2};
         dynamics.setDestinationNodes(nodes);
@@ -115,7 +115,7 @@ TEST_CASE("Dynamics") {
     GIVEN("A dynamics object, a source node and a destination node") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dsm");
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       dynamics.addItinerary(Itinerary{2, 2});
       WHEN("We add the agent") {
         dynamics.addAgent(0, 2, 0);
@@ -133,7 +133,7 @@ TEST_CASE("Dynamics") {
     GIVEN("A dynamics object and an itinerary") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dsm");
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       Itinerary itinerary{0, 2};
       WHEN("We add a random agent") {
         dynamics.addItinerary(itinerary);
@@ -152,7 +152,7 @@ TEST_CASE("Dynamics") {
     GIVEN("A dynamics object and many itineraries") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dsm");
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       Itinerary Itinerary1{0, 2}, Itinerary2{1, 1};
       dynamics.addItinerary(Itinerary1);
       dynamics.addItinerary(Itinerary2);
@@ -207,7 +207,7 @@ TEST_CASE("Dynamics") {
     GIVEN("A graph object") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dat");
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       WHEN("We add one agent for existing itinerary") {
         std::unordered_map<uint32_t, double> src{{0, 1.}};
         std::unordered_map<uint32_t, double> dst{{2, 1.}};
@@ -257,7 +257,7 @@ TEST_CASE("Dynamics") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dat", false);
       graph.buildAdj();
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       dynamics.setPassageProbability(p);
       WHEN("We add some agent") {
         dynamics.addAgents(n);
@@ -275,7 +275,7 @@ TEST_CASE("Dynamics") {
     GIVEN("A dynamics object and one itinerary") {
       auto graph = Graph{};
       graph.importMatrix("./data/matrix.dsm");
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       Itinerary itinerary{0, 2};
       dynamics.addItinerary(itinerary);
       WHEN("We add an agent with itinerary 0") {
@@ -302,7 +302,7 @@ TEST_CASE("Dynamics") {
       Graph graph2;
       graph2.addStreets(s);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 1};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
@@ -325,7 +325,7 @@ TEST_CASE("Dynamics") {
       Graph graph2;
       graph2.addStreets(s1, s2, s3);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 2};
       WHEN("We add an itinerary and update the paths") {
         dynamics.addItinerary(itinerary);
@@ -360,7 +360,7 @@ TEST_CASE("Dynamics") {
       Itinerary it2{1, 118};
       Itinerary it3{2, 118};
       Itinerary it4{3, 118};
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       dynamics.addItinerary(it1);
       dynamics.addItinerary(it2);
       dynamics.addItinerary(it3);
@@ -385,7 +385,7 @@ TEST_CASE("Dynamics") {
       Graph graph;
       graph.addStreets(s1, s2, s3, s4);
       graph.buildAdj();
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       Itinerary itinerary{0, 2};
       dynamics.addItinerary(itinerary);
       WHEN("We update the paths") {
@@ -421,7 +421,7 @@ TEST_CASE("Dynamics") {
       Graph graph;
       graph.addStreets(s1, s2, s3);
       graph.buildAdj();
-      Dynamics dynamics{graph, 69};
+      Dynamics dynamics{graph, false, 69};
       Itinerary itinerary{0, 2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
@@ -453,7 +453,7 @@ TEST_CASE("Dynamics") {
       Graph graph2;
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 1};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
@@ -478,7 +478,7 @@ TEST_CASE("Dynamics") {
       Graph graph2;
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 1};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
@@ -511,7 +511,7 @@ TEST_CASE("Dynamics") {
       Graph graph2;
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       std::vector<dsm::Id> dsts{1, 2};
       dynamics.setDestinationNodes(dsts);
       std::vector<dsm::Id> trip{2, 1};
@@ -555,7 +555,7 @@ TEST_CASE("Dynamics") {
       graph2.addNode(std::make_unique<TrafficLight>(tl));
       graph2.addStreets(s1, s2, s3, s4);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
@@ -618,7 +618,7 @@ TEST_CASE("Dynamics") {
       nodes.at(4)->setCoords({1., 0.});
       graph2.buildStreetAngles();
 
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
 
       std::vector<uint32_t> destinationNodes{0, 2, 3, 4};
       dynamics.setDestinationNodes(destinationNodes);
@@ -687,7 +687,7 @@ TEST_CASE("Dynamics") {
       nodes.at(4)->setCoords({1., 0.});
       graph2.buildStreetAngles();
 
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
 
       std::vector<uint32_t> destinationNodes{0, 2, 3, 4};
       dynamics.setDestinationNodes(destinationNodes);
@@ -743,7 +743,7 @@ TEST_CASE("Dynamics") {
         tl.setCycle(11, dsm::Direction::ANY, {4, 0});
         tl.setComplementaryCycle(16, 11);
         tl.setComplementaryCycle(21, 11);
-        Dynamics dynamics{graph2, 69};
+        Dynamics dynamics{graph2, false, 69};
         std::vector<dsm::Id> destinationNodes{0, 2, 3, 4};
         dynamics.setDestinationNodes(destinationNodes);
         WHEN("We evolve the dynamics and optimize traffic lights") {
@@ -793,7 +793,7 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       auto& rb = graph2.makeRoundabout(1);
       graph2.adjustNodeCapacities();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 2};
       Itinerary itinerary2{1, 0};
       dynamics.addItinerary(itinerary);
@@ -831,7 +831,7 @@ TEST_CASE("Dynamics") {
       Graph graph2;
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
@@ -857,7 +857,7 @@ TEST_CASE("Dynamics") {
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
       graph2.makeStochasticStreet(1, 0.3);
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
@@ -895,7 +895,7 @@ TEST_CASE("Dynamics") {
       node->setCapacity(4);
       node->setTransportCapacity(4);
     }
-    Dynamics dynamics{graph2, 69, 0.5};
+    Dynamics dynamics{graph2, false, 69, 0.5};
     Itinerary itinerary{0, 2};
     dynamics.addItinerary(itinerary);
     dynamics.updatePaths();
@@ -947,7 +947,7 @@ TEST_CASE("Dynamics") {
       graph2.addEdge<Street>(6, std::make_pair(3, 0), 10., 10.);
       graph2.addEdge<Street>(7, std::make_pair(4, 0), 10., 10.);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       dynamics.graph().node(0)->setCapacity(3);
       Itinerary itinerary{0, 2};
       Itinerary itinerary2{1, 1};
@@ -1007,7 +1007,7 @@ TEST_CASE("Dynamics") {
       graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
       graph2.addEdge<Street>(1, std::make_pair(1, 2), 10., 10.);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
@@ -1036,7 +1036,7 @@ TEST_CASE("Dynamics") {
       graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
       graph2.addEdge<Street>(1, std::make_pair(1, 2), 10., 10.);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, 69};
+      Dynamics dynamics{graph2, false, 69};
       Itinerary itinerary{0, 2};
       dynamics.addItinerary(itinerary);
       dynamics.updatePaths();
