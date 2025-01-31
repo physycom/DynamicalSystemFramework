@@ -746,4 +746,25 @@ TEST_CASE("Boolean Matrix") {
     CHECK(m.getRowDim() == 5);
     CHECK(m.getColDim() == 5);
   }
+  SUBCASE("Caching") {
+    /*
+    The caching function should cache the matrix
+    GIVEN: the caching function is called
+    WHEN: the function is called on a matrix
+    THEN: the function should cache the matrix
+    */
+    {
+      SparseMatrix<bool> m(3, 3);
+      m.insert(0, 0, true);
+      m.insert(1, 2, true);
+      m.cache("./data/test.dsmcache");
+    }
+    SparseMatrix<bool> m;
+    m.load("./data/test.dsmcache");
+    CHECK(m(0, 0));
+    CHECK(m(1, 2));
+    CHECK(m.size() == 2);
+    CHECK(m.getRowDim() == 3);
+    CHECK(m.getColDim() == 3);
+  }
 }
