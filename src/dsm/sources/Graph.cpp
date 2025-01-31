@@ -1,6 +1,8 @@
 
 #include "../headers/Graph.hpp"
 
+#include <algorithm>
+
 namespace dsm {
   Graph::Graph()
       : m_adjacency{SparseMatrix<bool>()},
@@ -432,6 +434,23 @@ namespace dsm {
                         std::stod(maxspeed),
                         std::stoul(lanes),
                         name);
+        if (oneway == "False") {
+          std::swap(srcId, dstId);
+          if (static_cast<unsigned long long>(srcId * nNodes + dstId) >
+              std::numeric_limits<Id>::max()) {
+            throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
+                "Street id {}->{} would too large for the current type of Id.",
+                srcId,
+                dstId)));
+          }
+          Id streetId = srcId * nNodes + dstId;
+          addEdge<Street>(streetId,
+                          std::make_pair(srcId, dstId),
+                          std::stod(length),
+                          std::stod(maxspeed),
+                          std::stoul(lanes),
+                          name);
+        }
       }
     } else {
       throw std::invalid_argument(
