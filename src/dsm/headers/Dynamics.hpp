@@ -93,6 +93,7 @@ namespace dsm {
           auto path = SparseMatrix<bool>{};
           path.load(file);
           pItinerary->setPath(std::move(path));
+          Logger::info(std::format("Loaded cached path for itinerary {}", pItinerary->id()));
           return;
         }
       }
@@ -157,6 +158,7 @@ namespace dsm {
       if (m_bCacheEnabled) {
         pItinerary->path().cache(
             std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id()));
+        Logger::info(std::format("Cached path for itinerary {}", pItinerary->id()));
       }
     }
 
@@ -312,7 +314,7 @@ namespace dsm {
 
   template <typename agent_t>
   Dynamics<agent_t>::Dynamics(Graph& graph, std::optional<unsigned int> seed)
-      : m_bCacheEnabled{false},
+      : m_bCacheEnabled{true},
         m_graph{std::move(graph)},
         m_time{0},
         m_previousSpireTime{0},
@@ -321,9 +323,10 @@ namespace dsm {
       m_generator.seed(seed.value());
     }
     for (const auto& nodeId : this->m_graph.outputNodes()) {
-      this->addItinerary(Itinerary{nodeId, nodeId});
+      addItinerary(Itinerary{nodeId, nodeId});
+      // m_updatePath(m_itineraries.at(nodeId));
     }
-    this->updatePaths();
+    updatePaths();
   }
 
   template <typename agent_t>
