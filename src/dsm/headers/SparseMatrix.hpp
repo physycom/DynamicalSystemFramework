@@ -17,6 +17,7 @@
 #include <vector>
 #include <cmath>
 #include <format>
+#include <fstream>
 
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
@@ -189,6 +190,13 @@ namespace dsm {
 
     /// @brief reshape the matrix
     void reshape(Id dim);
+
+    /// @brief save the matrix to a binary file (.dsmcache)
+    /// @param filename the name of the file
+    void cache(std::string const& filename) const;
+    /// @brief load the matrix from a binary file (.dsmcache)
+    /// @param filename the name of the file
+    void load(std::string const& filename);
 
     /// @brief return the begin iterator of the matrix
     /// @return the begin iterator
@@ -630,6 +638,43 @@ namespace dsm {
         this->insert_or_assign(it.first, it.second);
       }
     }
+  }
+
+  template <typename T>
+  void SparseMatrix<T>::cache(std::string const& filename) const {
+    std::ofstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    file.write(reinterpret_cast<const char*>(&_rows), sizeof(Id));
+    file.write(reinterpret_cast<const char*>(&_cols), sizeof(Id));
+    size_t size = _matrix.size();
+    file.write(reinterpret_cast<const char*>(&size), sizeof(size_t));
+    for (auto& it : _matrix) {
+      file.write(reinterpret_cast<const char*>(&it.first), sizeof(Id));
+      file.write(reinterpret_cast<const char*>(&it.second), sizeof(T));
+    }
+    file.close();
+  }
+
+  template <typename T>
+  void SparseMatrix<T>::load(std::string const& filename) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file.is_open()) {
+      Logger::error(std::format("Error opening file \"{}\" for reading.", filename));
+    }
+    file.read(reinterpret_cast<char*>(&_rows), sizeof(Id));
+    file.read(reinterpret_cast<char*>(&_cols), sizeof(Id));
+    size_t size;
+    file.read(reinterpret_cast<char*>(&size), sizeof(size_t));
+    for (size_t i = 0; i < size; ++i) {
+      Id index;
+      T value;
+      file.read(reinterpret_cast<char*>(&index), sizeof(Id));
+      file.read(reinterpret_cast<char*>(&value), sizeof(T));
+      _matrix.insert_or_assign(index, value);
+    }
+    file.close();
   }
 
   template <typename T>
