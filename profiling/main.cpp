@@ -36,7 +36,7 @@ int main() {
 
   std::cout << "Creating dynamics...\n";
 
-  Dynamics dynamics{graph, std::nullopt, 0.95};
+  Dynamics dynamics{graph, false, std::nullopt, 0.95};
   dynamics.addItinerary(it1);
   dynamics.addItinerary(it2);
   dynamics.addItinerary(it3);
