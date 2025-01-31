@@ -18,7 +18,7 @@ import ast
 import logging
 import osmnx as ox
 
-__version__ = "2025.1.30"
+__version__ = "2025.1.31"
 
 RGBA_RED = (1, 0, 0, 1)
 RGBA_WHITE = (1, 1, 1, 1)
@@ -85,6 +85,12 @@ if __name__ == "__main__":
         default=".",
         help="Folder where the output files will be saved. Default is the current folder.",
     )
+    parser.add_argument(
+        "-c",
+        "--consolidate-intersections",
+        action="store_true",
+        help="Consolidate intersections. Default is False",
+    )
     parser = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     # set up colored logging
@@ -106,7 +112,12 @@ if __name__ == "__main__":
         FLAGS += FLAGS_MOTORWAY
     if not parser.exclude_residential:
         FLAGS += FLAGS_RESIDENTIAL
-    CUSTOM_FILTER = f"[\"highway\"~\"{'|'.join(FLAGS)}\"]"
+    if not parser.exclude_motorway and not parser.exclude_residential:
+        FLAGS = None
+    if FLAGS is None:
+        CUSTOM_FILTER = None
+    else:
+        CUSTOM_FILTER = f"[\"highway\"~\"{'|'.join(FLAGS)}\"]"
     logging.info("Custom filter: %s", CUSTOM_FILTER)
     GRAPH = ox.graph_from_place(parser.place, network_type="drive")
     ox.plot_graph(
@@ -121,22 +132,24 @@ if __name__ == "__main__":
         len(GRAPH.nodes),
         len(GRAPH.edges),
     )
-    GRAPH = ox.graph_from_place(
-        parser.place, network_type="drive", custom_filter=CUSTOM_FILTER
-    )
-    logging.info(
-        "Custom filtered graph has %d nodes and %d edges.",
-        len(GRAPH.nodes),
-        len(GRAPH.edges),
-    )
-    GRAPH = ox.consolidate_intersections(
-        ox.project_graph(GRAPH), tolerance=parser.tolerance
-    )
-    logging.info(
-        "Consolidated graph has %d nodes and %d edges.",
-        len(GRAPH.nodes),
-        len(GRAPH.edges),
-    )
+    if FLAGS is not None:
+        GRAPH = ox.graph_from_place(
+            parser.place, network_type="drive", custom_filter=CUSTOM_FILTER
+        )
+        logging.info(
+            "Custom filtered graph has %d nodes and %d edges.",
+            len(GRAPH.nodes),
+            len(GRAPH.edges),
+        )
+    if parser.consolidate_intersections:
+        GRAPH = ox.consolidate_intersections(
+            ox.project_graph(GRAPH), tolerance=parser.tolerance
+        )
+        logging.info(
+            "Consolidated graph has %d nodes and %d edges.",
+            len(GRAPH.nodes),
+            len(GRAPH.edges),
+        )
     # plot graph on a 16x9 figure and save into file
     ox.plot_graph(
         GRAPH,
@@ -172,7 +185,6 @@ if __name__ == "__main__":
                 "u_original",
                 "v_original",
                 "length",
-                "oneway",
                 "lanes",
                 "highway",
                 "maxspeed",
@@ -182,9 +194,10 @@ if __name__ == "__main__":
 
     else:
         gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
-
+        if not "lanes" in gdf_edges.columns:
+            gdf_edges["lanes"] = 1
         gdf_edges = gdf_edges[
-            ["u", "v", "length", "oneway", "lanes", "highway", "maxspeed", "name"]
+            ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
         ]
 
     if parser.allow_duplicates:
@@ -215,6 +228,9 @@ if __name__ == "__main__":
             gdf_edges = gdf_edges.drop_duplicates(subset=["u_original", "v_original"])
         else:
             gdf_edges = gdf_edges.drop_duplicates(subset=["u", "v"])
+
+    # drop self loops
+    gdf_edges = gdf_edges[gdf_edges["u"] != gdf_edges["v"]]
 
     # Save the data
     place = parser.place.split(",")[0].strip().lower()

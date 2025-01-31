@@ -196,9 +196,9 @@ TEST_CASE("Graph") {
     GIVEN("A graph object") {
       Graph graph{};
       WHEN("We import nodes and edges from OSM") {
-        graph.importOSMNodes("./data/nodes.csv");
-        graph.importOSMEdges("./data/edges.csv");
-        std::ifstream fNodes{"./data/nodes.csv"};
+        graph.importOSMNodes("./data/postua_nodes.csv");
+        graph.importOSMEdges("./data/postua_edges.csv");
+        std::ifstream fNodes{"./data/postua_nodes.csv"};
         // get number of lines
         std::string line;
         int nNodes{-1};  // -1 because of the header
@@ -206,7 +206,7 @@ TEST_CASE("Graph") {
           ++nNodes;
         }
         fNodes.close();
-        std::ifstream fEdges{"./data/edges.csv"};
+        std::ifstream fEdges{"./data/postua_edges.csv"};
         int nEdges{-1};  // -1 because of the header
         while (std::getline(fEdges, line)) {
           ++nEdges;
@@ -222,9 +222,9 @@ TEST_CASE("Graph") {
         }
       }
       WHEN("We import many nodes and edges from OSM") {
-        graph.importOSMNodes("./data/nodes_big.csv");
-        graph.importOSMEdges("./data/edges_big.csv");
-        std::ifstream fNodes{"./data/nodes_big.csv"};
+        graph.importOSMNodes("./data/forlì_nodes.csv");
+        graph.importOSMEdges("./data/forlì_edges.csv");
+        std::ifstream fNodes{"./data/forlì_nodes.csv"};
         // get number of lines
         std::string line;
         int nNodes{-1};  // -1 because of the header
@@ -232,7 +232,7 @@ TEST_CASE("Graph") {
           ++nNodes;
         }
         fNodes.close();
-        std::ifstream fEdges{"./data/edges_big.csv"};
+        std::ifstream fEdges{"./data/forlì_edges.csv"};
         int nEdges{-1};  // -1 because of the header
         while (std::getline(fEdges, line)) {
           ++nEdges;
