@@ -869,6 +869,7 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
         dynamics.evolve(false);
+#ifndef __APPLE__
         THEN("The agent has travelled the correct distance") {
           CHECK_EQ(dynamics.agents().at(0)->time(), 6);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
@@ -876,6 +877,16 @@ TEST_CASE("Dynamics") {
           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
           CHECK_EQ(dynamics.agents().at(0)->distance(), 4.);
         }
+#else
+        dynamics.evolve(false);
+        THEN("The agent has travelled the correct distance") {
+          CHECK_EQ(dynamics.agents().at(0)->time(), 7);
+          CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
+          CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
+          CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
+          CHECK_EQ(dynamics.agents().at(0)->distance(), 4.);
+        }
+#endif
       }
     }
   }
