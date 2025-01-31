@@ -33,7 +33,7 @@
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
-static auto constexpr g_cacheFolder = "./dsmcache/";
+static auto constexpr g_cacheFolder = "./.dsmcache/";
 
 namespace dsm {
   /// @brief The Measurement struct represents the mean of a quantity and its standard deviation
@@ -87,12 +87,12 @@ namespace dsm {
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
       if (m_bCacheEnabled) {
-        // Check if g_cacheFolder/it{itinerary_id}.dsmcache exists
-        auto const& file = std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id());
+        auto const& file =
+            std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id());
         if (std::filesystem::exists(file)) {
           auto path = SparseMatrix<bool>{};
           path.load(file);
-          pItinerary->setPath(path);
+          pItinerary->setPath(std::move(path));
           return;
         }
       }
@@ -155,7 +155,8 @@ namespace dsm {
 
       pItinerary->setPath(path);
       if (m_bCacheEnabled) {
-        pItinerary->path().cache(std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id()));
+        pItinerary->path().cache(
+            std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id()));
       }
     }
 
