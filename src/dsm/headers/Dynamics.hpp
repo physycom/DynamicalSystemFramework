@@ -105,7 +105,7 @@ namespace dsm {
       std::unordered_map<Id, std::optional<DijkstraResult>> shortestPaths;
 
       for (const auto& [nodeId, node] : m_graph.nodeSet()) {
-        if (nodeId == destinationID) {
+        if (nodeId == destinationID || m_graph.adjMatrix().getRow(nodeId).empty()) {
           continue;
         }
 
@@ -336,6 +336,7 @@ namespace dsm {
         std::filesystem::create_directory(g_cacheFolder);
       }
     }
+
     std::vector<std::thread> threads;
     threads.reserve(m_itineraries.size());
     std::exception_ptr pThreadException;
