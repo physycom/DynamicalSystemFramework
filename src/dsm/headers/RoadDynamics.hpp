@@ -237,7 +237,10 @@ namespace dsm {
         }
       }
     }
-    assert(possibleMoves.size() > 0);
+    if (possibleMoves.empty()) {
+      Logger::error(
+          std::format("No possible moves from node {} for agent {}", nodeId, agentId));
+    }
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleMoves.size() - 1)};
     uint8_t p{0};
@@ -333,7 +336,7 @@ namespace dsm {
         }
         continue;
       }
-      auto const& nextStreet{this->m_graph.streetSet()[m_agentNextStreetId[agentId]]};
+      auto const& nextStreet{this->m_graph.street(m_agentNextStreetId.at(agentId))};
       if (nextStreet->isFull()) {
         continue;
       }
@@ -362,7 +365,7 @@ namespace dsm {
         return false;
       }
       for (auto const [angle, agentId] : intersection.agents()) {
-        auto const& nextStreet{this->m_graph.streetSet()[m_agentNextStreetId[agentId]]};
+        auto const& nextStreet{this->m_graph.street(m_agentNextStreetId.at(agentId))};
         if (nextStreet->isFull()) {
           if (m_forcePriorities) {
             return false;
@@ -385,7 +388,7 @@ namespace dsm {
         return false;
       }
       auto const agentId{roundabout.agents().front()};
-      auto const& nextStreet{this->m_graph.streetSet()[m_agentNextStreetId[agentId]]};
+      auto const& nextStreet{this->m_graph.street(m_agentNextStreetId.at(agentId))};
       if (!(nextStreet->isFull())) {
         if (this->agents().at(agentId)->streetId().has_value()) {
           const auto streetId = this->agents().at(agentId)->streetId().value();
@@ -496,7 +499,7 @@ namespace dsm {
                  !m_agentNextStreetId.contains(agentId)) {
         Id srcNodeId = agent->srcNodeId().has_value() ? agent->srcNodeId().value()
                                                       : nodeDist(this->m_generator);
-        const auto& srcNode{this->m_graph.nodeSet()[srcNodeId]};
+        const auto& srcNode{this->m_graph.node(srcNodeId)};
         if (srcNode->isFull()) {
           continue;
         }

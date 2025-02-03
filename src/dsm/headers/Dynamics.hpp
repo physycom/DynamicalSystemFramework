@@ -447,6 +447,7 @@ namespace dsm {
   template <typename agent_t>
   void Dynamics<agent_t>::removeAgent(Size agentId) {
     m_agents.erase(agentId);
+    Logger::debug(std::format("Removed agent with id {}", agentId));
   }
 
   template <typename agent_t>
