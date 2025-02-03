@@ -93,7 +93,7 @@ namespace dsm {
           auto path = SparseMatrix<bool>{};
           path.load(file);
           pItinerary->setPath(std::move(path));
-          Logger::info(
+          Logger::debug(
               std::format("Loaded cached path for itinerary {}", pItinerary->id()));
           return;
         }
@@ -159,7 +159,7 @@ namespace dsm {
       if (m_bCacheEnabled) {
         pItinerary->path().cache(
             std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id()));
-        Logger::info(
+        Logger::debug(
             std::format("Saved path in cache for itinerary {}", pItinerary->id()));
       }
     }
