@@ -598,6 +598,13 @@ namespace dsm {
                                                 const TContainer& src_weights,
                                                 const TContainer& dst_weights,
                                                 const size_t minNodeDistance) {
+    Logger::debug(
+        std::format("Init addAgentsRandomly for {} agents from {} nodes to {} nodes with "
+                    "minNodeDistance {}",
+                    nAgents,
+                    src_weights.size(),
+                    dst_weights.size(),
+                    minNodeDistance));
     if (src_weights.size() == 1 && dst_weights.size() == 1 &&
         src_weights.begin()->first == dst_weights.begin()->first) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
@@ -632,6 +639,7 @@ namespace dsm {
     if (!this->agents().empty()) {
       agentId = this->agents().rbegin()->first + 1;
     }
+    Logger::debug(std::format("Adding {} agents at time {}.", nAgents, this->time()));
     while (nAgents > 0) {
       Id srcId{0}, dstId{0};
       if (dst_weights.size() == 1) {

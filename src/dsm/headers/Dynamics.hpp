@@ -401,6 +401,7 @@ namespace dsm {
           std::format("Agent with id {} already exists.", agent->id())));
     }
     m_agents.emplace(agent->id(), std::move(agent));
+    Logger::debug(std::format("Added agent with id {}", m_agents.rbegin()->first));
   }
 
   template <typename agent_t>
