@@ -112,21 +112,40 @@ namespace dsm {
         }
         // save the minimum distance between i and the destination
         const auto minDistance{result.value().distance()};
-        for (const auto [nextNodeId, _] : m_graph.adjMatrix().getRow(nodeId)) {
-          if (nextNodeId == destinationID &&
-              minDistance ==
-                  m_graph.streetSet()[nodeId * dimension + nextNodeId]->length()) {
-            path.insert(nodeId, nextNodeId, true);
+        auto const& row{m_graph.adjMatrix().getRow(nodeId)};
+        for (const auto [nextNodeId, _] : row) {
+          bool const bIsMinDistance{
+              std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
+                       minDistance) < 1.};  // 1 meter tolerance between shortest paths
+          if (nextNodeId == destinationID) {
+            if (bIsMinDistance) {
+              path.insert(nodeId, nextNodeId, true);
+            } else {
+              Logger::debug(
+                  std::format("Found a path from {} to {} which differs for more than {} "
+                              "meter(s) from the shortest one.",
+                              nodeId,
+                              destinationID,
+                              1.));
+            }
             continue;
           }
           result = m_graph.shortestPath(nextNodeId, destinationID);
 
           if (result.has_value()) {
-            // if the shortest path exists, save the distance
-            if (minDistance ==
-                result.value().distance() +
-                    m_graph.streetSet()[nodeId * dimension + nextNodeId]->length()) {
+            bool const bIsMinDistance{
+                std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() +
+                         result.value().distance() - minDistance) <
+                1.};  // 1 meter tolerance between shortest paths
+            if (bIsMinDistance) {
               path.insert(nodeId, nextNodeId, true);
+            } else {
+              Logger::debug(
+                  std::format("Found a path from {} to {} which differs for more than {} "
+                              "meter(s) from the shortest one.",
+                              nodeId,
+                              destinationID,
+                              1.));
             }
           } else if ((nextNodeId != destinationID)) {
             Logger::warning(std::format(
