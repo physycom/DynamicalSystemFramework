@@ -128,12 +128,10 @@ TEST_CASE("Street") {
     CHECK_EQ(street.queue(0).size(), 3);
     CHECK_EQ(street.queue(0).size(), 3);
     // check that the next agent dequeued is agent 2
-    CHECK_EQ(street.dequeue(0).value(), 2);
+    CHECK_EQ(street.dequeue(0), 2);
     CHECK_EQ(street.queue(0).size(), 2);
     street.dequeue(0);
     street.dequeue(0);  // the queue is now empty
-    // check that the result of dequeue is std::nullopt
-    CHECK_FALSE(street.dequeue(0).has_value());
   }
   SUBCASE("Angle") {
     /// This tests the angle method

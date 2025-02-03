@@ -91,9 +91,12 @@ namespace dsm {
         m_movingAgents.end());
     m_exitQueues[index].push(agentId);
   }
-  std::optional<Id> Street::dequeue(size_t index) {
+  Id Street::dequeue(size_t index) {
     if (m_exitQueues[index].empty()) {
-      return std::nullopt;
+      Logger::error(std::format(
+          "Trying to remove an agent from queue {} of street {} which is empty.",
+          index,
+          this->id()));
     }
     Id id = m_exitQueues[index].front();
     m_exitQueues[index].pop();
@@ -160,12 +163,9 @@ namespace dsm {
 
   int SpireStreet::meanFlow() { return inputCounts() - outputCounts(); }
 
-  std::optional<Id> SpireStreet::dequeue(size_t index) {
-    auto const& id = Street::dequeue(index);
-    if (id.has_value()) {
-      increaseOutputCounter();
-    }
-    return id;
+  Id SpireStreet::dequeue(size_t index) {
+    increaseOutputCounter();
+    return Street::dequeue(index);
   }
   void StochasticSpireStreet::addAgent(Id agentId) {
     Street::addAgent(agentId);
@@ -174,11 +174,8 @@ namespace dsm {
 
   int StochasticSpireStreet::meanFlow() { return inputCounts() - outputCounts(); }
 
-  std::optional<Id> StochasticSpireStreet::dequeue(size_t index) {
-    auto const& id = Street::dequeue(index);
-    if (id.has_value()) {
-      increaseOutputCounter();
-    }
-    return id;
+  Id StochasticSpireStreet::dequeue(size_t index) {
+    increaseOutputCounter();
+    return Street::dequeue(index);
   }
 };  // namespace dsm

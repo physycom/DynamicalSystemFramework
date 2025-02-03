@@ -324,9 +324,7 @@ namespace dsm {
         }
       }
       if (bArrived) {
-        if (pStreet->dequeue(queueIndex) == std::nullopt) {
-          continue;
-        }
+        pStreet->dequeue(queueIndex);
         m_travelDTs.push_back({pAgent->distance(), static_cast<double>(pAgent->time())});
         if (reinsert_agents) {
           // reset Agent's values
@@ -340,10 +338,10 @@ namespace dsm {
       if (nextStreet->isFull()) {
         continue;
       }
-      if (pStreet->dequeue(queueIndex) == std::nullopt) {
-        continue;
+      pStreet->dequeue(queueIndex);
+      if (destinationNode->id() != nextStreet->u()) {
+        Logger::error(std::format("Agent {} is going to the wrong street", agentId));
       }
-      assert(destinationNode->id() == nextStreet->nodePair().first);
       if (destinationNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
         auto const delta{nextStreet->deltaAngle(pStreet->angle())};
