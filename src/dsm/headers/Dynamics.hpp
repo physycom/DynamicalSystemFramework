@@ -119,7 +119,7 @@ namespace dsm {
         }
 
         const auto minDistance = result.value().distance();
-        shortestPaths.at(nodeId) = result;  // Cache for reuse
+        shortestPaths[nodeId] = result;  // Cache for reuse
 
         for (const auto& [nextNodeId, _] : m_graph.adjMatrix().getRow(nodeId)) {
           if (nextNodeId == destinationID) {
