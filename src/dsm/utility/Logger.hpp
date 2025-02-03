@@ -1,19 +1,26 @@
-
 #pragma once
+
+#include "Typedef.hpp"
 
 #include <source_location>
 #include <string>
+#include <set>
 
 namespace dsm {
 
   /// @brief The Logger class is a simple logging class which provides static methods to log messages on std::clog and std::cerr.
   class Logger {
+    static log_level_t m_logLevel;
     static bool m_verbose;
 
   public:
     /// @brief Set the verbosity of the logger
     /// @param verbose If true, the logger will print the detailed location of the message
     static void setVerbose(bool verbose);
+    /// @brief Set the log level of the logger
+    /// @param logLevel The log level
+    /// @details The log level can be DEBUG (0), INFO (1), WARNING(2) or ERROR (3)
+    static void setLogLevel(log_level_t logLevel);
     /// @brief Build an exception message
     /// @param message The message
     /// @param location The location of the exception. Default is the current location
