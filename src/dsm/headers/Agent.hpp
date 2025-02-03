@@ -103,7 +103,7 @@ namespace dsm {
     Id id() const { return m_id; }
     /// @brief Get the agent's itinerary
     /// @return The agent's itinerary
-    Id itineraryId() const { return m_trip[m_itineraryIdx]; }
+    Id itineraryId() const { return m_trip.at(m_itineraryIdx); }
     /// @brief Get the agent's trip
     /// @return The agent's trip
     std::vector<Id> const& trip() const { return m_trip; }

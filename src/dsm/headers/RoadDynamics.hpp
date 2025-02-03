@@ -715,7 +715,7 @@ namespace dsm {
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
     for (const auto& [streetId, pStreet] : this->m_graph.streetSet()) {
       if (bUpdateData) {
-        m_streetTails[streetId] += pStreet->nExitingAgents();
+        m_streetTails.at(streetId) += pStreet->nExitingAgents();
       }
       for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
         this->m_evolveStreet(pStreet, reinsert_agents);
@@ -760,11 +760,11 @@ namespace dsm {
 
       double inputGreenSum{0.}, inputRedSum{0.};
       for (const auto& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
-        auto const& pStreet{this->m_graph.streetSet()[streetId]};
+        auto const& pStreet{this->m_graph.street(streetId)};
         if (streetPriorities.contains(streetId)) {
-          inputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
+          inputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
         } else {
-          inputRedSum += m_streetTails[streetId] / pStreet->nLanes();
+          inputRedSum += m_streetTails.at(streetId) / pStreet->nLanes();
         }
       }
       inputGreenSum /= meanGreenFraction;
@@ -804,11 +804,11 @@ namespace dsm {
         //    - If the previous check fails, do nothing
         double outputGreenSum{0.}, outputRedSum{0.};
         for (const auto& [streetId, _] : this->m_graph.adjMatrix().getRow(nodeId, true)) {
-          auto const& pStreet{this->m_graph.streetSet()[streetId]};
+          auto const& pStreet{this->m_graph.street(streetId)};
           if (streetPriorities.contains(streetId)) {
-            outputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
+            outputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
           } else {
-            outputRedSum += m_streetTails[streetId] / pStreet->nLanes();
+            outputRedSum += m_streetTails.at(streetId) / pStreet->nLanes();
           }
         }
         auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};

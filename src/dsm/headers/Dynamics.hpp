@@ -119,12 +119,12 @@ namespace dsm {
         }
 
         const auto minDistance = result.value().distance();
-        shortestPaths[nodeId] = result;  // Cache for reuse
+        shortestPaths.at(nodeId) = result;  // Cache for reuse
 
         for (const auto& [nextNodeId, _] : m_graph.adjMatrix().getRow(nodeId)) {
           if (nextNodeId == destinationID) {
             if (minDistance ==
-                m_graph.streetSet()[nodeId * dimension + nextNodeId]->length()) {
+                m_graph.street(nodeId * dimension + nextNodeId)->length()) {
               path.insert(nodeId, nextNodeId, true);
             }
             continue;
@@ -136,11 +136,11 @@ namespace dsm {
             shortestPaths[nextNodeId] = m_graph.shortestPath(nextNodeId, destinationID);
           }
 
-          if (shortestPaths[nextNodeId].has_value()) {
+          if (shortestPaths.at(nextNodeId).has_value()) {
             const auto nextDistance = shortestPaths[nextNodeId].value().distance();
             if (minDistance ==
                 nextDistance +
-                    m_graph.streetSet()[nodeId * dimension + nextNodeId]->length()) {
+                    m_graph.street(nodeId * dimension + nextNodeId)->length()) {
               path.insert(nodeId, nextNodeId, true);
             }
           }
