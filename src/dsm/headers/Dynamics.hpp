@@ -101,53 +101,57 @@ namespace dsm {
       Size const dimension = m_graph.adjMatrix().getRowDim();
       auto const destinationID = pItinerary->destination();
       SparseMatrix<bool> path{dimension, dimension};
-
-      // Cache shortest paths to avoid redundant calculations
-      std::unordered_map<Id, std::optional<DijkstraResult>> shortestPaths;
-
+      // cycle over the nodes
       for (const auto& [nodeId, node] : m_graph.nodeSet()) {
-        if (nodeId == destinationID || m_graph.adjMatrix().getRow(nodeId).empty()) {
+        if (nodeId == destinationID) {
           continue;
         }
-
-        // Compute and cache shortest path from nodeId to destination
-        auto result = m_graph.shortestPath(nodeId, destinationID);
+        auto result{m_graph.shortestPath(nodeId, destinationID)};
         if (!result.has_value()) {
-          Logger::warning(
-              std::format("No path found from node {} to {}", nodeId, destinationID));
           continue;
         }
-
-        const auto minDistance = result.value().distance();
-        shortestPaths[nodeId] = result;  // Cache for reuse
-
-        for (const auto& [nextNodeId, _] : m_graph.adjMatrix().getRow(nodeId)) {
+        // save the minimum distance between i and the destination
+        const auto minDistance{result.value().distance()};
+        auto const& row{m_graph.adjMatrix().getRow(nodeId)};
+        for (const auto [nextNodeId, _] : row) {
+          bool const bIsMinDistance{
+              std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
+                       minDistance) < 1.};  // 1 meter tolerance between shortest paths
           if (nextNodeId == destinationID) {
-            if (minDistance ==
-                m_graph.street(nodeId * dimension + nextNodeId)->length()) {
+            if (bIsMinDistance) {
               path.insert(nodeId, nextNodeId, true);
+            } else {
+              Logger::debug(
+                  std::format("Found a path from {} to {} which differs for more than {} "
+                              "meter(s) from the shortest one.",
+                              nodeId,
+                              destinationID,
+                              1.));
             }
             continue;
           }
+          result = m_graph.shortestPath(nextNodeId, destinationID);
 
-          // Use cached shortest path if available
-          auto it = shortestPaths.find(nextNodeId);
-          if (it == shortestPaths.end()) {
-            shortestPaths[nextNodeId] = m_graph.shortestPath(nextNodeId, destinationID);
-          }
-
-          if (shortestPaths.at(nextNodeId).has_value()) {
-            const auto nextDistance = shortestPaths[nextNodeId].value().distance();
-            if (minDistance ==
-                nextDistance +
-                    m_graph.street(nodeId * dimension + nextNodeId)->length()) {
+          if (result.has_value()) {
+            bool const bIsMinDistance{
+                std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() +
+                         result.value().distance() - minDistance) <
+                1.};  // 1 meter tolerance between shortest paths
+            if (bIsMinDistance) {
               path.insert(nodeId, nextNodeId, true);
+            } else {
+              Logger::debug(
+                  std::format("Found a path from {} to {} which differs for more than {} "
+                              "meter(s) from the shortest one.",
+                              nodeId,
+                              destinationID,
+                              1.));
             }
           }
         }
       }
 
-      if (path.size() == 0) {
+      if (path.empty()) {
         Logger::error(
             std::format("Path with id {} and destination {} is empty. Please check the "
                         "adjacency matrix.",
