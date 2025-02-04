@@ -108,6 +108,8 @@ namespace dsm {
         }
         auto result{m_graph.shortestPath(nodeId, destinationID)};
         if (!result.has_value()) {
+          Logger::warning(
+              std::format("No path found from {} to {}.", nodeId, destinationID));
           continue;
         }
         // save the minimum distance between i and the destination
@@ -147,6 +149,9 @@ namespace dsm {
                               destinationID,
                               1.));
             }
+          } else {
+            Logger::warning(
+                std::format("No path found from {} to {}.", nextNodeId, destinationID));
           }
         }
       }
