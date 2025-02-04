@@ -668,8 +668,9 @@ namespace dsm {
         for (const auto& [id, weight] : dst_weights) {
           // if the node is at a minimum distance from the destination, skip it
           auto result{this->m_graph.shortestPath(srcId, id)};
-          if (result.has_value() && result.value().path().size() < minNodeDistance &&
-              dst_weights.size() > 1) {
+          if (!result.has_value() ||
+              (result.has_value() && result.value().path().size() < minNodeDistance &&
+               dst_weights.size() > 1)) {
             continue;
           }
           dstId = id;
