@@ -430,7 +430,7 @@ namespace dsm {
         addEdge<Street>(streetId,
                         std::make_pair(srcId, dstId),
                         std::stod(length),
-                        std::stod(maxspeed),
+                        std::stod(maxspeed) / 3.6,
                         std::stoul(lanes),
                         name);
       }
