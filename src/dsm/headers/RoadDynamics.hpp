@@ -599,14 +599,16 @@ namespace dsm {
                                                 const TContainer& src_weights,
                                                 const TContainer& dst_weights,
                                                 const size_t minNodeDistance) {
+    auto const& nSources{src_weights.size()};
+    auto const& nDestinations{dst_weights.size()};
     Logger::debug(
         std::format("Init addAgentsRandomly for {} agents from {} nodes to {} nodes with "
                     "minNodeDistance {}",
                     nAgents,
-                    src_weights.size(),
+                    nSources,
                     dst_weights.size(),
                     minNodeDistance));
-    if (src_weights.size() == 1 && dst_weights.size() == 1 &&
+    if (nSources == 1 && nDestinations == 1 &&
         src_weights.begin()->first == dst_weights.begin()->first) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("The only source node {} is also the only destination node.",
@@ -643,7 +645,7 @@ namespace dsm {
     Logger::debug(std::format("Adding {} agents at time {}.", nAgents, this->time()));
     while (nAgents > 0) {
       Id srcId{0}, dstId{0};
-      if (dst_weights.size() == 1) {
+      if (nDestinations == 1) {
         dstId = dst_weights.begin()->first;
         srcId = dstId;
       }
@@ -659,7 +661,7 @@ namespace dsm {
           }
         }
       }
-      if (src_weights.size() > 1) {
+      if (nSources > 1) {
         dstId = srcId;
       }
       while (dstId == srcId) {
@@ -667,11 +669,15 @@ namespace dsm {
         sum = 0.;
         for (const auto& [id, weight] : dst_weights) {
           // if the node is at a minimum distance from the destination, skip it
-          auto result{this->m_graph.shortestPath(srcId, id)};
-          if (!result.has_value() ||
-              (result.has_value() && result.value().path().size() < minNodeDistance &&
-               dst_weights.size() > 1)) {
+          if (this->itineraries().at(id)->path().getRow(srcId).empty()) {
             continue;
+          }
+          if (nDestinations > 1 && minNodeDistance > 0) {
+            // NOTE: Result must have a value in this case, so we can use value() as sort-of assertion
+            if (this->m_graph.shortestPath(srcId, id).value().path().size() <
+                minNodeDistance) {
+              continue;
+            }
           }
           dstId = id;
           sum += weight;
