@@ -225,9 +225,8 @@ TEST_CASE("Dynamics") {
       WHEN("We add agents for existing itineraries") {
         std::unordered_map<uint32_t, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
         std::unordered_map<uint32_t, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
-        dynamics.addItinerary(Itinerary{0, 14});
-        dynamics.addItinerary(Itinerary{1, 102});
-        dynamics.addItinerary(Itinerary{2, 107});
+        std::vector<dsm::Id> destinations{14, 102, 107};
+        dynamics.setDestinationNodes(destinations);
         dynamics.addAgentsRandomly(3, src, dst);
         THEN("The agents are correctly set") {
           CHECK_EQ(dynamics.nAgents(), 3);
