@@ -100,7 +100,7 @@ namespace dsm {
   void Graph::m_setStreetAngles() {
     for (const auto& [streetId, street] : m_streets) {
       const auto& srcNode{m_nodes.at(street->source())};
-      const auto& dstNode{m_nodes.at(street->v())};
+      const auto& dstNode{m_nodes.at(street->target())};
       if (srcNode->coords().has_value() && dstNode->coords().has_value()) {
         street->setAngle(srcNode->coords().value(), dstNode->coords().value());
       }
