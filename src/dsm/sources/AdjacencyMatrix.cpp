@@ -64,7 +64,8 @@ namespace dsm {
 
   std::vector<int> AdjacencyMatrix::getOutDegreeVector() {
     auto degVector = std::vector<int>(m_nRows);
-    std::adjacent_difference(m_rowOffsets.begin()+1, m_rowOffsets.end(), degVector.begin());
+    std::adjacent_difference(
+        m_rowOffsets.begin() + 1, m_rowOffsets.end(), degVector.begin());
     return degVector;
   }
 

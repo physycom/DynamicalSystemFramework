@@ -53,7 +53,7 @@ namespace dsm {
       std::for_each(edgeFirst,
                     edgeLast,
                     [this, &rowSizes, &colIndexes, i = 0](const auto& pair) -> void {
-					  auto row = pair.second->u();
+                      auto row = pair.second->source();
                       rowSizes[row + 1]++;
                       if (row >= m_nRows)
                         m_nRows = row + 1;
@@ -62,20 +62,20 @@ namespace dsm {
       tempOffsets[0] = 0;
       std::inclusive_scan(
           rowSizes.begin(), rowSizes.begin() + m_nRows + 1, tempOffsets.begin());
-	  m_rowOffsets = tempOffsets;
+      m_rowOffsets = tempOffsets;
 
       std::for_each(edgeFirst,
                     edgeLast,
                     [this, &tempOffsets, &colIndexes, i = 0](const auto& pair) -> void {
-					  auto row = pair.second->u();
-					  auto col = pair.second->v();
-					  if (col >= m_nCols)
-						m_nCols = col + 1;
+                      auto row = pair.second->source();
+                      auto col = pair.second->target();
+                      if (col >= m_nCols)
+                        m_nCols = col + 1;
                       colIndexes[tempOffsets[row]] = col;
-					  ++tempOffsets[row];
+                      ++tempOffsets[row];
                     });
-	  /* m_columnIndices = std::move(colIndexes); */
-	  m_columnIndices = std::move(colIndexes);
+      /* m_columnIndices = std::move(colIndexes); */
+      m_columnIndices = std::move(colIndexes);
     }
 
     auto nRows() const { return m_nRows; }

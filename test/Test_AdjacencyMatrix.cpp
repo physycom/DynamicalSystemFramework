@@ -60,66 +60,66 @@ TEST_CASE("Test default construction and insertion") {
   CHECK(adj.nRows() == 4);
 
   SUBCASE("Test contains") {
-	CHECK(adj(0, 1));
-	CHECK(adj(1, 2));
-	CHECK(adj(1, 3));
-	CHECK(adj(2, 3));
-	CHECK(adj(3, 4));
-	CHECK_FALSE(adj(0, 2));
-	CHECK_FALSE(adj(2, 0));
-	CHECK_FALSE(adj(3, 3));
-	CHECK_THROWS(adj(5, 0));
-	CHECK_THROWS(adj(10, 0));
-	CHECK_THROWS(adj(0, 5));
-	CHECK_THROWS(adj(0, 10));
+    CHECK(adj(0, 1));
+    CHECK(adj(1, 2));
+    CHECK(adj(1, 3));
+    CHECK(adj(2, 3));
+    CHECK(adj(3, 4));
+    CHECK_FALSE(adj(0, 2));
+    CHECK_FALSE(adj(2, 0));
+    CHECK_FALSE(adj(3, 3));
+    CHECK_THROWS(adj(5, 0));
+    CHECK_THROWS(adj(10, 0));
+    CHECK_THROWS(adj(0, 5));
+    CHECK_THROWS(adj(0, 10));
   }
   SUBCASE("Test getCol") {
-	auto col0 = adj.getCol(0);
-	CHECK(col0.size() == 1);
-	CHECK(col0[0] == 0);
-	auto col1 = adj.getCol(1);
-	CHECK(col1.size() == 1);
-	CHECK(col1[0] == 0);
-	auto col2 = adj.getCol(2);
-	CHECK(col2.size() == 1);
-	CHECK(col2[0] == 1);
-	auto col3 = adj.getCol(3);
-	CHECK(col3.size() == 2);
-	CHECK(col3[0] == 1);
-	CHECK(col3[1] == 2);
+    auto col0 = adj.getCol(0);
+    CHECK(col0.size() == 1);
+    CHECK(col0[0] == 0);
+    auto col1 = adj.getCol(1);
+    CHECK(col1.size() == 1);
+    CHECK(col1[0] == 0);
+    auto col2 = adj.getCol(2);
+    CHECK(col2.size() == 1);
+    CHECK(col2[0] == 1);
+    auto col3 = adj.getCol(3);
+    CHECK(col3.size() == 2);
+    CHECK(col3[0] == 1);
+    CHECK(col3[1] == 2);
   }
   SUBCASE("Test getRow") {
-	auto row0 = adj.getRow(0);
-	CHECK(row0.size() == 2);
-	CHECK(row0[0] == 1);
-	CHECK(row0[1] == 0);
-	auto row1 = adj.getRow(1);
-	CHECK(row1.size() == 2);
-	CHECK(row1[0] == 2);
-	CHECK(row1[1] == 3);
-	auto row2 = adj.getRow(2);
-	CHECK(row2.size() == 1);
-	CHECK(row2[0] == 3);
-	auto row3 = adj.getRow(3);
-	CHECK(row3.size() == 1);
-	CHECK(row3[0] == 4);
+    auto row0 = adj.getRow(0);
+    CHECK(row0.size() == 2);
+    CHECK(row0[0] == 1);
+    CHECK(row0[1] == 0);
+    auto row1 = adj.getRow(1);
+    CHECK(row1.size() == 2);
+    CHECK(row1[0] == 2);
+    CHECK(row1[1] == 3);
+    auto row2 = adj.getRow(2);
+    CHECK(row2.size() == 1);
+    CHECK(row2[0] == 3);
+    auto row3 = adj.getRow(3);
+    CHECK(row3.size() == 1);
+    CHECK(row3[0] == 4);
   }
   SUBCASE("Test getInDegreeVector") {
-	auto inDegreeVector = adj.getInDegreeVector();
-	CHECK(inDegreeVector.size() == 5);
-	CHECK(inDegreeVector[0] == 1);
-	CHECK(inDegreeVector[1] == 1);
-	CHECK(inDegreeVector[2] == 1);
-	CHECK(inDegreeVector[3] == 2);
-	CHECK(inDegreeVector[4] == 1);
+    auto inDegreeVector = adj.getInDegreeVector();
+    CHECK(inDegreeVector.size() == 5);
+    CHECK(inDegreeVector[0] == 1);
+    CHECK(inDegreeVector[1] == 1);
+    CHECK(inDegreeVector[2] == 1);
+    CHECK(inDegreeVector[3] == 2);
+    CHECK(inDegreeVector[4] == 1);
   }
   SUBCASE("Test getOutDegreeVector") {
-	auto outDegreeVector = adj.getOutDegreeVector();
-	CHECK(outDegreeVector.size() == 4);
-	CHECK(outDegreeVector[0] == 2);
-	CHECK(outDegreeVector[1] == 2);
-	CHECK(outDegreeVector[2] == 1);
-	CHECK(outDegreeVector[3] == 1);
+    auto outDegreeVector = adj.getOutDegreeVector();
+    CHECK(outDegreeVector.size() == 4);
+    CHECK(outDegreeVector[0] == 2);
+    CHECK(outDegreeVector[1] == 2);
+    CHECK(outDegreeVector[2] == 1);
+    CHECK(outDegreeVector[3] == 1);
   }
 }
 
@@ -150,64 +150,63 @@ TEST_CASE("Test construction from edge map") {
   CHECK(adj.nRows() == 4);
 
   SUBCASE("Test contains") {
-	CHECK(adj(0, 1));
-	CHECK(adj(1, 2));
-	CHECK(adj(1, 3));
-	CHECK(adj(2, 3));
-	CHECK(adj(3, 4));
-	CHECK_FALSE(adj(0, 2));
-	CHECK_FALSE(adj(2, 0));
-	CHECK_FALSE(adj(3, 3));
-	CHECK_THROWS(adj(5, 0));
-	CHECK_THROWS(adj(10, 0));
-	CHECK_THROWS(adj(0, 5));
-	CHECK_THROWS(adj(0, 10));
+    CHECK(adj(0, 1));
+    CHECK(adj(1, 2));
+    CHECK(adj(1, 3));
+    CHECK(adj(2, 3));
+    CHECK(adj(3, 4));
+    CHECK_FALSE(adj(0, 2));
+    CHECK_FALSE(adj(2, 0));
+    CHECK_FALSE(adj(3, 3));
+    CHECK_THROWS(adj(5, 0));
+    CHECK_THROWS(adj(10, 0));
+    CHECK_THROWS(adj(0, 5));
+    CHECK_THROWS(adj(0, 10));
   }
   SUBCASE("Test getCol") {
-	auto col0 = adj.getCol(0);
-	CHECK(col0.size() == 0);
-	auto col1 = adj.getCol(1);
-	CHECK(col1.size() == 1);
-	CHECK(col1[0] == 0);
-	auto col2 = adj.getCol(2);
-	CHECK(col2.size() == 1);
-	CHECK(col2[0] == 1);
-	auto col3 = adj.getCol(3);
-	CHECK(col3.size() == 2);
-	CHECK(col3[0] == 1);
-	CHECK(col3[1] == 2);
+    auto col0 = adj.getCol(0);
+    CHECK(col0.size() == 0);
+    auto col1 = adj.getCol(1);
+    CHECK(col1.size() == 1);
+    CHECK(col1[0] == 0);
+    auto col2 = adj.getCol(2);
+    CHECK(col2.size() == 1);
+    CHECK(col2[0] == 1);
+    auto col3 = adj.getCol(3);
+    CHECK(col3.size() == 2);
+    CHECK(col3[0] == 1);
+    CHECK(col3[1] == 2);
   }
   SUBCASE("Test getRow") {
-	auto row0 = adj.getRow(0);
-	CHECK(row0.size() == 1);
-	CHECK(row0[0] == 1);
-	auto row1 = adj.getRow(1);
-	CHECK(row1.size() == 2);
-	CHECK(row1[0] == 3);
-	CHECK(row1[1] == 2);
-	auto row2 = adj.getRow(2);
-	CHECK(row2.size() == 1);
-	CHECK(row2[0] == 3);
-	auto row3 = adj.getRow(3);
-	CHECK(row3.size() == 1);
-	CHECK(row3[0] == 4);
+    auto row0 = adj.getRow(0);
+    CHECK(row0.size() == 1);
+    CHECK(row0[0] == 1);
+    auto row1 = adj.getRow(1);
+    CHECK(row1.size() == 2);
+    CHECK(row1[0] == 3);
+    CHECK(row1[1] == 2);
+    auto row2 = adj.getRow(2);
+    CHECK(row2.size() == 1);
+    CHECK(row2[0] == 3);
+    auto row3 = adj.getRow(3);
+    CHECK(row3.size() == 1);
+    CHECK(row3[0] == 4);
   }
   SUBCASE("Test getInDegreeVector") {
-	auto inDegreeVector = adj.getInDegreeVector();
-	CHECK(inDegreeVector.size() == 5);
-	CHECK(inDegreeVector[0] == 0);
-	CHECK(inDegreeVector[1] == 1);
-	CHECK(inDegreeVector[2] == 1);
-	CHECK(inDegreeVector[3] == 2);
-	CHECK(inDegreeVector[4] == 1);
+    auto inDegreeVector = adj.getInDegreeVector();
+    CHECK(inDegreeVector.size() == 5);
+    CHECK(inDegreeVector[0] == 0);
+    CHECK(inDegreeVector[1] == 1);
+    CHECK(inDegreeVector[2] == 1);
+    CHECK(inDegreeVector[3] == 2);
+    CHECK(inDegreeVector[4] == 1);
   }
   SUBCASE("Test getOutDegreeVector") {
-	auto outDegreeVector = adj.getOutDegreeVector();
-	CHECK(outDegreeVector.size() == 4);
-	CHECK(outDegreeVector[0] == 1);
-	CHECK(outDegreeVector[1] == 2);
-	CHECK(outDegreeVector[2] == 1);
-	CHECK(outDegreeVector[3] == 1);
+    auto outDegreeVector = adj.getOutDegreeVector();
+    CHECK(outDegreeVector.size() == 4);
+    CHECK(outDegreeVector[0] == 1);
+    CHECK(outDegreeVector[1] == 2);
+    CHECK(outDegreeVector[2] == 1);
+    CHECK(outDegreeVector[3] == 1);
   }
-
 }
