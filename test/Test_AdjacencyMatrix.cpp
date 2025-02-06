@@ -11,13 +11,13 @@ TEST_CASE("Test default construction and insertion") {
   adj.insert(0, 1);
   auto offsets = test::offsets(adj);
   auto indices = test::indices(adj);
-  CHECK(offsets.size() == 2);
-  CHECK(offsets[0] == 0);
-  CHECK(offsets[1] == 1);
-  CHECK(indices.size() == 1);
-  CHECK(indices[0] == 1);
-  CHECK(adj.nRows() == 1);
-  CHECK(adj.nCols() == 2);
+  CHECK_EQ(offsets.size(), 2);
+  CHECK_EQ(offsets[0], 0);
+  CHECK_EQ(offsets[1], 1);
+  CHECK_EQ(indices.size(), 1);
+  CHECK_EQ(indices[0], 1);
+  CHECK_EQ(adj.nRows(), 1);
+  CHECK_EQ(adj.nCols(), 2);
 
   adj.insert(1, 2);
   adj.insert(1, 3);
@@ -25,39 +25,39 @@ TEST_CASE("Test default construction and insertion") {
   adj.insert(3, 4);
   offsets = test::offsets(adj);
   indices = test::indices(adj);
-  CHECK(offsets.size() == 5);
-  CHECK(offsets[0] == 0);
-  CHECK(offsets[1] == 1);
-  CHECK(offsets[2] == 3);
-  CHECK(offsets[3] == 4);
-  CHECK(offsets[4] == 5);
-  CHECK(indices.size() == 5);
-  CHECK(indices[0] == 1);
-  CHECK(indices[1] == 2);
-  CHECK(indices[2] == 3);
-  CHECK(indices[3] == 3);
-  CHECK(indices[4] == 4);
-  CHECK(adj.nCols() == 5);
-  CHECK(adj.nRows() == 4);
+  CHECK_EQ(offsets.size(), 5);
+  CHECK_EQ(offsets[0], 0);
+  CHECK_EQ(offsets[1], 1);
+  CHECK_EQ(offsets[2], 3);
+  CHECK_EQ(offsets[3], 4);
+  CHECK_EQ(offsets[4], 5);
+  CHECK_EQ(indices.size(), 5);
+  CHECK_EQ(indices[0], 1);
+  CHECK_EQ(indices[1], 2);
+  CHECK_EQ(indices[2], 3);
+  CHECK_EQ(indices[3], 3);
+  CHECK_EQ(indices[4], 4);
+  CHECK_EQ(adj.nCols(), 5);
+  CHECK_EQ(adj.nRows(), 4);
 
   adj.insert(0, 0);
   offsets = test::offsets(adj);
   indices = test::indices(adj);
-  CHECK(offsets.size() == 5);
-  CHECK(offsets[0] == 0);
-  CHECK(offsets[1] == 2);
-  CHECK(offsets[2] == 4);
-  CHECK(offsets[3] == 5);
-  CHECK(offsets[4] == 6);
-  CHECK(indices.size() == 6);
-  CHECK(indices[0] == 1);
-  CHECK(indices[1] == 0);
-  CHECK(indices[2] == 2);
-  CHECK(indices[3] == 3);
-  CHECK(indices[4] == 3);
-  CHECK(indices[5] == 4);
-  CHECK(adj.nCols() == 5);
-  CHECK(adj.nRows() == 4);
+  CHECK_EQ(offsets.size(), 5);
+  CHECK_EQ(offsets[0], 0);
+  CHECK_EQ(offsets[1], 2);
+  CHECK_EQ(offsets[2], 4);
+  CHECK_EQ(offsets[3], 5);
+  CHECK_EQ(offsets[4], 6);
+  CHECK_EQ(indices.size(), 6);
+  CHECK_EQ(indices[0], 1);
+  CHECK_EQ(indices[1], 0);
+  CHECK_EQ(indices[2], 2);
+  CHECK_EQ(indices[3], 3);
+  CHECK_EQ(indices[4], 3);
+  CHECK_EQ(indices[5], 4);
+  CHECK_EQ(adj.nCols(), 5);
+  CHECK_EQ(adj.nRows(), 4);
 
   SUBCASE("Test contains") {
     CHECK(adj(0, 1));
@@ -75,51 +75,51 @@ TEST_CASE("Test default construction and insertion") {
   }
   SUBCASE("Test getCol") {
     auto col0 = adj.getCol(0);
-    CHECK(col0.size() == 1);
-    CHECK(col0[0] == 0);
+    CHECK_EQ(col0.size(), 1);
+    CHECK_EQ(col0[0], 0);
     auto col1 = adj.getCol(1);
-    CHECK(col1.size() == 1);
-    CHECK(col1[0] == 0);
+    CHECK_EQ(col1.size(), 1);
+    CHECK_EQ(col1[0], 0);
     auto col2 = adj.getCol(2);
-    CHECK(col2.size() == 1);
-    CHECK(col2[0] == 1);
+    CHECK_EQ(col2.size(), 1);
+    CHECK_EQ(col2[0], 1);
     auto col3 = adj.getCol(3);
-    CHECK(col3.size() == 2);
-    CHECK(col3[0] == 1);
-    CHECK(col3[1] == 2);
+    CHECK_EQ(col3.size(), 2);
+    CHECK_EQ(col3[0], 1);
+    CHECK_EQ(col3[1], 2);
   }
   SUBCASE("Test getRow") {
     auto row0 = adj.getRow(0);
-    CHECK(row0.size() == 2);
-    CHECK(row0[0] == 1);
-    CHECK(row0[1] == 0);
+    CHECK_EQ(row0.size(), 2);
+    CHECK_EQ(row0[0], 1);
+    CHECK_EQ(row0[1], 0);
     auto row1 = adj.getRow(1);
-    CHECK(row1.size() == 2);
-    CHECK(row1[0] == 2);
-    CHECK(row1[1] == 3);
+    CHECK_EQ(row1.size(), 2);
+    CHECK_EQ(row1[0], 2);
+    CHECK_EQ(row1[1], 3);
     auto row2 = adj.getRow(2);
-    CHECK(row2.size() == 1);
-    CHECK(row2[0] == 3);
+    CHECK_EQ(row2.size(), 1);
+    CHECK_EQ(row2[0], 3);
     auto row3 = adj.getRow(3);
-    CHECK(row3.size() == 1);
-    CHECK(row3[0] == 4);
+    CHECK_EQ(row3.size(), 1);
+    CHECK_EQ(row3[0], 4);
   }
   SUBCASE("Test getInDegreeVector") {
     auto inDegreeVector = adj.getInDegreeVector();
-    CHECK(inDegreeVector.size() == 5);
-    CHECK(inDegreeVector[0] == 1);
-    CHECK(inDegreeVector[1] == 1);
-    CHECK(inDegreeVector[2] == 1);
-    CHECK(inDegreeVector[3] == 2);
-    CHECK(inDegreeVector[4] == 1);
+    CHECK_EQ(inDegreeVector.size(), 5);
+    CHECK_EQ(inDegreeVector[0], 1);
+    CHECK_EQ(inDegreeVector[1], 1);
+    CHECK_EQ(inDegreeVector[2], 1);
+    CHECK_EQ(inDegreeVector[3], 2);
+    CHECK_EQ(inDegreeVector[4], 1);
   }
   SUBCASE("Test getOutDegreeVector") {
     auto outDegreeVector = adj.getOutDegreeVector();
-    CHECK(outDegreeVector.size() == 4);
-    CHECK(outDegreeVector[0] == 2);
-    CHECK(outDegreeVector[1] == 2);
-    CHECK(outDegreeVector[2] == 1);
-    CHECK(outDegreeVector[3] == 1);
+    CHECK_EQ(outDegreeVector.size(), 4);
+    CHECK_EQ(outDegreeVector[0], 2);
+    CHECK_EQ(outDegreeVector[1], 2);
+    CHECK_EQ(outDegreeVector[2], 1);
+    CHECK_EQ(outDegreeVector[3], 1);
   }
 }
 
@@ -134,20 +134,20 @@ TEST_CASE("Test construction from edge map") {
 
   auto offsets = test::offsets(adj);
   auto indices = test::indices(adj);
-  CHECK(offsets.size() == 5);
-  CHECK(offsets[0] == 0);
-  CHECK(offsets[1] == 1);
-  CHECK(offsets[2] == 3);
-  CHECK(offsets[3] == 4);
-  CHECK(offsets[4] == 5);
-  CHECK(indices.size() == 5);
-  CHECK(indices[0] == 1);
-  CHECK(indices[1] == 3);
-  CHECK(indices[2] == 2);
-  CHECK(indices[3] == 3);
-  CHECK(indices[4] == 4);
-  CHECK(adj.nCols() == 5);
-  CHECK(adj.nRows() == 4);
+  CHECK_EQ(offsets.size(), 5);
+  CHECK_EQ(offsets[0], 0);
+  CHECK_EQ(offsets[1], 1);
+  CHECK_EQ(offsets[2], 3);
+  CHECK_EQ(offsets[3], 4);
+  CHECK_EQ(offsets[4], 5);
+  CHECK_EQ(indices.size(), 5);
+  CHECK_EQ(indices[0], 1);
+  CHECK_EQ(indices[1], 3);
+  CHECK_EQ(indices[2], 2);
+  CHECK_EQ(indices[3], 3);
+  CHECK_EQ(indices[4], 4);
+  CHECK_EQ(adj.nCols(), 5);
+  CHECK_EQ(adj.nRows(), 4);
 
   SUBCASE("Test contains") {
     CHECK(adj(0, 1));
@@ -165,48 +165,58 @@ TEST_CASE("Test construction from edge map") {
   }
   SUBCASE("Test getCol") {
     auto col0 = adj.getCol(0);
-    CHECK(col0.size() == 0);
+    CHECK_EQ(col0.size(), 0);
     auto col1 = adj.getCol(1);
-    CHECK(col1.size() == 1);
-    CHECK(col1[0] == 0);
+    CHECK_EQ(col1.size(), 1);
+    CHECK_EQ(col1[0], 0);
     auto col2 = adj.getCol(2);
-    CHECK(col2.size() == 1);
-    CHECK(col2[0] == 1);
+    CHECK_EQ(col2.size(), 1);
+    CHECK_EQ(col2[0], 1);
     auto col3 = adj.getCol(3);
-    CHECK(col3.size() == 2);
-    CHECK(col3[0] == 1);
-    CHECK(col3[1] == 2);
+    CHECK_EQ(col3.size(), 2);
+    CHECK_EQ(col3[0], 1);
+    CHECK_EQ(col3[1], 2);
   }
   SUBCASE("Test getRow") {
     auto row0 = adj.getRow(0);
-    CHECK(row0.size() == 1);
-    CHECK(row0[0] == 1);
+    CHECK_EQ(row0.size(), 1);
+    CHECK_EQ(row0[0], 1);
     auto row1 = adj.getRow(1);
-    CHECK(row1.size() == 2);
-    CHECK(row1[0] == 3);
-    CHECK(row1[1] == 2);
+    CHECK_EQ(row1.size(), 2);
+    CHECK_EQ(row1[0], 3);
+    CHECK_EQ(row1[1], 2);
     auto row2 = adj.getRow(2);
-    CHECK(row2.size() == 1);
-    CHECK(row2[0] == 3);
+    CHECK_EQ(row2.size(), 1);
+    CHECK_EQ(row2[0], 3);
     auto row3 = adj.getRow(3);
-    CHECK(row3.size() == 1);
-    CHECK(row3[0] == 4);
+    CHECK_EQ(row3.size(), 1);
+    CHECK_EQ(row3[0], 4);
   }
   SUBCASE("Test getInDegreeVector") {
     auto inDegreeVector = adj.getInDegreeVector();
-    CHECK(inDegreeVector.size() == 5);
-    CHECK(inDegreeVector[0] == 0);
-    CHECK(inDegreeVector[1] == 1);
-    CHECK(inDegreeVector[2] == 1);
-    CHECK(inDegreeVector[3] == 2);
-    CHECK(inDegreeVector[4] == 1);
+    CHECK_EQ(inDegreeVector.size(), 5);
+    CHECK_EQ(inDegreeVector[0], 0);
+    CHECK_EQ(inDegreeVector[1], 1);
+    CHECK_EQ(inDegreeVector[2], 1);
+    CHECK_EQ(inDegreeVector[3], 2);
+    CHECK_EQ(inDegreeVector[4], 1);
   }
   SUBCASE("Test getOutDegreeVector") {
     auto outDegreeVector = adj.getOutDegreeVector();
-    CHECK(outDegreeVector.size() == 4);
-    CHECK(outDegreeVector[0] == 1);
-    CHECK(outDegreeVector[1] == 2);
-    CHECK(outDegreeVector[2] == 1);
-    CHECK(outDegreeVector[3] == 1);
+    CHECK_EQ(outDegreeVector.size(), 4);
+    CHECK_EQ(outDegreeVector[0], 1);
+    CHECK_EQ(outDegreeVector[1], 2);
+    CHECK_EQ(outDegreeVector[2], 1);
+    CHECK_EQ(outDegreeVector[3], 1);
+  }
+  SUBCASE("operator ==") {
+    AdjacencyMatrix adj2;
+    CHECK_NE(adj, adj2);
+  }
+  SUBCASE("Test save and read") {
+    auto const filePath = "./data/test.adj";
+    adj.save(filePath);
+    AdjacencyMatrix adj2(filePath);
+    CHECK_EQ(adj, adj2);
   }
 }
