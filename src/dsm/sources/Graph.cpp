@@ -45,8 +45,8 @@ namespace dsm {
     const auto n{static_cast<Size>(m_nodes.size())};
     std::unordered_map<Id, Id> newStreetIds;
     for (const auto& [streetId, street] : oldStreetSet) {
-      const auto srcId{street->u()};
-      const auto dstId{street->v()};
+      const auto srcId{street->source()};
+      const auto dstId{street->target()};
       const auto newStreetId{static_cast<Id>(srcId * n + dstId)};
       if (m_streets.contains(newStreetId)) {
         throw std::invalid_argument(Logger::buildExceptionMessage(
@@ -99,7 +99,7 @@ namespace dsm {
 
   void Graph::m_setStreetAngles() {
     for (const auto& [streetId, street] : m_streets) {
-      const auto& srcNode{m_nodes.at(street->u())};
+      const auto& srcNode{m_nodes.at(street->source())};
       const auto& dstNode{m_nodes.at(street->v())};
       if (srcNode->coords().has_value() && dstNode->coords().has_value()) {
         street->setAngle(srcNode->coords().value(), dstNode->coords().value());
@@ -122,8 +122,8 @@ namespace dsm {
 
   void Graph::buildStreetAngles() {
     for (auto const& street : m_streets) {
-      const auto& node1{m_nodes.at(street.second->u())};
-      const auto& node2{m_nodes.at(street.second->v())};
+      const auto& node1{m_nodes.at(street.second->source())};
+      const auto& node2{m_nodes.at(street.second->target())};
       street.second->setAngle(node1->coords().value(), node2->coords().value());
     }
   }
