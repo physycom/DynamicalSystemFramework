@@ -227,9 +227,8 @@ TEST_CASE("Test insertion of random values") {
   auto offsets = test::offsets(adj);
   auto indices = test::indices(adj);
   CHECK(offsets.size() == 6);
-  std::for_each(offsets.begin(), offsets.begin() + 5, [](auto value){
-		CHECK(value == 0);
-	  });
+  std::for_each(
+      offsets.begin(), offsets.begin() + 5, [](auto value) { CHECK(value == 0); });
   CHECK_EQ(offsets[5], 1);
   CHECK_EQ(indices.size(), 1);
   CHECK_EQ(indices[0], 2);
@@ -238,9 +237,8 @@ TEST_CASE("Test insertion of random values") {
   offsets = test::offsets(adj);
   indices = test::indices(adj);
   CHECK(offsets.size() == 65);
-  std::for_each(offsets.begin() + 5, offsets.begin() + 63, [](auto value){
-		CHECK(value == 1);
-	  });
+  std::for_each(
+      offsets.begin() + 5, offsets.begin() + 63, [](auto value) { CHECK(value == 1); });
   CHECK_EQ(offsets[64], 2);
   CHECK_EQ(indices.size(), 2);
   CHECK_EQ(indices[1], 268);
@@ -261,4 +259,3 @@ TEST_CASE("Test insertion of random values") {
   CHECK_EQ(indices[1], 2);
   CHECK_EQ(indices[2], 268);
 }
-
