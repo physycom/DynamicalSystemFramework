@@ -226,7 +226,7 @@ TEST_CASE("Test insertion of random values") {
   adj.insert(4, 2);
   auto offsets = test::offsets(adj);
   auto indices = test::indices(adj);
-  CHECK(offsets.size() == 6);
+  CHECK_EQ(offsets.size(), 6);
   std::for_each(
       offsets.begin(), offsets.begin() + 5, [](auto value) { CHECK(value == 0); });
   CHECK_EQ(offsets[5], 1);
