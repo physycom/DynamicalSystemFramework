@@ -168,7 +168,6 @@ namespace dsm {
         file >> index >> val;
         const auto srcId{static_cast<Id>(index / n)};
         const auto dstId{static_cast<Id>(index % n)};
-        m_adjacencyMatrix.insert(srcId, dstId);
         if (!m_nodes.contains(srcId)) {
           m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
         }
@@ -214,7 +213,6 @@ namespace dsm {
         if (value > 0) {
           const auto srcId{static_cast<Id>(index / n)};
           const auto dstId{static_cast<Id>(index % n)};
-          m_adjacencyMatrix.insert(srcId, dstId);
           if (!m_nodes.contains(srcId)) {
             m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
           }

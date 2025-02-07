@@ -323,6 +323,7 @@ namespace dsm {
     }
     // emplace street
     m_streets.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
+    m_adjacencyMatrix.insert(srcId, dstId);
   }
 
   template <typename T1, typename... Tn>
