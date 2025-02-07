@@ -290,17 +290,23 @@ namespace dsm {
     /// @brief Save the street densities in csv format
     /// @param filename The name of the file
     /// @param normalized If true, the densities are normalized in [0, 1]
-    void saveStreetDensities(const std::string& filename, bool normalized = true) const;
+    void saveStreetDensities(const std::string& filename,
+                             bool normalized = true,
+                             char const separator = ';') const;
     /// @brief Save the street input counts in csv format
     /// @param filename The name of the file
     /// @param reset If true, the input counts are cleared after the computation
     /// @details NOTE: counts are printed only if the street is a spire
-    void saveInputStreetCounts(const std::string& filename, bool reset = false);
+    void saveInputStreetCounts(const std::string& filename,
+                               bool reset = false,
+                               char const separator = ';');
     /// @brief Save the street output counts in csv format
     /// @param filename The name of the file
     /// @param reset If true, the output counts are cleared after the computation
     /// @details NOTE: counts are printed only if the street is a spire
-    void saveOutputStreetCounts(const std::string& filename, bool reset = false);
+    void saveOutputStreetCounts(const std::string& filename,
+                                bool reset = false,
+                                char const separator = ';');
   };
 
   template <typename agent_t>
@@ -577,7 +583,8 @@ namespace dsm {
 
   template <typename agent_t>
   void Dynamics<agent_t>::saveStreetDensities(const std::string& filename,
-                                              bool normalized) const {
+                                              bool normalized,
+                                              char const separator) const {
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -590,20 +597,23 @@ namespace dsm {
     if (bEmptyFile) {
       file << "time";
       for (auto const& [streetId, _] : this->m_graph.streetSet()) {
-        file << ';' << streetId;
+        file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
     for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
       // keep 2 decimal digits;
-      file << ';' << std::fixed << std::setprecision(2) << pStreet->density(normalized);
+      file << separator << std::fixed << std::setprecision(2)
+           << pStreet->density(normalized);
     }
     file << std::endl;
     file.close();
   }
   template <typename agent_t>
-  void Dynamics<agent_t>::saveInputStreetCounts(const std::string& filename, bool reset) {
+  void Dynamics<agent_t>::saveInputStreetCounts(const std::string& filename,
+                                                bool reset,
+                                                char const separator) {
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -616,7 +626,7 @@ namespace dsm {
     if (bEmptyFile) {
       file << "time";
       for (auto const& [streetId, _] : this->m_graph.streetSet()) {
-        file << ';' << streetId;
+        file << separator << streetId;
       }
       file << std::endl;
     }
@@ -630,14 +640,15 @@ namespace dsm {
           value = dynamic_cast<SpireStreet&>(*pStreet).inputCounts(reset);
         }
       }
-      file << ';' << value;
+      file << separator << value;
     }
     file << std::endl;
     file.close();
   }
   template <typename agent_t>
   void Dynamics<agent_t>::saveOutputStreetCounts(const std::string& filename,
-                                                 bool reset) {
+                                                 bool reset,
+                                                 char const separator) {
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -650,7 +661,7 @@ namespace dsm {
     if (bEmptyFile) {
       file << "time";
       for (auto const& [streetId, _] : this->m_graph.streetSet()) {
-        file << ';' << streetId;
+        file << separator << streetId;
       }
       file << std::endl;
     }
@@ -664,7 +675,7 @@ namespace dsm {
           value = dynamic_cast<SpireStreet&>(*pStreet).outputCounts(reset);
         }
       }
-      file << ';' << value;
+      file << separator << value;
     }
     file << std::endl;
     file.close();
