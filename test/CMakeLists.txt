@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16.0)
 project(dsm_tests VERSION 1.3.10 LANGUAGES CXX)
 
 # Set the C++ standard
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -39,3 +39,4 @@ list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 add_executable(dsm_tests.out ${SOURCES})
 target_include_directories(dsm_tests.out PRIVATE ../src/dsm/headers/ ../src/dsm/utility/TypeTraits/)
 target_include_directories(dsm_tests.out SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
+target_compile_definitions(dsm_tests.out PUBLIC PARALLEL)
