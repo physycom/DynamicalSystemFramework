@@ -100,6 +100,9 @@ namespace dsm {
   }
 
   std::vector<Id> AdjacencyMatrix::getRow(Id row) const {
+    if (!(row < std::ssize(m_rowOffsets) - 1) && (row <= m_nRows)) {
+      return std::vector<Id>();
+    }
     assert(row < std::ssize(m_rowOffsets) - 1);
     const auto lowerOffset = m_rowOffsets[row];
     const auto upperOffset = m_rowOffsets[row + 1];

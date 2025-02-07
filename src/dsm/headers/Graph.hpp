@@ -396,7 +396,6 @@ namespace dsm {
 
       unvisitedNodes.erase(source);
       visitedNodes.emplace(source);
-
       auto const& neighbors{adj.getRow(source)};
       for (auto const& neighbour : neighbors) {
         // if the node has already been visited, skip it

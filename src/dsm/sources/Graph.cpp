@@ -38,14 +38,13 @@ namespace dsm {
 
   void Graph::m_reassignIds() {
     // not sure about this, might need a bit more work
-    const auto oldStreetSet{std::move(m_streets)};
-    m_streets.clear();
-    const auto n{static_cast<Size>(m_nodes.size())};
+    auto const oldStreetSet{std::move(m_streets)};
+    auto const N{nNodes()};
     std::unordered_map<Id, Id> newStreetIds;
     for (const auto& [streetId, street] : oldStreetSet) {
       const auto srcId{street->source()};
       const auto dstId{street->target()};
-      const auto newStreetId{static_cast<Id>(srcId * n + dstId)};
+      const auto newStreetId{static_cast<Id>(srcId * N + dstId)};
       if (m_streets.contains(newStreetId)) {
         throw std::invalid_argument(Logger::buildExceptionMessage(
             std::format("Street with same id ({}) from {} to {} already exists.",
@@ -127,15 +126,18 @@ namespace dsm {
     int16_t value;
     for (Id nodeId = 0; nodeId < m_nodes.size(); ++nodeId) {
       value = 0;
-      for (const auto& targetId : m_adjacencyMatrix.getCol(nodeId)) {
-        auto const& pStreet{*street(nodeId, targetId)};
+      auto const N{nNodes()};
+      for (const auto& sourceId : m_adjacencyMatrix.getCol(nodeId)) {
+        auto const streetId{sourceId * N + nodeId};
+        auto const& pStreet{m_streets.at(streetId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
       auto const& pNode{m_nodes.at(nodeId)};
       pNode->setCapacity(value);
       value = 0;
       for (const auto& targetId : m_adjacencyMatrix.getRow(nodeId)) {
-        auto const& pStreet{*street(nodeId, targetId)};
+        auto const streetId{nodeId * N + targetId};
+        auto const& pStreet{m_streets.at(streetId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
       pNode->setTransportCapacity(value == 0 ? 1 : value);
