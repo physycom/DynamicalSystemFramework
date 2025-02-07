@@ -32,7 +32,7 @@ namespace dsm {
                   edgeLast,
                   [this, &rowSizes, &colIndexes, i = 0](const auto& pair) -> void {
                     auto row = pair.second->source();
-                    assert((row + 1) < rowSizes.size());
+                    assert(row < std::ssize(rowSizes) - 1);
                     rowSizes[row + 1]++;
                     if (row >= m_nRows)
                       m_nRows = row + 1;
@@ -82,7 +82,7 @@ namespace dsm {
 
     if (col >= m_nCols)
       m_nCols = col + 1;
-    assert((row + 1) < m_rowOffsets.size());
+    assert(row < std::ssize(m_rowOffsets) - 1);
     const auto offset = m_rowOffsets[row + 1] - 1;
     m_columnIndices.insert(m_columnIndices.begin() + offset, col);
   }
@@ -100,7 +100,7 @@ namespace dsm {
   }
 
   std::vector<Id> AdjacencyMatrix::getRow(Id row) const {
-    assert((row + 1) < m_rowOffsets.size());
+    assert(row < std::ssize(m_rowOffsets) - 1);
     const auto lowerOffset = m_rowOffsets[row];
     const auto upperOffset = m_rowOffsets[row + 1];
     std::vector<Id> rowVector(upperOffset - lowerOffset);
@@ -113,7 +113,7 @@ namespace dsm {
   std::vector<Id> AdjacencyMatrix::getCol(Id col) const {
     std::vector<Id> colVector{};
     for (auto row = 0u; row < m_nRows; ++row) {
-      assert((row + 1) < m_rowOffsets.size());
+      assert(row < std::ssize(m_rowOffsets) - 1);
       const auto lowerOffset = m_rowOffsets[row];
       const auto upperOffset = m_rowOffsets[row + 1];
       if (std::find(m_columnIndices.begin() + lowerOffset,
@@ -128,7 +128,7 @@ namespace dsm {
   std::vector<std::pair<Id, Id>> AdjacencyMatrix::elements() const {
     std::vector<std::pair<Id, Id>> elements;
     for (auto row = 0u; row < m_nRows; ++row) {
-      assert((row + 1) < m_rowOffsets.size());
+      assert(row < std::ssize(m_rowOffsets) - 1);
       const auto lowerOffset = m_rowOffsets[row];
       const auto upperOffset = m_rowOffsets[row + 1];
       for (auto i = lowerOffset; i < upperOffset; ++i) {
@@ -156,7 +156,7 @@ namespace dsm {
   }
   void AdjacencyMatrix::clearCol(Id col) {
     for (auto row = 0u; row < m_nRows; ++row) {
-      assert((row + 1) < m_rowOffsets.size());
+      assert(row < std::ssize(m_rowOffsets) - 1);
       const auto lowerOffset = m_rowOffsets[row];
       const auto upperOffset = m_rowOffsets[row + 1];
       auto it = std::find(m_columnIndices.begin() + lowerOffset,
