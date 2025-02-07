@@ -16,6 +16,7 @@
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
+#include <cassert>
 #include <concepts>
 #include <limits>
 #include <optional>
@@ -103,7 +104,7 @@ namespace dsm {
     Id id() const { return m_id; }
     /// @brief Get the agent's itinerary
     /// @return The agent's itinerary
-    Id itineraryId() const { return m_trip[m_itineraryIdx]; }
+    Id itineraryId() const;
     /// @brief Get the agent's trip
     /// @return The agent's trip
     std::vector<Id> const& trip() const { return m_trip; }
@@ -154,6 +155,13 @@ namespace dsm {
         m_distance{0.},
         m_time{0},
         m_itineraryIdx{0} {}
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Id Agent<delay_t>::itineraryId() const {
+    assert(m_itineraryIdx < m_trip.size());
+    return m_trip[m_itineraryIdx];
+  }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
