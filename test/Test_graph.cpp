@@ -39,7 +39,7 @@ TEST_CASE("Graph") {
     graph.buildAdj();
     CHECK_EQ(graph.nEdges(), 1);
     CHECK_EQ(graph.nNodes(), 2);
-    CHECK(graph.adjMatrix().size() == 1);
+    CHECK_EQ(graph.adjMatrix().size(), graph.nEdges());
   }
 
   SUBCASE("Constructor_2") {
@@ -52,7 +52,7 @@ TEST_CASE("Graph") {
     Graph graph{sm};
     CHECK_EQ(graph.nNodes(), 4);
     CHECK_EQ(graph.nEdges(), 5);
-    CHECK(graph.adjMatrix().size() == 5);
+    CHECK_EQ(graph.adjMatrix().size(), graph.nEdges());
     CHECK(graph.adjMatrix().contains(1, 2));
     CHECK(graph.adjMatrix().contains(2, 3));
     CHECK(graph.adjMatrix().contains(3, 2));
@@ -94,7 +94,7 @@ TEST_CASE("Graph") {
 
     CHECK_EQ(graph.nEdges(), 5);
     CHECK_EQ(graph.nNodes(), 4);
-    CHECK_EQ(graph.adjMatrix().size(), 5);
+    CHECK_EQ(graph.adjMatrix().size(), graph.nEdges());
     CHECK(graph.adjMatrix().contains(0, 1));
     CHECK(graph.adjMatrix().contains(1, 2));
     CHECK(graph.adjMatrix().contains(0, 2));

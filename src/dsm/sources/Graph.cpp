@@ -108,8 +108,6 @@ namespace dsm {
   void Graph::buildAdj() {
     // find max values in streets node pairs
     m_maxAgentCapacity = 0;
-    m_adjacencyMatrix.clear();
-    m_adjacencyMatrix = AdjacencyMatrix(m_streets);
     for (const auto& [streetId, street] : m_streets) {
       m_maxAgentCapacity += street->capacity();
     }
@@ -504,12 +502,12 @@ namespace dsm {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} from {} to {} already exists.",
                       street->id(),
-                      street->nodePair().first,
-                      street->nodePair().second)));
+                      street->source(),
+                      street->target())));
     }
     // emplace nodes
-    const auto srcId{street->nodePair().first};
-    const auto dstId{street->nodePair().second};
+    const auto srcId{street->source()};
+    const auto dstId{street->target()};
     if (!m_nodes.contains(srcId)) {
       m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
     }
@@ -518,6 +516,7 @@ namespace dsm {
     }
     // emplace street
     m_streets.emplace(std::make_pair(street->id(), std::move(street)));
+    m_adjacencyMatrix.insert(srcId, dstId);
   }
 
   void Graph::addStreet(const Street& street) {
@@ -525,12 +524,12 @@ namespace dsm {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} from {} to {} already exists.",
                       street.id(),
-                      street.nodePair().first,
-                      street.nodePair().second)));
+                      street.source(),
+                      street.target())));
     }
     // emplace nodes
-    const auto srcId{street.nodePair().first};
-    const auto dstId{street.nodePair().second};
+    const auto srcId{street.source()};
+    const auto dstId{street.target()};
     if (!m_nodes.contains(srcId)) {
       m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
     }
@@ -539,6 +538,7 @@ namespace dsm {
     }
     // emplace street
     m_streets.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
+    m_adjacencyMatrix.insert(srcId, dstId);
   }
 
   const std::unique_ptr<Street>* Graph::street(Id source, Id destination) const {

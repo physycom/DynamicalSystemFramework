@@ -31,11 +31,11 @@ namespace dsm {
                   edgeLast,
                   [this, &rowSizes, &colIndexes, i = 0](const auto& pair) -> void {
                     auto row = pair.second->source();
-                    #ifndef NDEBUG
-                    rowSizes.at(row + 1)++;
-                    #else
+#ifdef NDEBUG
                     rowSizes[row + 1]++;
-                    #endif
+#else
+                    rowSizes.at(row + 1)++;
+#endif
                     if (row >= m_nRows)
                       m_nRows = row + 1;
                   });
@@ -52,13 +52,13 @@ namespace dsm {
                     auto col = pair.second->target();
                     if (col >= m_nCols)
                       m_nCols = col + 1;
-                    #ifndef NDEBUG
-                    colIndexes.at(tempOffsets.at(row)) = col;
-                    ++tempOffsets.at(row);
-                    #else
+#ifdef NDEBUG
                     colIndexes[tempOffsets[row]] = col;
                     ++tempOffsets[row];
-                    #endif
+#else
+                    colIndexes.at(tempOffsets.at(row)) = col;
+                    ++tempOffsets.at(row);
+#endif
                   });
     m_columnIndices = std::move(colIndexes);
   }
@@ -85,11 +85,11 @@ namespace dsm {
 
     if (col >= m_nCols)
       m_nCols = col + 1;
-    #ifndef NDEBUG
-    const auto offset = m_rowOffsets.at(row + 1) - 1;
-    #else
+#ifdef NDEBUG
     const auto offset = m_rowOffsets[row + 1] - 1;
-    #endif
+#else
+    const auto offset = m_rowOffsets.at(row + 1) - 1;
+#endif
     m_columnIndices.insert(m_columnIndices.begin() + offset, col);
   }
 
@@ -106,6 +106,7 @@ namespace dsm {
   }
 
   std::vector<Id> AdjacencyMatrix::getRow(Id row) const {
+#ifdef NDEBUG
     const auto lowerOffset = m_rowOffsets[row];
     const auto upperOffset = m_rowOffsets[row + 1];
     std::vector<Id> rowVector(upperOffset - lowerOffset);
@@ -113,13 +114,27 @@ namespace dsm {
     std::copy(m_columnIndices.begin() + m_rowOffsets[row],
               m_columnIndices.begin() + m_rowOffsets[row + 1],
               rowVector.begin());
+#else
+    const auto lowerOffset = m_rowOffsets.at(row);
+    const auto upperOffset = m_rowOffsets.at(row + 1);
+    std::vector<Id> rowVector(upperOffset - lowerOffset);
+
+    std::copy(m_columnIndices.begin() + m_rowOffsets.at(row),
+              m_columnIndices.begin() + m_rowOffsets.at(row + 1),
+              rowVector.begin());
+#endif
     return rowVector;
   }
   std::vector<Id> AdjacencyMatrix::getCol(Id col) const {
     std::vector<Id> colVector{};
     for (auto row = 0u; row < m_nRows; ++row) {
+#ifdef NDEBUG
       const auto lowerOffset = m_rowOffsets[row];
       const auto upperOffset = m_rowOffsets[row + 1];
+#else
+      const auto lowerOffset = m_rowOffsets.at(row);
+      const auto upperOffset = m_rowOffsets.at(row + 1);
+#endif
       if (std::find(m_columnIndices.begin() + lowerOffset,
                     m_columnIndices.begin() + upperOffset,
                     col) != m_columnIndices.begin() + upperOffset) {
@@ -132,8 +147,13 @@ namespace dsm {
   std::vector<std::pair<Id, Id>> AdjacencyMatrix::elements() const {
     std::vector<std::pair<Id, Id>> elements;
     for (auto row = 0u; row < m_nRows; ++row) {
+#ifdef NDEBUG
       const auto lowerOffset = m_rowOffsets[row];
       const auto upperOffset = m_rowOffsets[row + 1];
+#else
+      const auto lowerOffset = m_rowOffsets.at(row);
+      const auto upperOffset = m_rowOffsets.at(row + 1);
+#endif
       for (auto i = lowerOffset; i < upperOffset; ++i) {
         elements.emplace_back(row, m_columnIndices[i]);
       }
