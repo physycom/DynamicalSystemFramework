@@ -18,16 +18,11 @@ int main() {
     street->setMaxSpeed(13.9);
   }
 
-  Itinerary it1{0, 118};
-  Itinerary it2{4, 115};
-  Itinerary it3{8, 112};
-  Itinerary it4{12, 109};
-
   Dynamics dynamics{graph};
-  dynamics.addItinerary(it1);
-  dynamics.addItinerary(it2);
-  dynamics.addItinerary(it3);
-  dynamics.addItinerary(it4);
+  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 118)));
+  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(4, 115)));
+  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(8, 112)));
+  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(12, 109)));
 
   const int n_rep{100};
   Bench b1(n_rep);

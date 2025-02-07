@@ -2,6 +2,7 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
 #include <numeric>
 #include <string>
 #include <unordered_map>
@@ -18,6 +19,8 @@ namespace dsm {
     std::vector<Id> offsets(const AdjacencyMatrix& adj);
     std::vector<Id> indices(const AdjacencyMatrix& adj);
   }  // namespace test
+
+  class Street;
 
   class AdjacencyMatrix {
   private:
@@ -44,17 +47,25 @@ namespace dsm {
     AdjacencyMatrix(const std::unordered_map<Id, std::unique_ptr<Street>>& streets);
 
     bool operator==(const AdjacencyMatrix& other) const;
-    bool operator()(Id row, Id col);
+    bool operator()(Id row, Id col) const;
+
+    size_t size() const;
 
     auto nRows() const { return m_nRows; }
     auto nCols() const { return m_nCols; }
 
     void insert(Id row, Id col);
 
-    bool contains(Id row, Id col);
+    bool contains(Id row, Id col) const;
 
-    std::vector<Id> getRow(Id row);
-    std::vector<Id> getCol(Id col);
+    std::vector<Id> getRow(Id row) const;
+    std::vector<Id> getCol(Id col) const;
+
+    std::vector<std::pair<Id, Id>> elements() const;
+
+    void clear();
+    void clearRow(Id row);
+    void clearCol(Id col);
 
     std::vector<int> getInDegreeVector();
     std::vector<int> getOutDegreeVector();

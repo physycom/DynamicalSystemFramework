@@ -6,12 +6,12 @@
 #include "Node.hpp"
 #include "Road.hpp"
 #include "Street.hpp"
-#include "SparseMatrix.hpp"
+#include "AdjacencyMatrix.hpp"
 
 #include "doctest.h"
 
 using Graph = dsm::Graph;
-using SparseMatrix = dsm::SparseMatrix<bool>;
+using AdjacencyMatrix = dsm::AdjacencyMatrix;
 using Street = dsm::Street;
 using Road = dsm::Road;
 using Path = std::vector<uint>;
@@ -34,9 +34,8 @@ bool checkPath(const std::vector<T1>& path1, const std::vector<T2>& path2) {
 TEST_CASE("Graph") {
   Road::setMeanVehicleLength(5.);
   SUBCASE("Constructor_1") {
-    Street street{1, std::make_pair(0, 1)};
     Graph graph{};
-    graph.addStreet(street);
+    graph.addEdge<Street>(1, std::make_pair(0, 1));
     graph.buildAdj();
     CHECK_EQ(graph.nEdges(), 1);
     CHECK_EQ(graph.nNodes(), 2);
@@ -44,12 +43,12 @@ TEST_CASE("Graph") {
   }
 
   SUBCASE("Constructor_2") {
-    SparseMatrix sm(4, 4);
-    sm.insert(0, 1, true);
-    sm.insert(1, 0, true);
-    sm.insert(1, 2, true);
-    sm.insert(2, 3, true);
-    sm.insert(3, 2, true);
+    AdjacencyMatrix sm;
+    sm.insert(0, 1);
+    sm.insert(1, 0);
+    sm.insert(1, 2);
+    sm.insert(2, 3);
+    sm.insert(3, 2);
     Graph graph{sm};
     CHECK_EQ(graph.nNodes(), 4);
     CHECK_EQ(graph.nEdges(), 5);
@@ -112,13 +111,12 @@ TEST_CASE("Graph") {
       WHEN("A matrix in dsm format is imported") {
         graph.importMatrix("./data/matrix.dsm");
         THEN("The graph is correctly built") {
-          CHECK_EQ(graph.adjMatrix().max_size(), 9);
-          CHECK_EQ(graph.adjMatrix().getRowDim(), 3);
-          CHECK_EQ(graph.adjMatrix().getColDim(), 3);
-          CHECK(graph.adjMatrix().operator()(8));
-          CHECK(graph.adjMatrix().operator()(6));
-          CHECK(graph.adjMatrix().operator()(3));
-          CHECK(graph.adjMatrix().operator()(1));
+          CHECK_EQ(graph.adjMatrix().nRows(), 3);
+          CHECK_EQ(graph.adjMatrix().nCols(), 3);
+          CHECK(graph.adjMatrix().operator()(2, 2));
+          CHECK(graph.adjMatrix().operator()(2, 0));
+          CHECK(graph.adjMatrix().operator()(1, 0));
+          CHECK(graph.adjMatrix().operator()(0, 1));
           CHECK_EQ(graph.nNodes(), 3);
           CHECK_EQ(graph.nEdges(), 4);
         }
@@ -127,13 +125,12 @@ TEST_CASE("Graph") {
       WHEN("The exported one is imported") {
         graph.importMatrix("./data/temp.dsm");
         THEN("The graph is correctly built") {
-          CHECK_EQ(graph.adjMatrix().max_size(), 9);
-          CHECK_EQ(graph.adjMatrix().getRowDim(), 3);
-          CHECK_EQ(graph.adjMatrix().getColDim(), 3);
-          CHECK(graph.adjMatrix().operator()(8));
-          CHECK(graph.adjMatrix().operator()(6));
-          CHECK(graph.adjMatrix().operator()(3));
-          CHECK(graph.adjMatrix().operator()(1));
+          CHECK_EQ(graph.adjMatrix().nRows(), 3);
+          CHECK_EQ(graph.adjMatrix().nCols(), 3);
+          CHECK(graph.adjMatrix().operator()(2, 2));
+          CHECK(graph.adjMatrix().operator()(2, 0));
+          CHECK(graph.adjMatrix().operator()(1, 0));
+          CHECK(graph.adjMatrix().operator()(0, 1));
           CHECK_EQ(graph.nNodes(), 3);
           CHECK_EQ(graph.nEdges(), 4);
         }
@@ -169,9 +166,8 @@ TEST_CASE("Graph") {
   SUBCASE("importMatrix - raw matrix") {
     Graph graph{};
     graph.importMatrix("./data/rawMatrix.txt", false);
-    CHECK_EQ(graph.adjMatrix().max_size(), 9);
-    CHECK_EQ(graph.adjMatrix().getRowDim(), 3);
-    CHECK_EQ(graph.adjMatrix().getColDim(), 3);
+    CHECK_EQ(graph.adjMatrix().nRows(), 3);
+    CHECK_EQ(graph.adjMatrix().nCols(), 3);
     CHECK(graph.adjMatrix().operator()(0, 1));
     CHECK(graph.adjMatrix().operator()(1, 0));
     CHECK(graph.adjMatrix().operator()(1, 2));
@@ -574,9 +570,8 @@ TEST_CASE("Dijkstra") {
     Graph graph{};
     graph.importMatrix("./data/matrix.dat", false);
     // check correct import
-    CHECK_EQ(graph.adjMatrix().max_size(), 14400);
-    CHECK_EQ(graph.adjMatrix().getRowDim(), 120);
-    CHECK_EQ(graph.adjMatrix().getColDim(), 120);
+    CHECK_EQ(graph.adjMatrix().nRows(), 120);
+    CHECK_EQ(graph.adjMatrix().nCols(), 120);
     CHECK_EQ(graph.adjMatrix().size(), 436);
     // check that the path exists
     CHECK(graph.adjMatrix().operator()(46, 58));

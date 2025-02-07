@@ -106,7 +106,7 @@ TEST_CASE("Test default construction and insertion") {
   }
   SUBCASE("Test getInDegreeVector") {
     auto inDegreeVector = adj.getInDegreeVector();
-    CHECK_EQ(inDegreeVector.size(), 5);
+    CHECK_EQ(inDegreeVector.size(), adj.nCols());
     CHECK_EQ(inDegreeVector[0], 1);
     CHECK_EQ(inDegreeVector[1], 1);
     CHECK_EQ(inDegreeVector[2], 1);
@@ -122,7 +122,6 @@ TEST_CASE("Test default construction and insertion") {
     CHECK_EQ(outDegreeVector[3], 1);
   }
 }
-
 TEST_CASE("Test construction from edge map") {
   Graph g;
   g.addEdge<Street>(0, std::make_pair<Id, Id>(0, 1));
@@ -218,5 +217,19 @@ TEST_CASE("Test construction from edge map") {
     adj.save(filePath);
     AdjacencyMatrix adj2(filePath);
     CHECK_EQ(adj, adj2);
+  }
+  SUBCASE("Test clearRow") {
+    adj.clearRow(1);
+    CHECK_FALSE(adj(1, 2));
+    CHECK_FALSE(adj(1, 3));
+  }
+  SUBCASE("Test clearCol") {
+    adj.clearCol(3);
+    CHECK_FALSE(adj(1, 3));
+    CHECK_FALSE(adj(2, 3));
+  }
+  SUBCASE("Test clear") {
+    adj.clear();
+    CHECK_EQ(adj, AdjacencyMatrix{});
   }
 }

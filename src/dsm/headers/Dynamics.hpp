@@ -90,17 +90,16 @@ namespace dsm {
         auto const& file =
             std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id());
         if (std::filesystem::exists(file)) {
-          auto path = SparseMatrix<bool>{};
-          path.load(file);
+          auto path = AdjacencyMatrix(file);
           pItinerary->setPath(std::move(path));
           Logger::info(
               std::format("Loaded cached path for itinerary {}", pItinerary->id()));
           return;
         }
       }
-      Size const dimension = m_graph.adjMatrix().getRowDim();
+      Size const dimension = m_graph.adjMatrix().nRows();
       auto const destinationID = pItinerary->destination();
-      SparseMatrix<bool> path{dimension, dimension};
+      AdjacencyMatrix path;
       // cycle over the nodes
       for (const auto& [nodeId, node] : m_graph.nodeSet()) {
         if (nodeId == destinationID) {
@@ -111,15 +110,15 @@ namespace dsm {
           continue;
         }
         // save the minimum distance between i and the destination
-        const auto minDistance{result.value().distance()};
-        auto const& row{m_graph.adjMatrix().getRow(nodeId)};
-        for (const auto [nextNodeId, _] : row) {
+        auto const minDistance{result.value().distance()};
+        auto const row{m_graph.adjMatrix().getRow(nodeId)};
+        for (const auto nextNodeId : row) {
           bool const bIsMinDistance{
               std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
                        minDistance) < 1.};  // 1 meter tolerance between shortest paths
           if (nextNodeId == destinationID) {
             if (bIsMinDistance) {
-              path.insert(nodeId, nextNodeId, true);
+              path.insert(nodeId, nextNodeId);
             } else {
               Logger::debug(
                   std::format("Found a path from {} to {} which differs for more than {} "
@@ -138,7 +137,7 @@ namespace dsm {
                          result.value().distance() - minDistance) <
                 1.};  // 1 meter tolerance between shortest paths
             if (bIsMinDistance) {
-              path.insert(nodeId, nextNodeId, true);
+              path.insert(nodeId, nextNodeId);
             } else {
               Logger::debug(
                   std::format("Found a path from {} to {} which differs for more than {} "
@@ -162,8 +161,8 @@ namespace dsm {
       }
       pItinerary->setPath(path);
       if (m_bCacheEnabled) {
-        pItinerary->path().cache(
-            std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id()));
+        pItinerary->path()->save(
+            std::format("{}it{}.adj", g_cacheFolder, pItinerary->id()));
         Logger::info(
             std::format("Saved path in cache for itinerary {}", pItinerary->id()));
       }
@@ -229,25 +228,8 @@ namespace dsm {
     void removeAgents(T1 id, Tn... ids);
 
     /// @brief Add an itinerary
-    /// @param itinerary The itinerary
-    void addItinerary(const Itinerary& itinerary);
-    /// @brief Add an itinerary
     /// @param itinerary std::unique_ptr to the itinerary
     void addItinerary(std::unique_ptr<Itinerary> itinerary);
-    template <typename... Tn>
-      requires(is_itinerary_v<Tn> && ...)
-    void addItineraries(Tn... itineraries);
-    /// @brief Add a pack of itineraries
-    /// @tparam T1
-    /// @tparam ...Tn
-    /// @param itinerary
-    /// @param ...itineraries
-    template <typename T1, typename... Tn>
-      requires(is_itinerary_v<T1> && (is_itinerary_v<Tn> && ...))
-    void addItineraries(T1 itinerary, Tn... itineraries);
-    /// @brief Add a set of itineraries
-    /// @param itineraries Generic container of itineraries, represented by an std::span
-    void addItineraries(std::span<Itinerary> itineraries);
 
     /// @brief Reset the simulation time
     void resetTime();
@@ -371,7 +353,7 @@ namespace dsm {
       if (!m_graph.nodeSet().contains(nodeId)) {
         Logger::error(std::format("Node with id {} not found", nodeId));
       }
-      this->addItinerary(Itinerary{nodeId, nodeId});
+      this->addItinerary(std::unique_ptr<Itinerary>(new Itinerary(nodeId, nodeId)));
     }
     if (updatePaths) {
       this->updatePaths();
@@ -446,26 +428,8 @@ namespace dsm {
   }
 
   template <typename agent_t>
-  void Dynamics<agent_t>::addItinerary(const Itinerary& itinerary) {
-    m_itineraries.emplace(itinerary.id(), std::make_unique<Itinerary>(itinerary));
-  }
-
-  template <typename agent_t>
   void Dynamics<agent_t>::addItinerary(std::unique_ptr<Itinerary> itinerary) {
     m_itineraries.emplace(itinerary->id(), std::move(itinerary));
-  }
-
-  template <typename agent_t>
-  template <typename... Tn>
-    requires(is_itinerary_v<Tn> && ...)
-  void Dynamics<agent_t>::addItineraries(Tn... itineraries) {
-    (this->addItinerary(itineraries), ...);
-  }
-  template <typename agent_t>
-  void Dynamics<agent_t>::addItineraries(std::span<Itinerary> itineraries) {
-    std::ranges::for_each(itineraries, [this](const auto& itinerary) -> void {
-      m_itineraries.insert(std::make_unique<Itinerary>(itinerary));
-    });
   }
 
   template <typename agent_t>

@@ -6,7 +6,7 @@
 
 static constexpr uint8_t DSM_VERSION_MAJOR = 2;
 static constexpr uint8_t DSM_VERSION_MINOR = 3;
-static constexpr uint8_t DSM_VERSION_PATCH = 22;
+static constexpr uint8_t DSM_VERSION_PATCH = 23;
 
 static auto const DSM_VERSION =
     std::format("{}.{}.{}", DSM_VERSION_MAJOR, DSM_VERSION_MINOR, DSM_VERSION_PATCH);
@@ -17,6 +17,7 @@ namespace dsm {
   auto const& version() { return DSM_VERSION; };
 }  // namespace dsm
 
+#include "headers/AdjacencyMatrix.hpp"
 #include "headers/Agent.hpp"
 #include "headers/Graph.hpp"
 #include "headers/Itinerary.hpp"
