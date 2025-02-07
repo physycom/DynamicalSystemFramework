@@ -220,3 +220,42 @@ TEST_CASE("Test construction from edge map") {
     CHECK_EQ(adj, adj2);
   }
 }
+
+TEST_CASE("Test insertion of random values") {
+  AdjacencyMatrix adj;
+  adj.insert(4, 2);
+  auto offsets = test::offsets(adj);
+  auto indices = test::indices(adj);
+  CHECK_EQ(offsets.size(), 6);
+  std::for_each(
+      offsets.begin(), offsets.begin() + 5, [](auto value) { CHECK(value == 0); });
+  CHECK_EQ(offsets[5], 1);
+  CHECK_EQ(indices.size(), 1);
+  CHECK_EQ(indices[0], 2);
+
+  adj.insert(63, 268);
+  offsets = test::offsets(adj);
+  indices = test::indices(adj);
+  CHECK(offsets.size() == 65);
+  std::for_each(
+      offsets.begin() + 5, offsets.begin() + 63, [](auto value) { CHECK(value == 1); });
+  CHECK_EQ(offsets[64], 2);
+  CHECK_EQ(indices.size(), 2);
+  CHECK_EQ(indices[1], 268);
+
+  adj.insert(2, 3);
+  offsets = test::offsets(adj);
+  indices = test::indices(adj);
+  CHECK_EQ(offsets.size(), 65);
+  CHECK_EQ(offsets[0], 0);
+  CHECK_EQ(offsets[2], 0);
+  CHECK_EQ(offsets[3], 1);
+  CHECK_EQ(offsets[4], 1);
+  CHECK_EQ(offsets[5], 2);
+  CHECK_EQ(offsets[63], 2);
+  CHECK_EQ(offsets[64], 3);
+  CHECK_EQ(indices.size(), 3);
+  CHECK_EQ(indices[0], 3);
+  CHECK_EQ(indices[1], 2);
+  CHECK_EQ(indices[2], 268);
+}
