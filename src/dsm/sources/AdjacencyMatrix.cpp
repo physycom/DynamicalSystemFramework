@@ -65,9 +65,11 @@ namespace dsm {
 
   void AdjacencyMatrix::insert(Id row, Id col) {
     if (row > m_rowOffsets.size() - 2) {
-      for (auto i = 0ul; i < row - m_rowOffsets.size() + 2; ++i) {
-        m_rowOffsets.push_back(m_rowOffsets.back() + 1);
+      auto n = row - m_rowOffsets.size() + 2;
+      for (auto i = 0ul; i < n - 1; ++i) {
+        m_rowOffsets.push_back(m_rowOffsets.back());
       }
+      m_rowOffsets.push_back(m_rowOffsets.back() + 1);
       m_nRows = row + 1;
     } else {
       std::for_each(
