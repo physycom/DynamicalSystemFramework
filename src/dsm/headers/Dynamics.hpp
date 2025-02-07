@@ -23,7 +23,6 @@
 #include <exception>
 #include <fstream>
 #include <filesystem>
-#include <execution>
 
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
@@ -104,7 +103,6 @@ namespace dsm {
       auto const destinationID = pItinerary->destination();
       std::vector<double> shortestDistances(m_graph.nNodes());
       std::for_each(
-          std::execution::par_unseq,
           m_graph.nodeSet().begin(),
           m_graph.nodeSet().end(),
           [this, &shortestDistances, &destinationID](auto const& it) -> void {
