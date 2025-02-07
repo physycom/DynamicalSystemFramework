@@ -23,6 +23,7 @@
 #include <exception>
 #include <fstream>
 #include <filesystem>
+#include <execution>
 
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
@@ -98,27 +99,46 @@ namespace dsm {
           return;
         }
       }
-      Size const dimension = m_graph.adjMatrix().getRowDim();
+
+      auto const dimension = static_cast<Size>(m_graph.nNodes());
       auto const destinationID = pItinerary->destination();
+      std::vector<double> shortestDistances(m_graph.nNodes());
+      std::for_each(
+          std::execution::par_unseq,
+          m_graph.nodeSet().begin(),
+          m_graph.nodeSet().end(),
+          [this, &shortestDistances, &destinationID](auto const& it) -> void {
+            auto const nodeId{it.first};
+            if (nodeId == destinationID) {
+              shortestDistances[nodeId] = -1.;
+            } else {
+              auto result = m_graph.shortestPath(nodeId, destinationID);
+              if (result.has_value()) {
+                shortestDistances[nodeId] = result.value().distance();
+              } else {
+                Logger::warning(std::format(
+                    "No path found from node {} to node {}", nodeId, destinationID));
+                shortestDistances[nodeId] = -1.;
+              }
+            }
+          });
       SparseMatrix<bool> path{dimension, dimension};
       // cycle over the nodes
       for (const auto& [nodeId, node] : m_graph.nodeSet()) {
         if (nodeId == destinationID) {
           continue;
         }
-        auto result{m_graph.shortestPath(nodeId, destinationID)};
-        if (!result.has_value()) {
+        // save the minimum distance between i and the destination
+        const auto minDistance{shortestDistances[nodeId]};
+        if (minDistance < 0.) {
           continue;
         }
-        // save the minimum distance between i and the destination
-        const auto minDistance{result.value().distance()};
         auto const& row{m_graph.adjMatrix().getRow(nodeId)};
         for (const auto [nextNodeId, _] : row) {
-          bool const bIsMinDistance{
-              std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
-                       minDistance) < 1.};  // 1 meter tolerance between shortest paths
           if (nextNodeId == destinationID) {
-            if (bIsMinDistance) {
+            if (std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
+                         minDistance) < 1.)  // 1 meter tolerance between shortest paths
+            {
               path.insert(nodeId, nextNodeId, true);
             } else {
               Logger::debug(
@@ -130,26 +150,23 @@ namespace dsm {
             }
             continue;
           }
-          result = m_graph.shortestPath(nextNodeId, destinationID);
-
-          if (result.has_value()) {
-            bool const bIsMinDistance{
-                std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() +
-                         result.value().distance() - minDistance) <
-                1.};  // 1 meter tolerance between shortest paths
-            if (bIsMinDistance) {
-              path.insert(nodeId, nextNodeId, true);
-            } else {
-              Logger::debug(
-                  std::format("Found a path from {} to {} which differs for more than {} "
-                              "meter(s) from the shortest one.",
-                              nodeId,
-                              destinationID,
-                              1.));
-            }
-          } else if ((nextNodeId != destinationID)) {
-            Logger::warning(std::format(
-                "No path found from node {} to node {}", nextNodeId, destinationID));
+          auto const distance{shortestDistances[nextNodeId]};
+          if (distance < 0.) {
+            continue;
+          }
+          bool const bIsMinDistance{
+              std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() +
+                       distance - minDistance) <
+              1.};  // 1 meter tolerance between shortest paths
+          if (bIsMinDistance) {
+            path.insert(nodeId, nextNodeId, true);
+          } else {
+            Logger::debug(
+                std::format("Found a path from {} to {} which differs for more than {} "
+                            "meter(s) from the shortest one.",
+                            nodeId,
+                            destinationID,
+                            1.));
           }
         }
       }
