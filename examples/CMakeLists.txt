@@ -3,9 +3,11 @@ cmake_minimum_required(VERSION 3.16.0)
 project(dsm_examples VERSION 1.3.10 LANGUAGES CXX)
 
 # Set the C++ standard
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+find_package(TBB REQUIRED CONFIG)
 
 # Set the C++ flags
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -26,5 +28,5 @@ foreach(SOURCE ${SOURCES})
     get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
 	add_executable(${EXE_NAME}.out ${SOURCE} ${SRC_SOURCES})
     target_include_directories(${EXE_NAME}.out PRIVATE ../src/dsm/headers/ ../src/dsm/utility/TypeTraits/)
-    target_compile_definitions(${EXE_NAME}.out PUBLIC PARALLEL)
+    target_link_libraries(${EXE_NAME}.out PRIVATE TBB::tbb)
 endforeach()

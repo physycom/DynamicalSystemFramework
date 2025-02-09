@@ -23,9 +23,7 @@
 #include <exception>
 #include <fstream>
 #include <filesystem>
-#ifndef __APPLE__
-#include <execution>
-#endif
+#include <tbb/parallel_for_each.h>
 
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
@@ -105,12 +103,9 @@ namespace dsm {
       auto const dimension = static_cast<Size>(m_graph.nNodes());
       auto const destinationID = pItinerary->destination();
       std::vector<double> shortestDistances(m_graph.nNodes());
-      std::for_each(
-#ifndef __APPLE__
-          std::execution::par_unseq,
-#endif
-          m_graph.nodeSet().begin(),
-          m_graph.nodeSet().end(),
+      tbb::parallel_for_each(
+          m_graph.nodeSet().cbegin(),
+          m_graph.nodeSet().cend(),
           [this, &shortestDistances, &destinationID](auto const& it) -> void {
             auto const nodeId{it.first};
             if (nodeId == destinationID) {
@@ -370,25 +365,29 @@ namespace dsm {
 
   template <typename agent_t>
   void Dynamics<agent_t>::updatePaths() {
-    std::vector<std::thread> threads;
-    threads.reserve(m_itineraries.size());
-    std::exception_ptr pThreadException;
-    for (const auto& [itineraryId, itinerary] : m_itineraries) {
-      threads.emplace_back(std::thread([this, &itinerary, &pThreadException] {
-        try {
-          this->m_updatePath(itinerary);
-        } catch (...) {
-          if (!pThreadException)
-            pThreadException = std::current_exception();
-        }
-      }));
-    }
-    for (auto& thread : threads) {
-      thread.join();
-    }
-    // Throw the exception launched first
-    if (pThreadException)
-      std::rethrow_exception(pThreadException);
+    tbb::parallel_for_each(
+        m_itineraries.cbegin(), m_itineraries.cend(), [this](auto const& pair) -> void {
+          this->m_updatePath(pair.second);
+        });
+    // std::vector<std::thread> threads;
+    // threads.reserve(m_itineraries.size());
+    // std::exception_ptr pThreadException;
+    // for (const auto& [itineraryId, itinerary] : m_itineraries) {
+    //   threads.emplace_back(std::thread([this, &itinerary, &pThreadException] {
+    //     try {
+    //       this->m_updatePath(itinerary);
+    //     } catch (...) {
+    //       if (!pThreadException)
+    //         pThreadException = std::current_exception();
+    //     }
+    //   }));
+    // }
+    // for (auto& thread : threads) {
+    //   thread.join();
+    // }
+    // // Throw the exception launched first
+    // if (pThreadException)
+    //   std::rethrow_exception(pThreadException);
   }
 
   template <typename agent_t>

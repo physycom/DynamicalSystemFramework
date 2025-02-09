@@ -698,32 +698,17 @@ namespace dsm {
       }
     }
     // Move transport capacity agents from each node
-    std::for_each(
-#ifndef __APPLE__
-        std::execution::par_unseq,
-#endif
-        this->m_graph.nodeSet().begin(),
-        this->m_graph.nodeSet().end(),
-        [this](const auto& it) {
-          for (auto i = 0; i < it.second->transportCapacity(); ++i) {
-            this->m_evolveNode(it.second);
-          }
-          if (it.second->isTrafficLight()) {
-            auto& tl = dynamic_cast<TrafficLight&>(*it.second);
-            ++tl;  // Increment the counter
-          }
-        });
-    // for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
-    //   for (auto i = 0; i < pNode->transportCapacity(); ++i) {
-    //     if (!this->m_evolveNode(pNode)) {
-    //       break;
-    //     }
-    //   }
-    //   if (pNode->isTrafficLight()) {
-    //     auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-    //     ++tl;  // Increment the counter
-    //   }
-    // }
+    for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
+      for (auto i = 0; i < pNode->transportCapacity(); ++i) {
+        if (!this->m_evolveNode(pNode)) {
+          break;
+        }
+      }
+      if (pNode->isTrafficLight()) {
+        auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+        ++tl;  // Increment the counter
+      }
+    }
     // cycle over agents and update their times
     this->m_evolveAgents();
     // increment time simulation

@@ -16,6 +16,8 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g -fsanitize=address")
 endif()
 
+find_package(TBB REQUIRED CONFIG)
+
 # Set the folder for the executable
 set(EXECUTABLE_OUTPUT_PATH ../)
 
@@ -39,4 +41,4 @@ list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 add_executable(dsm_tests.out ${SOURCES})
 target_include_directories(dsm_tests.out PRIVATE ../src/dsm/headers/ ../src/dsm/utility/TypeTraits/)
 target_include_directories(dsm_tests.out SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
-target_compile_definitions(dsm_tests.out PUBLIC PARALLEL)
+target_link_libraries(dsm_tests.out PRIVATE TBB::tbb)
