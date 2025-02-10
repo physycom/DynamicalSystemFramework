@@ -23,6 +23,7 @@
 #include <exception>
 #include <fstream>
 #include <iomanip>
+#include <tbb/concurrent_vector.h>
 
 #include "Dynamics.hpp"
 #include "Agent.hpp"
@@ -51,12 +52,13 @@ namespace dsm {
     std::optional<double> m_passageProbability;
 
   protected:
-    std::vector<std::pair<double, double>> m_travelDTs;
+    tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     bool m_forcePriorities;
     std::optional<delay_t> m_dataUpdatePeriod;
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     std::unordered_map<Id, double> m_streetTails;
+    tbb::concurrent_vector<Id> m_agentsToRemove;
 
     /// @brief Get the next street id
     /// @param agentId The id of the agent
@@ -325,7 +327,8 @@ namespace dsm {
           // reset Agent's values
           pAgent->reset();
         } else {
-          this->removeAgent(agentId);
+          m_agentsToRemove.push_back(agentId);
+          // this->removeAgent(agentId);
         }
         continue;
       }
@@ -337,11 +340,11 @@ namespace dsm {
       if (pStreet->dequeue(queueIndex) == std::nullopt) {
         continue;
       }
-      assert(destinationNode->id() == nextStreet->nodePair().first);
+      assert(destinationNode->id() == nextStreet->source());
       if (destinationNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
         auto const delta{nextStreet->deltaAngle(pStreet->angle())};
-        m_increaseTurnCounts(pStreet->id(), delta);
+        // m_increaseTurnCounts(pStreet->id(), delta);
         intersection.addAgent(delta, agentId);
       } else if (destinationNode->isRoundabout()) {
         auto& roundabout = dynamic_cast<Roundabout&>(*destinationNode);
@@ -687,27 +690,24 @@ namespace dsm {
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
-    for (auto const& [nodeId, _] : this->m_graph.nodeSet()) {
-      for (auto const& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
-        auto const& pStreet{this->m_graph.street(streetId)};
-        // Logger::info(std::format("Evolving street {}", streetId));
-        if (bUpdateData) {
-          m_streetTails[streetId] += pStreet->nExitingAgents();
-        }
-        for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-          this->m_evolveStreet(pStreet, reinsert_agents);
-        }
-      }
+    tbb::parallel_for_each(this->m_graph.nodeSet().cbegin(),
+                           this->m_graph.nodeSet().cend(),
+                           [&](const auto& pair) {
+                             for (auto const& [streetId, _] :
+                                  this->m_graph.adjMatrix().getCol(pair.first, true)) {
+                               auto const& pStreet{this->m_graph.street(streetId)};
+                               if (bUpdateData) {
+                                 m_streetTails[streetId] += pStreet->nExitingAgents();
+                               }
+                               for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
+                                 this->m_evolveStreet(pStreet, reinsert_agents);
+                               }
+                             }
+                           });
+    for (auto const& agentId : m_agentsToRemove) {
+      this->removeAgent(agentId);
     }
-    // for (const auto& [streetId, pStreet] : this->m_graph.streetSet()) {
-    //   if (bUpdateData) {
-    //     m_streetTails[streetId] += pStreet->nExitingAgents();
-    //   }
-    //   Logger::info(std::format("Evolving street {}", streetId));
-    //   for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-    //     this->m_evolveStreet(pStreet, reinsert_agents);
-    //   }
-    // }
+    m_agentsToRemove.clear();
     // Move transport capacity agents from each node
     tbb::parallel_for_each(this->m_graph.nodeSet().cbegin(),
                            this->m_graph.nodeSet().cend(),
