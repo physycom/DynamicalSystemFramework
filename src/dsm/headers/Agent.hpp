@@ -34,6 +34,7 @@ namespace dsm {
     std::vector<Id> m_trip;
     std::optional<Id> m_streetId;
     std::optional<Id> m_srcNodeId;
+    std::optional<Id> m_nextStreetId;
     delay_t m_delay;
     double m_speed;
     double m_distance;    // Travelled distance
@@ -55,7 +56,10 @@ namespace dsm {
     Agent(Id id, std::vector<Id> const& trip, std::optional<Id> srcNodeId = std::nullopt);
     /// @brief Set the street occupied by the agent
     /// @param streetId The id of the street currently occupied by the agent
-    void setStreetId(Id streetId) { m_streetId = streetId; }
+    void setStreetId(Id streetId);
+    /// @brief Set the id of the next street
+    /// @param nextStreetId The id of the next street
+    void setNextStreetId(Id nextStreetId) { m_nextStreetId = nextStreetId; }
     /// @brief Set the agent's speed
     /// @param speed, The agent's speed
     /// @throw std::invalid_argument, if speed is negative
@@ -114,6 +118,9 @@ namespace dsm {
     /// @brief Get the id of the source node of the agent
     /// @return The id of the source node of the agent
     std::optional<Id> srcNodeId() const { return m_srcNodeId; }
+    /// @brief Get the id of the next street
+    /// @return The id of the next street
+    std::optional<Id> nextStreetId() const { return m_nextStreetId; }
     /// @brief Get the agent's speed
     /// @return The agent's speed
     double speed() const { return m_speed; }
@@ -138,6 +145,7 @@ namespace dsm {
         m_trip{itineraryId.has_value() ? std::vector<Id>{itineraryId.value()}
                                        : std::vector<Id>{}},
         m_srcNodeId{srcNodeId},
+        m_nextStreetId{std::nullopt},
         m_delay{0},
         m_speed{0.},
         m_distance{0.},
@@ -150,6 +158,7 @@ namespace dsm {
       : m_id{id},
         m_trip{trip},
         m_srcNodeId{srcNodeId},
+        m_nextStreetId{std::nullopt},
         m_delay{0},
         m_speed{0.},
         m_distance{0.},
@@ -161,6 +170,13 @@ namespace dsm {
   Id Agent<delay_t>::itineraryId() const {
     assert(m_itineraryIdx < m_trip.size());
     return m_trip[m_itineraryIdx];
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void Agent<delay_t>::setStreetId(Id streetId) {
+    m_streetId = streetId;
+    m_nextStreetId = std::nullopt;
   }
 
   template <typename delay_t>

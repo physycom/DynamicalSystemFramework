@@ -52,7 +52,6 @@ namespace dsm {
 
   protected:
     std::vector<std::pair<double, double>> m_travelDTs;
-    std::unordered_map<Id, Id> m_agentNextStreetId;
     bool m_forcePriorities;
     std::optional<delay_t> m_dataUpdatePeriod;
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
@@ -306,7 +305,6 @@ namespace dsm {
       bool bArrived{false};
       if (!bCanPass) {
         if (pAgent->isRandom()) {
-          m_agentNextStreetId.erase(agentId);
           bArrived = true;
         } else {
           continue;
@@ -331,7 +329,8 @@ namespace dsm {
         }
         continue;
       }
-      auto const& nextStreet{this->m_graph.streetSet()[m_agentNextStreetId[agentId]]};
+      auto const& nextStreet{
+          this->m_graph.street(this->agents().at(agentId)->nextStreetId().value())};
       if (nextStreet->isFull()) {
         continue;
       }
@@ -360,7 +359,8 @@ namespace dsm {
         return false;
       }
       for (auto const [angle, agentId] : intersection.agents()) {
-        auto const& nextStreet{this->m_graph.streetSet()[m_agentNextStreetId[agentId]]};
+        auto const& nextStreet{
+            this->m_graph.street(this->agents().at(agentId)->nextStreetId().value())};
         if (nextStreet->isFull()) {
           if (m_forcePriorities) {
             return false;
@@ -373,7 +373,6 @@ namespace dsm {
         this->agents().at(agentId)->incrementDelay(
             std::ceil(nextStreet->length() / this->agents().at(agentId)->speed()));
         nextStreet->addAgent(agentId);
-        m_agentNextStreetId.erase(agentId);
         return true;
       }
       return false;
@@ -383,7 +382,8 @@ namespace dsm {
         return false;
       }
       auto const agentId{roundabout.agents().front()};
-      auto const& nextStreet{this->m_graph.streetSet()[m_agentNextStreetId[agentId]]};
+      auto const& nextStreet{
+          this->m_graph.street(this->agents().at(agentId)->nextStreetId().value())};
       if (!(nextStreet->isFull())) {
         if (this->agents().at(agentId)->streetId().has_value()) {
           const auto streetId = this->agents().at(agentId)->streetId().value();
@@ -401,7 +401,6 @@ namespace dsm {
         this->agents().at(agentId)->incrementDelay(
             std::ceil(nextStreet->length() / this->agents().at(agentId)->speed()));
         nextStreet->addAgent(agentId);
-        m_agentNextStreetId.erase(agentId);
       } else {
         return false;
       }
@@ -448,8 +447,8 @@ namespace dsm {
           } else {
             auto const nextStreetId =
                 this->m_nextStreetId(agentId, street->nodePair().second, street->id());
-            auto const& pNextStreet{this->m_graph.streetSet()[nextStreetId]};
-            m_agentNextStreetId.emplace(agentId, nextStreetId);
+            auto const& pNextStreet{this->m_graph.street(nextStreetId)};
+            agent->setNextStreetId(nextStreetId);
             if (nLanes == 1) {
               street->enqueue(agentId, 0);
             } else {
@@ -490,8 +489,7 @@ namespace dsm {
             }
           }
         }
-      } else if (!agent->streetId().has_value() &&
-                 !m_agentNextStreetId.contains(agentId)) {
+      } else if (!agent->streetId().has_value() && !agent->nextStreetId().has_value()) {
         Id srcNodeId = agent->srcNodeId().has_value() ? agent->srcNodeId().value()
                                                       : nodeDist(this->m_generator);
         const auto& srcNode{this->m_graph.nodeSet()[srcNodeId]};
@@ -511,7 +509,7 @@ namespace dsm {
           auto& roundabout = dynamic_cast<Roundabout&>(*srcNode);
           roundabout.enqueue(agentId);
         }
-        m_agentNextStreetId.emplace(agentId, nextStreet->id());
+        agent->setNextStreetId(nextStreet->id());
       } else if (agent->delay() == 0) {
         agent->setSpeed(0.);
       }
