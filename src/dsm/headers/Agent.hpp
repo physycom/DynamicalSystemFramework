@@ -175,6 +175,7 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void Agent<delay_t>::setStreetId(Id streetId) {
+    assert(m_nextStreetId.has_value() ? streetId == m_nextStreetId.value() : true);
     m_streetId = streetId;
     m_nextStreetId = std::nullopt;
   }
