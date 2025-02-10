@@ -289,7 +289,7 @@ namespace dsm {
         continue;
       }
       pAgent->setSpeed(0.);
-      const auto& destinationNode{this->m_graph.nodeSet()[pStreet->nodePair().second]};
+      const auto& destinationNode{this->m_graph.node(pStreet->target())};
       if (destinationNode->isFull()) {
         continue;
       }
@@ -687,14 +687,27 @@ namespace dsm {
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
-    for (const auto& [streetId, pStreet] : this->m_graph.streetSet()) {
-      if (bUpdateData) {
-        m_streetTails[streetId] += pStreet->nExitingAgents();
-      }
-      for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-        this->m_evolveStreet(pStreet, reinsert_agents);
+    for (auto const& [nodeId, _] : this->m_graph.nodeSet()) {
+      for (auto const& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
+        auto const& pStreet{this->m_graph.street(streetId)};
+        // Logger::info(std::format("Evolving street {}", streetId));
+        if (bUpdateData) {
+          m_streetTails[streetId] += pStreet->nExitingAgents();
+        }
+        for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
+          this->m_evolveStreet(pStreet, reinsert_agents);
+        }
       }
     }
+    // for (const auto& [streetId, pStreet] : this->m_graph.streetSet()) {
+    //   if (bUpdateData) {
+    //     m_streetTails[streetId] += pStreet->nExitingAgents();
+    //   }
+    //   Logger::info(std::format("Evolving street {}", streetId));
+    //   for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
+    //     this->m_evolveStreet(pStreet, reinsert_agents);
+    //   }
+    // }
     // Move transport capacity agents from each node
     for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
       for (auto i = 0; i < pNode->transportCapacity(); ++i) {
