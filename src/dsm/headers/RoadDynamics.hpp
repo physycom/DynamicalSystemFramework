@@ -696,17 +696,13 @@ namespace dsm {
       }
     }
     // Move transport capacity agents from each node
-    for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
-      for (auto i = 0; i < pNode->transportCapacity(); ++i) {
-        if (!this->m_evolveNode(pNode)) {
-          break;
-        }
-      }
-      if (pNode->isTrafficLight()) {
-        auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-        ++tl;  // Increment the counter
-      }
-    }
+    tbb::parallel_for_each(this->m_graph.nodeSet().cbegin(),
+                           this->m_graph.nodeSet().cend(),
+                           [&](const auto& pair) {
+                             for (auto i = 0; i < pair.second->transportCapacity(); ++i) {
+                               this->m_evolveNode(pair.second);
+                             }
+                           });
     // cycle over agents and update their times
     this->m_evolveAgents();
     // increment time simulation
