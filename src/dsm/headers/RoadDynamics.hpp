@@ -338,7 +338,7 @@ namespace dsm {
         continue;
       }
       pStreet->dequeue(queueIndex);
-      if (destinationNode->id() != nextStreet->u()) {
+      if (destinationNode->id() != nextStreet->source()) {
         Logger::error(std::format("Agent {} is going to the wrong street", agentId));
       }
       if (destinationNode->isIntersection()) {
