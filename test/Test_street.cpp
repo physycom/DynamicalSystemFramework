@@ -47,8 +47,8 @@ TEST_CASE("Street") {
     CHECK_EQ(street.capacity(), 2);
     CHECK_EQ(street.transportCapacity(), 1);
     CHECK_EQ(street.length(), 1.5);
-    CHECK_EQ(street.u(), 4);
-    CHECK_EQ(street.v(), 5);
+    CHECK_EQ(street.source(), 4);
+    CHECK_EQ(street.target(), 5);
     CHECK_EQ(doctest::Approx(street.density()), 0);
     CHECK_EQ(street.maxSpeed(), 13.8888888889);
     CHECK_EQ(street.nLanes(), 1);
@@ -65,8 +65,8 @@ TEST_CASE("Street") {
     CHECK_EQ(street.capacity(), 2);
     CHECK_EQ(street.transportCapacity(), 1);
     CHECK_EQ(street.length(), 1.5);
-    CHECK_EQ(street.u(), 4);
-    CHECK_EQ(street.v(), 5);
+    CHECK_EQ(street.source(), 4);
+    CHECK_EQ(street.target(), 5);
     CHECK_EQ(doctest::Approx(street.density()), 0);
     CHECK_EQ(street.maxSpeed(), 40.);
     CHECK_EQ(street.nLanes(), 1);

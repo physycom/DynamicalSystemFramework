@@ -37,13 +37,13 @@ namespace dsm {
     Id id() const;
     /// @brief Get the edge's source node id
     /// @return Id The edge's source node id
-    Id u() const;
-    /// @brief Get the edge's destination node id
-    /// @return Id The edge's destination node id
-    Id v() const;
+    Id source() const;
+    /// @brief Get the edge's target node id
+    /// @return Id The edge's target node id
+    Id target() const;
     /// @brief Get the edge's node pair
     /// @return std::pair<Id, Id> The edge's node pair, where the first element is the source node id and the second
-    /// element is the destination node id. The pair is (u, v) with the edge u -> v.
+    /// element is the target node id. The pair is (u, v) with the edge u -> v.
     std::pair<Id, Id> const& nodePair() const;
     /// @brief Get the edge's capacity, in number of agents
     /// @return int The edge's capacity, in number of agents
@@ -51,7 +51,7 @@ namespace dsm {
     /// @brief Get the edge's transport capacity, in number of agents
     /// @return int The edge's transport capacity, in number of agents
     int transportCapacity() const;
-    /// @brief Get the edge's angle, in radians, between the source and destination nodes
+    /// @brief Get the edge's angle, in radians, between the source and target nodes
     /// @return double The edge's angle, in radians
     double angle() const;
 

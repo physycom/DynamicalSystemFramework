@@ -322,8 +322,8 @@ namespace dsm {
           std::format("Street with id {} already exists.", street.id())));
     }
     // emplace nodes
-    auto const srcId{street.u()};
-    auto const dstId{street.v()};
+    auto const srcId{street.source()};
+    auto const dstId{street.target()};
     if (!m_nodes.contains(srcId)) {
       m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
     }
