@@ -10,6 +10,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include_directories(../extern/benchmark/)
 
 # add subdirectories
-# add_subdirectory(Graph)
-# add_subdirectory(Street)
+add_subdirectory(Graph)
+add_subdirectory(Street)
 add_subdirectory(Dynamics)
