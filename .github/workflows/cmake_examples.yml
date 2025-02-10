@@ -18,6 +18,15 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+    - name: Install tools manually
+      run: |
+        if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
+          sudo apt update
+          sudo apt install libtbb-dev
+        elif [ ${{ matrix.os }} == 'macos-latest' ]; then
+          brew install tbb
+        fi
+
     - uses: actions/checkout@v4
 
     - name: Configure CMake
