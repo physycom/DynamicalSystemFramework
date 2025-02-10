@@ -702,6 +702,10 @@ namespace dsm {
                              for (auto i = 0; i < pair.second->transportCapacity(); ++i) {
                                this->m_evolveNode(pair.second);
                              }
+                             if (pair.second->isTrafficLight()) {
+                               auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
+                               ++tl;
+                             }
                            });
     // cycle over agents and update their times
     this->m_evolveAgents();
