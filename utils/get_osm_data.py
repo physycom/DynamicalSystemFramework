@@ -18,7 +18,7 @@ import ast
 import logging
 import osmnx as ox
 
-__version__ = "2025.1.31"
+__version__ = "2025.2.11"
 
 RGBA_RED = (1, 0, 0, 1)
 RGBA_WHITE = (1, 1, 1, 1)
@@ -230,7 +230,10 @@ if __name__ == "__main__":
             gdf_edges = gdf_edges.drop_duplicates(subset=["u", "v"])
 
     # drop self loops
-    gdf_edges = gdf_edges[gdf_edges["u"] != gdf_edges["v"]]
+    if parser.use_original_ids:
+        gdf_edges = gdf_edges[gdf_edges["u_original"] != gdf_edges["v_original"]]
+    else:
+        gdf_edges = gdf_edges[gdf_edges["u"] != gdf_edges["v"]]
 
     # Save the data
     place = parser.place.split(",")[0].strip().lower()
