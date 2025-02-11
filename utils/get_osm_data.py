@@ -238,7 +238,7 @@ if __name__ == "__main__":
     if N_DUPLICATES > 0:
         logging.warning(
             "There are %d duplicated edges which will be removed. "
-            "Please look at them in the promped plot.",
+            "Please look at them in the saved plot.",
             N_DUPLICATES,
         )
         # Plot the graph with duplicated edges in red
@@ -246,7 +246,12 @@ if __name__ == "__main__":
             RGBA_RED if duplicated_mask.iloc[i] else RGBA_WHITE
             for i in range(len(gdf_edges))
         ]
-        ox.plot_graph(GRAPH, edge_color=edge_colors)
+        ox.plot_graph(
+            GRAPH,
+            edge_color=edge_colors,
+            save=True,
+            filepath=Path(parser.output_folder) / "duplicated_edges.png",
+        )
 
         # Remove duplicated edges
         if parser.use_original_ids:
