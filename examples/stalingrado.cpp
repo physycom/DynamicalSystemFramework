@@ -54,6 +54,7 @@ int main() {
   Graph graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
+  dsm::Road::setMeanVehicleLength(8.);
   Street s01{1, std::make_pair(0, 1), 2281., 13.9, 2};
   Street s12{7, std::make_pair(1, 2), 118., 13.9, 2};
   Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};
@@ -81,7 +82,7 @@ int main() {
   dsm::Logger::info(std::format("Streets: {}", graph.nEdges()));
 
   // Create the dynamics
-  Dynamics dynamics{graph, false, 69, 0.95};
+  Dynamics dynamics{graph, false, 69, 0.6};
   dynamics.setSpeedFluctuationSTD(0.2);
   Itinerary itinerary{4, 4};
   dynamics.addItinerary(itinerary);
