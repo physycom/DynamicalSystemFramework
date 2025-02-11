@@ -91,6 +91,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Consolidate intersections. Default is False",
     )
+    parser.add_argument(
+        "--keep-geometry",
+        action="store_true",
+        help="Keep the GEOMETRY column in aoutput csv.",
+    )
     parser = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     # set up colored logging
@@ -178,27 +183,47 @@ if __name__ == "__main__":
                 )
                 # update the node with new_id
                 gdf_nodes.loc[index, "osmid_original"] = new_id
-
-        gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
-        gdf_edges = gdf_edges[
-            [
-                "u_original",
-                "v_original",
-                "length",
-                "lanes",
-                "highway",
-                "maxspeed",
-                "name",
+        if not parser.keep_geometry:
+            gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
+            gdf_edges = gdf_edges[
+                [
+                    "u_original",
+                    "v_original",
+                    "length",
+                    "lanes",
+                    "highway",
+                    "maxspeed",
+                    "name",
+                ]
             ]
-        ]
+        else:
+            gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway", "geometry"]]
+            gdf_edges = gdf_edges[
+                [
+                    "u_original",
+                    "v_original",
+                    "length",
+                    "lanes",
+                    "highway",
+                    "maxspeed",
+                    "name",
+                    "geometry",
+                ]
+            ]
 
     else:
-        gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
         if not "lanes" in gdf_edges.columns:
             gdf_edges["lanes"] = 1
-        gdf_edges = gdf_edges[
-            ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
-        ]
+        if not parser.keep_geometry:
+            gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
+            gdf_edges = gdf_edges[
+                ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
+            ]
+        else:
+            gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway", "geometry"]]
+            gdf_edges = gdf_edges[
+                ["u", "v", "length", "lanes", "highway", "maxspeed", "name", "geometry"]
+            ]
 
     if parser.allow_duplicates:
         N_DUPLICATES = 0
