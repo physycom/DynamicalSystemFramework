@@ -23,6 +23,7 @@
 #include <exception>
 #include <fstream>
 #include <filesystem>
+#include <tbb/parallel_for_each.h>
 
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
@@ -98,29 +99,45 @@ namespace dsm {
           return;
         }
       }
-      Size const dimension = m_graph.adjMatrix().getRowDim();
+
+      auto const dimension = static_cast<Size>(m_graph.nNodes());
       auto const destinationID = pItinerary->destination();
+      std::vector<double> shortestDistances(m_graph.nNodes());
+      tbb::parallel_for_each(
+          m_graph.nodeSet().cbegin(),
+          m_graph.nodeSet().cend(),
+          [this, &shortestDistances, &destinationID](auto const& it) -> void {
+            auto const nodeId{it.first};
+            if (nodeId == destinationID) {
+              shortestDistances[nodeId] = -1.;
+            } else {
+              auto result = m_graph.shortestPath(nodeId, destinationID);
+              if (result.has_value()) {
+                shortestDistances[nodeId] = result.value().distance();
+              } else {
+                Logger::warning(std::format(
+                    "No path found from node {} to node {}", nodeId, destinationID));
+                shortestDistances[nodeId] = -1.;
+              }
+            }
+          });
       SparseMatrix<bool> path{dimension, dimension};
       // cycle over the nodes
       for (const auto& [nodeId, node] : m_graph.nodeSet()) {
         if (nodeId == destinationID) {
           continue;
         }
-        auto result{m_graph.shortestPath(nodeId, destinationID)};
-        if (!result.has_value()) {
-          Logger::warning(
-              std::format("No path found from {} to {}.", nodeId, destinationID));
+        // save the minimum distance between i and the destination
+        const auto minDistance{shortestDistances[nodeId]};
+        if (minDistance < 0.) {
           continue;
         }
-        // save the minimum distance between i and the destination
-        const auto minDistance{result.value().distance()};
         auto const& row{m_graph.adjMatrix().getRow(nodeId)};
         for (const auto [nextNodeId, _] : row) {
-          bool const bIsMinDistance{
-              std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
-                       minDistance) < 1.};  // 1 meter tolerance between shortest paths
           if (nextNodeId == destinationID) {
-            if (bIsMinDistance) {
+            if (std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
+                         minDistance) < 1.)  // 1 meter tolerance between shortest paths
+            {
               path.insert(nodeId, nextNodeId, true);
             } else {
               Logger::debug(
@@ -132,26 +149,23 @@ namespace dsm {
             }
             continue;
           }
-          result = m_graph.shortestPath(nextNodeId, destinationID);
-
-          if (result.has_value()) {
-            bool const bIsMinDistance{
-                std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() +
-                         result.value().distance() - minDistance) <
-                1.};  // 1 meter tolerance between shortest paths
-            if (bIsMinDistance) {
-              path.insert(nodeId, nextNodeId, true);
-            } else {
-              Logger::debug(
-                  std::format("Found a path from {} to {} which differs for more than {} "
-                              "meter(s) from the shortest one.",
-                              nodeId,
-                              destinationID,
-                              1.));
-            }
+          auto const distance{shortestDistances[nextNodeId]};
+          if (distance < 0.) {
+            continue;
+          }
+          bool const bIsMinDistance{
+              std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() +
+                       distance - minDistance) <
+              1.};  // 1 meter tolerance between shortest paths
+          if (bIsMinDistance) {
+            path.insert(nodeId, nextNodeId, true);
           } else {
-            Logger::warning(
-                std::format("No path found from {} to {}.", nextNodeId, destinationID));
+            Logger::debug(
+                std::format("Found a path from {} to {} which differs for more than {} "
+                            "meter(s) from the shortest one.",
+                            nodeId,
+                            destinationID,
+                            1.));
           }
         }
       }
@@ -314,17 +328,23 @@ namespace dsm {
     /// @brief Save the street densities in csv format
     /// @param filename The name of the file
     /// @param normalized If true, the densities are normalized in [0, 1]
-    void saveStreetDensities(const std::string& filename, bool normalized = true) const;
+    void saveStreetDensities(const std::string& filename,
+                             bool normalized = true,
+                             char const separator = ';') const;
     /// @brief Save the street input counts in csv format
     /// @param filename The name of the file
     /// @param reset If true, the input counts are cleared after the computation
     /// @details NOTE: counts are printed only if the street is a spire
-    void saveInputStreetCounts(const std::string& filename, bool reset = false);
+    void saveInputStreetCounts(const std::string& filename,
+                               bool reset = false,
+                               char const separator = ';');
     /// @brief Save the street output counts in csv format
     /// @param filename The name of the file
     /// @param reset If true, the output counts are cleared after the computation
     /// @details NOTE: counts are printed only if the street is a spire
-    void saveOutputStreetCounts(const std::string& filename, bool reset = false);
+    void saveOutputStreetCounts(const std::string& filename,
+                                bool reset = false,
+                                char const separator = ';');
   };
 
   template <typename agent_t>
@@ -354,34 +374,10 @@ namespace dsm {
 
   template <typename agent_t>
   void Dynamics<agent_t>::updatePaths() {
-    if (m_bCacheEnabled) {
-      if (!std::filesystem::exists(g_cacheFolder)) {
-        std::filesystem::create_directory(g_cacheFolder);
-      }
-    }
-
-    std::vector<std::thread> threads;
-    threads.reserve(m_itineraries.size());
-    std::exception_ptr pThreadException;
-    Logger::info(std::format("Init computing {} paths", m_itineraries.size()));
-    for (const auto& [itineraryId, itinerary] : m_itineraries) {
-      threads.emplace_back(std::thread([this, &itinerary, &pThreadException] {
-        try {
-          this->m_updatePath(itinerary);
-        } catch (...) {
-          if (!pThreadException)
-            pThreadException = std::current_exception();
-        }
-      }));
-    }
-    for (auto& thread : threads) {
-      thread.join();
-    }
-    // Throw the exception launched first
-    if (pThreadException)
-      std::rethrow_exception(pThreadException);
-
-    Logger::info("End computing paths");
+    tbb::parallel_for_each(
+        m_itineraries.cbegin(), m_itineraries.cend(), [this](auto const& pair) -> void {
+          this->m_updatePath(pair.second);
+        });
   }
 
   template <typename agent_t>
@@ -644,7 +640,8 @@ namespace dsm {
 
   template <typename agent_t>
   void Dynamics<agent_t>::saveStreetDensities(const std::string& filename,
-                                              bool normalized) const {
+                                              bool normalized,
+                                              char const separator) const {
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -657,20 +654,23 @@ namespace dsm {
     if (bEmptyFile) {
       file << "time";
       for (auto const& [streetId, _] : this->m_graph.streetSet()) {
-        file << ';' << streetId;
+        file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
     for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
       // keep 2 decimal digits;
-      file << ';' << std::fixed << std::setprecision(2) << pStreet->density(normalized);
+      file << separator << std::fixed << std::setprecision(2)
+           << pStreet->density(normalized);
     }
     file << std::endl;
     file.close();
   }
   template <typename agent_t>
-  void Dynamics<agent_t>::saveInputStreetCounts(const std::string& filename, bool reset) {
+  void Dynamics<agent_t>::saveInputStreetCounts(const std::string& filename,
+                                                bool reset,
+                                                char const separator) {
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -683,7 +683,7 @@ namespace dsm {
     if (bEmptyFile) {
       file << "time";
       for (auto const& [streetId, _] : this->m_graph.streetSet()) {
-        file << ';' << streetId;
+        file << separator << streetId;
       }
       file << std::endl;
     }
@@ -697,14 +697,15 @@ namespace dsm {
           value = dynamic_cast<SpireStreet&>(*pStreet).inputCounts(reset);
         }
       }
-      file << ';' << value;
+      file << separator << value;
     }
     file << std::endl;
     file.close();
   }
   template <typename agent_t>
   void Dynamics<agent_t>::saveOutputStreetCounts(const std::string& filename,
-                                                 bool reset) {
+                                                 bool reset,
+                                                 char const separator) {
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -717,7 +718,7 @@ namespace dsm {
     if (bEmptyFile) {
       file << "time";
       for (auto const& [streetId, _] : this->m_graph.streetSet()) {
-        file << ';' << streetId;
+        file << separator << streetId;
       }
       file << std::endl;
     }
@@ -731,7 +732,7 @@ namespace dsm {
           value = dynamic_cast<SpireStreet&>(*pStreet).outputCounts(reset);
         }
       }
-      file << ';' << value;
+      file << separator << value;
     }
     file << std::endl;
     file.close();

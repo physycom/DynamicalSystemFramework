@@ -11,13 +11,22 @@ jobs:
     runs-on: macos-latest
 
     steps:
+    - name: Install tools manually
+      run: brew install tbb
+
+    - name: Set environment variables
+      run: |
+        echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=$(brew --prefix tbb)/lib" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib" >> $GITHUB_ENV
+
     - uses: actions/checkout@v4
 
     - name: Build and install
       working-directory: ${{github.workspace}}
       run: |
         mkdir -p build && cd build
-        cmake ..
+        cmake .. -DCMAKE_PREFIX_PATH=$(brew --prefix tbb)
         cmake --build .
         sudo cmake --install .
 
@@ -27,5 +36,6 @@ jobs:
         touch test.cpp
         echo "#include <dsm/dsm.hpp>" >> test.cpp
         echo "int main() {}" >> test.cpp
-        g++ test.cpp -std=c++20 && echo "Compiled successfully" \
-                                || (echo "Cannot include dsm" ; exit 1)
+        g++ test.cpp -std=c++20 -I$(brew --prefix tbb)/include -L$(brew --prefix tbb)/lib -ltbb \
+          && echo "Compiled successfully" \
+          || (echo "Cannot include dsm" ; exit 1)
