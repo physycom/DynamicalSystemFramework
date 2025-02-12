@@ -13,12 +13,12 @@ The files are saved in the current directory.
 """
 
 from argparse import ArgumentParser
-from pathlib import Path
 import ast
 import logging
+from pathlib import Path
 import osmnx as ox
 
-__version__ = "2025.2.11"
+__version__ = "2025.2.12"
 
 RGBA_RED = (1, 0, 0, 1)
 RGBA_WHITE = (1, 1, 1, 1)
@@ -73,10 +73,14 @@ if __name__ == "__main__":
         "--tolerance",
         type=int,
         default=20,
-        help="Radius in meters to merge intersections. For more info, see osmnx documentation.",
+        help="Radius in meters given to consolidate intersections function."
+        " For more info, see osmnx documentation.",
     )
     parser.add_argument(
-        "--use-original-ids", action="store_true", help="Use the original ids from OSM."
+        "--use-original-ids",
+        action="store_true",
+        help="Use the original ids from OSM. If the original ids are lists,"
+        " keep the first element. Default is False.",
     )
     parser.add_argument(
         "-of",
@@ -92,9 +96,9 @@ if __name__ == "__main__":
         help="Consolidate intersections. Default is False",
     )
     parser.add_argument(
-        "--keep-geometry",
+        "--save-all",
         action="store_true",
-        help="Keep the GEOMETRY column in aoutput csv.",
+        help="Save all the column for both nodes' and edges' csv.",
     )
     parser = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -183,7 +187,7 @@ if __name__ == "__main__":
                 )
                 # update the node with new_id
                 gdf_nodes.loc[index, "osmid_original"] = new_id
-        if not parser.keep_geometry:
+        if not parser.save_all:
             gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
             gdf_edges = gdf_edges[
                 [
@@ -196,35 +200,15 @@ if __name__ == "__main__":
                     "name",
                 ]
             ]
-        else:
-            gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway", "geometry"]]
-            gdf_edges = gdf_edges[
-                [
-                    "u_original",
-                    "v_original",
-                    "length",
-                    "lanes",
-                    "highway",
-                    "maxspeed",
-                    "name",
-                    "geometry",
-                ]
-            ]
 
     else:
         if not "lanes" in gdf_edges.columns:
             gdf_edges["lanes"] = 1
-        if not parser.keep_geometry:
+        if not parser.save_all:
             gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
             gdf_edges = gdf_edges[
                 ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
             ]
-        else:
-            gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway", "geometry"]]
-            gdf_edges = gdf_edges[
-                ["u", "v", "length", "lanes", "highway", "maxspeed", "name", "geometry"]
-            ]
-
     if parser.allow_duplicates:
         N_DUPLICATES = 0
     else:
