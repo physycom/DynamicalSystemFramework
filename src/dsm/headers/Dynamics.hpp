@@ -244,9 +244,9 @@ namespace dsm {
     /// @param ids the pack of ides of the agents to remove
     void removeAgents(T1 id, Tn... ids);
 
-    /// @brief Add an itinerary
-    /// @param itinerary The itinerary
-    void addItinerary(const Itinerary& itinerary);
+    template <typename... TArgs>
+      requires(std::is_constructible_v<Itinerary, TArgs...>)
+    void addItinerary(TArgs&&... args);
     /// @brief Add an itinerary
     /// @param itinerary std::unique_ptr to the itinerary
     void addItinerary(std::unique_ptr<Itinerary> itinerary);
@@ -397,7 +397,7 @@ namespace dsm {
       if (!m_graph.nodeSet().contains(nodeId)) {
         Logger::error(std::format("Node with id {} not found", nodeId));
       }
-      this->addItinerary(Itinerary{nodeId, nodeId});
+      this->addItinerary(nodeId, nodeId);
     }
     if (updatePaths) {
       this->updatePaths();
@@ -472,8 +472,10 @@ namespace dsm {
   }
 
   template <typename agent_t>
-  void Dynamics<agent_t>::addItinerary(const Itinerary& itinerary) {
-    m_itineraries.emplace(itinerary.id(), std::make_unique<Itinerary>(itinerary));
+  template <typename... TArgs>
+    requires(std::is_constructible_v<Itinerary, TArgs...>)
+  void Dynamics<agent_t>::addItinerary(TArgs&&... args) {
+    addItinerary(std::make_unique<Itinerary>(std::forward<TArgs>(args)...));
   }
 
   template <typename agent_t>
