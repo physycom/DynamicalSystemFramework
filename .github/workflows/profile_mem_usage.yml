@@ -14,10 +14,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install tools manually
+      run: sudo apt update && sudo apt install libtbb-dev
     - uses: actions/checkout@v4
 
     - name: Install valgrind
-      run: sudo apt install -y valgrind
+      run: sudo apt update && sudo apt install -y valgrind
 
     - name: Build test simulation
       working-directory: ${{github.workspace}}/profiling

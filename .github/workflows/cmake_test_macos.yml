@@ -11,6 +11,9 @@ jobs:
     runs-on: macos-latest
 
     steps:
+    - name: Install tools manually
+      run: brew install tbb
+
     - uses: actions/checkout@v4
 
     - name: Configure CMake

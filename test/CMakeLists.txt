@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16.0)
 project(dsm_tests VERSION 1.3.10 LANGUAGES CXX)
 
 # Set the C++ standard
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -15,6 +15,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "COVERAGE")
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g -fsanitize=address")
 endif()
+
+find_package(TBB REQUIRED CONFIG)
 
 # Set the folder for the executable
 set(EXECUTABLE_OUTPUT_PATH ../)
@@ -39,3 +41,4 @@ list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 add_executable(dsm_tests.out ${SOURCES})
 target_include_directories(dsm_tests.out PRIVATE ../src/dsm/headers/ ../src/dsm/utility/TypeTraits/)
 target_include_directories(dsm_tests.out SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
+target_link_libraries(dsm_tests.out PRIVATE TBB::tbb)

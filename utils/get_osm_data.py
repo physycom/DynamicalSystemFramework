@@ -13,12 +13,12 @@ The files are saved in the current directory.
 """
 
 from argparse import ArgumentParser
-from pathlib import Path
 import ast
 import logging
+from pathlib import Path
 import osmnx as ox
 
-__version__ = "2025.1.31"
+__version__ = "2025.2.12"
 
 RGBA_RED = (1, 0, 0, 1)
 RGBA_WHITE = (1, 1, 1, 1)
@@ -73,10 +73,14 @@ if __name__ == "__main__":
         "--tolerance",
         type=int,
         default=20,
-        help="Radius in meters to merge intersections. For more info, see osmnx documentation.",
+        help="Radius in meters given to consolidate intersections function."
+        " For more info, see osmnx documentation.",
     )
     parser.add_argument(
-        "--use-original-ids", action="store_true", help="Use the original ids from OSM."
+        "--use-original-ids",
+        action="store_true",
+        help="Use the original ids from OSM. If the original ids are lists,"
+        " keep the first element. Default is False.",
     )
     parser.add_argument(
         "-of",
@@ -90,6 +94,11 @@ if __name__ == "__main__":
         "--consolidate-intersections",
         action="store_true",
         help="Consolidate intersections. Default is False",
+    )
+    parser.add_argument(
+        "--save-all",
+        action="store_true",
+        help="Save all the column for both nodes' and edges' csv.",
     )
     parser = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -178,28 +187,28 @@ if __name__ == "__main__":
                 )
                 # update the node with new_id
                 gdf_nodes.loc[index, "osmid_original"] = new_id
-
-        gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
-        gdf_edges = gdf_edges[
-            [
-                "u_original",
-                "v_original",
-                "length",
-                "lanes",
-                "highway",
-                "maxspeed",
-                "name",
+        if not parser.save_all:
+            gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
+            gdf_edges = gdf_edges[
+                [
+                    "u_original",
+                    "v_original",
+                    "length",
+                    "lanes",
+                    "highway",
+                    "maxspeed",
+                    "name",
+                ]
             ]
-        ]
 
     else:
-        gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
         if not "lanes" in gdf_edges.columns:
             gdf_edges["lanes"] = 1
-        gdf_edges = gdf_edges[
-            ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
-        ]
-
+        if not parser.save_all:
+            gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
+            gdf_edges = gdf_edges[
+                ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
+            ]
     if parser.allow_duplicates:
         N_DUPLICATES = 0
     else:
@@ -213,7 +222,7 @@ if __name__ == "__main__":
     if N_DUPLICATES > 0:
         logging.warning(
             "There are %d duplicated edges which will be removed. "
-            "Please look at them in the promped plot.",
+            "Please look at them in the saved plot.",
             N_DUPLICATES,
         )
         # Plot the graph with duplicated edges in red
@@ -221,7 +230,12 @@ if __name__ == "__main__":
             RGBA_RED if duplicated_mask.iloc[i] else RGBA_WHITE
             for i in range(len(gdf_edges))
         ]
-        ox.plot_graph(GRAPH, edge_color=edge_colors)
+        ox.plot_graph(
+            GRAPH,
+            edge_color=edge_colors,
+            save=True,
+            filepath=Path(parser.output_folder) / "duplicated_edges.png",
+        )
 
         # Remove duplicated edges
         if parser.use_original_ids:
@@ -230,7 +244,10 @@ if __name__ == "__main__":
             gdf_edges = gdf_edges.drop_duplicates(subset=["u", "v"])
 
     # drop self loops
-    gdf_edges = gdf_edges[gdf_edges["u"] != gdf_edges["v"]]
+    if parser.use_original_ids:
+        gdf_edges = gdf_edges[gdf_edges["u_original"] != gdf_edges["v_original"]]
+    else:
+        gdf_edges = gdf_edges[gdf_edges["u"] != gdf_edges["v"]]
 
     # Save the data
     place = parser.place.split(",")[0].strip().lower()

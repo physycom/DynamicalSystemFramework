@@ -770,39 +770,40 @@
 //         "itineraries "
 //         "and a roundabout") {
 //       Road::setMeanVehicleLength(10.);
-//       Street s1{0, std::make_pair(0, 1), 10., 10.};
-//       Street s2{1, std::make_pair(2, 1), 10., 10.};
-//       Street s3{2, std::make_pair(1, 0), 10., 10.};
-//       Street s4{3, std::make_pair(1, 2), 10., 10.};
+//       Street s1{1, std::make_pair(0, 1), 10., 10.};
+//       Street s2{7, std::make_pair(2, 1), 10., 10.};
+//       Street s3{3, std::make_pair(1, 0), 10., 10.};
+//       Street s4{5, std::make_pair(1, 2), 10., 10.};
 //       Graph graph2;
 //       graph2.addStreets(s1, s2, s3, s4);
 //       graph2.buildAdj();
 //       auto& rb = graph2.makeRoundabout(1);
 //       graph2.adjustNodeCapacities();
 //       Dynamics dynamics{graph2, false, 69};
-//       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
-//       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(1, 0)));
+//       Itinerary itinerary{2, 2};
+//       Itinerary itinerary2{0, 0};
+//       dynamics.addItinerary(itinerary);
+//       dynamics.addItinerary(itinerary2);
 //       dynamics.updatePaths();
-//       dynamics.addAgent(0, 0, 0);
-//       dynamics.addAgent(1, 1, 2);
+//       dynamics.addAgent(0, 2, 0);
+//       dynamics.addAgent(1, 0, 2);
 //       WHEN(
 //           "We evolve the dynamics adding an agent on the path of the agent "
 //           "with "
 //           "priority") {
 //         dynamics.evolve(false);
-//         dynamics.addAgent(2, 0, 1);
+//         dynamics.addAgent(2, 2, 1);
 //         dynamics.evolve(false);
 //         dynamics.evolve(false);
 //         THEN("The agents are trapped into the roundabout") {
 //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
-//           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 7);
+//           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 3);
 //           CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 5);
-//           CHECK_EQ(rb.agents().size(), 1);
+//           CHECK(rb.agents().empty());
 //         }
 //         dynamics.evolve(false);
 //         THEN("The agent with priority leaves the roundabout") {
 //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
-//           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 3);
 //           CHECK(rb.agents().empty());
 //         }
 //       }
@@ -816,7 +817,8 @@
 //       graph2.addStreets(s1, s2);
 //       graph2.buildAdj();
 //       Dynamics dynamics{graph2, false, 69};
-//       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
+//       Itinerary itinerary{0, 2};
+//       dynamics.addItinerary(itinerary);
 //       dynamics.updatePaths();
 //       dynamics.addAgent(0, 0, 0);
 //       WHEN("We evolve the dynamics") {
@@ -841,7 +843,8 @@
 //       graph2.buildAdj();
 //       graph2.makeStochasticStreet(1, 0.3);
 //       Dynamics dynamics{graph2, false, 69};
-//       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
+//       Itinerary itinerary{0, 2};
+//       dynamics.addItinerary(itinerary);
 //       dynamics.updatePaths();
 //       dynamics.addAgent(0, 0, 0);
 //       WHEN("We evolve the dynamics") {
@@ -890,7 +893,8 @@
 //       node->setTransportCapacity(4);
 //     }
 //     Dynamics dynamics{graph2, false, 69, 0.5};
-//     dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
+//     Itinerary itinerary{0, 2};
+//     dynamics.addItinerary(itinerary);
 //     dynamics.updatePaths();
 //     dynamics.addAgents(4, 0, 0);
 //     dynamics.evolve(false);
@@ -942,8 +946,10 @@
 //       graph2.buildAdj();
 //       Dynamics dynamics{graph2, false, 69};
 //       dynamics.graph().node(0)->setCapacity(3);
-//       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
-//       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(1, 1)));
+//       Itinerary itinerary{0, 2};
+//       Itinerary itinerary2{1, 1};
+//       dynamics.addItinerary(itinerary);
+//       dynamics.addItinerary(itinerary2);
 //       dynamics.updatePaths();
 //       WHEN("We add agents and evolve the dynamics") {
 //         // add an agent in C, D, A
@@ -1000,7 +1006,7 @@
 //       graph2.buildAdj();
 //       Dynamics dynamics{graph2, false, 69};
 //       Itinerary itinerary{0, 2};
-//       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
+//       dynamics.addItinerary(itinerary);
 //       dynamics.updatePaths();
 //       dynamics.addAgent(0, 0, 0);
 //       WHEN("We evolve the dynamics") {
@@ -1029,7 +1035,7 @@
 //       graph2.buildAdj();
 //       Dynamics dynamics{graph2, false, 69};
 //       Itinerary itinerary{0, 2};
-//       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
+//       dynamics.addItinerary(itinerary);
 //       dynamics.updatePaths();
 //       dynamics.addAgent(0, 0, 0);
 //       WHEN("We evolve the dynamics") {

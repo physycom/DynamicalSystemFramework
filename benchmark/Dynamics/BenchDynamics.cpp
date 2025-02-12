@@ -13,21 +13,19 @@ using Bench = sb::Bench<long long int>;
 
 int main() {
   Graph graph{};
-  graph.importMatrix("../test/data/matrix.dat", false);
-  for (const auto& [streetId, street] : graph.streetSet()) {
-    street->setMaxSpeed(13.9);
-  }
+  graph.importOSMNodes("../test/data/forlì_nodes.csv");
+  graph.importOSMEdges("../test/data/forlì_edges.csv");
+  graph.buildAdj();
 
   Dynamics dynamics{graph};
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 118)));
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(4, 115)));
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(8, 112)));
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(12, 109)));
+  std::vector<dsm::Id> destinations{10, 42, 69, 121, 420, 690, 777, 999, 1020, 1212};
+  dynamics.setDestinationNodes(destinations);
 
-  const int n_rep{100};
+  const int n_rep{1};
   Bench b1(n_rep);
   std::cout << "Benchmarking updatePaths\n";
   dynamics.updatePaths();
   b1.benchmark([&dynamics]() -> void { dynamics.updatePaths(); });
+  std::cout << "Time elapsed (ms):\n";
   b1.print<sb::milliseconds>();
 }
