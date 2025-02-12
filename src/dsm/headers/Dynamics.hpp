@@ -200,12 +200,18 @@ namespace dsm {
     /// @brief Update the paths of the itineraries based on the actual travel times
     virtual void updatePaths();
 
-    /// @brief Set the dynamics destination nodes auto-generating itineraries
-    /// @param destinationNodes The destination nodes
+    /// @brief Set the destination nodes
+    /// @param destinationNodes The destination nodes (as an initializer list)
     /// @param updatePaths If true, the paths are updated
-    /// @throws std::invalid_argument Ifone or more destination nodes do not exist
-    void setDestinationNodes(const std::span<Id>& destinationNodes,
+    void setDestinationNodes(std::initializer_list<Id> destinationNodes,
                              bool updatePaths = true);
+    /// @brief Set the destination nodes
+    /// @param destinationNodes A container of destination nodes ids
+    /// @param updatePaths If true, the paths are updated
+    /// @details The container must have a value_type convertible to Id and begin() and end() methods
+    template <typename TContainer>
+      requires(std::is_convertible_v<typename TContainer::value_type, Id>)
+    void setDestinationNodes(TContainer const& destinationNodes, bool updatePaths = true);
 
     /// @brief Add an agent to the simulation
     /// @param agent std::unique_ptr to the agent
@@ -253,6 +259,7 @@ namespace dsm {
     /// @brief Add an itinerary
     /// @param itinerary std::unique_ptr to the itinerary
     /// @throws std::invalid_argument If the itinerary already exists
+    /// @throws std::invalid_argument If the itinerary's destination is not a node of the graph
     void addItinerary(std::unique_ptr<Itinerary> itinerary);
     template <typename... Tn>
       requires(is_itinerary_v<Tn> && ...)
@@ -373,36 +380,28 @@ namespace dsm {
         m_itineraries.cbegin(), m_itineraries.cend(), [this](auto const& pair) -> void {
           this->m_updatePath(pair.second);
         });
-    // std::vector<std::thread> threads;
-    // threads.reserve(m_itineraries.size());
-    // std::exception_ptr pThreadException;
-    // for (const auto& [itineraryId, itinerary] : m_itineraries) {
-    //   threads.emplace_back(std::thread([this, &itinerary, &pThreadException] {
-    //     try {
-    //       this->m_updatePath(itinerary);
-    //     } catch (...) {
-    //       if (!pThreadException)
-    //         pThreadException = std::current_exception();
-    //     }
-    //   }));
-    // }
-    // for (auto& thread : threads) {
-    //   thread.join();
-    // }
-    // // Throw the exception launched first
-    // if (pThreadException)
-    //   std::rethrow_exception(pThreadException);
   }
 
   template <typename agent_t>
-  void Dynamics<agent_t>::setDestinationNodes(const std::span<Id>& destinationNodes,
+  void Dynamics<agent_t>::setDestinationNodes(std::initializer_list<Id> destinationNodes,
                                               bool updatePaths) {
-    for (const auto& nodeId : destinationNodes) {
-      if (!m_graph.nodeSet().contains(nodeId)) {
-        Logger::error(std::format("Node with id {} not found", nodeId));
-      }
-      this->addItinerary(nodeId, nodeId);
+    std::for_each(
+        destinationNodes.begin(),
+        destinationNodes.end(),
+        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
+    if (updatePaths) {
+      this->updatePaths();
     }
+  }
+  template <typename agent_t>
+  template <typename TContainer>
+    requires(std::is_convertible_v<typename TContainer::value_type, Id>)
+  void Dynamics<agent_t>::setDestinationNodes(TContainer const& destinationNodes,
+                                              bool updatePaths) {
+    std::for_each(
+        destinationNodes.begin(),
+        destinationNodes.end(),
+        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
     if (updatePaths) {
       this->updatePaths();
     }
@@ -487,6 +486,10 @@ namespace dsm {
     if (m_itineraries.contains(itinerary->id())) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Itinerary with id {} already exists.", itinerary->id())));
+    }
+    if (!m_graph.nodeSet().contains(itinerary->destination())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
+          "Destination node with id {} not found", itinerary->destination())));
     }
     m_itineraries.emplace(itinerary->id(), std::move(itinerary));
   }
