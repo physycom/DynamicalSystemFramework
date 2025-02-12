@@ -132,7 +132,7 @@ namespace dsm {
           continue;
         }
         auto const& row{m_graph.adjMatrix().getRow(nodeId)};
-        for (const auto [nextNodeId, _] : row) {
+        for (const auto nextNodeId : row) {
           if (nextNodeId == destinationID) {
             if (std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
                          minDistance) < 1.)  // 1 meter tolerance between shortest paths

@@ -685,8 +685,10 @@ namespace dsm {
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
+    auto const N{this->m_graph.nNodes()};
     for (auto const& [nodeId, _] : this->m_graph.nodeSet()) {
-      for (auto const& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
+      for (auto const& srcNodeId : this->m_graph.adjMatrix().getCol(nodeId)) {
+        auto const streetId{srcNodeId * N + nodeId};
         auto const& pStreet{this->m_graph.street(streetId)};
         // Logger::info(std::format("Evolving street {}", streetId));
         if (bUpdateData) {
@@ -697,15 +699,6 @@ namespace dsm {
         }
       }
     }
-    // for (const auto& [streetId, pStreet] : this->m_graph.streetSet()) {
-    //   if (bUpdateData) {
-    //     m_streetTails[streetId] += pStreet->nExitingAgents();
-    //   }
-    //   Logger::info(std::format("Evolving street {}", streetId));
-    //   for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-    //     this->m_evolveStreet(pStreet, reinsert_agents);
-    //   }
-    // }
     // Move transport capacity agents from each node
     for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
       for (auto i = 0; i < pNode->transportCapacity(); ++i) {
