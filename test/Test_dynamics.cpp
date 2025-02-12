@@ -809,9 +809,9 @@ TEST_CASE("Dynamics") {
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
       Dynamics dynamics{graph2, false, 69};
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
+      dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
-      dynamics.addAgent(0, 0, 0);
+      dynamics.addAgent(0, 2, 0);
       WHEN("We evolve the dynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
@@ -834,9 +834,9 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       graph2.makeStochasticStreet(1, 0.3);
       Dynamics dynamics{graph2, false, 69};
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
+      dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
-      dynamics.addAgent(0, 0, 0);
+      dynamics.addAgent(0, 2, 0);
       WHEN("We evolve the dynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
@@ -883,9 +883,9 @@ TEST_CASE("Dynamics") {
       node->setTransportCapacity(4);
     }
     Dynamics dynamics{graph2, false, 69, 0.5};
-    dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
+    dynamics.addItinerary(2, 2);
     dynamics.updatePaths();
-    dynamics.addAgents(4, 0, 0);
+    dynamics.addAgents(4, 2, 0);
     dynamics.evolve(false);
     dynamics.evolve(false);
     double meanSpeed{0.};

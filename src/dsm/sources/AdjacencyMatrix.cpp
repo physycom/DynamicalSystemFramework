@@ -185,14 +185,14 @@ namespace dsm {
     }
   }
 
-  std::vector<int> AdjacencyMatrix::getOutDegreeVector() {
+  std::vector<int> AdjacencyMatrix::getOutDegreeVector() const {
     auto degVector = std::vector<int>(m_n);
     std::adjacent_difference(
         m_rowOffsets.begin() + 1, m_rowOffsets.end(), degVector.begin());
     return degVector;
   }
 
-  std::vector<int> AdjacencyMatrix::getInDegreeVector() {
+  std::vector<int> AdjacencyMatrix::getInDegreeVector() const {
     auto degVector = std::vector<int>(m_n, 0);
     std::for_each(m_columnIndices.begin(),
                   m_columnIndices.end(),
@@ -207,9 +207,9 @@ namespace dsm {
     }
     inStream.read(reinterpret_cast<char*>(&m_n), sizeof(size_t));
     m_rowOffsets.resize(m_n + 1);
-    m_columnIndices.resize(m_n);
     inStream.read(reinterpret_cast<char*>(m_rowOffsets.data()),
                   m_rowOffsets.size() * sizeof(Id));
+    m_columnIndices.resize(m_rowOffsets.back());
     inStream.read(reinterpret_cast<char*>(m_columnIndices.data()),
                   m_columnIndices.size() * sizeof(Id));
     inStream.close();

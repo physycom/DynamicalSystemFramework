@@ -65,8 +65,8 @@ namespace dsm {
     void clearRow(Id row);
     void clearCol(Id col);
 
-    std::vector<int> getInDegreeVector();
-    std::vector<int> getOutDegreeVector();
+    std::vector<int> getInDegreeVector() const;
+    std::vector<int> getOutDegreeVector() const;
 
     void read(std::string const& fileName);
     void save(std::string const& fileName) const;

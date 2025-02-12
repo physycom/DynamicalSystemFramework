@@ -89,10 +89,9 @@ namespace dsm {
     void m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
       if (m_bCacheEnabled) {
         auto const& file =
-            std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id());
+            std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
         if (std::filesystem::exists(file)) {
-          auto path = AdjacencyMatrix(file);
-          pItinerary->setPath(std::move(path));
+          pItinerary->setPath(AdjacencyMatrix(file));
           Logger::info(
               std::format("Loaded cached path for itinerary {}", pItinerary->id()));
           return;
