@@ -55,26 +55,22 @@ int main() {
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
   dsm::Road::setMeanVehicleLength(8.);
-  Street s01{1, std::make_pair(0, 1), 2281.};
-  Street s12{7, std::make_pair(1, 2), 118.};
-  Street s23{13, std::make_pair(2, 3), 222.};
+  Street s01{1, std::make_pair(0, 1), 2281., 13.9, 2};
+  Street s12{7, std::make_pair(1, 2), 118., 13.9, 2};
+  Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};
   Street s34{19, std::make_pair(3, 4), 651., 13.9, 2};
   // Viale Aldo Moro
   auto& tl1 = graph.addNode<TrafficLight>(1, 132);
   tl1.setCycle(s01.id(), dsm::Direction::ANY, {62, 0});
-  tl1.setCapacity(1);
   // Via Donato Creti
   auto& tl2 = graph.addNode<TrafficLight>(2, 141);
   tl2.setCycle(s12.id(), dsm::Direction::ANY, {72, 0});
-  tl2.setCapacity(1);
   // Via del Lavoro
   auto& tl3 = graph.addNode<TrafficLight>(3, 138);
   tl3.setCycle(s23.id(), dsm::Direction::ANY, {88, 0});
-  tl3.setCapacity(1);
   // Viali
   auto& tl4 = graph.addNode<TrafficLight>(4, 131);
   tl4.setCycle(s34.id(), dsm::Direction::ANY, {81, 0});
-  tl4.setCapacity(1);
 
   graph.addStreets(s01, s12, s23, s34);
   graph.buildAdj();
@@ -86,7 +82,7 @@ int main() {
   dsm::Logger::info(std::format("Streets: {}", graph.nEdges()));
 
   // Create the dynamics
-  Dynamics dynamics{graph, false, 69, 0.95};
+  Dynamics dynamics{graph, false, 69, 0.6};
   dynamics.setSpeedFluctuationSTD(0.2);
   Itinerary itinerary{4, 4};
   dynamics.addItinerary(itinerary);
@@ -112,7 +108,7 @@ int main() {
       if (progress % 300 == 0) {
         ofs << progress << ';' << spire.outputCounts(true) << std::endl;
       }
-      dynamics.addAgents(*it / 2, 4, 0);
+      dynamics.addAgents(*it, 4, 0);
     }
     dynamics.evolve(false);
     ++progress;

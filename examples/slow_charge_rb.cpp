@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
 
   std::cout << "Creating dynamics...\n";
 
-  Dynamics dynamics{graph, true, SEED, 0.95};
+  Dynamics dynamics{graph, true, SEED, 0.6};
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
