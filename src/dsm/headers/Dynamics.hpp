@@ -371,8 +371,8 @@ namespace dsm {
   void Dynamics<agent_t>::setDestinationNodes(std::initializer_list<Id> destinationNodes,
                                               bool updatePaths) {
     std::for_each(
-        destinationNodes.cbegin(),
-        destinationNodes.cend(),
+        destinationNodes.begin(),
+        destinationNodes.end(),
         [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
     if (updatePaths) {
       this->updatePaths();
@@ -384,8 +384,8 @@ namespace dsm {
   void Dynamics<agent_t>::setDestinationNodes(TContainer const& destinationNodes,
                                               bool updatePaths) {
     std::for_each(
-        destinationNodes.cbegin(),
-        destinationNodes.cend(),
+        destinationNodes.begin(),
+        destinationNodes.end(),
         [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
     if (updatePaths) {
       this->updatePaths();
