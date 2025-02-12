@@ -1,4 +1,3 @@
-
 #include "AdjacencyMatrix.hpp"
 #include "Graph.hpp"
 
@@ -11,13 +10,12 @@ TEST_CASE("Test default construction and insertion") {
   adj.insert(0, 1);
   auto offsets = test::offsets(adj);
   auto indices = test::indices(adj);
-  CHECK_EQ(offsets.size(), 2);
+  CHECK_EQ(offsets.size(), 3);
   CHECK_EQ(offsets[0], 0);
   CHECK_EQ(offsets[1], 1);
   CHECK_EQ(indices.size(), 1);
   CHECK_EQ(indices[0], 1);
-  CHECK_EQ(adj.nRows(), 1);
-  CHECK_EQ(adj.nCols(), 2);
+  CHECK_EQ(adj.n(), 2);
 
   adj.insert(1, 2);
   adj.insert(1, 3);
@@ -25,7 +23,7 @@ TEST_CASE("Test default construction and insertion") {
   adj.insert(3, 4);
   offsets = test::offsets(adj);
   indices = test::indices(adj);
-  CHECK_EQ(offsets.size(), 5);
+  CHECK_EQ(offsets.size(), 6);
   CHECK_EQ(offsets[0], 0);
   CHECK_EQ(offsets[1], 1);
   CHECK_EQ(offsets[2], 3);
@@ -37,13 +35,12 @@ TEST_CASE("Test default construction and insertion") {
   CHECK_EQ(indices[2], 3);
   CHECK_EQ(indices[3], 3);
   CHECK_EQ(indices[4], 4);
-  CHECK_EQ(adj.nCols(), 5);
-  CHECK_EQ(adj.nRows(), 4);
+  CHECK_EQ(adj.n(), 5);
 
   adj.insert(0, 0);
   offsets = test::offsets(adj);
   indices = test::indices(adj);
-  CHECK_EQ(offsets.size(), 5);
+  CHECK_EQ(offsets.size(), 6);
   CHECK_EQ(offsets[0], 0);
   CHECK_EQ(offsets[1], 2);
   CHECK_EQ(offsets[2], 4);
@@ -56,8 +53,7 @@ TEST_CASE("Test default construction and insertion") {
   CHECK_EQ(indices[3], 3);
   CHECK_EQ(indices[4], 3);
   CHECK_EQ(indices[5], 4);
-  CHECK_EQ(adj.nCols(), 5);
-  CHECK_EQ(adj.nRows(), 4);
+  CHECK_EQ(adj.n(), 5);
 
   SUBCASE("Test contains") {
     CHECK(adj(0, 1));
@@ -106,7 +102,7 @@ TEST_CASE("Test default construction and insertion") {
   }
   SUBCASE("Test getInDegreeVector") {
     auto inDegreeVector = adj.getInDegreeVector();
-    CHECK_EQ(inDegreeVector.size(), adj.nCols());
+    CHECK_EQ(inDegreeVector.size(), adj.n());
     CHECK_EQ(inDegreeVector[0], 1);
     CHECK_EQ(inDegreeVector[1], 1);
     CHECK_EQ(inDegreeVector[2], 1);
@@ -115,11 +111,12 @@ TEST_CASE("Test default construction and insertion") {
   }
   SUBCASE("Test getOutDegreeVector") {
     auto outDegreeVector = adj.getOutDegreeVector();
-    CHECK_EQ(outDegreeVector.size(), 4);
+    CHECK_EQ(outDegreeVector.size(), 5);
     CHECK_EQ(outDegreeVector[0], 2);
     CHECK_EQ(outDegreeVector[1], 2);
     CHECK_EQ(outDegreeVector[2], 1);
     CHECK_EQ(outDegreeVector[3], 1);
+    CHECK_EQ(outDegreeVector[4], 0);
   }
 }
 TEST_CASE("Test construction from edge map") {
@@ -133,7 +130,7 @@ TEST_CASE("Test construction from edge map") {
 
   auto offsets = test::offsets(adj);
   auto indices = test::indices(adj);
-  CHECK_EQ(offsets.size(), 5);
+  CHECK_EQ(offsets.size(), 6);
   CHECK_EQ(offsets[0], 0);
   CHECK_EQ(offsets[1], 1);
   CHECK_EQ(offsets[2], 3);
@@ -145,8 +142,7 @@ TEST_CASE("Test construction from edge map") {
   CHECK_EQ(indices[2], 2);
   CHECK_EQ(indices[3], 3);
   CHECK_EQ(indices[4], 4);
-  CHECK_EQ(adj.nCols(), 5);
-  CHECK_EQ(adj.nRows(), 4);
+  CHECK_EQ(adj.n(), 5);
 
   SUBCASE("Test contains") {
     CHECK(adj(0, 1));
@@ -202,11 +198,12 @@ TEST_CASE("Test construction from edge map") {
   }
   SUBCASE("Test getOutDegreeVector") {
     auto outDegreeVector = adj.getOutDegreeVector();
-    CHECK_EQ(outDegreeVector.size(), 4);
+    CHECK_EQ(outDegreeVector.size(), 5);
     CHECK_EQ(outDegreeVector[0], 1);
     CHECK_EQ(outDegreeVector[1], 2);
     CHECK_EQ(outDegreeVector[2], 1);
     CHECK_EQ(outDegreeVector[3], 1);
+    CHECK_EQ(outDegreeVector[4], 0);
   }
   SUBCASE("operator ==") {
     AdjacencyMatrix adj2;
@@ -249,7 +246,7 @@ TEST_CASE("Test insertion of random values") {
   adj.insert(63, 268);
   offsets = test::offsets(adj);
   indices = test::indices(adj);
-  CHECK(offsets.size() == 65);
+  CHECK(offsets.size() == 270);
   std::for_each(
       offsets.begin() + 5, offsets.begin() + 63, [](auto value) { CHECK(value == 1); });
   CHECK_EQ(offsets[64], 2);
@@ -259,7 +256,7 @@ TEST_CASE("Test insertion of random values") {
   adj.insert(2, 3);
   offsets = test::offsets(adj);
   indices = test::indices(adj);
-  CHECK_EQ(offsets.size(), 65);
+  CHECK_EQ(offsets.size(), 270);
   CHECK_EQ(offsets[0], 0);
   CHECK_EQ(offsets[2], 0);
   CHECK_EQ(offsets[3], 1);

@@ -26,8 +26,7 @@ namespace dsm {
   private:
     std::vector<Id> m_rowOffsets;
     std::vector<Id> m_columnIndices;
-    size_t m_nRows;
-    size_t m_nCols;
+    size_t m_n;
 
     friend std::vector<Id> test::offsets(const AdjacencyMatrix& adj);
     friend std::vector<Id> test::indices(const AdjacencyMatrix& adj);
@@ -51,8 +50,7 @@ namespace dsm {
 
     size_t size() const;
 
-    auto nRows() const { return m_nRows; }
-    auto nCols() const { return m_nCols; }
+    size_t n() const;
 
     void insert(Id row, Id col);
 

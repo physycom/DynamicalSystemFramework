@@ -9,7 +9,7 @@ namespace dsm {
   Graph::Graph(AdjacencyMatrix const& adj)
       : m_adjacencyMatrix{adj},
         m_maxAgentCapacity{std::numeric_limits<unsigned long long>::max()} {
-    auto n{static_cast<Size>(adj.nRows())};
+    auto n{static_cast<Size>(adj.n())};
     for (const auto& [srcId, dstId] : adj.elements()) {
       auto const id{srcId * n + dstId};
       if (!m_nodes.contains(srcId)) {
@@ -426,14 +426,13 @@ namespace dsm {
       throw std::invalid_argument(
           Logger::buildExceptionMessage("Cannot open file: " + path));
     }
+    auto const N{m_adjacencyMatrix.n()};
+    file << N << '\t' << N;
     if (isAdj) {
-      auto const N{m_adjacencyMatrix.nRows()};
-      file << N << '\t' << m_adjacencyMatrix.nCols();
       for (const auto& [source, target] : m_adjacencyMatrix.elements()) {
         file << '\n' << source * N + target << '\t' << 1;
       }
     } else {
-      file << m_adjacencyMatrix.nRows() << '\t' << m_adjacencyMatrix.nCols();
       for (const auto& [id, street] : m_streets) {
         file << '\n' << id << '\t' << street->length();
       }

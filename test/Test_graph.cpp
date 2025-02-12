@@ -111,8 +111,7 @@ TEST_CASE("Graph") {
       WHEN("A matrix in dsm format is imported") {
         graph.importMatrix("./data/matrix.dsm");
         THEN("The graph is correctly built") {
-          CHECK_EQ(graph.adjMatrix().nRows(), 3);
-          CHECK_EQ(graph.adjMatrix().nCols(), 3);
+          CHECK_EQ(graph.adjMatrix().n(), 3);
           CHECK(graph.adjMatrix().operator()(2, 2));
           CHECK(graph.adjMatrix().operator()(2, 0));
           CHECK(graph.adjMatrix().operator()(1, 0));
@@ -125,8 +124,7 @@ TEST_CASE("Graph") {
       WHEN("The exported one is imported") {
         graph.importMatrix("./data/temp.dsm");
         THEN("The graph is correctly built") {
-          CHECK_EQ(graph.adjMatrix().nRows(), 3);
-          CHECK_EQ(graph.adjMatrix().nCols(), 3);
+          CHECK_EQ(graph.adjMatrix().n(), 3);
           CHECK(graph.adjMatrix().operator()(2, 2));
           CHECK(graph.adjMatrix().operator()(2, 0));
           CHECK(graph.adjMatrix().operator()(1, 0));
@@ -166,8 +164,7 @@ TEST_CASE("Graph") {
   SUBCASE("importMatrix - raw matrix") {
     Graph graph{};
     graph.importMatrix("./data/rawMatrix.txt", false);
-    CHECK_EQ(graph.adjMatrix().nRows(), 3);
-    CHECK_EQ(graph.adjMatrix().nCols(), 3);
+    CHECK_EQ(graph.adjMatrix().n(), 3);
     CHECK(graph.adjMatrix().operator()(0, 1));
     CHECK(graph.adjMatrix().operator()(1, 0));
     CHECK(graph.adjMatrix().operator()(1, 2));
@@ -570,8 +567,7 @@ TEST_CASE("Dijkstra") {
     Graph graph{};
     graph.importMatrix("./data/matrix.dat", false);
     // check correct import
-    CHECK_EQ(graph.adjMatrix().nRows(), 120);
-    CHECK_EQ(graph.adjMatrix().nCols(), 120);
+    CHECK_EQ(graph.adjMatrix().n(), 120);
     CHECK_EQ(graph.adjMatrix().size(), 436);
     // check that the path exists
     CHECK(graph.adjMatrix().operator()(46, 58));

@@ -18,43 +18,55 @@ namespace dsm {
    * CONSTRUCTORS
    **********************************************************************************/
   AdjacencyMatrix::AdjacencyMatrix()
-      : m_rowOffsets{std::vector<Id>(2, 0)}, m_columnIndices{}, m_nRows{1}, m_nCols{0} {}
+      : m_rowOffsets{std::vector<Id>(2, 0)}, m_columnIndices{}, m_n{1} {}
   AdjacencyMatrix::AdjacencyMatrix(std::string const& fileName) { read(fileName); }
   AdjacencyMatrix::AdjacencyMatrix(
       const std::unordered_map<Id, std::unique_ptr<Street>>& streets)
-      : m_rowOffsets(streets.size()), m_nRows{0}, m_nCols{0} {
-    auto edgeFirst = streets.begin();
-    auto edgeLast = streets.end();
+      : m_n{0} {
     const auto size = streets.size();
-    std::vector<Id> rowSizes(size, 0);
+    std::vector<Id> rowSizes(size + 1, 0);  // Extra space for safety
     std::vector<Id> colIndexes(size);
-    std::for_each(edgeFirst,
-                  edgeLast,
-                  [this, &rowSizes, &colIndexes, i = 0](const auto& pair) -> void {
-                    auto row = pair.second->source();
-                    assert(row < std::ssize(rowSizes) - 1);
-                    rowSizes[row + 1]++;
-                    if (row >= m_nRows)
-                      m_nRows = row + 1;
-                  });
-    std::vector<Id> tempOffsets(m_nRows + 1, 0);
-    tempOffsets[0] = 0;
+
+    // First pass: Count rows and determine matrix dimensions
+    for (const auto& pair : streets) {
+      auto row = pair.second->source();
+      auto col = pair.second->target();
+
+      // Ensure valid row index
+      if (row >= rowSizes.size()) {
+        rowSizes.resize(row + 2, 0);  // Resize safely
+      }
+      assert(row + 1 < rowSizes.size());
+      rowSizes[row + 1]++;
+
+      // Track max row and column indices
+      if (row >= m_n) {
+        m_n = row + 1;
+      }
+      if (col >= m_n) {
+        m_n = col + 1;
+      }
+    }
+
+    // Compute row offsets using inclusive scan
+    std::vector<Id> tempOffsets(m_n + 1, 0);
     std::inclusive_scan(
-        rowSizes.begin(), rowSizes.begin() + m_nRows + 1, tempOffsets.begin());
+        rowSizes.begin(), rowSizes.begin() + m_n + 1, tempOffsets.begin());
     m_rowOffsets = tempOffsets;
 
-    std::for_each(edgeFirst,
-                  edgeLast,
-                  [this, &tempOffsets, &colIndexes, i = 0](const auto& pair) -> void {
-                    auto row = pair.second->source();
-                    auto col = pair.second->target();
-                    if (col >= m_nCols)
-                      m_nCols = col + 1;
-                    assert(row < tempOffsets.size());
-                    assert(tempOffsets[row] < colIndexes.size());
-                    colIndexes[tempOffsets[row]] = col;
-                    ++tempOffsets[row];
-                  });
+    // Second pass: Assign column indices correctly
+    std::vector<Id> currentOffset = tempOffsets;  // Copy tempOffsets for indexing
+    for (const auto& pair : streets) {
+      auto row = pair.second->source();
+      auto col = pair.second->target();
+
+      assert(row < currentOffset.size());
+      assert(currentOffset[row] < colIndexes.size());
+
+      colIndexes[currentOffset[row]] = col;
+      ++currentOffset[row];  // Increment after assigning
+    }
+
     m_columnIndices = std::move(colIndexes);
   }
   /*********************************************************************************
@@ -62,48 +74,47 @@ namespace dsm {
    **********************************************************************************/
   bool AdjacencyMatrix::operator==(const AdjacencyMatrix& other) const {
     return (m_rowOffsets == other.m_rowOffsets) &&
-           (m_columnIndices == other.m_columnIndices) && (m_nRows == other.m_nRows) &&
-           (m_nCols == other.m_nCols);
+           (m_columnIndices == other.m_columnIndices) && (m_n == other.m_n);
   }
   bool AdjacencyMatrix::operator()(Id row, Id col) const { return contains(row, col); }
 
+  size_t AdjacencyMatrix::n() const { return m_n; }
+  size_t AdjacencyMatrix::size() const { return m_columnIndices.size(); }
+
   void AdjacencyMatrix::insert(Id row, Id col) {
-    if (row > m_rowOffsets.size() - 2) {
-      auto n = row - m_rowOffsets.size() + 2;
-      for (auto i = 0ul; i < n - 1; ++i) {
-        m_rowOffsets.push_back(m_rowOffsets.back());
-      }
-      m_rowOffsets.push_back(m_rowOffsets.back() + 1);
-      m_nRows = row + 1;
-    } else {
-      std::for_each(
-          m_rowOffsets.begin() + row + 1, m_rowOffsets.end(), [](Id& x) { x++; });
+    if (row >= m_n) {
+      m_n = row + 1;
+    }
+    if (col >= m_n) {
+      m_n = col + 1;
     }
 
-    if (col >= m_nCols)
-      m_nCols = col + 1;
-    assert(row < std::ssize(m_rowOffsets) - 1);
-    const auto offset = m_rowOffsets[row + 1] - 1;
+    // Ensure m_rowOffsets has at least m_nRows + 1 elements
+    while (m_rowOffsets.size() <= m_n) {
+      m_rowOffsets.push_back(m_rowOffsets.back());
+    }
+
+    assert(row + 1 < m_rowOffsets.size());
+    // Increase row offsets for rows after the inserted row
+    std::for_each(m_rowOffsets.begin() + row + 1, m_rowOffsets.end(), [](Id& x) { x++; });
+
+    // Insert column index at the correct position
+    auto const offset = m_rowOffsets[row + 1] - 1;
     m_columnIndices.insert(m_columnIndices.begin() + offset, col);
   }
 
-  size_t AdjacencyMatrix::size() const { return m_columnIndices.size(); }
-
   bool AdjacencyMatrix::contains(Id row, Id col) const {
-    if (row >= m_nRows or col >= m_nCols) {
+    if (row >= m_n or col >= m_n) {
       throw std::out_of_range("Row or column index out of range.");
     }
-
+    assert(row + 1 < m_rowOffsets.size());
     auto itFirst = m_columnIndices.begin() + m_rowOffsets[row];
     auto itLast = m_columnIndices.begin() + m_rowOffsets[row + 1];
     return std::find(itFirst, itLast, col) != itLast;
   }
 
   std::vector<Id> AdjacencyMatrix::getRow(Id row) const {
-    if (!(row < std::ssize(m_rowOffsets) - 1) && (row <= m_nRows)) {
-      return std::vector<Id>();
-    }
-    assert(row < std::ssize(m_rowOffsets) - 1);
+    assert(row + 1 < m_rowOffsets.size());
     const auto lowerOffset = m_rowOffsets[row];
     const auto upperOffset = m_rowOffsets[row + 1];
     std::vector<Id> rowVector(upperOffset - lowerOffset);
@@ -115,8 +126,8 @@ namespace dsm {
   }
   std::vector<Id> AdjacencyMatrix::getCol(Id col) const {
     std::vector<Id> colVector{};
-    for (auto row = 0u; row < m_nRows; ++row) {
-      assert(row < std::ssize(m_rowOffsets) - 1);
+    for (auto row = 0u; row < m_n; ++row) {
+      assert(row + 1 < m_rowOffsets.size());
       const auto lowerOffset = m_rowOffsets[row];
       const auto upperOffset = m_rowOffsets[row + 1];
       if (std::find(m_columnIndices.begin() + lowerOffset,
@@ -130,8 +141,8 @@ namespace dsm {
 
   std::vector<std::pair<Id, Id>> AdjacencyMatrix::elements() const {
     std::vector<std::pair<Id, Id>> elements;
-    for (auto row = 0u; row < m_nRows; ++row) {
-      assert(row < std::ssize(m_rowOffsets) - 1);
+    for (auto row = 0u; row < m_n; ++row) {
+      assert(row + 1 < m_rowOffsets.size());
       const auto lowerOffset = m_rowOffsets[row];
       const auto upperOffset = m_rowOffsets[row + 1];
       for (auto i = lowerOffset; i < upperOffset; ++i) {
@@ -144,10 +155,10 @@ namespace dsm {
   void AdjacencyMatrix::clear() {
     m_rowOffsets = std::vector<Id>(2, 0);
     m_columnIndices.clear();
-    m_nRows = 1;
-    m_nCols = 0;
+    m_n = 1;
   }
   void AdjacencyMatrix::clearRow(Id row) {
+    assert(row + 1 < m_rowOffsets.size());
     const auto lowerOffset = m_rowOffsets[row];
     const auto upperOffset = m_rowOffsets[row + 1];
     m_columnIndices.erase(m_columnIndices.begin() + lowerOffset,
@@ -158,8 +169,8 @@ namespace dsm {
         [upperOffset, lowerOffset](auto& x) { x -= upperOffset - lowerOffset; });
   }
   void AdjacencyMatrix::clearCol(Id col) {
-    for (auto row = 0u; row < m_nRows; ++row) {
-      assert(row < std::ssize(m_rowOffsets) - 1);
+    for (auto row = 0u; row < m_n; ++row) {
+      assert(row + 1 < m_rowOffsets.size());
       const auto lowerOffset = m_rowOffsets[row];
       const auto upperOffset = m_rowOffsets[row + 1];
       auto it = std::find(m_columnIndices.begin() + lowerOffset,
@@ -175,14 +186,14 @@ namespace dsm {
   }
 
   std::vector<int> AdjacencyMatrix::getOutDegreeVector() {
-    auto degVector = std::vector<int>(m_nRows);
+    auto degVector = std::vector<int>(m_n);
     std::adjacent_difference(
         m_rowOffsets.begin() + 1, m_rowOffsets.end(), degVector.begin());
     return degVector;
   }
 
   std::vector<int> AdjacencyMatrix::getInDegreeVector() {
-    auto degVector = std::vector<int>(m_nCols, 0);
+    auto degVector = std::vector<int>(m_n, 0);
     std::for_each(m_columnIndices.begin(),
                   m_columnIndices.end(),
                   [&degVector](const auto& x) { degVector[x]++; });
@@ -194,10 +205,9 @@ namespace dsm {
     if (!inStream.is_open()) {
       Logger::error(std::format("Could not open file {} for reading.", fileName));
     }
-    inStream.read(reinterpret_cast<char*>(&m_nRows), sizeof(size_t));
-    inStream.read(reinterpret_cast<char*>(&m_nCols), sizeof(size_t));
-    m_rowOffsets.resize(m_nRows + 1);
-    m_columnIndices.resize(m_nCols);
+    inStream.read(reinterpret_cast<char*>(&m_n), sizeof(size_t));
+    m_rowOffsets.resize(m_n + 1);
+    m_columnIndices.resize(m_n);
     inStream.read(reinterpret_cast<char*>(m_rowOffsets.data()),
                   m_rowOffsets.size() * sizeof(Id));
     inStream.read(reinterpret_cast<char*>(m_columnIndices.data()),
@@ -210,8 +220,7 @@ namespace dsm {
     if (!outStream.is_open()) {
       Logger::error(std::format("Could not open file {} for writing.", fileName));
     }
-    outStream.write(reinterpret_cast<const char*>(&m_nRows), sizeof(size_t));
-    outStream.write(reinterpret_cast<const char*>(&m_nCols), sizeof(size_t));
+    outStream.write(reinterpret_cast<const char*>(&m_n), sizeof(size_t));
     outStream.write(reinterpret_cast<const char*>(m_rowOffsets.data()),
                     m_rowOffsets.size() * sizeof(Id));
     outStream.write(reinterpret_cast<const char*>(m_columnIndices.data()),

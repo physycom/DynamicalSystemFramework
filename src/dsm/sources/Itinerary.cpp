@@ -5,18 +5,11 @@ namespace dsm {
   Itinerary::Itinerary(Id id, Id destination) : m_id{id}, m_destination{destination} {}
 
   void Itinerary::setPath(AdjacencyMatrix path) {
-    if (path.nRows() != path.nCols()) {
+    if (path.n() < m_destination) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("The path's row ({}) and column ({}) dimensions must be equal.",
-                      path.nRows(),
-                      path.nCols())));
-    }
-    if (path.nRows() < m_destination) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("The path's row ({}) and column ({}) dimensions must be "
+          std::format("The path's dimension must be "
                       "greater than the itinerary's destination ({}).",
-                      path.nRows(),
-                      path.nCols(),
+                      path.n(),
                       m_destination)));
     }
     m_path = std::make_unique<AdjacencyMatrix>(std::move(path));

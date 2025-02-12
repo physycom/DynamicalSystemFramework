@@ -239,14 +239,15 @@ namespace dsm {
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleMoves.size() - 1)};
     // while loop to avoid U turns in non-roundabout junctions
-    Id targetId;
+    Id nextStreetId;
     do {
-      targetId = possibleMoves[moveDist(this->m_generator)];
+      nextStreetId =
+          nodeId * this->m_graph.nNodes() + possibleMoves[moveDist(this->m_generator)];
     } while (!this->m_graph.node(nodeId)->isRoundabout() && streetId.has_value() &&
-             (this->m_graph.streetSet()[nodeId * this->m_graph.nNodes() + targetId]
-                  ->target() == this->m_graph.streetSet()[streetId.value()]->source()) &&
+             (this->m_graph.street(nextStreetId)->target() ==
+              this->m_graph.street(streetId.value())->source()) &&
              (possibleMoves.size() > 1));
-    return targetId;
+    return nextStreetId;
   }
 
   template <typename delay_t>
@@ -335,7 +336,7 @@ namespace dsm {
       if (pStreet->dequeue(queueIndex) == std::nullopt) {
         continue;
       }
-      assert(destinationNode->id() == nextStreet->nodePair().first);
+      assert(destinationNode->id() == nextStreet->source());
       if (destinationNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
         auto const delta{nextStreet->deltaAngle(pStreet->angle())};
@@ -444,7 +445,7 @@ namespace dsm {
             street->enqueue(agentId, laneDist(this->m_generator));
           } else {
             auto const nextStreetId =
-                this->m_nextStreetId(agentId, street->nodePair().second, street->id());
+                this->m_nextStreetId(agentId, street->target(), street->id());
             auto const& pNextStreet{this->m_graph.street(nextStreetId)};
             agent->setNextStreetId(nextStreetId);
             if (nLanes == 1) {
@@ -739,9 +740,9 @@ namespace dsm {
       double inputGreenSum{0.}, inputRedSum{0.};
       auto const N{this->m_graph.nNodes()};
       auto column = this->m_graph.adjMatrix().getCol(nodeId);
-      for (const auto& targetId : column) {
-        auto const streetId = nodeId * N + targetId;
-        auto const& pStreet{this->m_graph.streetSet()[streetId]};
+      for (const auto& sourceId : column) {
+        auto const streetId = sourceId * N + nodeId;
+        auto const& pStreet{this->m_graph.street(streetId)};
         if (streetPriorities.contains(streetId)) {
           inputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
         } else {
@@ -785,7 +786,7 @@ namespace dsm {
         double outputGreenSum{0.}, outputRedSum{0.};
         for (const auto& targetId : this->m_graph.adjMatrix().getRow(nodeId)) {
           auto const streetId = nodeId * N + targetId;
-          auto const& pStreet{this->m_graph.streetSet()[streetId]};
+          auto const& pStreet{this->m_graph.street(streetId)};
           if (streetPriorities.contains(streetId)) {
             outputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
           } else {
