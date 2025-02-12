@@ -245,10 +245,14 @@ namespace dsm {
     void removeAgents(T1 id, Tn... ids);
 
     /// @brief Add an itinerary
-    /// @param itinerary The itinerary
-    void addItinerary(const Itinerary& itinerary);
+    /// @param ...args The arguments to construct the itinerary
+    /// @details The arguments must be compatible with any constructor of the Itinerary class
+    template <typename... TArgs>
+      requires(std::is_constructible_v<Itinerary, TArgs...>)
+    void addItinerary(TArgs&&... args);
     /// @brief Add an itinerary
     /// @param itinerary std::unique_ptr to the itinerary
+    /// @throws std::invalid_argument If the itinerary already exists
     void addItinerary(std::unique_ptr<Itinerary> itinerary);
     template <typename... Tn>
       requires(is_itinerary_v<Tn> && ...)
@@ -397,7 +401,7 @@ namespace dsm {
       if (!m_graph.nodeSet().contains(nodeId)) {
         Logger::error(std::format("Node with id {} not found", nodeId));
       }
-      this->addItinerary(Itinerary{nodeId, nodeId});
+      this->addItinerary(nodeId, nodeId);
     }
     if (updatePaths) {
       this->updatePaths();
@@ -472,12 +476,18 @@ namespace dsm {
   }
 
   template <typename agent_t>
-  void Dynamics<agent_t>::addItinerary(const Itinerary& itinerary) {
-    m_itineraries.emplace(itinerary.id(), std::make_unique<Itinerary>(itinerary));
+  template <typename... TArgs>
+    requires(std::is_constructible_v<Itinerary, TArgs...>)
+  void Dynamics<agent_t>::addItinerary(TArgs&&... args) {
+    addItinerary(std::make_unique<Itinerary>(std::forward<TArgs>(args)...));
   }
 
   template <typename agent_t>
   void Dynamics<agent_t>::addItinerary(std::unique_ptr<Itinerary> itinerary) {
+    if (m_itineraries.contains(itinerary->id())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Itinerary with id {} already exists.", itinerary->id())));
+    }
     m_itineraries.emplace(itinerary->id(), std::move(itinerary));
   }
 
