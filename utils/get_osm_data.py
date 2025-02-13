@@ -16,12 +16,15 @@ from argparse import ArgumentParser
 import ast
 import logging
 from pathlib import Path
+from matplotlib import pyplot as plt
 import osmnx as ox
 
-__version__ = "2025.2.12"
+__version__ = "2025.2.13"
 
-RGBA_RED = (1, 0, 0, 1)
+RGBA_RED = (1, 0, 0, 0.3)
 RGBA_WHITE = (1, 1, 1, 1)
+RGBA_GRAY = (0.5, 0.5, 0.5, 1)
+RGBA_YELLOW = (1, 1, 0, 1)
 
 FLAGS_MOTORWAY = ["motorway", "motorway_link"]
 FLAGS_NORMAL = [
@@ -128,18 +131,21 @@ if __name__ == "__main__":
     else:
         CUSTOM_FILTER = f"[\"highway\"~\"{'|'.join(FLAGS)}\"]"
     logging.info("Custom filter: %s", CUSTOM_FILTER)
-    GRAPH = ox.graph_from_place(parser.place, network_type="drive")
+    FULL_GRAPH = ox.graph_from_place(parser.place, network_type="drive")
+    fig, ax = plt.subplots(figsize=(24, 24))
+    fig.patch.set_facecolor("black")
     ox.plot_graph(
-        GRAPH,
+        FULL_GRAPH,
         show=False,
         close=True,
         save=True,
+        ax=ax,
         filepath=Path(parser.output_folder) / "original.png",
     )
     logging.info(
-        "Original network has %d nodes and %d edges.",
-        len(GRAPH.nodes),
-        len(GRAPH.edges),
+        "Full network has %d nodes and %d edges.",
+        len(FULL_GRAPH.nodes),
+        len(FULL_GRAPH.edges),
     )
     if FLAGS is not None:
         GRAPH = ox.graph_from_place(
@@ -150,6 +156,9 @@ if __name__ == "__main__":
             len(GRAPH.nodes),
             len(GRAPH.edges),
         )
+    else:
+        GRAPH = FULL_GRAPH
+        FULL_GRAPH = None
     if parser.consolidate_intersections:
         GRAPH = ox.consolidate_intersections(
             ox.project_graph(GRAPH), tolerance=parser.tolerance
@@ -160,13 +169,38 @@ if __name__ == "__main__":
             len(GRAPH.edges),
         )
     # plot graph on a 16x9 figure and save into file
+    fig, ax = plt.subplots(figsize=(24, 24))
+    fig.patch.set_facecolor("black")
     ox.plot_graph(
         GRAPH,
         show=False,
         close=True,
         save=True,
+        ax=ax,
         filepath=Path(parser.output_folder) / "final.png",
     )
+    if FULL_GRAPH is not None:
+        edge_colors = [
+            RGBA_RED if edge not in GRAPH.edges else RGBA_GRAY
+            for edge in FULL_GRAPH.edges
+        ]
+        node_colors = [
+            RGBA_RED if node not in GRAPH.nodes else RGBA_WHITE
+            for node in FULL_GRAPH.nodes
+        ]
+        fig, ax = plt.subplots(figsize=(24, 24))
+        fig.patch.set_facecolor("black")
+        ox.plot_graph(
+            FULL_GRAPH,
+            show=False,
+            close=True,
+            save=True,
+            ax=ax,
+            edge_color=edge_colors,
+            node_color=node_colors,
+            filepath=Path(parser.output_folder) / "comparison.png",
+        )
+
     gdf_nodes, gdf_edges = ox.graph_to_gdfs(ox.project_graph(GRAPH, to_latlong=True))
     # notice that osmnid is the index of the gdf_nodes DataFrame, so take it as a column
     gdf_nodes.reset_index(inplace=True)
@@ -227,13 +261,21 @@ if __name__ == "__main__":
         )
         # Plot the graph with duplicated edges in red
         edge_colors = [
-            RGBA_RED if duplicated_mask.iloc[i] else RGBA_WHITE
+            RGBA_YELLOW if duplicated_mask.iloc[i] else RGBA_GRAY
             for i in range(len(gdf_edges))
         ]
+        edge_line_width = [
+            2 if duplicated_mask.iloc[i] else 0.5 for i in range(len(gdf_edges))
+        ]
+        fig, ax = plt.subplots(figsize=(24, 24))
+        fig.patch.set_facecolor("black")
         ox.plot_graph(
             GRAPH,
             edge_color=edge_colors,
+            edge_linewidth=edge_line_width,
+            show=False,
             save=True,
+            ax=ax,
             filepath=Path(parser.output_folder) / "duplicated_edges.png",
         )
 
