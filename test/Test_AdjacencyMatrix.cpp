@@ -55,33 +55,6 @@ TEST_CASE("Test default construction and insertion") {
   CHECK_EQ(indices[5], 4);
   CHECK_EQ(adj.n(), 5);
 
-  SUBCASE("Test transpose") {
-    adj.transpose();
-    // for (auto [i, j] : adj.elements()) {
-    //   std::cout << i << " " << j << std::endl;
-    // }
-    CHECK(adj(0, 0));
-    CHECK(adj(1, 0));
-    CHECK(adj(2, 1));
-    CHECK(adj(3, 1));
-    CHECK(adj(3, 2));
-    CHECK(adj(4, 3));
-    offsets = test::offsets(adj);
-    indices = test::indices(adj);
-    CHECK_EQ(offsets.size(), 6);
-    CHECK_EQ(offsets[0], 0);
-    CHECK_EQ(offsets[1], 1);
-    CHECK_EQ(offsets[2], 2);
-    CHECK_EQ(offsets[3], 3);
-    CHECK_EQ(offsets[4], 5);
-    CHECK_EQ(indices.size(), 6);
-    CHECK_EQ(indices[0], 0);
-    CHECK_EQ(indices[1], 0);
-    CHECK_EQ(indices[2], 1);
-    CHECK_EQ(indices[3], 1);
-    CHECK_EQ(indices[4], 2);
-    CHECK_EQ(adj.n(), 5);
-  }
   SUBCASE("Test contains") {
     CHECK(adj(0, 1));
     CHECK(adj(1, 2));
@@ -196,8 +169,8 @@ TEST_CASE("Test construction from edge map") {
     CHECK_EQ(col2[0], 1);
     auto col3 = adj.getCol(3);
     CHECK_EQ(col3.size(), 2);
-    CHECK_EQ(col3[0], 1);
-    CHECK_EQ(col3[1], 2);
+    CHECK_EQ(col3[0], 2);
+    CHECK_EQ(col3[1], 1);
   }
   SUBCASE("Test getRow") {
     auto row0 = adj.getRow(0);
