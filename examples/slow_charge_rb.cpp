@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
-    for (auto nodeId{0}; nodeId < graph.nNodes(); ++nodeId) {
+    for (auto nodeId{0}; nodeId < dynamics.graph().nNodes(); ++nodeId) {
       if (degreeVector[nodeId] < 4) {
         destinationNodes.push_back(nodeId);
         ++n;

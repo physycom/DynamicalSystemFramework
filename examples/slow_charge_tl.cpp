@@ -96,7 +96,6 @@ int main(int argc, char** argv) {
   graph.importCoordinates(IN_COORDS);
   std::cout << "Setting street parameters..." << '\n';
   graph.buildAdj();
-  const auto dv = graph.adjMatrix().getOutDegreeVector();
 
   // graph.addStreet(Street(100002, std::make_pair(0, 108)));
   // graph.addStreet(Street(100003, std::make_pair(108, 0)));
@@ -162,8 +161,7 @@ int main(int argc, char** argv) {
       std::cerr << "Street " << id << " is not a spire.\n";
     }
   }
-  const auto& adj = graph.adjMatrix();
-  const auto& degreeVector = adj.getOutDegreeVector();
+  auto const degreeVector = graph.adjMatrix().getOutDegreeVector();
   // create gaussian random number generator
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -180,13 +178,11 @@ int main(int argc, char** argv) {
     while (value < 0.) {
       value = random();
     }
-    const auto& col = adj.getCol(nodeId);
+    const auto& col = graph.adjMatrix().getCol(nodeId);
     std::set<Unit> streets;
-    const auto& refLat =
-        node->coords().value().first;
+    const auto& refLat = node->coords().value().first;
     for (const auto& id : col) {
-      const auto& lat =
-          graph.node(id)->coords().value().first;
+      const auto& lat = graph.node(id)->coords().value().first;
       // std::cout << "Lat: " << lat << " RefLat: " << refLat << '\n';
       if (lat == refLat) {
         streets.emplace(id * graph.nNodes() + nodeId);
@@ -212,6 +208,7 @@ int main(int argc, char** argv) {
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, true, SEED, 0.6};
+  auto const& adj{dynamics.graph().adjMatrix()};
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
