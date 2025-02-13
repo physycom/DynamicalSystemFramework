@@ -88,8 +88,7 @@ namespace dsm {
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
       if (m_bCacheEnabled) {
-        auto const& file =
-            std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
+        auto const& file = std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
         if (std::filesystem::exists(file)) {
           pItinerary->setPath(AdjacencyMatrix(file));
           Logger::info(
