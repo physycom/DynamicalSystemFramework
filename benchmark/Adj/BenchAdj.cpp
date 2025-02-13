@@ -31,26 +31,26 @@ int main() {
       sm.getCol(i);
     }
   });
-  b1.print<sb::nanoseconds>();
+  b1.print<sb::microseconds>();
   Logger::info("Benchmarking SparseMatrix::getRow");
   b2.benchmark([&sm, &N]() -> void { 
     for (size_t i{0}; i < N; ++i) {
       sm.getRow(i);
     }
   });
-  b2.print<sb::nanoseconds>();
+  b2.print<sb::microseconds>();
   Logger::info("Benchmarking AdjacencyMatrix::getCol");
   b3.benchmark([&adj, &N]() -> void { 
     for (size_t i{0}; i < N; ++i) {
       adj.getCol(i);
     }
   });
-  b3.print<sb::nanoseconds>();
+  b3.print<sb::microseconds>();
   Logger::info("Benchmarking AdjacencyMatrix::getRow");
   b4.benchmark([&adj, &N]() -> void { 
     for (size_t i{0}; i < N; ++i) {
       adj.getRow(i);
     }
   });
-  b4.print<sb::nanoseconds>();
+  b4.print<sb::microseconds>();
 }
