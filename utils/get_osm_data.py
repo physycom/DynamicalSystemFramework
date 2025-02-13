@@ -18,6 +18,7 @@ import logging
 from pathlib import Path
 from matplotlib import pyplot as plt
 import osmnx as ox
+from tqdm import tqdm
 
 __version__ = "2025.2.13"
 
@@ -181,9 +182,21 @@ if __name__ == "__main__":
     )
     if FULL_GRAPH is not None:
         edge_colors = [
-            RGBA_RED if edge not in GRAPH.edges else RGBA_GRAY
-            for edge in FULL_GRAPH.edges
+            (
+                RGBA_GRAY
+                if any(
+                    "geometry" in GRAPH.edges[g_edge]
+                    and "geometry" in FULL_GRAPH.edges[full_edge]
+                    and GRAPH.edges[g_edge]["geometry"].contains(
+                        FULL_GRAPH.edges[full_edge]["geometry"]
+                    )
+                    for g_edge in GRAPH.edges
+                )
+                else RGBA_RED
+            )
+            for full_edge in tqdm(FULL_GRAPH.edges)
         ]
+
         node_colors = [
             RGBA_RED if node not in GRAPH.nodes else RGBA_WHITE
             for node in FULL_GRAPH.nodes
