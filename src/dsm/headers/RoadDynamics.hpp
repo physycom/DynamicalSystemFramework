@@ -669,7 +669,7 @@ namespace dsm {
         sum = 0.;
         for (const auto& [id, weight] : dst_weights) {
           // if the node is at a minimum distance from the destination, skip it
-          if (this->itineraries().at(id)->path().getRow(srcId).empty()) {
+          if (this->itineraries().at(id)->path()->getRow(srcId).size() == 0) {
             continue;
           }
           if (nDestinations > 1 && minNodeDistance > 0) {
@@ -721,20 +721,22 @@ namespace dsm {
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
-    tbb::parallel_for_each(this->m_graph.nodeSet().cbegin(),
-                           this->m_graph.nodeSet().cend(),
-                           [&](const auto& pair) {
-                             for (auto const& [streetId, _] :
-                                  this->m_graph.adjMatrix().getCol(pair.first, true)) {
-                               auto const& pStreet{this->m_graph.street(streetId)};
-                               if (bUpdateData) {
-                                 m_streetTails[streetId] += pStreet->nExitingAgents();
-                               }
-                               for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-                                 this->m_evolveStreet(pStreet, reinsert_agents);
-                               }
-                             }
-                           });
+    auto const N{this->m_graph.nNodes()};
+    tbb::parallel_for_each(
+        this->m_graph.nodeSet().cbegin(),
+        this->m_graph.nodeSet().cend(),
+        [&](const auto& pair) {
+          for (auto const& sourceId : this->m_graph.adjMatrix().getCol(pair.first)) {
+            auto const streetId = sourceId * N + pair.first;
+            auto const& pStreet{this->m_graph.street(streetId)};
+            if (bUpdateData) {
+              m_streetTails[streetId] += pStreet->nExitingAgents();
+            }
+            for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
+              this->m_evolveStreet(pStreet, reinsert_agents);
+            }
+          }
+        });
     for (auto const& agentId : m_agentsToRemove) {
       this->removeAgent(agentId);
     }

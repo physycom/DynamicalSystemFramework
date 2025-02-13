@@ -167,7 +167,7 @@ namespace dsm {
         }
       }
 
-      if (path.empty()) {
+      if (path.size() == 0) {
         Logger::error(
             std::format("Path with id {} and destination {} is empty. Please check the "
                         "adjacency matrix.",

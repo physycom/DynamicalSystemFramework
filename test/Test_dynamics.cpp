@@ -787,13 +787,14 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(false);
         THEN("The agents are trapped into the roundabout") {
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
-          CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 3);
+          CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 7);
           CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 5);
-          CHECK(rb.agents().empty());
+          CHECK_EQ(rb.agents().size(), 1);
         }
         dynamics.evolve(false);
         THEN("The agent with priority leaves the roundabout") {
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
+          CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 3);
           CHECK(rb.agents().empty());
         }
       }
