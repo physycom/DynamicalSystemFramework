@@ -19,5 +19,5 @@ include_directories(../../src/dsm/utility/)
 file(GLOB SOURCES "../../src/dsm/sources/*.cpp" "../../src/dsm/utility/*.cpp")
 
 # Compile
-add_executable(bench_street.out BenchStreet.cpp ${SOURCES})
-target_link_libraries(bench_street.out PRIVATE TBB::tbb)
+add_executable(bench_adj.out BenchAdj.cpp ${SOURCES})
+target_link_libraries(bench_adj.out PRIVATE TBB::tbb)

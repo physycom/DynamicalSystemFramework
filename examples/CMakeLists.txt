@@ -11,9 +11,9 @@ find_package(TBB REQUIRED CONFIG)
 
 # Set the C++ flags
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -O0 -g")
+  string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -O0 -g -fsanitize=address")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-  string(APPEND CMAKE_CXX_FLAGS "-O3")
+  string(APPEND CMAKE_CXX_FLAGS "-O3 -fsanitize=address")
 endif()
 
 # Set the folder for the executable

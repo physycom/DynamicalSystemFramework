@@ -13,15 +13,19 @@ The files are saved in the current directory.
 """
 
 from argparse import ArgumentParser
-from pathlib import Path
 import ast
 import logging
+from pathlib import Path
+from matplotlib import pyplot as plt
 import osmnx as ox
+from tqdm import tqdm
 
-__version__ = "2025.1.31"
+__version__ = "2025.2.13"
 
-RGBA_RED = (1, 0, 0, 1)
+RGBA_RED = (1, 0, 0, 0.3)
 RGBA_WHITE = (1, 1, 1, 1)
+RGBA_GRAY = (0.5, 0.5, 0.5, 1)
+RGBA_YELLOW = (1, 1, 0, 1)
 
 FLAGS_MOTORWAY = ["motorway", "motorway_link"]
 FLAGS_NORMAL = [
@@ -73,10 +77,14 @@ if __name__ == "__main__":
         "--tolerance",
         type=int,
         default=20,
-        help="Radius in meters to merge intersections. For more info, see osmnx documentation.",
+        help="Radius in meters given to consolidate intersections function."
+        " For more info, see osmnx documentation.",
     )
     parser.add_argument(
-        "--use-original-ids", action="store_true", help="Use the original ids from OSM."
+        "--use-original-ids",
+        action="store_true",
+        help="Use the original ids from OSM. If the original ids are lists,"
+        " keep the first element. Default is False.",
     )
     parser.add_argument(
         "-of",
@@ -90,6 +98,11 @@ if __name__ == "__main__":
         "--consolidate-intersections",
         action="store_true",
         help="Consolidate intersections. Default is False",
+    )
+    parser.add_argument(
+        "--save-all",
+        action="store_true",
+        help="Save all the column for both nodes' and edges' csv.",
     )
     parser = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -119,18 +132,21 @@ if __name__ == "__main__":
     else:
         CUSTOM_FILTER = f"[\"highway\"~\"{'|'.join(FLAGS)}\"]"
     logging.info("Custom filter: %s", CUSTOM_FILTER)
-    GRAPH = ox.graph_from_place(parser.place, network_type="drive")
+    FULL_GRAPH = ox.graph_from_place(parser.place, network_type="drive")
+    fig, ax = plt.subplots(figsize=(24, 24))
+    fig.patch.set_facecolor("black")
     ox.plot_graph(
-        GRAPH,
+        FULL_GRAPH,
         show=False,
         close=True,
         save=True,
+        ax=ax,
         filepath=Path(parser.output_folder) / "original.png",
     )
     logging.info(
-        "Original network has %d nodes and %d edges.",
-        len(GRAPH.nodes),
-        len(GRAPH.edges),
+        "Full network has %d nodes and %d edges.",
+        len(FULL_GRAPH.nodes),
+        len(FULL_GRAPH.edges),
     )
     if FLAGS is not None:
         GRAPH = ox.graph_from_place(
@@ -141,6 +157,9 @@ if __name__ == "__main__":
             len(GRAPH.nodes),
             len(GRAPH.edges),
         )
+    else:
+        GRAPH = FULL_GRAPH
+        FULL_GRAPH = None
     if parser.consolidate_intersections:
         GRAPH = ox.consolidate_intersections(
             ox.project_graph(GRAPH), tolerance=parser.tolerance
@@ -151,13 +170,50 @@ if __name__ == "__main__":
             len(GRAPH.edges),
         )
     # plot graph on a 16x9 figure and save into file
+    fig, ax = plt.subplots(figsize=(24, 24))
+    fig.patch.set_facecolor("black")
     ox.plot_graph(
         GRAPH,
         show=False,
         close=True,
         save=True,
+        ax=ax,
         filepath=Path(parser.output_folder) / "final.png",
     )
+    if FULL_GRAPH is not None:
+        edge_colors = [
+            (
+                RGBA_GRAY
+                if any(
+                    "geometry" in GRAPH.edges[g_edge]
+                    and "geometry" in FULL_GRAPH.edges[full_edge]
+                    and GRAPH.edges[g_edge]["geometry"].contains(
+                        FULL_GRAPH.edges[full_edge]["geometry"]
+                    )
+                    for g_edge in GRAPH.edges
+                )
+                else RGBA_RED
+            )
+            for full_edge in tqdm(FULL_GRAPH.edges)
+        ]
+
+        node_colors = [
+            RGBA_RED if node not in GRAPH.nodes else RGBA_WHITE
+            for node in FULL_GRAPH.nodes
+        ]
+        fig, ax = plt.subplots(figsize=(24, 24))
+        fig.patch.set_facecolor("black")
+        ox.plot_graph(
+            FULL_GRAPH,
+            show=False,
+            close=True,
+            save=True,
+            ax=ax,
+            edge_color=edge_colors,
+            node_color=node_colors,
+            filepath=Path(parser.output_folder) / "comparison.png",
+        )
+
     gdf_nodes, gdf_edges = ox.graph_to_gdfs(ox.project_graph(GRAPH, to_latlong=True))
     # notice that osmnid is the index of the gdf_nodes DataFrame, so take it as a column
     gdf_nodes.reset_index(inplace=True)
@@ -178,28 +234,28 @@ if __name__ == "__main__":
                 )
                 # update the node with new_id
                 gdf_nodes.loc[index, "osmid_original"] = new_id
-
-        gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
-        gdf_edges = gdf_edges[
-            [
-                "u_original",
-                "v_original",
-                "length",
-                "lanes",
-                "highway",
-                "maxspeed",
-                "name",
+        if not parser.save_all:
+            gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
+            gdf_edges = gdf_edges[
+                [
+                    "u_original",
+                    "v_original",
+                    "length",
+                    "lanes",
+                    "highway",
+                    "maxspeed",
+                    "name",
+                ]
             ]
-        ]
 
     else:
-        gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
         if not "lanes" in gdf_edges.columns:
             gdf_edges["lanes"] = 1
-        gdf_edges = gdf_edges[
-            ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
-        ]
-
+        if not parser.save_all:
+            gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
+            gdf_edges = gdf_edges[
+                ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
+            ]
     if parser.allow_duplicates:
         N_DUPLICATES = 0
     else:
@@ -213,15 +269,28 @@ if __name__ == "__main__":
     if N_DUPLICATES > 0:
         logging.warning(
             "There are %d duplicated edges which will be removed. "
-            "Please look at them in the promped plot.",
+            "Please look at them in the saved plot.",
             N_DUPLICATES,
         )
         # Plot the graph with duplicated edges in red
         edge_colors = [
-            RGBA_RED if duplicated_mask.iloc[i] else RGBA_WHITE
+            RGBA_YELLOW if duplicated_mask.iloc[i] else RGBA_GRAY
             for i in range(len(gdf_edges))
         ]
-        ox.plot_graph(GRAPH, edge_color=edge_colors)
+        edge_line_width = [
+            2 if duplicated_mask.iloc[i] else 0.5 for i in range(len(gdf_edges))
+        ]
+        fig, ax = plt.subplots(figsize=(24, 24))
+        fig.patch.set_facecolor("black")
+        ox.plot_graph(
+            GRAPH,
+            edge_color=edge_colors,
+            edge_linewidth=edge_line_width,
+            show=False,
+            save=True,
+            ax=ax,
+            filepath=Path(parser.output_folder) / "duplicated_edges.png",
+        )
 
         # Remove duplicated edges
         if parser.use_original_ids:
@@ -230,7 +299,10 @@ if __name__ == "__main__":
             gdf_edges = gdf_edges.drop_duplicates(subset=["u", "v"])
 
     # drop self loops
-    gdf_edges = gdf_edges[gdf_edges["u"] != gdf_edges["v"]]
+    if parser.use_original_ids:
+        gdf_edges = gdf_edges[gdf_edges["u_original"] != gdf_edges["v_original"]]
+    else:
+        gdf_edges = gdf_edges[gdf_edges["u"] != gdf_edges["v"]]
 
     # Save the data
     place = parser.place.split(",")[0].strip().lower()

@@ -108,24 +108,24 @@ int main(int argc, char** argv) {
     }
   }
   const auto& adj = graph.adjMatrix();
-  const auto& degreeVector = adj.getDegreeVector();
+  auto const degreeVector = adj.getOutDegreeVector();
 
   std::cout << "Setting roundabouts parameters..." << '\n';
   for (const auto& [nodeId, node] : graph.nodeSet()) {
     auto& rb = dynamic_cast<Roundabout&>(*node);
-    rb.setCapacity(degreeVector(nodeId));
-    rb.setTransportCapacity(degreeVector(nodeId));
+    rb.setCapacity(degreeVector[nodeId]);
+    rb.setTransportCapacity(degreeVector[nodeId]);
   }
   std::cout << "Done." << std::endl;
 
   std::cout << "Creating dynamics...\n";
 
-  Dynamics dynamics{graph, true, SEED, 0.95};
+  Dynamics dynamics{graph, true, SEED, 0.6};
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
-    for (const auto& [nodeId, degree] : degreeVector) {
-      if (degree < 4) {
+    for (auto nodeId{0}; nodeId < dynamics.graph().nNodes(); ++nodeId) {
+      if (degreeVector[nodeId] < 4) {
         destinationNodes.push_back(nodeId);
         ++n;
       }

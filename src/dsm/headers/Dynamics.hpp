@@ -88,12 +88,9 @@ namespace dsm {
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
       if (m_bCacheEnabled) {
-        auto const& file =
-            std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id());
+        auto const& file = std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
         if (std::filesystem::exists(file)) {
-          auto path = SparseMatrix<bool>{};
-          path.load(file);
-          pItinerary->setPath(std::move(path));
+          pItinerary->setPath(AdjacencyMatrix(file));
           Logger::debug(
               std::format("Loaded cached path for itinerary {}", pItinerary->id()));
           return;
@@ -121,7 +118,7 @@ namespace dsm {
               }
             }
           });
-      SparseMatrix<bool> path{dimension, dimension};
+      AdjacencyMatrix path;
       // cycle over the nodes
       for (const auto& [nodeId, node] : m_graph.nodeSet()) {
         if (nodeId == destinationID) {
@@ -133,12 +130,12 @@ namespace dsm {
           continue;
         }
         auto const& row{m_graph.adjMatrix().getRow(nodeId)};
-        for (const auto [nextNodeId, _] : row) {
+        for (const auto nextNodeId : row) {
           if (nextNodeId == destinationID) {
             if (std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
                          minDistance) < 1.)  // 1 meter tolerance between shortest paths
             {
-              path.insert(nodeId, nextNodeId, true);
+              path.insert(nodeId, nextNodeId);
             } else {
               Logger::debug(
                   std::format("Found a path from {} to {} which differs for more than {} "
@@ -158,7 +155,7 @@ namespace dsm {
                        distance - minDistance) <
               1.};  // 1 meter tolerance between shortest paths
           if (bIsMinDistance) {
-            path.insert(nodeId, nextNodeId, true);
+            path.insert(nodeId, nextNodeId);
           } else {
             Logger::debug(
                 std::format("Found a path from {} to {} which differs for more than {} "
@@ -180,8 +177,8 @@ namespace dsm {
 
       pItinerary->setPath(path);
       if (m_bCacheEnabled) {
-        pItinerary->path().cache(
-            std::format("{}it{}.dsmcache", g_cacheFolder, pItinerary->id()));
+        pItinerary->path()->save(
+            std::format("{}it{}.adj", g_cacheFolder, pItinerary->id()));
         Logger::debug(
             std::format("Saved path in cache for itinerary {}", pItinerary->id()));
       }
@@ -202,12 +199,18 @@ namespace dsm {
     /// @brief Update the paths of the itineraries based on the actual travel times
     virtual void updatePaths();
 
-    /// @brief Set the dynamics destination nodes auto-generating itineraries
-    /// @param destinationNodes The destination nodes
+    /// @brief Set the destination nodes
+    /// @param destinationNodes The destination nodes (as an initializer list)
     /// @param updatePaths If true, the paths are updated
-    /// @throws std::invalid_argument Ifone or more destination nodes do not exist
-    void setDestinationNodes(const std::span<Id>& destinationNodes,
+    void setDestinationNodes(std::initializer_list<Id> destinationNodes,
                              bool updatePaths = true);
+    /// @brief Set the destination nodes
+    /// @param destinationNodes A container of destination nodes ids
+    /// @param updatePaths If true, the paths are updated
+    /// @details The container must have a value_type convertible to Id and begin() and end() methods
+    template <typename TContainer>
+      requires(std::is_convertible_v<typename TContainer::value_type, Id>)
+    void setDestinationNodes(TContainer const& destinationNodes, bool updatePaths = true);
 
     /// @brief Add an agent to the simulation
     /// @param agent std::unique_ptr to the agent
@@ -247,25 +250,16 @@ namespace dsm {
     void removeAgents(T1 id, Tn... ids);
 
     /// @brief Add an itinerary
-    /// @param itinerary The itinerary
-    void addItinerary(const Itinerary& itinerary);
+    /// @param ...args The arguments to construct the itinerary
+    /// @details The arguments must be compatible with any constructor of the Itinerary class
+    template <typename... TArgs>
+      requires(std::is_constructible_v<Itinerary, TArgs...>)
+    void addItinerary(TArgs&&... args);
     /// @brief Add an itinerary
     /// @param itinerary std::unique_ptr to the itinerary
+    /// @throws std::invalid_argument If the itinerary already exists
+    /// @throws std::invalid_argument If the itinerary's destination is not a node of the graph
     void addItinerary(std::unique_ptr<Itinerary> itinerary);
-    template <typename... Tn>
-      requires(is_itinerary_v<Tn> && ...)
-    void addItineraries(Tn... itineraries);
-    /// @brief Add a pack of itineraries
-    /// @tparam T1
-    /// @tparam ...Tn
-    /// @param itinerary
-    /// @param ...itineraries
-    template <typename T1, typename... Tn>
-      requires(is_itinerary_v<T1> && (is_itinerary_v<Tn> && ...))
-    void addItineraries(T1 itinerary, Tn... itineraries);
-    /// @brief Add a set of itineraries
-    /// @param itineraries Generic container of itineraries, represented by an std::span
-    void addItineraries(std::span<Itinerary> itineraries);
 
     void enableCache();
 
@@ -378,36 +372,28 @@ namespace dsm {
         m_itineraries.cbegin(), m_itineraries.cend(), [this](auto const& pair) -> void {
           this->m_updatePath(pair.second);
         });
-    // std::vector<std::thread> threads;
-    // threads.reserve(m_itineraries.size());
-    // std::exception_ptr pThreadException;
-    // for (const auto& [itineraryId, itinerary] : m_itineraries) {
-    //   threads.emplace_back(std::thread([this, &itinerary, &pThreadException] {
-    //     try {
-    //       this->m_updatePath(itinerary);
-    //     } catch (...) {
-    //       if (!pThreadException)
-    //         pThreadException = std::current_exception();
-    //     }
-    //   }));
-    // }
-    // for (auto& thread : threads) {
-    //   thread.join();
-    // }
-    // // Throw the exception launched first
-    // if (pThreadException)
-    //   std::rethrow_exception(pThreadException);
   }
 
   template <typename agent_t>
-  void Dynamics<agent_t>::setDestinationNodes(const std::span<Id>& destinationNodes,
+  void Dynamics<agent_t>::setDestinationNodes(std::initializer_list<Id> destinationNodes,
                                               bool updatePaths) {
-    for (const auto& nodeId : destinationNodes) {
-      if (!m_graph.nodeSet().contains(nodeId)) {
-        Logger::error(std::format("Node with id {} not found", nodeId));
-      }
-      this->addItinerary(Itinerary{nodeId, nodeId});
+    std::for_each(
+        destinationNodes.begin(),
+        destinationNodes.end(),
+        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
+    if (updatePaths) {
+      this->updatePaths();
     }
+  }
+  template <typename agent_t>
+  template <typename TContainer>
+    requires(std::is_convertible_v<typename TContainer::value_type, Id>)
+  void Dynamics<agent_t>::setDestinationNodes(TContainer const& destinationNodes,
+                                              bool updatePaths) {
+    std::for_each(
+        destinationNodes.begin(),
+        destinationNodes.end(),
+        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
     if (updatePaths) {
       this->updatePaths();
     }
@@ -486,32 +472,23 @@ namespace dsm {
   }
 
   template <typename agent_t>
-  void Dynamics<agent_t>::addItinerary(const Itinerary& itinerary) {
-    m_itineraries.emplace(itinerary.id(), std::make_unique<Itinerary>(itinerary));
+  template <typename... TArgs>
+    requires(std::is_constructible_v<Itinerary, TArgs...>)
+  void Dynamics<agent_t>::addItinerary(TArgs&&... args) {
+    addItinerary(std::make_unique<Itinerary>(std::forward<TArgs>(args)...));
   }
 
   template <typename agent_t>
   void Dynamics<agent_t>::addItinerary(std::unique_ptr<Itinerary> itinerary) {
+    if (m_itineraries.contains(itinerary->id())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Itinerary with id {} already exists.", itinerary->id())));
+    }
+    if (!m_graph.nodeSet().contains(itinerary->destination())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
+          "Destination node with id {} not found", itinerary->destination())));
+    }
     m_itineraries.emplace(itinerary->id(), std::move(itinerary));
-  }
-
-  template <typename agent_t>
-  template <typename... Tn>
-    requires(is_itinerary_v<Tn> && ...)
-  void Dynamics<agent_t>::addItineraries(Tn... itineraries) {
-    (this->addItinerary(itineraries), ...);
-  }
-  template <typename agent_t>
-  void Dynamics<agent_t>::addItineraries(std::span<Itinerary> itineraries) {
-    std::ranges::for_each(itineraries, [this](const auto& itinerary) -> void {
-      m_itineraries.insert(std::make_unique<Itinerary>(itinerary));
-    });
-  }
-
-  template <typename agent_t>
-  void Dynamics<agent_t>::enableCache() {
-    m_bCacheEnabled = true;
-    Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
   }
 
   template <typename agent_t>

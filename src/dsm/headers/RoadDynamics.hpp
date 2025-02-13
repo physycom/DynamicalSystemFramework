@@ -43,7 +43,6 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   class RoadDynamics : public Dynamics<Agent<delay_t>> {
-  private:
   protected:
     Time m_previousOptimizationTime;
 
@@ -200,8 +199,9 @@ namespace dsm {
       // fill turn mapping as [streetId, [left street Id, straight street Id, right street Id, U self street Id]]
       m_turnMapping.emplace(streetId, std::array<long, 4>{-1, -1, -1, -1});
       // Turn mappings
-      const auto& srcNodeId = street->nodePair().second;
-      for (const auto& [ss, _] : this->m_graph.adjMatrix().getRow(srcNodeId, true)) {
+      const auto& srcNodeId = street->target();
+      for (const auto& targetId : this->m_graph.adjMatrix().getRow(srcNodeId)) {
+        auto const ss = srcNodeId * this->m_graph.nNodes() + targetId;
         const auto& delta = street->angle() - this->m_graph.streetSet()[ss]->angle();
         if (std::abs(delta) < std::numbers::pi) {
           if (delta < 0.) {
@@ -225,7 +225,7 @@ namespace dsm {
                                            Id nodeId,
                                            std::optional<Id> streetId) {
     auto const& pAgent{this->agents().at(agentId)};
-    auto possibleMoves = this->m_graph.adjMatrix().getRow(nodeId, true);
+    auto possibleMoves = this->m_graph.adjMatrix().getRow(nodeId);
     if (!pAgent->isRandom()) {
       std::uniform_real_distribution<double> uniformDist{0., 1.};
       if (!(this->itineraries().empty())) {
@@ -233,7 +233,7 @@ namespace dsm {
               uniformDist(this->m_generator) < m_errorProbability)) {
           const auto& it = this->itineraries().at(pAgent->itineraryId());
           if (it->destination() != nodeId) {
-            possibleMoves = it->path().getRow(nodeId, true);
+            possibleMoves = it->path()->getRow(nodeId);
           }
         }
       }
@@ -244,18 +244,16 @@ namespace dsm {
     }
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleMoves.size() - 1)};
-    uint8_t p{0};
-    auto iterator = possibleMoves.begin();
     // while loop to avoid U turns in non-roundabout junctions
+    Id nextStreetId;
     do {
-      p = moveDist(this->m_generator);
-      iterator = possibleMoves.begin();
-      std::advance(iterator, p);
-    } while (!this->m_graph.node(nodeId)->isRoundabout() and streetId.has_value() and
-             (this->m_graph.streetSet()[iterator->first]->nodePair().second ==
-              this->m_graph.streetSet()[streetId.value()]->nodePair().first) and
+      nextStreetId =
+          nodeId * this->m_graph.nNodes() + possibleMoves[moveDist(this->m_generator)];
+    } while (!this->m_graph.node(nodeId)->isRoundabout() && streetId.has_value() &&
+             (this->m_graph.street(nextStreetId)->target() ==
+              this->m_graph.street(streetId.value())->source()) &&
              (possibleMoves.size() > 1));
-    return iterator->first;
+    return nextStreetId;
   }
 
   template <typename delay_t>
@@ -453,7 +451,7 @@ namespace dsm {
             street->enqueue(agentId, laneDist(this->m_generator));
           } else {
             auto const nextStreetId =
-                this->m_nextStreetId(agentId, street->nodePair().second, street->id());
+                this->m_nextStreetId(agentId, street->target(), street->id());
             auto const& pNextStreet{this->m_graph.street(nextStreetId)};
             agent->setNextStreetId(nextStreetId);
             if (nLanes == 1) {
@@ -779,7 +777,10 @@ namespace dsm {
       auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
 
       double inputGreenSum{0.}, inputRedSum{0.};
-      for (const auto& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
+      auto const N{this->m_graph.nNodes()};
+      auto column = this->m_graph.adjMatrix().getCol(nodeId);
+      for (const auto& sourceId : column) {
+        auto const streetId = sourceId * N + nodeId;
         auto const& pStreet{this->m_graph.street(streetId)};
         if (streetPriorities.contains(streetId)) {
           inputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
@@ -794,8 +795,7 @@ namespace dsm {
       //                          inputGreenSum,
       //                          inputRedSum);
       auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
-      delay_t const delta = std::round(std::abs(inputDifference) /
-                                       (this->m_graph.adjMatrix().getCol(nodeId).size()));
+      delay_t const delta = std::round(std::abs(inputDifference) / column.size());
       // std::clog << std::format("TL: {}, current delta {}, difference: {}",
       //                          nodeId,
       //                          delta,
@@ -823,7 +823,8 @@ namespace dsm {
         //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
         //    - If the previous check fails, do nothing
         double outputGreenSum{0.}, outputRedSum{0.};
-        for (const auto& [streetId, _] : this->m_graph.adjMatrix().getRow(nodeId, true)) {
+        for (const auto& targetId : this->m_graph.adjMatrix().getRow(nodeId)) {
+          auto const streetId = nodeId * N + targetId;
           auto const& pStreet{this->m_graph.street(streetId)};
           if (streetPriorities.contains(streetId)) {
             outputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
