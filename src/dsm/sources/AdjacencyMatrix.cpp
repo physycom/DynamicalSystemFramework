@@ -1,6 +1,7 @@
 
 #include "../headers/AdjacencyMatrix.hpp"
 #include "../utility/Logger.hpp"
+#include <tbb/parallel_for_each.h>
 
 #include <cassert>
 #include <fstream>
@@ -78,6 +79,40 @@ namespace dsm {
   }
   bool AdjacencyMatrix::operator()(Id row, Id col) const { return contains(row, col); }
 
+  void AdjacencyMatrix::transpose() {
+    std::vector<Id> newColumnIndices(m_columnIndices.size());
+    std::vector<Id> newRowOffsets(m_n + 1, 0);
+
+    // Count the number of elements in each column
+    tbb::parallel_for_each(m_columnIndices.begin(), m_columnIndices.end(), [&](auto& x) {
+      newRowOffsets[x + 1]++;
+    });
+
+    // Compute the row offsets using inclusive scan
+    std::inclusive_scan(
+        newRowOffsets.begin(), newRowOffsets.end(), newRowOffsets.begin());
+    std::vector<Id> insertionOffsets = newRowOffsets;
+
+    // 4. Populate the transposed matrix.
+    // 'm_rowOffsets' and 'm_columnIndices' represent the original matrix (in CSR).
+    for (size_t i = 0; i < m_n; ++i) {
+      for (size_t j = m_rowOffsets[i]; j < m_rowOffsets[i + 1]; ++j) {
+        // 'col' in the original matrix becomes the row in the transposed matrix.
+        Id col = m_columnIndices[j];
+        // Use insertionOffsets[col] as the next free slot for row 'col' in the transposed data.
+        Id pos = insertionOffsets[col];
+        newColumnIndices[pos] = i;
+        insertionOffsets[col]++;
+      }
+    }
+
+    m_columnIndices = std::move(newColumnIndices);
+    m_rowOffsets = std::move(newRowOffsets);
+  }
+  /*********************************************************************************
+   * METHODS
+   **********************************************************************************/
+
   size_t AdjacencyMatrix::n() const { return m_n; }
   size_t AdjacencyMatrix::size() const { return m_columnIndices.size(); }
 
@@ -96,7 +131,8 @@ namespace dsm {
 
     assert(row + 1 < m_rowOffsets.size());
     // Increase row offsets for rows after the inserted row
-    std::for_each(m_rowOffsets.begin() + row + 1, m_rowOffsets.end(), [](Id& x) { x++; });
+    tbb::parallel_for_each(
+        m_rowOffsets.begin() + row + 1, m_rowOffsets.end(), [](Id& x) { x++; });
 
     // Insert column index at the correct position
     auto const offset = m_rowOffsets[row + 1] - 1;

@@ -65,6 +65,9 @@ namespace dsm {
     /// @details This function actually returns element \f$a_{ij}\f$ of the adjacency matrix.
     ///   Where \f$i\f$ is the row index and \f$j\f$ is the column index.
     bool operator()(Id row, Id col) const;
+    /// @brief Transpose the adjacency matrix
+    void transpose();
+
     /// @brief Get the number of links in the adjacency matrix
     /// @return The number of links in the adjacency matrix
     size_t size() const;

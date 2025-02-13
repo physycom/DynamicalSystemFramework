@@ -43,6 +43,8 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   class RoadDynamics : public Dynamics<Agent<delay_t>> {
   private:
+    AdjacencyMatrix m_adjMatrix_T;
+
   protected:
     Time m_previousOptimizationTime;
 
@@ -213,6 +215,8 @@ namespace dsm {
           m_turnMapping[streetId][dsm::Direction::UTURN] = ss;  // U
         }
       }
+      m_adjMatrix_T = this->m_graph.adjMatrix();
+      m_adjMatrix_T.transpose();
     }
   }
 
@@ -688,7 +692,7 @@ namespace dsm {
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
     auto const N{this->m_graph.nNodes()};
     for (auto const& [nodeId, _] : this->m_graph.nodeSet()) {
-      for (auto const& srcNodeId : this->m_graph.adjMatrix().getCol(nodeId)) {
+      for (auto const& srcNodeId : m_adjMatrix_T.getRow(nodeId)) {
         auto const streetId{srcNodeId * N + nodeId};
         auto const& pStreet{this->m_graph.street(streetId)};
         // Logger::info(std::format("Evolving street {}", streetId));
@@ -739,7 +743,7 @@ namespace dsm {
 
       double inputGreenSum{0.}, inputRedSum{0.};
       auto const N{this->m_graph.nNodes()};
-      auto column = this->m_graph.adjMatrix().getCol(nodeId);
+      auto column = m_adjMatrix_T.getRow(nodeId);
       for (const auto& sourceId : column) {
         auto const streetId = sourceId * N + nodeId;
         auto const& pStreet{this->m_graph.street(streetId)};
