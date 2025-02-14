@@ -91,7 +91,7 @@ namespace dsm {
         auto const& file = std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
         if (std::filesystem::exists(file)) {
           pItinerary->setPath(AdjacencyMatrix(file));
-          Logger::info(
+          Logger::debug(
               std::format("Loaded cached path for itinerary {}", pItinerary->id()));
           return;
         }
@@ -166,18 +166,20 @@ namespace dsm {
           }
         }
       }
+
       if (path.size() == 0) {
         Logger::error(
-            std::format("Path with id {} and destination {} is empty. Please "
-                        "check the adjacency matrix.",
+            std::format("Path with id {} and destination {} is empty. Please check the "
+                        "adjacency matrix.",
                         pItinerary->id(),
                         pItinerary->destination()));
       }
+
       pItinerary->setPath(path);
       if (m_bCacheEnabled) {
         pItinerary->path()->save(
             std::format("{}it{}.adj", g_cacheFolder, pItinerary->id()));
-        Logger::info(
+        Logger::debug(
             std::format("Saved path in cache for itinerary {}", pItinerary->id()));
       }
     }
@@ -355,6 +357,10 @@ namespace dsm {
       }
       Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
     }
+    for (const auto& nodeId : this->m_graph.outputNodes()) {
+      addItinerary(nodeId, nodeId);
+    }
+    updatePaths();
   }
 
   template <typename agent_t>
@@ -402,6 +408,10 @@ namespace dsm {
           std::format("Agent with id {} already exists.", agent->id())));
     }
     m_agents.emplace(agent->id(), std::move(agent));
+    // Logger::debug(std::format("Added agent with id {} from node {} to node {}",
+    //                           m_agents.rbegin()->first,
+    //                           m_agents.rbegin()->second->srcNodeId().value_or(-1),
+    //                           m_agents.rbegin()->second->itineraryId()));
   }
 
   template <typename agent_t>
@@ -447,6 +457,7 @@ namespace dsm {
   template <typename agent_t>
   void Dynamics<agent_t>::removeAgent(Size agentId) {
     m_agents.erase(agentId);
+    Logger::debug(std::format("Removed agent with id {}", agentId));
   }
 
   template <typename agent_t>
