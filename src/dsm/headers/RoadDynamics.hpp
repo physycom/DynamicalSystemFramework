@@ -128,6 +128,8 @@ namespace dsm {
                            const TContainer& dst_weights,
                            const size_t minNodeDistance = 0);
 
+    void addAgentsRandomly(Size nAgents, const size_t minNodeDistance = 0);
+
     /// @brief Evolve the simulation
     /// @details Evolve the simulation by moving the agents and updating the travel times.
     /// In particular:
@@ -234,7 +236,10 @@ namespace dsm {
         }
       }
     }
-    assert(possibleMoves.size() > 0);
+    if (possibleMoves.empty()) {
+      Logger::error(
+          std::format("No possible moves from node {} for agent {}", nodeId, agentId));
+    }
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleMoves.size() - 1)};
     uint8_t p{0};
@@ -317,9 +322,7 @@ namespace dsm {
         }
       }
       if (bArrived) {
-        if (pStreet->dequeue(queueIndex) == std::nullopt) {
-          continue;
-        }
+        pStreet->dequeue(queueIndex);
         m_travelDTs.push_back({pAgent->distance(), static_cast<double>(pAgent->time())});
         if (reinsert_agents) {
           // reset Agent's values
@@ -334,10 +337,10 @@ namespace dsm {
       if (nextStreet->isFull()) {
         continue;
       }
-      if (pStreet->dequeue(queueIndex) == std::nullopt) {
-        continue;
+      pStreet->dequeue(queueIndex);
+      if (destinationNode->id() != nextStreet->source()) {
+        Logger::error(std::format("Agent {} is going to the wrong street", agentId));
       }
-      assert(destinationNode->id() == nextStreet->nodePair().first);
       if (destinationNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
         auto const delta{nextStreet->deltaAngle(pStreet->angle())};
@@ -492,7 +495,7 @@ namespace dsm {
       } else if (!agent->streetId().has_value() && !agent->nextStreetId().has_value()) {
         Id srcNodeId = agent->srcNodeId().has_value() ? agent->srcNodeId().value()
                                                       : nodeDist(this->m_generator);
-        const auto& srcNode{this->m_graph.nodeSet()[srcNodeId]};
+        const auto& srcNode{this->m_graph.node(srcNodeId)};
         if (srcNode->isFull()) {
           continue;
         }
@@ -594,7 +597,16 @@ namespace dsm {
                                                 const TContainer& src_weights,
                                                 const TContainer& dst_weights,
                                                 const size_t minNodeDistance) {
-    if (src_weights.size() == 1 && dst_weights.size() == 1 &&
+    auto const& nSources{src_weights.size()};
+    auto const& nDestinations{dst_weights.size()};
+    Logger::debug(
+        std::format("Init addAgentsRandomly for {} agents from {} nodes to {} nodes with "
+                    "minNodeDistance {}",
+                    nAgents,
+                    nSources,
+                    dst_weights.size(),
+                    minNodeDistance));
+    if (nSources == 1 && nDestinations == 1 &&
         src_weights.begin()->first == dst_weights.begin()->first) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("The only source node {} is also the only destination node.",
@@ -628,9 +640,10 @@ namespace dsm {
     if (!this->agents().empty()) {
       agentId = this->agents().rbegin()->first + 1;
     }
+    Logger::debug(std::format("Adding {} agents at time {}.", nAgents, this->time()));
     while (nAgents > 0) {
       Id srcId{0}, dstId{0};
-      if (dst_weights.size() == 1) {
+      if (nDestinations == 1) {
         dstId = dst_weights.begin()->first;
         srcId = dstId;
       }
@@ -646,7 +659,7 @@ namespace dsm {
           }
         }
       }
-      if (src_weights.size() > 1) {
+      if (nSources > 1) {
         dstId = srcId;
       }
       while (dstId == srcId) {
@@ -654,10 +667,15 @@ namespace dsm {
         sum = 0.;
         for (const auto& [id, weight] : dst_weights) {
           // if the node is at a minimum distance from the destination, skip it
-          auto result{this->m_graph.shortestPath(srcId, id)};
-          if (result.has_value() && result.value().path().size() < minNodeDistance &&
-              dst_weights.size() > 1) {
+          if (this->itineraries().at(id)->path().getRow(srcId).empty()) {
             continue;
+          }
+          if (nDestinations > 1 && minNodeDistance > 0) {
+            // NOTE: Result must have a value in this case, so we can use value() as sort-of assertion
+            if (this->m_graph.shortestPath(srcId, id).value().path().size() <
+                minNodeDistance) {
+              continue;
+            }
           }
           dstId = id;
           sum += weight;
@@ -683,6 +701,20 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
+                                                const size_t minNodeDistance) {
+    std::unordered_map<Id, double> src_weights, dst_weights;
+    for (auto const& id : this->m_graph.inputNodes()) {
+      src_weights[id] = 1.;
+    }
+    for (auto const& id : this->m_graph.outputNodes()) {
+      dst_weights[id] = 1.;
+    }
+    addAgentsRandomly(nAgents, src_weights, dst_weights, minNodeDistance);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::evolve(bool reinsert_agents) {
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData =
@@ -699,15 +731,6 @@ namespace dsm {
         }
       }
     }
-    // for (const auto& [streetId, pStreet] : this->m_graph.streetSet()) {
-    //   if (bUpdateData) {
-    //     m_streetTails[streetId] += pStreet->nExitingAgents();
-    //   }
-    //   Logger::info(std::format("Evolving street {}", streetId));
-    //   for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-    //     this->m_evolveStreet(pStreet, reinsert_agents);
-    //   }
-    // }
     // Move transport capacity agents from each node
     for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
       for (auto i = 0; i < pNode->transportCapacity(); ++i) {
@@ -747,11 +770,11 @@ namespace dsm {
 
       double inputGreenSum{0.}, inputRedSum{0.};
       for (const auto& [streetId, _] : this->m_graph.adjMatrix().getCol(nodeId, true)) {
-        auto const& pStreet{this->m_graph.streetSet()[streetId]};
+        auto const& pStreet{this->m_graph.street(streetId)};
         if (streetPriorities.contains(streetId)) {
-          inputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
+          inputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
         } else {
-          inputRedSum += m_streetTails[streetId] / pStreet->nLanes();
+          inputRedSum += m_streetTails.at(streetId) / pStreet->nLanes();
         }
       }
       inputGreenSum /= meanGreenFraction;
@@ -791,11 +814,11 @@ namespace dsm {
         //    - If the previous check fails, do nothing
         double outputGreenSum{0.}, outputRedSum{0.};
         for (const auto& [streetId, _] : this->m_graph.adjMatrix().getRow(nodeId, true)) {
-          auto const& pStreet{this->m_graph.streetSet()[streetId]};
+          auto const& pStreet{this->m_graph.street(streetId)};
           if (streetPriorities.contains(streetId)) {
-            outputGreenSum += m_streetTails[streetId] / pStreet->nLanes();
+            outputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
           } else {
-            outputRedSum += m_streetTails[streetId] / pStreet->nLanes();
+            outputRedSum += m_streetTails.at(streetId) / pStreet->nLanes();
           }
         }
         auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};

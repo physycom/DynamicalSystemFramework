@@ -105,7 +105,8 @@ namespace dsm {
     /// @throw std::runtime_error If the street's queue is full
     void enqueue(Id agentId, size_t index);
     /// @brief Remove an agent from the street's queue
-    virtual std::optional<Id> dequeue(size_t index);
+    /// @return Id The id of the agent removed from the street's queue
+    virtual Id dequeue(size_t index);
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     virtual bool isSpire() const { return false; };
@@ -160,8 +161,8 @@ namespace dsm {
     ///     Notice that this flow is positive iff the input flow is greater than the output flow.
     int meanFlow();
     /// @brief Remove an agent from the street's queue
-    /// @return std::optional<Id> The id of the agent removed from the street's queue
-    std::optional<Id> dequeue(size_t index) final;
+    /// @return Id The id of the agent removed from the street's queue
+    Id dequeue(size_t index) final;
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     bool isSpire() const final { return true; };
@@ -182,7 +183,7 @@ namespace dsm {
     int meanFlow();
     /// @brief Remove an agent from the street's queue
     /// @return std::optional<Id> The id of the agent removed from the street's queue
-    std::optional<Id> dequeue(size_t index) final;
+    Id dequeue(size_t index) final;
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     bool isSpire() const final { return true; };

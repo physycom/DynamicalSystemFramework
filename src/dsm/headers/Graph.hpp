@@ -50,6 +50,8 @@ namespace dsm {
     std::unordered_map<Id, std::unique_ptr<Node>> m_nodes;
     std::unordered_map<Id, std::unique_ptr<Street>> m_streets;
     std::unordered_map<std::string, Id> m_nodeMapping;
+    std::vector<Id> m_inputNodes;
+    std::vector<Id> m_outputNodes;
     SparseMatrix<bool> m_adjacency;
     unsigned long long m_maxAgentCapacity;
 
@@ -80,6 +82,8 @@ namespace dsm {
           });
       m_nodeMapping = other.m_nodeMapping;
       m_adjacency = other.m_adjacency;
+      m_inputNodes = other.m_inputNodes;
+      m_outputNodes = other.m_outputNodes;
     }
 
     Graph& operator=(const Graph& other) {
@@ -94,6 +98,8 @@ namespace dsm {
           });
       m_nodeMapping = other.m_nodeMapping;
       m_adjacency = other.m_adjacency;
+      m_inputNodes = other.m_inputNodes;
+      m_outputNodes = other.m_outputNodes;
 
       return *this;
     }
@@ -261,6 +267,9 @@ namespace dsm {
     /// @return unsigned long long The maximum agent capacity of the graph
     unsigned long long maxCapacity() const { return m_maxAgentCapacity; }
 
+    std::vector<Id> const& inputNodes() const { return m_inputNodes; }
+    std::vector<Id> const& outputNodes() const { return m_outputNodes; }
+
     /// @brief Get the shortest path between two nodes using dijkstra algorithm
     /// @param source The source node
     /// @param destination The destination node
@@ -287,7 +296,7 @@ namespace dsm {
              std::constructible_from<node_t, Id, TArgs...>)
   node_t& Graph::addNode(Id id, TArgs&&... args) {
     addNode(std::make_unique<node_t>(id, std::forward<TArgs>(args)...));
-    return dynamic_cast<node_t&>(*m_nodes[id]);
+    return dynamic_cast<node_t&>(*m_nodes.at(id));
   }
   template <typename T1, typename... Tn>
     requires is_node_v<std::remove_reference_t<T1>> &&
@@ -302,7 +311,7 @@ namespace dsm {
              std::constructible_from<edge_t, Id, TArgs...>)
   edge_t& Graph::addEdge(Id id, TArgs&&... args) {
     addStreet(std::make_unique<edge_t>(id, std::forward<TArgs>(args)...));
-    return dynamic_cast<edge_t&>(*m_streets[id]);
+    return dynamic_cast<edge_t&>(*m_streets.at(id));
   }
 
   template <typename T1>

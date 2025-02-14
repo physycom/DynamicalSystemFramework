@@ -28,7 +28,7 @@ namespace dsm {
 
   void FirstOrderDynamics::setAgentSpeed(Size agentId) {
     const auto& agent{this->agents().at(agentId)};
-    const auto& street{this->m_graph.streetSet()[agent->streetId().value()]};
+    const auto& street{this->m_graph.street(agent->streetId().value())};
     double speed{street->maxSpeed() * (1. - m_alpha * street->density(true))};
     if (m_speedFluctuationSTD > 0.) {
       std::normal_distribution<double> speedDist{speed, speed * m_speedFluctuationSTD};

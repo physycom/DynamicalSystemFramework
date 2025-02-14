@@ -1,6 +1,8 @@
 
 #include "../headers/Graph.hpp"
 
+#include <algorithm>
+
 namespace dsm {
   Graph::Graph()
       : m_adjacency{SparseMatrix<bool>()},
@@ -339,6 +341,16 @@ namespace dsm {
         } else {
           addNode<Intersection>(nodeIndex,
                                 std::make_pair(std::stod(lat), std::stod(lon)));
+          if ((highway.find("in_out") != std::string::npos) ||
+              (highway.find("outgoing_only") != std::string::npos)) {
+            Logger::debug(std::format("Setting node {} as an output node", nodeIndex));
+            m_outputNodes.push_back(nodeIndex);
+          }
+          if ((highway.find("in_out") != std::string::npos) ||
+              (highway.find("ingoing_only") != std::string::npos)) {
+            Logger::debug(std::format("Setting node {} as an input node", nodeIndex));
+            m_inputNodes.push_back(nodeIndex);
+          }
         }
         m_nodeMapping.emplace(std::make_pair(id, nodeIndex));
         ++nodeIndex;
@@ -346,6 +358,7 @@ namespace dsm {
     } else {
       Logger::error(std::format("File extension ({}) not supported", fileExt));
     }
+    Logger::info(std::format("Successfully imported {} nodes", nNodes()));
   }
 
   void Graph::importOSMEdges(const std::string& fileName) {
@@ -425,6 +438,7 @@ namespace dsm {
       throw std::invalid_argument(
           Logger::buildExceptionMessage("File extension not supported"));
     }
+    Logger::info(std::format("Successfully imported {} edges", nEdges()));
   }
 
   void Graph::exportMatrix(std::string path, bool isAdj) {

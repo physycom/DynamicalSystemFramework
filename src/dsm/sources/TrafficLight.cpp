@@ -179,6 +179,9 @@ namespace dsm {
   }
 
   bool TrafficLight::isGreen(Id const streetId, Direction direction) const {
+    if (m_cycles.empty()) {
+      return true;
+    }
     if (!m_cycles.contains(streetId)) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street id {} is not valid for node {}.", streetId, id())));

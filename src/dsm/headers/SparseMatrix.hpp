@@ -178,6 +178,8 @@ namespace dsm {
     /// @return number of non zero elements
     Id size() const { return _matrix.size(); };
 
+    bool empty() const { return _matrix.empty(); }
+
     /// @brief get the maximum number of elements in the matrix
     /// @return maximum number of elements
     Id max_size() const { return _rows * _cols; }
