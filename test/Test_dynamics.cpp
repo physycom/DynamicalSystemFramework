@@ -511,8 +511,7 @@ TEST_CASE("Dynamics") {
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1);
       graph2.buildAdj();
       Dynamics dynamics{graph2, false, 69};
-      std::vector<dsm::Id> dsts{1, 2};
-      dynamics.setDestinationNodes(dsts);
+      dynamics.setDestinationNodes({1, 2});
       std::vector<dsm::Id> trip{2, 1};
       dynamics.addAgent(0, trip, 0);
       auto const& pAgent{dynamics.agents().at(0)};
@@ -618,9 +617,7 @@ TEST_CASE("Dynamics") {
       graph2.buildStreetAngles();
 
       Dynamics dynamics{graph2, false, 69};
-
-      std::vector<uint32_t> destinationNodes{0, 2, 3, 4};
-      dynamics.setDestinationNodes(destinationNodes);
+      dynamics.setDestinationNodes({0, 2, 3, 4});
 
       WHEN("We add agents and make the system evolve") {
         Agent agent1{0, 2, 0};
@@ -687,9 +684,7 @@ TEST_CASE("Dynamics") {
       graph2.buildStreetAngles();
 
       Dynamics dynamics{graph2, false, 69};
-
-      std::vector<uint32_t> destinationNodes{0, 2, 3, 4};
-      dynamics.setDestinationNodes(destinationNodes);
+      dynamics.setDestinationNodes({0, 2, 3, 4});
 
       WHEN("We add agents and make the system evolve") {
         Agent agent1{0, 2, 0};
@@ -743,8 +738,7 @@ TEST_CASE("Dynamics") {
         tl.setComplementaryCycle(16, 11);
         tl.setComplementaryCycle(21, 11);
         Dynamics dynamics{graph2, false, 69};
-        std::vector<dsm::Id> destinationNodes{0, 2, 3, 4};
-        dynamics.setDestinationNodes(destinationNodes);
+        dynamics.setDestinationNodes({0, 2, 3, 4});
         WHEN("We evolve the dynamics and optimize traffic lights") {
           dynamics.addAgents(7, 0, 2);
           dynamics.addAgents(7, 2, 0);
