@@ -420,7 +420,7 @@ namespace dsm {
         0, static_cast<Id>(this->m_graph.nNodes() - 1)};
     for (const auto& [agentId, agent] : this->agents()) {
       if (agent->delay() > 0) {
-        const auto& street{this->m_graph.streetSet()[agent->streetId().value()]};
+        const auto& street{this->m_graph.street(agent->streetId().value())};
         if (agent->delay() > 1) {
           agent->incrementDistance();
         } else {
@@ -437,11 +437,11 @@ namespace dsm {
           bool bArrived{false};
           if (!agent->isRandom()) {
             if (this->itineraries().at(agent->itineraryId())->destination() ==
-                street->nodePair().second) {
+                street->target()) {
               agent->updateItinerary();
             }
             if (this->itineraries().at(agent->itineraryId())->destination() ==
-                street->nodePair().second) {
+                street->target()) {
               bArrived = true;
             }
           }
@@ -669,7 +669,7 @@ namespace dsm {
         sum = 0.;
         for (const auto& [id, weight] : dst_weights) {
           // if the node is at a minimum distance from the destination, skip it
-          if (this->itineraries().at(id)->path()->getRow(srcId).size() == 0) {
+          if (this->itineraries().at(id)->path()->getRow(srcId).empty()) {
             continue;
           }
           if (nDestinations > 1 && minNodeDistance > 0) {
@@ -737,9 +737,9 @@ namespace dsm {
             }
           }
         });
-    for (auto const& agentId : m_agentsToRemove) {
-      this->removeAgent(agentId);
-    }
+    std::for_each(this->m_agentsToRemove.cbegin(),
+                  this->m_agentsToRemove.cend(),
+                  [this](const auto& agentId) { this->removeAgent(agentId); });
     m_agentsToRemove.clear();
     // Move transport capacity agents from each node
     tbb::parallel_for_each(this->m_graph.nodeSet().cbegin(),
