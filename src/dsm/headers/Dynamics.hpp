@@ -167,7 +167,7 @@ namespace dsm {
         }
       }
 
-      if (path.size() == 0) {
+      if (path.empty()) {
         Logger::error(
             std::format("Path with id {} and destination {} is empty. Please check the "
                         "adjacency matrix.",
@@ -549,7 +549,7 @@ namespace dsm {
 
   template <typename agent_t>
   Measurement<double> Dynamics<agent_t>::streetMeanDensity(bool normalized) const {
-    if (m_graph.streetSet().size() == 0) {
+    if (m_graph.streetSet().empty()) {
       return Measurement(0., 0.);
     }
     std::vector<double> densities;
