@@ -919,10 +919,10 @@ TEST_CASE("Dynamics") {
     GIVEN("A dynamics object with five nodes and eight streets") {
       Graph graph2;
       graph2.addNode<Intersection>(0, std::make_pair(0, 0));
-      graph2.addNode<Intersection>(1, std::make_pair(-1, 1));
-      graph2.addNode<Intersection>(2, std::make_pair(1, 1));
-      graph2.addNode<Intersection>(3, std::make_pair(1, -1));
-      graph2.addNode<Intersection>(4, std::make_pair(-1, -1));
+      graph2.addNode<Intersection>(1, std::make_pair(-1, 1));   // A
+      graph2.addNode<Intersection>(2, std::make_pair(1, 1));    // B
+      graph2.addNode<Intersection>(3, std::make_pair(1, -1));   // C
+      graph2.addNode<Intersection>(4, std::make_pair(-1, -1));  // D
       graph2.addEdge<Street>(0, std::make_pair(0, 1), 10., 10.);
       graph2.addEdge<Street>(1, std::make_pair(0, 2), 10., 10.);
       graph2.addEdge<Street>(2, std::make_pair(0, 3), 10., 10.);
@@ -934,8 +934,8 @@ TEST_CASE("Dynamics") {
       graph2.buildAdj();
       Dynamics dynamics{graph2, false, 69};
       dynamics.graph().node(0)->setCapacity(3);
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(1, 1)));
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
+      dynamics.addItinerary(1, 1);
+      dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       WHEN("We add agents and evolve the dynamics") {
         // add an agent in C, D, A

@@ -9,8 +9,11 @@ namespace dsm {
   double Road::m_meanVehicleLength = 5.;
 
   Road::Road(Id id, const Road& road)
-      : Edge(
-            id, road.nodePair(), road.capacity(), road.transportCapacity(), road.angle()),
+      : Edge(id,
+             road.nodePair(),
+             road.capacity(),
+             road.transportCapacity(),
+             road.geometry()),
         m_length{road.length()},
         m_maxSpeed{road.maxSpeed()},
         m_nLanes{road.nLanes()},
@@ -29,7 +32,6 @@ namespace dsm {
              std::move(nodePair),
              capacity.value_or(std::ceil((length * nLanes) / m_meanVehicleLength)),
              transportCapacity,
-             0.,
              std::move(geometry)),
         m_length{length},
         m_maxSpeed{maxSpeed},

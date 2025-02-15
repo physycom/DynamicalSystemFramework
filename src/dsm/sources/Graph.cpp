@@ -96,16 +96,6 @@ namespace dsm {
     }
   }
 
-  void Graph::m_setStreetAngles() {
-    for (const auto& [streetId, street] : m_streets) {
-      const auto& srcNode{m_nodes.at(street->source())};
-      const auto& dstNode{m_nodes.at(street->target())};
-      if (srcNode->coords().has_value() && dstNode->coords().has_value()) {
-        street->setAngle(srcNode->coords().value(), dstNode->coords().value());
-      }
-    }
-  }
-
   void Graph::buildAdj() {
     // find max values in streets node pairs
     m_maxAgentCapacity = 0;
@@ -125,15 +115,6 @@ namespace dsm {
       }
     }
     this->m_reassignIds();
-    this->m_setStreetAngles();
-  }
-
-  void Graph::buildStreetAngles() {
-    for (auto const& street : m_streets) {
-      const auto& node1{m_nodes.at(street.second->source())};
-      const auto& node2{m_nodes.at(street.second->target())};
-      street.second->setAngle(node1->coords().value(), node2->coords().value());
-    }
   }
 
   void Graph::adjustNodeCapacities() {
@@ -511,7 +492,7 @@ namespace dsm {
            << pStreet->name() << ';';
       if (!pStreet->geometry().empty()) {
         file << "LINESTRING(";
-        for (auto i{0}; i < pStreet->geometry().size(); ++i) {
+        for (size_t i{0}; i < pStreet->geometry().size(); ++i) {
           auto const& [lon, lat] = pStreet->geometry()[i];
           file << lon << ' ' << lat;
           if (i < pStreet->geometry().size() - 1) {

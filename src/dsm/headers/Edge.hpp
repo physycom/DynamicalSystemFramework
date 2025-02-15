@@ -14,6 +14,9 @@ namespace dsm {
     int m_transportCapacity;
     double m_angle;
 
+    void m_setAngle(std::pair<double, double> srcNodeCoordinates,
+                    std::pair<double, double> dstNodeCoordinates);
+
   public:
     /// @brief Construct a new Edge object
     /// @param id The edge's id
@@ -27,13 +30,10 @@ namespace dsm {
          std::pair<Id, Id> nodePair,
          int capacity = 1,
          int transportCapacity = 1,
-         double angle = 0.0,
          std::vector<std::pair<double, double>> geometry = {});
 
     void setCapacity(int capacity);
     void setTransportCapacity(int capacity);
-    void setAngle(std::pair<double, double> srcNodeCoordinates,
-                  std::pair<double, double> dstNodeCoordinates);
     void setGeometry(std::vector<std::pair<double, double>> geometry);
 
     /// @brief Get the edge's id
