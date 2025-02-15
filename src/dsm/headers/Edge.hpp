@@ -7,12 +7,12 @@
 namespace dsm {
   class Edge {
   protected:
+    std::vector<std::pair<double, double>> m_geometry;
     Id m_id;
     std::pair<Id, Id> m_nodePair;
     int m_capacity;
     int m_transportCapacity;
     double m_angle;
-    std::vector<std::pair<double, double>> m_geometry;
 
   public:
     /// @brief Construct a new Edge object

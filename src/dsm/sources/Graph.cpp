@@ -113,10 +113,14 @@ namespace dsm {
       m_maxAgentCapacity += pStreet->capacity();
       if (pStreet->geometry().empty()) {
         std::vector<std::pair<double, double>> coords;
-        auto values{m_nodes.at(pStreet->source())->coords().value()};
-        coords.emplace_back(values.second, values.first);
-        values = m_nodes.at(pStreet->target())->coords().value();
-        coords.emplace_back(values.second, values.first);
+        auto pair{m_nodes.at(pStreet->source())->coords()};
+        if (pair.has_value()) {
+          coords.emplace_back(pair.value().second, pair.value().first);
+        }
+        pair = m_nodes.at(pStreet->target())->coords();
+        if (pair.has_value()) {
+          coords.emplace_back(pair.value().second, pair.value().first);
+        }
         pStreet->setGeometry(coords);
       }
     }

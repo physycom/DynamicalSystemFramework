@@ -14,12 +14,12 @@ namespace dsm {
              int transportCapacity,
              double angle,
              std::vector<std::pair<double, double>> geometry)
-      : m_id(id),
+      : m_geometry{std::move(geometry)},
+        m_id(id),
         m_nodePair(nodePair),
         m_capacity{capacity},
         m_transportCapacity{transportCapacity},
-        m_angle{angle},
-        m_geometry{std::move(geometry)} {
+        m_angle{angle} {
     if (capacity < 1) {
       Logger::error(std::format("Edge capacity ({}) must be greater than 0.", capacity));
     }
