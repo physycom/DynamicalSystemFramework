@@ -12,6 +12,7 @@ namespace dsm {
              street.maxSpeed(),
              street.nLanes(),
              street.name(),
+             street.geometry(),
              street.capacity(),
              street.transportCapacity()) {
     for (auto i{0}; i < street.nLanes(); ++i) {
@@ -26,6 +27,7 @@ namespace dsm {
                  double maxSpeed,
                  int nLanes,
                  std::string name,
+                 std::vector<std::pair<double, double>> geometry,
                  std::optional<int> capacity,
                  int transportCapacity)
       : Road(id,
@@ -34,6 +36,7 @@ namespace dsm {
              maxSpeed,
              nLanes,
              std::move(name),
+             std::move(geometry),
              capacity,
              transportCapacity) {
     m_exitQueues.resize(nLanes);
@@ -134,6 +137,7 @@ namespace dsm {
                                      double maxSpeed,
                                      int nLanes,
                                      std::string name,
+                                     std::vector<std::pair<double, double>> geometry,
                                      double flowRate,
                                      std::optional<int> capacity,
                                      int transportCapacity)
@@ -143,6 +147,7 @@ namespace dsm {
                maxSpeed,
                nLanes,
                std::move(name),
+               std::move(geometry),
                capacity,
                transportCapacity) {
     setFlowRate(flowRate);

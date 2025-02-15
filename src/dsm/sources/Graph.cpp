@@ -371,8 +371,8 @@ namespace dsm {
           continue;
         }
         std::istringstream iss{line};
-        std::string sourceId, targetId, length, lanes, highway, maxspeed, name;
-        // u;v;length;highway;maxspeed;name
+        std::string sourceId, targetId, length, lanes, highway, maxspeed, name, geometry;
+        // u;v;length;highway;maxspeed;name;geometry
         std::getline(iss, sourceId, ';');
         std::getline(iss, targetId, ';');
         std::getline(iss, length, ';');
@@ -380,6 +380,7 @@ namespace dsm {
         std::getline(iss, highway, ';');
         std::getline(iss, maxspeed, ';');
         std::getline(iss, name, ';');
+        std::getline(iss, geometry, '\n');
         if (maxspeed.empty()) {
           maxspeed = "30";  // Default to 30 km/h if no maxspeed is provided
         } else {
@@ -410,8 +411,46 @@ namespace dsm {
               std::format("Self loop detected: {}->{}. Skipping.", sourceId, targetId));
           continue;
         }
+
         auto const srcId{m_nodeMapping.at(sourceId)};
         auto const dstId{m_nodeMapping.at(targetId)};
+
+        // Parse the geometry
+        std::vector<std::pair<double, double>> coords;
+        if (!geometry.empty()) {
+          // Gemetri is LINESTRING(lon,lat lon,lat ...)
+          std::istringstream geom{geometry};
+          // Read until (
+          std::string pair;
+          std::getline(geom, pair, '(');
+          while (std::getline(geom, pair, ',')) {
+            pair.erase(pair.begin(),
+                       std::find_if(pair.begin(), pair.end(), [](unsigned char ch) {
+                         return !std::isspace(ch);
+                       }));
+
+            // Trim trailing spaces
+            pair.erase(std::find_if(pair.rbegin(),
+                                    pair.rend(),
+                                    [](unsigned char ch) { return !std::isspace(ch); })
+                           .base(),
+                       pair.end());
+            // Create a stream for each coordinate pair to split by comma
+            std::istringstream pairStream(pair);
+            std::string lon, lat;
+            std::getline(pairStream, lon, ' ');
+            std::getline(pairStream, lat);  // read the rest for latitude
+            // Remove ')' from lat if present
+            if (lat.back() == ')') {
+              lat.pop_back();
+            }
+            // Note: The original code stored as (lat, lon) based on your comment.
+            coords.emplace_back(std::stod(lon), std::stod(lat));
+          }
+        } else {
+          coords.emplace_back(m_nodes.at(srcId)->coords().value());
+          coords.emplace_back(m_nodes.at(dstId)->coords().value());
+        }
         if (static_cast<unsigned long long>(srcId * nNodes + dstId) >
             std::numeric_limits<Id>::max()) {
           throw std::invalid_argument(Logger::buildExceptionMessage(
@@ -425,7 +464,8 @@ namespace dsm {
                         std::stod(length),
                         std::stod(maxspeed) / 3.6,
                         std::stoul(lanes),
-                        name);
+                        name,
+                        coords);
       }
     } else {
       throw std::invalid_argument(
@@ -434,6 +474,44 @@ namespace dsm {
     Logger::info(std::format("Successfully imported {} edges", nEdges()));
   }
 
+  void Graph::exportOSMNodes(std::string const& path) {
+    // assert that path ends with ".csv"
+    assert((void("Only csv export is supported."),
+            path.substr(path.find_last_of(".")) == ".csv"));
+    std::ofstream file{path};
+    // Column names
+    file << "id;x;y\n";
+    for (auto const& [nodeId, pNode] : m_nodes) {
+      file << nodeId << ';' << pNode->coords().value().second << ';'
+           << pNode->coords().value().first << '\n';
+    }
+    file.close();
+  }
+  void Graph::exportOSMEdges(std::string const& path) {
+    // assert that path ends with ".csv"
+    assert((void("Only csv export is supported."),
+            path.substr(path.find_last_of(".")) == ".csv"));
+    std::ofstream file{path};
+    // Column names
+    file << "id;source;target;geometry\n";
+    for (auto const& [streetId, pStreet] : m_streets) {
+      file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';';
+      if (!pStreet->geometry().empty()) {
+        file << "LINESTRING(";
+        for (auto i{0}; i < pStreet->geometry().size(); ++i) {
+          auto const& [lon, lat] = pStreet->geometry()[i];
+          file << lon << ' ' << lat;
+          if (i < pStreet->geometry().size() - 1) {
+            file << ',';
+          } else {
+            file << ')';
+          }
+        }
+      }
+      file << '\n';
+    }
+    file.close();
+  }
   void Graph::exportMatrix(std::string path, bool isAdj) {
     std::ofstream file{path};
     if (!file.is_open()) {

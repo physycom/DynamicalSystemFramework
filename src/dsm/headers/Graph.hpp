@@ -144,6 +144,10 @@ namespace dsm {
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
     void importOSMEdges(const std::string& fileName);
 
+    void exportOSMNodes(const std::string& fileName);
+
+    void exportOSMEdges(const std::string& fileName);
+
     /// @brief Export the graph's adjacency matrix to a file
     /// @param path The path to the file to export the adjacency matrix to (default: ./matrix.dsm)
     /// @param isAdj A boolean value indicating if the file contains the adjacency matrix or the distance matrix.

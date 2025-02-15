@@ -59,6 +59,7 @@ namespace dsm {
            double maxSpeed = 13.8888888889,
            int nLanes = 1,
            std::string name = std::string(),
+           std::vector<std::pair<double, double>> geometry = {},
            std::optional<int> capacity = std::nullopt,
            int transportCapacity = 1);
     virtual ~Street() = default;
@@ -131,6 +132,7 @@ namespace dsm {
                      double maxSpeed = 13.8888888889,
                      int nLanes = 1,
                      std::string name = std::string(),
+                     std::vector<std::pair<double, double>> geometry = {},
                      double flowRate = 1.,
                      std::optional<int> capacity = std::nullopt,
                      int transportCapacity = 1);
