@@ -501,9 +501,10 @@ namespace dsm {
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;source;target;geometry\n";
+    file << "id;source;target;name;geometry\n";
     for (auto const& [streetId, pStreet] : m_streets) {
-      file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';';
+      file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';'
+           << pStreet->name() << ';';
       if (!pStreet->geometry().empty()) {
         file << "LINESTRING(";
         for (auto i{0}; i < pStreet->geometry().size(); ++i) {
