@@ -109,8 +109,16 @@ namespace dsm {
   void Graph::buildAdj() {
     // find max values in streets node pairs
     m_maxAgentCapacity = 0;
-    for (const auto& [streetId, street] : m_streets) {
-      m_maxAgentCapacity += street->capacity();
+    for (const auto& [streetId, pStreet] : m_streets) {
+      m_maxAgentCapacity += pStreet->capacity();
+      if (pStreet->geometry().empty()) {
+        std::vector<std::pair<double, double>> coords;
+        auto values{m_nodes.at(pStreet->source())->coords().value()};
+        coords.emplace_back(values.second, values.first);
+        values = m_nodes.at(pStreet->target())->coords().value();
+        coords.emplace_back(values.second, values.first);
+        pStreet->setGeometry(coords);
+      }
     }
     this->m_reassignIds();
     this->m_setStreetAngles();
