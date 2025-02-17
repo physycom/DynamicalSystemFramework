@@ -772,8 +772,8 @@ TEST_CASE("Dynamics") {
       auto& rb = graph2.makeRoundabout(1);
       graph2.adjustNodeCapacities();
       Dynamics dynamics{graph2, false, 69};
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 0)));
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
+      dynamics.addItinerary(0, 0);
+      dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       dynamics.addAgent(0, 2, 0);
       dynamics.addAgent(1, 0, 2);

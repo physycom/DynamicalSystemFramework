@@ -49,8 +49,8 @@ namespace dsm {
   private:
     std::unordered_map<Id, std::unique_ptr<Node>> m_nodes;
     std::unordered_map<Id, std::unique_ptr<Street>> m_streets;
-    std::unordered_map<std::string, Id> m_nodeMapping;
     AdjacencyMatrix m_adjacencyMatrix;
+    std::unordered_map<std::string, Id> m_nodeMapping;
     std::vector<Id> m_inputNodes;
     std::vector<Id> m_outputNodes;
     unsigned long long m_maxAgentCapacity;

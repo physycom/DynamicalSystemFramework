@@ -7,7 +7,9 @@ using namespace dsm;
 
 TEST_CASE("Test default construction and insertion") {
   AdjacencyMatrix adj;
+  CHECK(adj.empty());
   adj.insert(0, 1);
+  CHECK_FALSE(adj.empty());
   auto offsets = test::offsets(adj);
   auto indices = test::indices(adj);
   CHECK_EQ(offsets.size(), 3);

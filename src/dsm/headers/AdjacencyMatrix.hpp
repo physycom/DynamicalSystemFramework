@@ -74,6 +74,9 @@ namespace dsm {
     /// @brief Get the number of links in the adjacency matrix
     /// @return The number of links in the adjacency matrix
     size_t size() const;
+    /// @brief Check if the adjacency matrix is empty
+    /// @return True if the adjacency matrix is empty, false otherwise
+    bool empty() const;
     /// @brief Get the number of nodes in the adjacency matrix
     /// @return The number of nodes in the adjacency matrix
     size_t n() const;
