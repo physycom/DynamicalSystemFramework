@@ -20,7 +20,7 @@ let timeStep = 0;
 Promise.all([
   d3.dsv(";", "./data/nodes.csv", parseNodes),
   d3.dsv(";", "./data/edges.csv", parseEdges),
-  d3.dsv(";", "./output/densities.csv", parseDensity)
+  d3.dsv(";", "./data/densities.csv", parseDensity)
 ]).then(([nodesData, edgesData, densityData]) => {
   nodes = nodesData;
   edges = edgesData;
