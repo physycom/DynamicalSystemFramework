@@ -171,10 +171,10 @@ TEST_CASE("Graph") {
     CHECK(graph.adjMatrix().operator()(2, 1));
     CHECK_EQ(graph.nNodes(), 3);
     CHECK_EQ(graph.nEdges(), 4);
-    CHECK_EQ(graph.streetSet()[1]->length(), 500);
-    CHECK_EQ(graph.streetSet()[3]->length(), 200);
-    CHECK_EQ(graph.streetSet()[5]->length(), 1);
-    CHECK_EQ(graph.streetSet()[7]->length(), 3);
+    CHECK_EQ(graph.street(1)->length(), 500);
+    CHECK_EQ(graph.street(3)->length(), 200);
+    CHECK_EQ(graph.street(5)->length(), 1);
+    CHECK_EQ(graph.street(7)->length(), 3);
   }
   SUBCASE("importMatrix - EXCEPTIONS") {
     // This tests the importMatrix throws an exception when the file has not the correct format or is not found

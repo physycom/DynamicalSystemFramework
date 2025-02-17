@@ -202,7 +202,7 @@ namespace dsm {
       const auto& srcNodeId = street->target();
       for (const auto& targetId : this->m_graph.adjMatrix().getRow(srcNodeId)) {
         auto const ss = srcNodeId * this->m_graph.nNodes() + targetId;
-        const auto& delta = street->angle() - this->m_graph.streetSet()[ss]->angle();
+        auto const& delta = street->angle() - this->m_graph.street(ss)->angle();
         if (std::abs(delta) < std::numbers::pi) {
           if (delta < 0.) {
             m_turnMapping[streetId][dsm::Direction::RIGHT] = ss;
@@ -392,7 +392,7 @@ namespace dsm {
       if (!(nextStreet->isFull())) {
         if (this->agents().at(agentId)->streetId().has_value()) {
           const auto streetId = this->agents().at(agentId)->streetId().value();
-          auto delta = nextStreet->angle() - this->m_graph.streetSet()[streetId]->angle();
+          auto delta = nextStreet->angle() - this->m_graph.street(streetId)->angle();
           if (delta > std::numbers::pi) {
             delta -= 2 * std::numbers::pi;
           } else if (delta < -std::numbers::pi) {
@@ -502,7 +502,7 @@ namespace dsm {
           continue;
         }
         const auto& nextStreet{
-            this->m_graph.streetSet()[this->m_nextStreetId(agentId, srcNode->id())]};
+            this->m_graph.street(this->m_nextStreetId(agentId, srcNode->id()))};
         if (nextStreet->isFull()) {
           continue;
         }
@@ -576,9 +576,9 @@ namespace dsm {
         Size step = streetDist(this->m_generator);
         std::advance(streetIt, step);
         streetId = streetIt->first;
-      } while (this->m_graph.streetSet()[streetId]->isFull() &&
+      } while (this->m_graph.street(streetId)->isFull() &&
                this->nAgents() < this->m_graph.maxCapacity());
-      const auto& street{this->m_graph.streetSet()[streetId]};
+      const auto& street{this->m_graph.street(streetId)};
       this->addAgent(agentId, itineraryId, street->nodePair().first);
       auto const& pAgent{this->agents().at(agentId)};
       pAgent->setStreetId(streetId);
