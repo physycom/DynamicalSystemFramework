@@ -29,18 +29,13 @@ int main() {
   }
   std::cout << "Done.\n";
 
-  Itinerary it1{0, 118};
-  Itinerary it2{1, 115};
-  Itinerary it3{2, 112};
-  Itinerary it4{3, 109};
-
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, false, std::nullopt, 0.95};
-  dynamics.addItinerary(it1);
-  dynamics.addItinerary(it2);
-  dynamics.addItinerary(it3);
-  dynamics.addItinerary(it4);
+  dynamics.addItinerary(0, 118);
+  dynamics.addItinerary(1, 115);
+  dynamics.addItinerary(2, 112);
+  dynamics.addItinerary(3, 109);
   dynamics.setErrorProbability(0.3);
   dynamics.updatePaths();
 

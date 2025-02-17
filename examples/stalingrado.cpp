@@ -84,8 +84,7 @@ int main() {
   // Create the dynamics
   Dynamics dynamics{graph, false, 69, 0.6};
   dynamics.setSpeedFluctuationSTD(0.2);
-  Itinerary itinerary{4, 4};
-  dynamics.addItinerary(itinerary);
+  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(4, 4)));
   dynamics.updatePaths();
 
   // lauch progress bar

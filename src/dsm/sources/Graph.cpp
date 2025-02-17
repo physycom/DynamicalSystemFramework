@@ -5,17 +5,15 @@
 
 namespace dsm {
   Graph::Graph()
-      : m_adjacency{SparseMatrix<bool>()},
+      : m_adjacencyMatrix{AdjacencyMatrix()},
         m_maxAgentCapacity{std::numeric_limits<unsigned long long>::max()} {}
 
-  Graph::Graph(const SparseMatrix<bool>& adj)
-      : m_adjacency{adj},
+  Graph::Graph(AdjacencyMatrix const& adj)
+      : m_adjacencyMatrix{adj},
         m_maxAgentCapacity{std::numeric_limits<unsigned long long>::max()} {
-    assert(adj.getRowDim() == adj.getColDim());
-    auto n{static_cast<Size>(adj.getRowDim())};
-    for (const auto& [id, value] : adj) {
-      const auto srcId{static_cast<Id>(id / n)};
-      const auto dstId{static_cast<Id>(id % n)};
+    auto n{static_cast<Size>(adj.n())};
+    for (const auto& [srcId, dstId] : adj.elements()) {
+      auto const id{srcId * n + dstId};
       if (!m_nodes.contains(srcId)) {
         m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
       }
@@ -27,7 +25,7 @@ namespace dsm {
   }
 
   Graph::Graph(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet)
-      : m_adjacency{SparseMatrix<bool>()} {
+      : m_adjacencyMatrix{AdjacencyMatrix(streetSet)} {
     for (auto& street : streetSet) {
       m_streets.emplace(street.second->id(), street.second.get());
 
@@ -42,14 +40,13 @@ namespace dsm {
 
   void Graph::m_reassignIds() {
     // not sure about this, might need a bit more work
-    const auto oldStreetSet{std::move(m_streets)};
-    m_streets.clear();
-    const auto n{static_cast<Size>(m_nodes.size())};
+    auto const oldStreetSet{std::move(m_streets)};
+    auto const N{nNodes()};
     std::unordered_map<Id, Id> newStreetIds;
     for (const auto& [streetId, street] : oldStreetSet) {
       const auto srcId{street->source()};
       const auto dstId{street->target()};
-      const auto newStreetId{static_cast<Id>(srcId * n + dstId)};
+      const auto newStreetId{static_cast<Id>(srcId * N + dstId)};
       if (m_streets.contains(newStreetId)) {
         throw std::invalid_argument(Logger::buildExceptionMessage(
             std::format("Street with same id ({}) from {} to {} already exists.",
@@ -112,11 +109,8 @@ namespace dsm {
   void Graph::buildAdj() {
     // find max values in streets node pairs
     m_maxAgentCapacity = 0;
-    const auto maxNode{static_cast<Id>(m_nodes.size())};
-    m_adjacency.reshape(maxNode, maxNode);
     for (const auto& [streetId, street] : m_streets) {
       m_maxAgentCapacity += street->capacity();
-      m_adjacency.insert(street->nodePair().first, street->nodePair().second, true);
     }
     this->m_reassignIds();
     this->m_setStreetAngles();
@@ -134,14 +128,17 @@ namespace dsm {
     int16_t value;
     for (Id nodeId = 0; nodeId < m_nodes.size(); ++nodeId) {
       value = 0;
-      for (const auto& [streetId, _] : m_adjacency.getCol(nodeId, true)) {
+      auto const N{nNodes()};
+      for (const auto& sourceId : m_adjacencyMatrix.getCol(nodeId)) {
+        auto const streetId{sourceId * N + nodeId};
         auto const& pStreet{m_streets.at(streetId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
       auto const& pNode{m_nodes.at(nodeId)};
       pNode->setCapacity(value);
       value = 0;
-      for (const auto& [streetId, _] : m_adjacency.getRow(nodeId, true)) {
+      for (const auto& targetId : m_adjacencyMatrix.getRow(nodeId)) {
+        auto const streetId{nodeId * N + targetId};
         auto const& pStreet{m_streets.at(streetId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
@@ -168,13 +165,11 @@ namespace dsm {
             Logger::buildExceptionMessage("Adjacency matrix must be square"));
       }
       Size n{rows};
-      m_adjacency = SparseMatrix<bool>(n, n);
       // each line has 2 elements
       while (!file.eof()) {
         Id index;
         double val;
         file >> index >> val;
-        m_adjacency.insert(index, val);
         const auto srcId{static_cast<Id>(index / n)};
         const auto dstId{static_cast<Id>(index % n)};
         if (!m_nodes.contains(srcId)) {
@@ -211,7 +206,6 @@ namespace dsm {
         throw std::invalid_argument(Logger::buildExceptionMessage(
             "Matrix size is too large for the current type of Id."));
       }
-      m_adjacency = SparseMatrix<bool>(n, n);
       Id index{0};
       while (!file.eof()) {
         double value;
@@ -221,7 +215,6 @@ namespace dsm {
               "Adjacency matrix elements must be positive"));
         }
         if (value > 0) {
-          m_adjacency.insert(index, true);
           const auto srcId{static_cast<Id>(index / n)};
           const auto dstId{static_cast<Id>(index % n)};
           if (!m_nodes.contains(srcId)) {
@@ -447,13 +440,13 @@ namespace dsm {
       throw std::invalid_argument(
           Logger::buildExceptionMessage("Cannot open file: " + path));
     }
+    auto const N{m_adjacencyMatrix.n()};
+    file << N << '\t' << N;
     if (isAdj) {
-      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
-      for (const auto& [id, value] : m_adjacency) {
-        file << '\n' << id << '\t' << value;
+      for (const auto& [source, target] : m_adjacencyMatrix.elements()) {
+        file << '\n' << source * N + target << '\t' << 1;
       }
     } else {
-      file << m_adjacency.getRowDim() << '\t' << m_adjacency.getColDim();
       for (const auto& [id, street] : m_streets) {
         file << '\n' << id << '\t' << street->length();
       }
@@ -522,12 +515,12 @@ namespace dsm {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} from {} to {} already exists.",
                       street->id(),
-                      street->nodePair().first,
-                      street->nodePair().second)));
+                      street->source(),
+                      street->target())));
     }
     // emplace nodes
-    const auto srcId{street->nodePair().first};
-    const auto dstId{street->nodePair().second};
+    const auto srcId{street->source()};
+    const auto dstId{street->target()};
     if (!m_nodes.contains(srcId)) {
       m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
     }
@@ -536,6 +529,7 @@ namespace dsm {
     }
     // emplace street
     m_streets.emplace(std::make_pair(street->id(), std::move(street)));
+    m_adjacencyMatrix.insert(srcId, dstId);
   }
 
   void Graph::addStreet(const Street& street) {
@@ -543,12 +537,12 @@ namespace dsm {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} from {} to {} already exists.",
                       street.id(),
-                      street.nodePair().first,
-                      street.nodePair().second)));
+                      street.source(),
+                      street.target())));
     }
     // emplace nodes
-    const auto srcId{street.nodePair().first};
-    const auto dstId{street.nodePair().second};
+    const auto srcId{street.source()};
+    const auto dstId{street.target()};
     if (!m_nodes.contains(srcId)) {
       m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
     }
@@ -557,6 +551,7 @@ namespace dsm {
     }
     // emplace street
     m_streets.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
+    m_adjacencyMatrix.insert(srcId, dstId);
   }
 
   const std::unique_ptr<Street>* Graph::street(Id source, Id destination) const {

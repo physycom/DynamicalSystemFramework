@@ -96,7 +96,6 @@ int main(int argc, char** argv) {
   graph.importCoordinates(IN_COORDS);
   std::cout << "Setting street parameters..." << '\n';
   graph.buildAdj();
-  const auto dv = graph.adjMatrix().getDegreeVector();
 
   // graph.addStreet(Street(100002, std::make_pair(0, 108)));
   // graph.addStreet(Street(100003, std::make_pair(108, 0)));
@@ -162,8 +161,7 @@ int main(int argc, char** argv) {
       std::cerr << "Street " << id << " is not a spire.\n";
     }
   }
-  const auto& adj = graph.adjMatrix();
-  const auto& degreeVector = adj.getDegreeVector();
+  auto const degreeVector = graph.adjMatrix().getOutDegreeVector();
   // create gaussian random number generator
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -174,31 +172,29 @@ int main(int argc, char** argv) {
   std::cout << "Setting traffic light parameters..." << '\n';
   for (const auto& [nodeId, node] : graph.nodeSet()) {
     auto& tl = dynamic_cast<TrafficLight&>(*node);
-    tl.setCapacity(degreeVector(nodeId));
-    tl.setTransportCapacity(degreeVector(nodeId));
+    tl.setCapacity(degreeVector[nodeId]);
+    tl.setTransportCapacity(degreeVector[nodeId]);
     double value = -1.;
     while (value < 0.) {
       value = random();
     }
-    const auto& col = adj.getCol(nodeId, true);
+    const auto& col = graph.adjMatrix().getCol(nodeId);
     std::set<Unit> streets;
-    const auto id = col.begin();
-    const auto& refLat =
-        graph.node(graph.street(id->first)->nodePair().second)->coords().value().first;
-    for (const auto& [c, value] : col) {
-      const auto& lat =
-          graph.node(graph.street(c)->nodePair().first)->coords().value().first;
+    const auto& refLat = node->coords().value().first;
+    for (const auto& id : col) {
+      const auto& lat = graph.node(id)->coords().value().first;
       // std::cout << "Lat: " << lat << " RefLat: " << refLat << '\n';
       if (lat == refLat) {
-        streets.emplace(c);
+        streets.emplace(id * graph.nNodes() + nodeId);
       }
     }
     for (auto const& streetId : streets) {
       tl.setCycle(streetId, dsm::Direction::ANY, {static_cast<dsm::Delay>(value), 0});
     }
-    for (const auto& [c, value] : col) {
-      if (streets.find(c) == streets.end()) {
-        tl.setComplementaryCycle(c, *streets.begin());
+    for (const auto& sourceId : col) {
+      auto const streetId = sourceId * graph.nNodes() + nodeId;
+      if (!streets.contains(streetId)) {
+        tl.setComplementaryCycle(streetId, *streets.begin());
       }
     }
     ++sda[streets.size() - 1];
@@ -212,11 +208,12 @@ int main(int argc, char** argv) {
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, true, SEED, 0.6};
+  auto const& adj{dynamics.graph().adjMatrix()};
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
-    for (const auto& [nodeId, degree] : dv) {
-      if (degree < 4) {
+    for (auto nodeId{0}; nodeId < adj.n(); ++nodeId) {
+      if (degreeVector[nodeId] < 4) {
         destinationNodes.push_back(nodeId);
         ++n;
       }

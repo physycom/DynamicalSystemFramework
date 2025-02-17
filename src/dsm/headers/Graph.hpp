@@ -26,13 +26,13 @@
 #include <cassert>
 #include <format>
 
+#include "AdjacencyMatrix.hpp"
 #include "DijkstraWeights.hpp"
 #include "Node.hpp"
 #include "Intersection.hpp"
 #include "TrafficLight.hpp"
 #include "Roundabout.hpp"
 #include "Station.hpp"
-#include "SparseMatrix.hpp"
 #include "Street.hpp"
 #include "../utility/DijkstraResult.hpp"
 #include "../utility/Logger.hpp"
@@ -50,9 +50,9 @@ namespace dsm {
     std::unordered_map<Id, std::unique_ptr<Node>> m_nodes;
     std::unordered_map<Id, std::unique_ptr<Street>> m_streets;
     std::unordered_map<std::string, Id> m_nodeMapping;
+    AdjacencyMatrix m_adjacencyMatrix;
     std::vector<Id> m_inputNodes;
     std::vector<Id> m_outputNodes;
-    SparseMatrix<bool> m_adjacency;
     unsigned long long m_maxAgentCapacity;
 
     /// @brief Reassign the street ids using the max node id
@@ -67,7 +67,7 @@ namespace dsm {
     Graph();
     /// @brief Construct a new Graph object
     /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
-    Graph(const SparseMatrix<bool>& adj);
+    Graph(AdjacencyMatrix const& adj);
     /// @brief Construct a new Graph object
     /// @param streetSet A map of streets representing the graph's streets
     Graph(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
@@ -81,7 +81,7 @@ namespace dsm {
             this->m_streets.emplace(pair.first, pair.second.get());
           });
       m_nodeMapping = other.m_nodeMapping;
-      m_adjacency = other.m_adjacency;
+      m_adjacencyMatrix = other.m_adjacencyMatrix;
       m_inputNodes = other.m_inputNodes;
       m_outputNodes = other.m_outputNodes;
     }
@@ -97,7 +97,7 @@ namespace dsm {
                                              std::make_unique<Street>(*pair.second));
           });
       m_nodeMapping = other.m_nodeMapping;
-      m_adjacency = other.m_adjacency;
+      m_adjacencyMatrix = other.m_adjacencyMatrix;
       m_inputNodes = other.m_inputNodes;
       m_outputNodes = other.m_outputNodes;
 
@@ -222,8 +222,8 @@ namespace dsm {
     void addStreets(T1&& street, Tn&&... streets);
 
     /// @brief Get the graph's adjacency matrix
-    /// @return A std::shared_ptr to the graph's adjacency matrix
-    const SparseMatrix<bool>& adjMatrix() const { return m_adjacency; }
+    /// @return A const reference to the graph's adjacency matrix
+    AdjacencyMatrix const& adjMatrix() const { return m_adjacencyMatrix; }
     /// @brief Get the graph's number of nodes
     /// @return size_t The number of nodes in the graph
     size_t nNodes() const { return m_nodes.size(); }
@@ -332,6 +332,7 @@ namespace dsm {
     }
     // emplace street
     m_streets.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
+    m_adjacencyMatrix.insert(srcId, dstId);
   }
 
   template <typename T1, typename... Tn>
@@ -377,7 +378,7 @@ namespace dsm {
     }
 
     const size_t n_nodes{m_nodes.size()};
-    auto adj{m_adjacency};
+    auto adj{m_adjacencyMatrix};
 
     std::unordered_set<Id> visitedNodes;
     std::vector<std::pair<Id, double>> dist(n_nodes);
@@ -404,22 +405,21 @@ namespace dsm {
 
       unvisitedNodes.erase(source);
       visitedNodes.emplace(source);
-
-      const auto& neighbors{adj.getRow(source)};
-      for (const auto& neighbour : neighbors) {
+      auto const& neighbors{adj.getRow(source)};
+      for (auto const& neighbour : neighbors) {
         // if the node has already been visited, skip it
-        if (visitedNodes.find(neighbour.first) != visitedNodes.end()) {
+        if (visitedNodes.find(neighbour) != visitedNodes.end()) {
           continue;
         }
-        double streetWeight = getStreetWeight(this, source, neighbour.first);
+        double streetWeight = getStreetWeight(this, source, neighbour);
         // if current path is shorter than the previous one, update the distance
-        if (streetWeight + dist[source].second < dist[neighbour.first].second) {
-          dist[neighbour.first].second = streetWeight + dist[source].second;
-          prev[neighbour.first] = std::make_pair(source, dist[neighbour.first].second);
+        if (streetWeight + dist[source].second < dist[neighbour].second) {
+          dist[neighbour].second = streetWeight + dist[source].second;
+          prev[neighbour] = std::make_pair(source, dist[neighbour].second);
         }
       }
 
-      adj.emptyColumn(source);
+      adj.clearCol(source);
     }
 
     std::vector<Id> path{destination};
