@@ -261,8 +261,6 @@ namespace dsm {
     /// @throws std::invalid_argument If the itinerary's destination is not a node of the graph
     void addItinerary(std::unique_ptr<Itinerary> itinerary);
 
-    void enableCache();
-
     /// @brief Reset the simulation time
     void resetTime();
 
@@ -360,10 +358,9 @@ namespace dsm {
       Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
     }
     for (const auto& nodeId : this->m_graph.outputNodes()) {
-      addItinerary(Itinerary{nodeId, nodeId});
-      m_updatePath(m_itineraries.at(nodeId));
+      addItinerary(nodeId, nodeId);
     }
-    // updatePaths();
+    updatePaths();
   }
 
   template <typename agent_t>

@@ -340,7 +340,7 @@ namespace dsm {
             m_outputNodes.push_back(nodeIndex);
           }
           if ((highway.find("in_out") != std::string::npos) ||
-              (highway.find("incoming_only") != std::string::npos)) {
+              (highway.find("ingoing_only") != std::string::npos)) {
             Logger::debug(std::format("Setting node {} as an input node", nodeIndex));
             m_inputNodes.push_back(nodeIndex);
           }

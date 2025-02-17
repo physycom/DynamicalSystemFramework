@@ -32,10 +32,10 @@ int main() {
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, false, std::nullopt, 0.95};
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 118)));
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(1, 115)));
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 112)));
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(3, 109)));
+  dynamics.addItinerary(0, 118);
+  dynamics.addItinerary(1, 115);
+  dynamics.addItinerary(2, 112);
+  dynamics.addItinerary(3, 109);
   dynamics.setErrorProbability(0.3);
   dynamics.updatePaths();
 
