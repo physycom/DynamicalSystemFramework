@@ -23,6 +23,7 @@
 #include <exception>
 #include <fstream>
 #include <filesystem>
+#include <functional>
 #include <tbb/parallel_for_each.h>
 
 #include "DijkstraWeights.hpp"
@@ -72,6 +73,7 @@ namespace dsm {
   private:
     std::map<Id, std::unique_ptr<agent_t>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
+    std::function<double(const Graph*, Id, Id)> m_weightFunction;
     bool m_bCacheEnabled;
 
   protected:
@@ -97,7 +99,6 @@ namespace dsm {
         }
       }
 
-      auto const dimension = static_cast<Size>(m_graph.nNodes());
       auto const destinationID = pItinerary->destination();
       std::vector<double> shortestDistances(m_graph.nNodes());
       tbb::parallel_for_each(
@@ -108,7 +109,7 @@ namespace dsm {
             if (nodeId == destinationID) {
               shortestDistances[nodeId] = -1.;
             } else {
-              auto result = m_graph.shortestPath(nodeId, destinationID);
+              auto result = m_graph.shortestPath(nodeId, destinationID, m_weightFunction);
               if (result.has_value()) {
                 shortestDistances[nodeId] = result.value().distance();
               } else {
@@ -132,8 +133,8 @@ namespace dsm {
         auto const& row{m_graph.adjMatrix().getRow(nodeId)};
         for (const auto nextNodeId : row) {
           if (nextNodeId == destinationID) {
-            if (std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
-                         minDistance) < 1.)  // 1 meter tolerance between shortest paths
+            if (std::abs(m_weightFunction(&m_graph, nodeId, nextNodeId) - minDistance) <
+                1.)  // 1 meter tolerance between shortest paths
             {
               path.insert(nodeId, nextNodeId);
             } else {
@@ -151,9 +152,8 @@ namespace dsm {
             continue;
           }
           bool const bIsMinDistance{
-              std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() +
-                       distance - minDistance) <
-              1.};  // 1 meter tolerance between shortest paths
+              std::abs(m_weightFunction(&m_graph, nodeId, nextNodeId) + distance -
+                       minDistance) < 1.};  // 1 meter tolerance between shortest paths
           if (bIsMinDistance) {
             path.insert(nodeId, nextNodeId);
           } else {
@@ -198,6 +198,8 @@ namespace dsm {
 
     /// @brief Update the paths of the itineraries based on the actual travel times
     virtual void updatePaths();
+
+    void setWeightFunction(std::function<double(const Graph*, Id, Id)> weightFunction);
 
     /// @brief Set the destination nodes
     /// @param destinationNodes The destination nodes (as an initializer list)
@@ -343,7 +345,8 @@ namespace dsm {
   Dynamics<agent_t>::Dynamics(Graph& graph,
                               bool useCache,
                               std::optional<unsigned int> seed)
-      : m_bCacheEnabled{useCache},
+      : m_weightFunction{weight_functions::streetLength},
+        m_bCacheEnabled{useCache},
         m_graph{std::move(graph)},
         m_time{0},
         m_previousSpireTime{0},
@@ -369,6 +372,12 @@ namespace dsm {
         m_itineraries.cbegin(), m_itineraries.cend(), [this](auto const& pair) -> void {
           this->m_updatePath(pair.second);
         });
+  }
+
+  template <typename agent_t>
+  void Dynamics<agent_t>::setWeightFunction(
+      std::function<double(const Graph*, Id, Id)> weightFunction) {
+    m_weightFunction = weightFunction;
   }
 
   template <typename agent_t>
