@@ -15,7 +15,7 @@ int main() {
   graph.importOSMNodes("../test/data/forlì_nodes.csv");
   graph.importOSMEdges("../test/data/forlì_edges.csv");
   graph.buildAdj();
-  auto const& adj{graph.adjMatrix()};
+  auto const& adj{graph.adjacencyMatrix()};
   auto const N{adj.n()};
   SparseMatrix<bool> sm(N, N);
   for (const auto& [srcId, dstId] : adj.elements()) {

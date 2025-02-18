@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
       std::cerr << "Street " << id << " is not a spire.\n";
     }
   }
-  auto const degreeVector = graph.adjMatrix().getOutDegreeVector();
+  auto const degreeVector = graph.adjacencyMatrix().getOutDegreeVector();
   // create gaussian random number generator
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
     while (value < 0.) {
       value = random();
     }
-    const auto& col = graph.adjMatrix().getCol(nodeId);
+    const auto& col = graph.adjacencyMatrix().getCol(nodeId);
     std::set<Unit> streets;
     const auto& refLat = node->coords().value().first;
     for (const auto& id : col) {
@@ -208,7 +208,7 @@ int main(int argc, char** argv) {
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, true, SEED, 0.6};
-  auto const& adj{dynamics.graph().adjMatrix()};
+  auto const& adj{dynamics.graph().adjacencyMatrix()};
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;

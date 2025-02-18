@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
       std::cerr << "Street " << id << " is not a spire.\n";
     }
   }
-  const auto& adj = graph.adjMatrix();
+  const auto& adj = graph.adjacencyMatrix();
   auto const degreeVector = adj.getOutDegreeVector();
 
   std::cout << "Setting roundabouts parameters..." << '\n';
