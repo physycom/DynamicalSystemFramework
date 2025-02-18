@@ -16,14 +16,14 @@ int main() {
   Graph graph{};
   std::cout << "Importing matrix.dat...\n";
   graph.importMatrix("../test/data/rawMatrix.dat", false);
-  std::cout << "Number of nodes: " << graph.nodeSet().size() << '\n'
-            << "Number of streets: " << graph.streetSet().size() << '\n';
-  for (auto& streetPair : graph.streetSet()) {
+  std::cout << "Number of nodes: " << graph.nodes().size() << '\n'
+            << "Number of streets: " << graph.edges().size() << '\n';
+  for (auto& streetPair : graph.edges()) {
     auto& street = streetPair.second;
     street->setCapacity(100);
     street->setMaxSpeed(10.);
   }
-  for (auto& nodePair : graph.nodeSet()) {
+  for (auto& nodePair : graph.nodes()) {
     auto& node = nodePair.second;
     node->setCapacity(10);
   }

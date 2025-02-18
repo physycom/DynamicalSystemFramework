@@ -126,7 +126,7 @@ TEST_CASE("Test construction from edge map") {
   g.addEdge<Street>(2, std::make_pair<Id, Id>(1, 3));
   g.addEdge<Street>(3, std::make_pair<Id, Id>(2, 3));
   g.addEdge<Street>(4, std::make_pair<Id, Id>(3, 4));
-  AdjacencyMatrix adj(g.streetSet());
+  AdjacencyMatrix adj(g.edges());
 
   auto offsets = test::offsets(adj);
   auto indices = test::indices(adj);

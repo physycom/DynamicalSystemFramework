@@ -139,7 +139,7 @@ TEST_CASE("Graph") {
     GIVEN("A Graph object with the adj matrix imported") {
       Graph graph{};
       graph.importMatrix("./data/matrix.dsm");
-      auto const& nodes = graph.nodeSet();
+      auto const& nodes = graph.nodes();
       WHEN("We import the coordinates in dsm format") {
         graph.importCoordinates("./data/coords.dsm");
         THEN("The coordinates are correctly imported") {
@@ -155,7 +155,7 @@ TEST_CASE("Graph") {
           CHECK(adj(2, 0));
           CHECK(adj(2, 2));
         }
-        auto const& streets{graph.streetSet()};
+        auto const& streets{graph.edges()};
         THEN("The streets angles are correctly computed") {
           CHECK_EQ(streets.at(1)->angle(), std::numbers::pi / 2);
           CHECK_EQ(streets.at(3)->angle(), 3 * std::numbers::pi / 2);
@@ -187,10 +187,10 @@ TEST_CASE("Graph") {
     CHECK(graph.adjMatrix().operator()(2, 1));
     CHECK_EQ(graph.nNodes(), 3);
     CHECK_EQ(graph.nEdges(), 4);
-    CHECK_EQ(graph.streetSet()[1]->length(), 500);
-    CHECK_EQ(graph.streetSet()[3]->length(), 200);
-    CHECK_EQ(graph.streetSet()[5]->length(), 1);
-    CHECK_EQ(graph.streetSet()[7]->length(), 3);
+    CHECK_EQ(graph.edges().at(1)->length(), 500);
+    CHECK_EQ(graph.edges().at(3)->length(), 200);
+    CHECK_EQ(graph.edges().at(5)->length(), 1);
+    CHECK_EQ(graph.edges().at(7)->length(), 3);
   }
   SUBCASE("importMatrix - EXCEPTIONS") {
     // This tests the importMatrix throws an exception when the file has not the correct format or is not found
@@ -607,7 +607,7 @@ TEST_CASE("Dijkstra") {
       graph.buildAdj();
       WHEN("We adjust node capacities") {
         graph.adjustNodeCapacities();
-        auto const& nodes = graph.nodeSet();
+        auto const& nodes = graph.nodes();
         THEN("The node capacities are correct") {
           CHECK_EQ(nodes.at(0)->capacity(), 1);
           CHECK_EQ(nodes.at(1)->capacity(), 4);
@@ -625,7 +625,7 @@ TEST_CASE("Dijkstra") {
       }
       WHEN("We normalize street capacities") {
         // graph.normalizeStreetCapacities();
-        auto const& streets = graph.streetSet();
+        auto const& streets = graph.edges();
         THEN("The street capacities are correct") {
           CHECK_EQ(streets.at(1)->capacity(), 2);
           CHECK_EQ(streets.at(7)->capacity(), 16);

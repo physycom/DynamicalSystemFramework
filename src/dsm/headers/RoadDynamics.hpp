@@ -192,7 +192,7 @@ namespace dsm {
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
         m_forcePriorities{false} {
-    for (const auto& [streetId, street] : this->m_graph.streetSet()) {
+    for (const auto& [streetId, street] : this->m_graph.edges()) {
       m_streetTails.emplace(streetId, 0);
       m_turnCounts.emplace(streetId, std::array<unsigned long long, 4>{0, 0, 0, 0});
       // fill turn mapping as [streetId, [left street Id, straight street Id, right street Id, U self street Id]]
@@ -201,7 +201,7 @@ namespace dsm {
       const auto& srcNodeId = street->target();
       for (const auto& targetId : this->m_graph.adjMatrix().getRow(srcNodeId)) {
         auto const ss = srcNodeId * this->m_graph.nNodes() + targetId;
-        const auto& delta = street->angle() - this->m_graph.streetSet()[ss]->angle();
+        const auto& delta = street->angle() - this->m_graph.street(ss)->angle();
         if (std::abs(delta) < std::numbers::pi) {
           if (delta < 0.) {
             m_turnMapping[streetId][dsm::Direction::RIGHT] = ss;
@@ -391,7 +391,7 @@ namespace dsm {
       if (!(nextStreet->isFull())) {
         if (this->agents().at(agentId)->streetId().has_value()) {
           const auto streetId = this->agents().at(agentId)->streetId().value();
-          auto delta = nextStreet->angle() - this->m_graph.streetSet()[streetId]->angle();
+          auto delta = nextStreet->angle() - this->m_graph.street(streetId)->angle();
           if (delta > std::numbers::pi) {
             delta -= 2 * std::numbers::pi;
           } else if (delta < -std::numbers::pi) {
@@ -501,7 +501,7 @@ namespace dsm {
           continue;
         }
         const auto& nextStreet{
-            this->m_graph.streetSet()[this->m_nextStreetId(agentId, srcNode->id())]};
+            this->m_graph.street(this->m_nextStreetId(agentId, srcNode->id()))};
         if (nextStreet->isFull()) {
           continue;
         }
@@ -571,13 +571,13 @@ namespace dsm {
       }
       Id streetId{0};
       do {
-        auto streetIt = this->m_graph.streetSet().begin();
+        auto streetIt = this->m_graph.edges().begin();
         Size step = streetDist(this->m_generator);
         std::advance(streetIt, step);
         streetId = streetIt->first;
-      } while (this->m_graph.streetSet()[streetId]->isFull() &&
+      } while (this->m_graph.street(streetId)->isFull() &&
                this->nAgents() < this->m_graph.maxCapacity());
-      const auto& street{this->m_graph.streetSet()[streetId]};
+      const auto& street{this->m_graph.street(streetId)};
       this->addAgent(agentId, itineraryId, street->nodePair().first);
       auto const& pAgent{this->agents().at(agentId)};
       pAgent->setStreetId(streetId);
@@ -722,8 +722,8 @@ namespace dsm {
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
     auto const N{this->m_graph.nNodes()};
     std::for_each(
-        this->m_graph.nodeSet().cbegin(),
-        this->m_graph.nodeSet().cend(),
+        this->m_graph.nodes().cbegin(),
+        this->m_graph.nodes().cend(),
         [&](const auto& pair) {
           for (auto const& sourceId : this->m_graph.adjMatrix().getCol(pair.first)) {
             auto const streetId = sourceId * N + pair.first;
@@ -741,8 +741,8 @@ namespace dsm {
                   [this](const auto& agentId) { this->removeAgent(agentId); });
     m_agentsToRemove.clear();
     // Move transport capacity agents from each node
-    std::for_each(this->m_graph.nodeSet().cbegin(),
-                  this->m_graph.nodeSet().cend(),
+    std::for_each(this->m_graph.nodes().cbegin(),
+                  this->m_graph.nodes().cend(),
                   [&](const auto& pair) {
                     for (auto i = 0; i < pair.second->transportCapacity(); ++i) {
                       this->m_evolveNode(pair.second);
@@ -768,7 +768,7 @@ namespace dsm {
     }
     auto const nCycles{static_cast<double>(this->m_time - m_previousOptimizationTime) /
                        m_dataUpdatePeriod.value()};
-    for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
+    for (const auto& [nodeId, pNode] : this->m_graph.nodes()) {
       if (!pNode->isTrafficLight()) {
         continue;
       }

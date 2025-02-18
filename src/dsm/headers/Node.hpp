@@ -102,8 +102,8 @@ namespace dsm {
     /// @return Size The node's transport capacity
     int transportCapacity() const { return m_transportCapacity; }
 
-    virtual double density() const = 0;
-    virtual bool isFull() const = 0;
+    virtual double density() const { return 0.; };
+    virtual bool isFull() const { return false; };
 
     virtual bool isIntersection() const noexcept { return false; }
     virtual bool isTrafficLight() const noexcept { return false; }

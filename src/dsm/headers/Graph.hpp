@@ -28,7 +28,7 @@
 
 #include "AdjacencyMatrix.hpp"
 #include "DijkstraWeights.hpp"
-#include "Node.hpp"
+#include "Network.hpp"
 #include "Intersection.hpp"
 #include "TrafficLight.hpp"
 #include "Roundabout.hpp"
@@ -45,11 +45,8 @@ namespace dsm {
   /// @brief The Graph class represents a graph in the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
-  class Graph {
+  class Graph : public Network<Node, Street> {
   private:
-    std::unordered_map<Id, std::unique_ptr<Node>> m_nodes;
-    std::unordered_map<Id, std::unique_ptr<Street>> m_streets;
-    AdjacencyMatrix m_adjacencyMatrix;
     std::unordered_map<std::string, Id> m_nodeMapping;
     std::vector<Id> m_inputNodes;
     std::vector<Id> m_outputNodes;
@@ -63,6 +60,8 @@ namespace dsm {
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
 
+    void m_addMissingNodes(Id const nodeId) final;
+
   public:
     Graph();
     /// @brief Construct a new Graph object
@@ -72,14 +71,13 @@ namespace dsm {
     /// @param streetSet A map of streets representing the graph's streets
     Graph(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
 
-    Graph(const Graph& other) {
+    Graph(const Graph& other) : Network{AdjacencyMatrix()} {
       std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
         this->m_nodes.emplace(pair.first, pair.second.get());
       });
-      std::for_each(
-          other.m_streets.begin(), other.m_streets.end(), [this](const auto& pair) {
-            this->m_streets.emplace(pair.first, pair.second.get());
-          });
+      std::for_each(other.m_edges.begin(), other.m_edges.end(), [this](const auto& pair) {
+        this->m_edges.emplace(pair.first, pair.second.get());
+      });
       m_nodeMapping = other.m_nodeMapping;
       m_adjacencyMatrix = other.m_adjacencyMatrix;
       m_inputNodes = other.m_inputNodes;
@@ -91,11 +89,10 @@ namespace dsm {
         this->m_nodes.insert_or_assign(pair.first,
                                        std::unique_ptr<Node>(pair.second.get()));
       });
-      std::for_each(
-          other.m_streets.begin(), other.m_streets.end(), [this](const auto& pair) {
-            this->m_streets.insert_or_assign(pair.first,
-                                             std::make_unique<Street>(*pair.second));
-          });
+      std::for_each(other.m_edges.begin(), other.m_edges.end(), [this](const auto& pair) {
+        this->m_edges.insert_or_assign(pair.first,
+                                       std::make_unique<Street>(*pair.second));
+      });
       m_nodeMapping = other.m_nodeMapping;
       m_adjacencyMatrix = other.m_adjacencyMatrix;
       m_inputNodes = other.m_inputNodes;
@@ -157,18 +154,6 @@ namespace dsm {
     /// @throws std::invalid_argument if the file is not found or invalid
     void exportMatrix(std::string path = "./matrix.dsm", bool isAdj = true);
 
-    /// @brief Add a node to the graph
-    /// @param node A std::unique_ptr to the node to add
-    void addNode(std::unique_ptr<Node> node);
-    /// @brief Add a node of type node_t to the graph
-    /// @param id The node's id
-    /// @param args The node's arguments to forward to the constructor
-    /// @return A reference to the added node
-    template <typename node_t, typename... TArgs>
-      requires(std::is_base_of_v<Node, node_t>,
-               std::constructible_from<node_t, Id, TArgs...>)
-    node_t& addNode(Id id, TArgs&&... args);
-
     template <typename T1, typename... Tn>
       requires is_node_v<std::remove_reference_t<T1>> &&
                (is_node_v<std::remove_reference_t<Tn>> && ...)
@@ -201,17 +186,6 @@ namespace dsm {
     /// @throws std::invalid_argument if the node does not exist
     Station& makeStation(Id nodeId, const unsigned int managementTime);
 
-    /// @brief Add an edge of type edge_t to the graph
-    /// @param edge A std::unique_ptr to the edge to add
-    /// @param args The edge's arguments to forward to the constructor
-    /// @return A reference to the added edge
-    template <typename edge_t, typename... TArgs>
-      requires(std::is_base_of_v<Street, edge_t>,
-               std::constructible_from<edge_t, Id, TArgs...>)
-    edge_t& addEdge(Id id, TArgs&&... args);
-    /// @brief Add a street to the graph
-    /// @param street A std::unique_ptr to the street to add
-    void addStreet(std::unique_ptr<Street> street);
     /// @brief Add a street to the graph
     /// @param street A reference to the street to add
     void addStreet(const Street& street);
@@ -231,31 +205,12 @@ namespace dsm {
     /// @brief Get the graph's number of nodes
     /// @return size_t The number of nodes in the graph
     size_t nNodes() const { return m_nodes.size(); }
-    /// @brief Get the graph's node map
-    /// @return A std::unordered_map containing the graph's nodes
-    const std::unordered_map<Id, std::unique_ptr<Node>>& nodeSet() const {
-      return m_nodes;
-    }
-    /// @brief Get the graph's node map
-    /// @return A std::unordered_map containing the graph's nodes
-    std::unordered_map<Id, std::unique_ptr<Node>>& nodeSet() { return m_nodes; }
     /// @brief Get a node from the graph
     /// @param id The node's id
     const std::unique_ptr<Node>& node(Id id) const { return m_nodes.at(id); }
-    /// @brief Get the Graph's number of streets
-    /// @return size_t The number of streets in the graph
-    size_t nEdges() const { return m_streets.size(); }
-    /// @brief Get the graph's street map
-    /// @return A std::unordered_map containing the graph's streets
-    const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet() const {
-      return m_streets;
-    }
-    /// @brief Get the graph's street map
-    /// @return A std::unordered_map containing the graph's streets
-    std::unordered_map<Id, std::unique_ptr<Street>>& streetSet() { return m_streets; }
     /// @brief Get a street from the graph
     /// @param id The street's id
-    const std::unique_ptr<Street>& street(Id id) const { return m_streets.at(id); }
+    const std::unique_ptr<Street>& street(Id id) const { return m_edges.at(id); }
     /// @brief Get a street from the graph
     /// @param source The source node
     /// @param destination The destination node
@@ -295,13 +250,6 @@ namespace dsm {
         Id source, Id destination, Func f = weight_functions::streetLength) const;
   };
 
-  template <typename node_t, typename... TArgs>
-    requires(std::is_base_of_v<Node, node_t>,
-             std::constructible_from<node_t, Id, TArgs...>)
-  node_t& Graph::addNode(Id id, TArgs&&... args) {
-    addNode(std::make_unique<node_t>(id, std::forward<TArgs>(args)...));
-    return dynamic_cast<node_t&>(*m_nodes.at(id));
-  }
   template <typename T1, typename... Tn>
     requires is_node_v<std::remove_reference_t<T1>> &&
              (is_node_v<std::remove_reference_t<Tn>> && ...)
@@ -310,18 +258,10 @@ namespace dsm {
     addNodes(std::forward<Tn>(nodes)...);
   }
 
-  template <typename edge_t, typename... TArgs>
-    requires(std::is_base_of_v<Street, edge_t>,
-             std::constructible_from<edge_t, Id, TArgs...>)
-  edge_t& Graph::addEdge(Id id, TArgs&&... args) {
-    addStreet(std::make_unique<edge_t>(id, std::forward<TArgs>(args)...));
-    return dynamic_cast<edge_t&>(*m_streets.at(id));
-  }
-
   template <typename T1>
     requires is_street_v<std::remove_reference_t<T1>>
   void Graph::addStreets(T1&& street) {
-    if (m_streets.contains(street.id())) {
+    if (m_edges.contains(street.id())) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} already exists.", street.id())));
     }
@@ -335,7 +275,7 @@ namespace dsm {
       m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
     }
     // emplace street
-    m_streets.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
+    m_edges.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
     m_adjacencyMatrix.insert(srcId, dstId);
   }
 

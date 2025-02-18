@@ -98,11 +98,11 @@ int main(int argc, char** argv) {
     graph.makeRoundabout(i);
   }
   std::cout << "Making every street a spire...\n";
-  for (const auto& [id, street] : graph.streetSet()) {
+  for (const auto& [id, street] : graph.edges()) {
     graph.makeSpireStreet(id);
   }
   // check isSpire for each street
-  for (const auto& [id, street] : graph.streetSet()) {
+  for (const auto& [id, street] : graph.edges()) {
     if (!street->isSpire()) {
       std::cerr << "Street " << id << " is not a spire.\n";
     }
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
   auto const degreeVector = adj.getOutDegreeVector();
 
   std::cout << "Setting roundabouts parameters..." << '\n';
-  for (const auto& [nodeId, node] : graph.nodeSet()) {
+  for (const auto& [nodeId, node] : graph.nodes()) {
     auto& rb = dynamic_cast<Roundabout&>(*node);
     rb.setCapacity(degreeVector[nodeId]);
     rb.setTransportCapacity(degreeVector[nodeId]);
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_DENSITIES
   std::ofstream streetDensity(OUT_FOLDER + "densities.csv");
   streetDensity << "time";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     streetDensity << ';' << id;
   }
   streetDensity << '\n';
@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_FLOWS
   std::ofstream streetFlow(OUT_FOLDER + "flows.csv");
   streetFlow << "time";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     streetFlow << ';' << id;
   }
   streetFlow << '\n';
@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_SPEEDS
   std::ofstream streetSpeed(OUT_FOLDER + "speeds.csv");
   streetSpeed << "time;";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     streetSpeed << ';' << id;
   }
   streetSpeed << '\n';
@@ -175,7 +175,7 @@ int main(int argc, char** argv) {
   std::ofstream inSpires(OUT_FOLDER + "in_spires.csv");
   outSpires << "time";
   inSpires << "time";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     outSpires << ';' << id;
     inSpires << ';' << id;
   }
@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_OUT_SPIRES
       outSpires << dynamics.time();
       inSpires << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         auto& spire = dynamic_cast<SpireStreet&>(*street);
         outSpires << ';' << spire.outputCounts(false);
         inSpires << ';' << spire.inputCounts(false);
@@ -247,14 +247,14 @@ int main(int argc, char** argv) {
     if (dynamics.time() % 10 == 0) {
 #ifdef PRINT_DENSITIES
       streetDensity << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         streetDensity << ';' << street->density();
       }
       streetDensity << std::endl;
 #endif
 #ifdef PRINT_FLOWS
       streetFlow << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& meanSpeed = dynamics.streetMeanSpeed(id);
         if (meanSpeed.has_value()) {
           streetFlow << ';' << meanSpeed.value() * street->density();
@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
 #endif
 #ifdef PRINT_SPEEDS
       streetSpeed << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& meanSpeed = dynamics.streetMeanSpeed(id);
         if (meanSpeed.has_value()) {
           streetSpeed << ';' << meanSpeed.value();

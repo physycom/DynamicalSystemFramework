@@ -562,23 +562,23 @@ TEST_CASE("Dynamics") {
     GIVEN(
         "A dynamics object, a network with traffic lights, an itinerary and "
         "an agent") {
-      TrafficLight tl{1, 4};
       Street s1{1, std::make_pair(0, 1), 30., 15.};
       Street s2{7, std::make_pair(1, 2), 30., 15.};
       Street s3{16, std::make_pair(3, 1), 30., 15.};
       Street s4{9, std::make_pair(1, 4), 30., 15.};
+      Graph graph2;
+      graph2.addNode<TrafficLight>(1, 4);
+      graph2.addStreets(s1, s2, s3, s4);
+      graph2.buildAdj();
+      auto& tl = dynamic_cast<TrafficLight&>(*graph2.node(1));
       tl.setCycle(1, dsm::Direction::RIGHT, {2, 0});
       tl.setCycle(7, dsm::Direction::RIGHT, {2, 0});
       tl.setCycle(16, dsm::Direction::RIGHT, {2, 2});
       tl.setCycle(9, dsm::Direction::RIGHT, {2, 2});
-      Graph graph2;
-      graph2.addNode(std::make_unique<TrafficLight>(tl));
-      graph2.addStreets(s1, s2, s3, s4);
-      graph2.buildAdj();
       Dynamics dynamics{graph2, false, 69};
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
+      dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
-      dynamics.addAgent(0, 0, 0);
+      dynamics.addAgent(0, 2, 0);
       WHEN("We evolve the dynamics") {
         dynamics.evolve(false);
         THEN(
@@ -617,18 +617,16 @@ TEST_CASE("Dynamics") {
 
       Graph graph2;
       {
-        auto tl = TrafficLight{1, 6};
+        graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
+        auto& tl = dynamic_cast<TrafficLight&>(*graph2.node(1));
         tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 2});
         tl.setCycle(1, dsm::Direction::LEFT, {1, 4});
         tl.setCycle(11, dsm::Direction::ANY, {3, 2});
         tl.setComplementaryCycle(8, 11);
         tl.setComplementaryCycle(21, 11);
-        tl.setCoords({0., 0.});
-
-        graph2.addNode(std::make_unique<TrafficLight>(tl));
       }
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
-      auto const& nodes = graph2.nodeSet();
+      auto const& nodes = graph2.nodes();
       nodes.at(0)->setCoords({0., -1.});
       nodes.at(2)->setCoords({0., 1.});
       nodes.at(3)->setCoords({-1., 0.});
@@ -682,19 +680,17 @@ TEST_CASE("Dynamics") {
 
       Graph graph2;
       {
-        auto tl = TrafficLight{1, 6};
+        graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
+        auto& tl = dynamic_cast<TrafficLight&>(*graph2.node(1));
         // Now testing red light = NO PHASE
         tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 0});
         tl.setCycle(1, dsm::Direction::LEFT, {1, 2});
         tl.setCycle(11, dsm::Direction::ANY, {3, 0});
         tl.setComplementaryCycle(8, 11);
         tl.setComplementaryCycle(21, 11);
-        tl.setCoords({0., 0.});
-
-        graph2.addNode(std::make_unique<TrafficLight>(tl));
       }
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
-      auto const& nodes = graph2.nodeSet();
+      auto const& nodes = graph2.nodes();
       nodes.at(0)->setCoords({0., -1.});
       nodes.at(2)->setCoords({0., 1.});
       nodes.at(3)->setCoords({-1., 0.});
@@ -911,7 +907,7 @@ TEST_CASE("Dynamics") {
     Graph graph2;
     graph2.addStreets(s1, s2, s3, s4);
     graph2.buildAdj();
-    for (const auto& [nodeId, node] : graph2.nodeSet()) {
+    for (const auto& [nodeId, node] : graph2.nodes()) {
       node->setCapacity(4);
       node->setTransportCapacity(4);
     }
@@ -1050,10 +1046,10 @@ TEST_CASE("Dynamics") {
     GIVEN("A network with a spireStreet and a normal street") {
       Graph graph2;
       graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
-      graph2.addEdge<Street>(1, std::make_pair(1, 2), 10., 10.);
+      graph2.addEdge(1, std::make_pair(1, 2), 10., 10.);
       graph2.buildAdj();
       Dynamics dynamics{graph2, false, 69};
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
+      dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       dynamics.addAgent(0, 2, 0);
       WHEN("We evolve the dynamics") {

@@ -103,8 +103,8 @@ namespace dsm {
       auto const destinationID = pItinerary->destination();
       std::vector<double> shortestDistances(m_graph.nNodes());
       tbb::parallel_for_each(
-          m_graph.nodeSet().cbegin(),
-          m_graph.nodeSet().cend(),
+          m_graph.nodes().cbegin(),
+          m_graph.nodes().cend(),
           [this, &shortestDistances, &destinationID](auto const& it) -> void {
             auto const nodeId{it.first};
             if (nodeId == destinationID) {
@@ -122,7 +122,7 @@ namespace dsm {
           });
       AdjacencyMatrix path;
       // cycle over the nodes
-      for (const auto& [nodeId, node] : m_graph.nodeSet()) {
+      for (const auto& [nodeId, node] : m_graph.nodes()) {
         if (nodeId == destinationID) {
           continue;
         }
@@ -431,7 +431,7 @@ namespace dsm {
           std::format("Agent with id {} already exists.", agent->id())));
     }
     m_agents.emplace(agent->id(), std::move(agent));
-    // Logger::debug(std::format("Added agent with id {} from node {} to node {}",
+    // Logger::info(std::format("Added agent with id {} from node {} to node {}",
     //                           m_agents.rbegin()->first,
     //                           m_agents.rbegin()->second->srcNodeId().value_or(-1),
     //                           m_agents.rbegin()->second->itineraryId()));
@@ -504,7 +504,7 @@ namespace dsm {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Itinerary with id {} already exists.", itinerary->id())));
     }
-    if (!m_graph.nodeSet().contains(itinerary->destination())) {
+    if (!m_graph.nodes().contains(itinerary->destination())) {
       throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
           "Destination node with id {} not found", itinerary->destination())));
     }
@@ -545,8 +545,8 @@ namespace dsm {
   template <typename agent_t>
   Measurement<double> Dynamics<agent_t>::streetMeanSpeed() const {
     std::vector<double> speeds;
-    speeds.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
+    speeds.reserve(m_graph.edges().size());
+    for (const auto& [streetId, street] : m_graph.edges()) {
       speeds.push_back(streetMeanSpeed(streetId));
     }
     return Measurement<double>(speeds);
@@ -556,8 +556,8 @@ namespace dsm {
   Measurement<double> Dynamics<agent_t>::streetMeanSpeed(double threshold,
                                                          bool above) const {
     std::vector<double> speeds;
-    speeds.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
+    speeds.reserve(m_graph.nEdges());
+    for (const auto& [streetId, street] : m_graph.edges()) {
       if (above && (street->density(true) > threshold)) {
         speeds.push_back(streetMeanSpeed(streetId));
       } else if (!above && (street->density(true) < threshold)) {
@@ -569,18 +569,18 @@ namespace dsm {
 
   template <typename agent_t>
   Measurement<double> Dynamics<agent_t>::streetMeanDensity(bool normalized) const {
-    if (m_graph.streetSet().empty()) {
+    if (m_graph.edges().empty()) {
       return Measurement(0., 0.);
     }
     std::vector<double> densities;
-    densities.reserve(m_graph.streetSet().size());
+    densities.reserve(m_graph.edges().size());
     if (normalized) {
-      for (const auto& [streetId, street] : m_graph.streetSet()) {
+      for (const auto& [streetId, street] : m_graph.edges()) {
         densities.push_back(street->density(true));
       }
     } else {
       double sum{0.};
-      for (const auto& [streetId, street] : m_graph.streetSet()) {
+      for (const auto& [streetId, street] : m_graph.edges()) {
         densities.push_back(street->density(false) * street->length());
         sum += street->length();
       }
@@ -596,8 +596,8 @@ namespace dsm {
   template <typename agent_t>
   Measurement<double> Dynamics<agent_t>::streetMeanFlow() const {
     std::vector<double> flows;
-    flows.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
+    flows.reserve(m_graph.edges().size());
+    for (const auto& [streetId, street] : m_graph.edges()) {
       flows.push_back(street->density() * this->streetMeanSpeed(streetId));
     }
     return Measurement<double>(flows);
@@ -607,8 +607,8 @@ namespace dsm {
   Measurement<double> Dynamics<agent_t>::streetMeanFlow(double threshold,
                                                         bool above) const {
     std::vector<double> flows;
-    flows.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
+    flows.reserve(m_graph.edges().size());
+    for (const auto& [streetId, street] : m_graph.edges()) {
       if (above && (street->density(true) > threshold)) {
         flows.push_back(street->density() * this->streetMeanSpeed(streetId));
       } else if (!above && (street->density(true) < threshold)) {
@@ -626,8 +626,8 @@ namespace dsm {
     }
     m_previousSpireTime = m_time;
     std::vector<double> flows;
-    flows.reserve(m_graph.streetSet().size());
-    for (const auto& [streetId, street] : m_graph.streetSet()) {
+    flows.reserve(m_graph.nEdges());
+    for (const auto& [streetId, street] : m_graph.edges()) {
       if (street->isSpire()) {
         auto& spire = dynamic_cast<SpireStreet&>(*street);
         flows.push_back(static_cast<double>(spire.inputCounts(resetValue)) / deltaTime);
@@ -644,8 +644,8 @@ namespace dsm {
     }
     m_previousSpireTime = m_time;
     std::vector<double> flows;
-    flows.reserve(m_graph.streetSet().size());
-    for (auto const& [streetId, street] : m_graph.streetSet()) {
+    flows.reserve(m_graph.edges().size());
+    for (auto const& [streetId, street] : m_graph.edges()) {
       if (street->isSpire()) {
         auto& spire = dynamic_cast<SpireStreet&>(*street);
         flows.push_back(static_cast<double>(spire.outputCounts(resetValue)) / deltaTime);
@@ -669,13 +669,13 @@ namespace dsm {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& [streetId, _] : this->m_graph.streetSet()) {
+      for (auto const& [streetId, _] : this->m_graph.edges()) {
         file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
-    for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
+    for (auto const& [_, pStreet] : this->m_graph.edges()) {
       // keep 2 decimal digits;
       file << separator << std::fixed << std::setprecision(2)
            << pStreet->density(normalized);
@@ -698,13 +698,13 @@ namespace dsm {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& [streetId, _] : this->m_graph.streetSet()) {
+      for (auto const& [streetId, _] : this->m_graph.edges()) {
         file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
-    for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
+    for (auto const& [_, pStreet] : this->m_graph.edges()) {
       int value{0};
       if (pStreet->isSpire()) {
         if (pStreet->isStochastic()) {
@@ -733,13 +733,13 @@ namespace dsm {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& [streetId, _] : this->m_graph.streetSet()) {
+      for (auto const& [streetId, _] : this->m_graph.edges()) {
         file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
-    for (auto const& [_, pStreet] : this->m_graph.streetSet()) {
+    for (auto const& [_, pStreet] : this->m_graph.edges()) {
       int value{0};
       if (pStreet->isSpire()) {
         if (pStreet->isStochastic()) {
