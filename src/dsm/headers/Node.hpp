@@ -103,7 +103,7 @@ namespace dsm {
     int transportCapacity() const { return m_transportCapacity; }
 
     virtual double density() const { return 0.; };
-    virtual bool isFull() const { return false; };
+    virtual bool isFull() const { return true; };
 
     virtual bool isIntersection() const noexcept { return false; }
     virtual bool isTrafficLight() const noexcept { return false; }
