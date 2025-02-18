@@ -133,16 +133,16 @@ TEST_CASE("Street") {
     street.dequeue(0);
     street.dequeue(0);  // the queue is now empty
   }
-  // SUBCASE("Angle") {
-  //   /// This tests the angle method
-  //   /// GIVEN: A street
-  //   /// WHEN: The angle method is called
-  //   /// THEN: The angle is returned and is correct
-  //   Street street{1, std::make_pair(0, 1), 3.5};
-  //   CHECK_EQ(street.angle(), 0);
-  //   street.setAngle(std::make_pair(0, 1), std::make_pair(1, 0));
-  //   CHECK_EQ(street.angle(), 3 * std::numbers::pi / 4);
-  // }
+  SUBCASE("Angle") {
+    /// This tests the angle method
+    /// GIVEN: A street
+    /// WHEN: The angle method is called
+    /// THEN: The angle is returned and is correct
+    Street street{1, std::make_pair(0, 1), 3.5};
+    CHECK_EQ(street.angle(), 0);
+    street.setGeometry(std::vector<std::pair<double, double>>{{1, 0}, {0, 1}});
+    CHECK_EQ(street.angle(), 3 * std::numbers::pi / 4);
+  }
 }
 
 TEST_CASE("SpireStreet") {

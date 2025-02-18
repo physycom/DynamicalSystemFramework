@@ -376,7 +376,43 @@ TEST_CASE("Dynamics") {
       graph.addStreets(s1, s2, s3, s4);
       graph.buildAdj();
       Dynamics dynamics{graph, false, 69};
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
+      dynamics.addItinerary(0, 2);
+      WHEN("We update the paths") {
+        dynamics.updatePaths();
+        THEN("The path is updated and correctly formed") {
+          CHECK_EQ(dynamics.itineraries().size(), 1);
+          CHECK_EQ(dynamics.itineraries().at(0)->path()->size(), 4);
+          CHECK_EQ(dynamics.itineraries().at(0)->path()->n(), 4);
+          CHECK(dynamics.itineraries().at(0)->path()->operator()(0, 1));
+          CHECK(dynamics.itineraries().at(0)->path()->operator()(1, 2));
+          CHECK(dynamics.itineraries().at(0)->path()->operator()(0, 3));
+          CHECK(dynamics.itineraries().at(0)->path()->operator()(3, 2));
+          for (auto const& it : dynamics.itineraries()) {
+            auto const& path = it.second->path();
+            for (uint16_t i{0}; i < path->n(); ++i) {
+              if (i == it.second->destination()) {
+                CHECK_FALSE(path->getRow(i).size());
+              } else {
+                CHECK(path->getRow(i).size());
+              }
+            }
+          }
+        }
+      }
+    }
+    GIVEN(
+        "A dynamics objects, many streets and an itinerary with bifurcations (TIME "
+        "WEIGHTED)") {
+      Street s1{0, std::make_pair(0, 1), 5., 50.};
+      Street s2{1, std::make_pair(1, 2), 7., 70.};
+      Street s3{2, std::make_pair(0, 3), 9., 90.};
+      Street s4{3, std::make_pair(3, 2), 10., 100.};
+      Graph graph;
+      graph.addStreets(s1, s2, s3, s4);
+      graph.buildAdj();
+      Dynamics dynamics{graph, false, 69};
+      dynamics.setWeightFunction(dsm::weight_functions::streetTime);
+      dynamics.addItinerary(0, 2);
       WHEN("We update the paths") {
         dynamics.updatePaths();
         THEN("The path is updated and correctly formed") {
@@ -592,14 +628,13 @@ TEST_CASE("Dynamics") {
         graph2.addNode(std::make_unique<TrafficLight>(tl));
       }
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
-      graph2.buildAdj();
-      graph2.adjustNodeCapacities();
       auto const& nodes = graph2.nodeSet();
       nodes.at(0)->setCoords({0., -1.});
       nodes.at(2)->setCoords({0., 1.});
       nodes.at(3)->setCoords({-1., 0.});
       nodes.at(4)->setCoords({1., 0.});
-      graph2.buildStreetAngles();
+      graph2.buildAdj();
+      graph2.adjustNodeCapacities();
 
       Dynamics dynamics{graph2, false, 69};
       dynamics.setDestinationNodes({0, 2, 3, 4});
@@ -659,14 +694,13 @@ TEST_CASE("Dynamics") {
         graph2.addNode(std::make_unique<TrafficLight>(tl));
       }
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
-      graph2.buildAdj();
-      graph2.adjustNodeCapacities();
       auto const& nodes = graph2.nodeSet();
       nodes.at(0)->setCoords({0., -1.});
       nodes.at(2)->setCoords({0., 1.});
       nodes.at(3)->setCoords({-1., 0.});
       nodes.at(4)->setCoords({1., 0.});
-      graph2.buildStreetAngles();
+      graph2.buildAdj();
+      graph2.adjustNodeCapacities();
 
       Dynamics dynamics{graph2, false, 69};
       dynamics.setDestinationNodes({0, 2, 3, 4});

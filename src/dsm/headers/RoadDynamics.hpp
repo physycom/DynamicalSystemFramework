@@ -23,7 +23,6 @@
 #include <exception>
 #include <fstream>
 #include <iomanip>
-#include <tbb/concurrent_vector.h>
 
 #include "Dynamics.hpp"
 #include "Agent.hpp"
@@ -51,13 +50,13 @@ namespace dsm {
     std::optional<double> m_passageProbability;
 
   protected:
-    tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
+    std::vector<std::pair<double, double>> m_travelDTs;
     bool m_forcePriorities;
     std::optional<delay_t> m_dataUpdatePeriod;
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     std::unordered_map<Id, double> m_streetTails;
-    tbb::concurrent_vector<Id> m_agentsToRemove;
+    std::vector<Id> m_agentsToRemove;
 
     /// @brief Get the next street id
     /// @param agentId The id of the agent
@@ -722,7 +721,7 @@ namespace dsm {
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
     auto const N{this->m_graph.nNodes()};
-    tbb::parallel_for_each(
+    std::for_each(
         this->m_graph.nodeSet().cbegin(),
         this->m_graph.nodeSet().cend(),
         [&](const auto& pair) {
@@ -742,17 +741,17 @@ namespace dsm {
                   [this](const auto& agentId) { this->removeAgent(agentId); });
     m_agentsToRemove.clear();
     // Move transport capacity agents from each node
-    tbb::parallel_for_each(this->m_graph.nodeSet().cbegin(),
-                           this->m_graph.nodeSet().cend(),
-                           [&](const auto& pair) {
-                             for (auto i = 0; i < pair.second->transportCapacity(); ++i) {
-                               this->m_evolveNode(pair.second);
-                             }
-                             if (pair.second->isTrafficLight()) {
-                               auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
-                               ++tl;
-                             }
-                           });
+    std::for_each(this->m_graph.nodeSet().cbegin(),
+                  this->m_graph.nodeSet().cend(),
+                  [&](const auto& pair) {
+                    for (auto i = 0; i < pair.second->transportCapacity(); ++i) {
+                      this->m_evolveNode(pair.second);
+                    }
+                    if (pair.second->isTrafficLight()) {
+                      auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
+                      ++tl;
+                    }
+                  });
     // cycle over agents and update their times
     this->m_evolveAgents();
     // increment time simulation
@@ -825,7 +824,7 @@ namespace dsm {
         //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
         //    - If the previous check fails, do nothing
         double outputGreenSum{0.}, outputRedSum{0.};
-        for (const auto& targetId : this->m_graph.adjMatrix().getRow(nodeId)) {
+        for (auto const& targetId : this->m_graph.adjMatrix().getRow(nodeId)) {
           auto const streetId = nodeId * N + targetId;
           auto const& pStreet{this->m_graph.street(streetId)};
           if (streetPriorities.contains(streetId)) {
