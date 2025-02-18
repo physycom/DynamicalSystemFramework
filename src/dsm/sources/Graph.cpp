@@ -243,10 +243,10 @@ namespace dsm {
       }
       double lat, lon;
       for (Size i{0}; i < n; ++i) {
-        file >> lat >> lon;
+        file >> lon >> lat;
         auto const& it{m_nodes.find(i)};
         if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(lat, lon));
+          it->second->setCoords(std::make_pair(lon, lat));
         } else {
           Logger::warning(std::format("Node with id {} not found.", i));
         }
@@ -260,7 +260,7 @@ namespace dsm {
       // Check if the first line is nodeId;lat;lon
       std::string line;
       std::getline(ifs, line);
-      if (line != "nodeId;lat;lon") {
+      if (line != "id;lon;lat") {
         throw std::invalid_argument(
             Logger::buildExceptionMessage("Invalid file format."));
       }
@@ -273,21 +273,19 @@ namespace dsm {
         std::istringstream iss{line};
         std::string nodeId, lat, lon;
         std::getline(iss, nodeId, ';');
-        std::getline(iss, lat, ';');
-        std::getline(iss, lon, '\n');
-        dLat = lat == "Nan" ? 0. : std::stod(lat);
+        std::getline(iss, lon, ';');
+        std::getline(iss, lat, '\n');
         dLon = lon == "Nan" ? 0. : std::stod(lon);
+        dLat = lat == "Nan" ? 0. : std::stod(lat);
         auto const& it{m_nodes.find(std::stoul(nodeId))};
         if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(dLat, dLon));
+          it->second->setCoords(std::make_pair(dLon, dLat));
         } else {
-          std::cerr << std::format(
-                           "\033[38;2;130;30;180mWARNING ({}:{}): Node with id {} not "
-                           "found.\033[0m",
-                           __FILE__,
-                           __LINE__,
-                           nodeId)
-                    << std::endl;
+          Logger::warning(
+              std::format("Node with id {} not found. Skipping coordinates ({}, {}).",
+                          nodeId,
+                          dLat,
+                          dLon));
         }
       }
     } else {
@@ -467,26 +465,31 @@ namespace dsm {
     Logger::info(std::format("Successfully imported {} edges", nEdges()));
   }
 
-  void Graph::exportOSMNodes(std::string const& path) {
+  void Graph::exportNodes(std::string const& path) {
     // assert that path ends with ".csv"
     assert((void("Only csv export is supported."),
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;x;y\n";
+    file << "id;lon;lat\n";
     for (auto const& [nodeId, pNode] : m_nodes) {
-      file << nodeId << ';' << pNode->coords().value().second << ';'
-           << pNode->coords().value().first << '\n';
+      file << nodeId << ';';
+      if (pNode->coords().has_value()) {
+        file << pNode->coords().value().first << ';' << pNode->coords().value().second;
+      } else {
+        file << "Nan;Nan";
+      }
+      file << '\n';
     }
     file.close();
   }
-  void Graph::exportOSMEdges(std::string const& path) {
+  void Graph::exportEdges(std::string const& path) {
     // assert that path ends with ".csv"
     assert((void("Only csv export is supported."),
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;source;target;name;geometry\n";
+    file << "id;source_id;target_id;name;geometry\n";
     for (auto const& [streetId, pStreet] : m_streets) {
       file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';'
            << pStreet->name() << ';';
@@ -523,25 +526,6 @@ namespace dsm {
         file << '\n' << id << '\t' << street->length();
       }
     }
-  }
-
-  void Graph::exportCoordinates(std::string const& path) {
-    // assert that path ends with ".csv"
-    assert((void("Only csv export is supported."),
-            path.substr(path.find_last_of(".")) == ".csv"));
-    std::ofstream file{path};
-    // Column names
-    file << "nodeId;lat;lon\n";
-    for (const auto& [id, node] : m_nodes) {
-      file << id << ';';
-      if (node->coords().has_value()) {
-        file << node->coords().value().first << ';' << node->coords().value().second;
-      } else {
-        file << "Nan;Nan";
-      }
-      file << '\n';
-    }
-    file.close();
   }
 
   void Graph::addNode(std::unique_ptr<Node> node) {
