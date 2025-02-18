@@ -19,26 +19,67 @@ namespace dsm {
     virtual void m_addMissingNodes(Id const edgeId);
 
   public:
+    /// @brief Construct a new Network object
+    /// @param adj The adjacency matrix representing the network
     explicit Network(AdjacencyMatrix const& adj);
 
+    /// @brief Get the adjacency matrix
+    /// @return AdjacencyMatrix The adjacency matrix
     AdjacencyMatrix const& adjacencyMatrix() const;
+    /// @brief Get the nodes as an unordered map
+    /// @return std::unordered_map<Id, std::unique_ptr<node_t>> The nodes
     std::unordered_map<Id, std::unique_ptr<node_t>> const& nodes() const;
+    /// @brief Get the edges as an unordered map
+    /// @return std::unordered_map<Id, std::unique_ptr<edge_t>> The edges
     std::unordered_map<Id, std::unique_ptr<edge_t>> const& edges() const;
-
+    /// @brief Get the number of nodes
+    /// @return size_t The number of nodes
     size_t nNodes() const;
+    /// @brief Get the number of edges
+    /// @return size_t The number of edges
     size_t nEdges() const;
 
+    /// @brief Add a node to the network
+    /// @tparam TNode The type of the node (default is node_t)
+    /// @tparam TArgs The types of the arguments
+    /// @param nodeId The node's id
+    /// @param args The arguments to pass to the node's constructor
     template <typename TNode = node_t, typename... TArgs>
       requires(std::is_base_of_v<node_t, TNode> &&
                std::constructible_from<TNode, Id, TArgs...>)
     void addNode(Id nodeId, TArgs&&... args);
+    /// @brief Add an edge to the network
+    /// @tparam TEdge The type of the edge (default is edge_t)
+    /// @tparam TArgs The types of the arguments
+    /// @param edgeId The edge's id
+    /// @param args The arguments to pass to the edge's constructor
     template <typename TEdge = edge_t, typename... TArgs>
       requires(std::is_base_of_v<edge_t, TEdge> &&
                std::constructible_from<TEdge, Id, TArgs...>)
     void addEdge(Id edgeId, TArgs&&... args);
 
+    /// @brief Get a node by id
+    /// @param nodeId The node's id
+    /// @return std::unique_ptr<node_t> const& A const reference to the node
     std::unique_ptr<node_t> const& node(Id nodeId) const;
+    /// @brief Get an edge by id
+    /// @param edgeId The edge's id
+    /// @return std::unique_ptr<edge_t> const& A const reference to the edge
     std::unique_ptr<edge_t> const& edge(Id edgeId) const;
+    /// @brief Get a node by id
+    /// @tparam TNode The type of the node
+    /// @param nodeId The node's id
+    /// @return TNode& A reference to the node
+    template <typename TNode>
+      requires(std::is_base_of_v<node_t, TNode>)
+    TNode& node(Id nodeId);
+    /// @brief Get an edge by id
+    /// @tparam TEdge The type of the edge
+    /// @param edgeId The edge's id
+    /// @return TEdge& A reference to the edge
+    template <typename TEdge>
+      requires(std::is_base_of_v<edge_t, TEdge>)
+    TEdge& edge(Id edgeId);
   };
 
   template <typename node_t, typename edge_t>
@@ -140,5 +181,20 @@ namespace dsm {
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<edge_t> const& Network<node_t, edge_t>::edge(Id edgeId) const {
     return m_edges.at(edgeId);
+  }
+
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  template <typename TNode>
+    requires(std::is_base_of_v<node_t, TNode>)
+  TNode& Network<node_t, edge_t>::node(Id nodeId) {
+    return dynamic_cast<TNode&>(*m_nodes.at(nodeId));
+  }
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  template <typename TEdge>
+    requires(std::is_base_of_v<edge_t, TEdge>)
+  TEdge& Network<node_t, edge_t>::edge(Id edgeId) {
+    return dynamic_cast<TEdge&>(*m_edges.at(edgeId));
   }
 }  // namespace dsm

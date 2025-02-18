@@ -306,7 +306,7 @@ TEST_CASE("Graph") {
       graph.buildAdj();
       WHEN("We make the street a spire street") {
         graph.makeSpireStreet(1);
-        THEN("The street is a spire street") { CHECK(graph.street(1)->isSpire()); }
+        THEN("The street is a spire street") { CHECK(graph.edge(1)->isSpire()); }
       }
     }
   }

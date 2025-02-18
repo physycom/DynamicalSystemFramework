@@ -533,30 +533,30 @@ namespace dsm {
                                         Delay const counter) {
     auto& pNode = m_nodes.at(nodeId);
     pNode = std::make_unique<TrafficLight>(*pNode, cycleTime, counter);
-    return dynamic_cast<TrafficLight&>(*pNode);
+    return node<TrafficLight>(nodeId);
   }
 
   Roundabout& Graph::makeRoundabout(Id nodeId) {
     auto& pNode = m_nodes.at(nodeId);
     pNode = std::make_unique<Roundabout>(*pNode);
-    return dynamic_cast<Roundabout&>(*pNode);
+    return node<Roundabout>(nodeId);
   }
 
   Station& Graph::makeStation(Id nodeId, const unsigned int managementTime) {
     auto& pNode = m_nodes.at(nodeId);
     pNode = std::make_unique<Station>(*pNode, managementTime);
-    return dynamic_cast<Station&>(*pNode);
+    return node<Station>(nodeId);
   }
   StochasticStreet& Graph::makeStochasticStreet(Id streetId, double const flowRate) {
     auto& pStreet = m_edges.at(streetId);
     pStreet = std::make_unique<StochasticStreet>(pStreet->id(), *pStreet, flowRate);
-    return dynamic_cast<StochasticStreet&>(*pStreet);
+    return edge<StochasticStreet>(streetId);
   }
   void Graph::makeSpireStreet(Id streetId) {
     auto& pStreet = m_edges.at(streetId);
     if (pStreet->isStochastic()) {
       pStreet = std::make_unique<StochasticSpireStreet>(
-          pStreet->id(), *pStreet, dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
+          pStreet->id(), *pStreet, edge<StochasticStreet>(streetId).flowRate());
       return;
     }
     pStreet = std::make_unique<SpireStreet>(pStreet->id(), *pStreet);

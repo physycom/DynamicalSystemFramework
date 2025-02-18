@@ -76,7 +76,7 @@ int main() {
   graph.buildAdj();
   graph.adjustNodeCapacities();
   graph.makeSpireStreet(19);
-  auto& spire = dynamic_cast<SpireStreet&>(*graph.street(19));
+  auto& spire = graph.edge<SpireStreet>(19);
 
   dsm::Logger::info(std::format("Intersections: {}", graph.nNodes()));
   dsm::Logger::info(std::format("Streets: {}", graph.nEdges()));

@@ -570,7 +570,7 @@ TEST_CASE("Dynamics") {
       graph2.addNode<TrafficLight>(1, 4);
       graph2.addStreets(s1, s2, s3, s4);
       graph2.buildAdj();
-      auto& tl = dynamic_cast<TrafficLight&>(*graph2.node(1));
+      auto& tl = graph2.node<TrafficLight>(1);
       tl.setCycle(1, dsm::Direction::RIGHT, {2, 0});
       tl.setCycle(7, dsm::Direction::RIGHT, {2, 0});
       tl.setCycle(16, dsm::Direction::RIGHT, {2, 2});
@@ -618,7 +618,7 @@ TEST_CASE("Dynamics") {
       Graph graph2;
       {
         graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
-        auto& tl = dynamic_cast<TrafficLight&>(*graph2.node(1));
+        auto& tl = graph2.node<TrafficLight>(1);
         tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 2});
         tl.setCycle(1, dsm::Direction::LEFT, {1, 4});
         tl.setCycle(11, dsm::Direction::ANY, {3, 2});
@@ -681,7 +681,7 @@ TEST_CASE("Dynamics") {
       Graph graph2;
       {
         graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
-        auto& tl = dynamic_cast<TrafficLight&>(*graph2.node(1));
+        auto& tl = graph2.node<TrafficLight>(1);
         // Now testing red light = NO PHASE
         tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 0});
         tl.setCycle(1, dsm::Direction::LEFT, {1, 2});
