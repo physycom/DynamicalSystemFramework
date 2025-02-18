@@ -193,7 +193,9 @@ namespace dsm {
     /// @param seed The seed for the random number generator (default is std::nullopt)
     Dynamics(RoadNetwork& graph,
              bool useCache = false,
-             std::optional<unsigned int> seed = std::nullopt);
+             std::optional<unsigned int> seed = std::nullopt,
+             std::function<double(const RoadNetwork*, Id, Id)> weightFunction =
+                 weight_functions::streetLength);
 
     virtual void setAgentSpeed(Size agentId) = 0;
     virtual void evolve(bool reinsert_agents = false) = 0;
@@ -356,10 +358,12 @@ namespace dsm {
   };
 
   template <typename agent_t>
-  Dynamics<agent_t>::Dynamics(RoadNetwork& graph,
-                              bool useCache,
-                              std::optional<unsigned int> seed)
-      : m_weightFunction{weight_functions::streetLength},
+  Dynamics<agent_t>::Dynamics(
+      RoadNetwork& graph,
+      bool useCache,
+      std::optional<unsigned int> seed,
+      std::function<double(const RoadNetwork*, Id, Id)> weightFunction)
+      : m_weightFunction{weightFunction},
         m_weightTreshold{1.},
         m_bCacheEnabled{useCache},
         m_graph{std::move(graph)},

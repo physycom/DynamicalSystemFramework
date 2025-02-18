@@ -320,7 +320,7 @@ TEST_CASE("Dynamics") {
       RoadNetwork graph2;
       graph2.addStreets(s1, s2, s3);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, false, 69};
+      Dynamics dynamics{graph2, false, 69, 0.0, dsm::weight_functions::streetLength};
       WHEN("We add an itinerary and update the paths") {
         dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
         dynamics.updatePaths();
@@ -351,10 +351,10 @@ TEST_CASE("Dynamics") {
       RoadNetwork graph2{};
       graph2.importMatrix("./data/matrix.dat");
       Dynamics dynamics{graph2, false, 69};
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 118)));
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(1, 118)));
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 118)));
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(3, 118)));
+      dynamics.addItinerary(0, 118);
+      dynamics.addItinerary(1, 118);
+      dynamics.addItinerary(2, 118);
+      dynamics.addItinerary(3, 118);
       dynamics.updatePaths();
       for (auto const& it : dynamics.itineraries()) {
         auto const& path = it.second->path();
@@ -445,7 +445,7 @@ TEST_CASE("Dynamics") {
       RoadNetwork graph;
       graph.addStreets(s1, s2, s3);
       graph.buildAdj();
-      Dynamics dynamics{graph, false, 69};
+      Dynamics dynamics{graph, false, 69, 0.0, dsm::weight_functions::streetLength};
       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
       dynamics.updatePaths();
       WHEN("We add an agent randomly and evolve the dynamics") {

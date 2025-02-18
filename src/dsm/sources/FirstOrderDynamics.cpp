@@ -1,11 +1,13 @@
 #include "../headers/FirstOrderDynamics.hpp"
 
 namespace dsm {
-  FirstOrderDynamics::FirstOrderDynamics(RoadNetwork& graph,
-                                         bool useCache,
-                                         std::optional<unsigned int> seed,
-                                         double alpha)
-      : RoadDynamics<Delay>(graph, useCache, seed),
+  FirstOrderDynamics::FirstOrderDynamics(
+      RoadNetwork& graph,
+      bool useCache,
+      std::optional<unsigned int> seed,
+      double alpha,
+      std::function<double(const RoadNetwork*, Id, Id)> weightFunction)
+      : RoadDynamics<Delay>(graph, useCache, seed, weightFunction),
         m_alpha{alpha},
         m_speedFluctuationSTD{0.} {
     if (alpha < 0. || alpha > 1.) {

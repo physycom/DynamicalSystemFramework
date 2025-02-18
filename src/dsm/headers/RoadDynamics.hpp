@@ -91,7 +91,9 @@ namespace dsm {
     /// @param seed The seed for the random number generator (default is std::nullopt)
     RoadDynamics(RoadNetwork& graph,
                  bool useCache = false,
-                 std::optional<unsigned int> seed = std::nullopt);
+                 std::optional<unsigned int> seed = std::nullopt,
+                 std::function<double(const RoadNetwork*, Id, Id)> weightFunction =
+                     weight_functions::streetTime);
 
     /// @brief Set the error probability
     /// @param errorProbability The error probability
@@ -184,10 +186,12 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  RoadDynamics<delay_t>::RoadDynamics(RoadNetwork& graph,
-                                      bool useCache,
-                                      std::optional<unsigned int> seed)
-      : Dynamics<Agent<delay_t>>(graph, useCache, seed),
+  RoadDynamics<delay_t>::RoadDynamics(
+      RoadNetwork& graph,
+      bool useCache,
+      std::optional<unsigned int> seed,
+      std::function<double(const RoadNetwork*, Id, Id)> weightFunction)
+      : Dynamics<Agent<delay_t>>(graph, useCache, seed, weightFunction),
         m_previousOptimizationTime{0},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
