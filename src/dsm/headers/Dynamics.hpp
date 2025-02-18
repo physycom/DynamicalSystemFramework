@@ -23,6 +23,7 @@
 #include <exception>
 #include <fstream>
 #include <filesystem>
+#include <functional>
 #include <tbb/parallel_for_each.h>
 
 #include "DijkstraWeights.hpp"
@@ -72,6 +73,8 @@ namespace dsm {
   private:
     std::map<Id, std::unique_ptr<agent_t>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
+    std::function<double(const Graph*, Id, Id)> m_weightFunction;
+    double m_weightTreshold;
     bool m_bCacheEnabled;
 
   protected:
@@ -97,7 +100,6 @@ namespace dsm {
         }
       }
 
-      auto const dimension = static_cast<Size>(m_graph.nNodes());
       auto const destinationID = pItinerary->destination();
       std::vector<double> shortestDistances(m_graph.nNodes());
       tbb::parallel_for_each(
@@ -108,7 +110,7 @@ namespace dsm {
             if (nodeId == destinationID) {
               shortestDistances[nodeId] = -1.;
             } else {
-              auto result = m_graph.shortestPath(nodeId, destinationID);
+              auto result = m_graph.shortestPath(nodeId, destinationID, m_weightFunction);
               if (result.has_value()) {
                 shortestDistances[nodeId] = result.value().distance();
               } else {
@@ -132,17 +134,17 @@ namespace dsm {
         auto const& row{m_graph.adjMatrix().getRow(nodeId)};
         for (const auto nextNodeId : row) {
           if (nextNodeId == destinationID) {
-            if (std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() -
-                         minDistance) < 1.)  // 1 meter tolerance between shortest paths
+            if (std::abs(m_weightFunction(&m_graph, nodeId, nextNodeId) - minDistance) <
+                m_weightTreshold)  // 1 meter tolerance between shortest paths
             {
               path.insert(nodeId, nextNodeId);
             } else {
               Logger::debug(
                   std::format("Found a path from {} to {} which differs for more than {} "
-                              "meter(s) from the shortest one.",
+                              "unit(s) from the shortest one.",
                               nodeId,
                               destinationID,
-                              1.));
+                              m_weightTreshold));
             }
             continue;
           }
@@ -151,23 +153,23 @@ namespace dsm {
             continue;
           }
           bool const bIsMinDistance{
-              std::abs(m_graph.street(nodeId * dimension + nextNodeId)->length() +
-                       distance - minDistance) <
-              1.};  // 1 meter tolerance between shortest paths
+              std::abs(m_weightFunction(&m_graph, nodeId, nextNodeId) + distance -
+                       minDistance) <
+              m_weightTreshold};  // 1 meter tolerance between shortest paths
           if (bIsMinDistance) {
             path.insert(nodeId, nextNodeId);
           } else {
             Logger::debug(
                 std::format("Found a path from {} to {} which differs for more than {} "
-                            "meter(s) from the shortest one.",
+                            "unit(s) from the shortest one.",
                             nodeId,
                             destinationID,
-                            1.));
+                            m_weightTreshold));
           }
         }
       }
 
-      if (path.size() == 0) {
+      if (path.empty()) {
         Logger::error(
             std::format("Path with id {} and destination {} is empty. Please check the "
                         "adjacency matrix.",
@@ -198,6 +200,19 @@ namespace dsm {
 
     /// @brief Update the paths of the itineraries based on the actual travel times
     virtual void updatePaths();
+
+    /// @brief Set the weight function for the Dijkstra's algorithm
+    /// @param weightFunction A std::function returning a double value and taking as arguments a
+    /// pointer to the graph, an id of a source node and an id of a target node (for the edge)
+    /// @details The weight function must return the weight of the edge between the source and the
+    /// target node. One can use the predefined weight functions in the DijkstraWeights.hpp file,
+    /// like weight_functions::streetLength or weight_functions::streetTime.
+    void setWeightFunction(std::function<double(const Graph*, Id, Id)> weightFunction);
+    /// @brief Set the weight treshold for updating the paths
+    /// @param weightTreshold The weight treshold
+    /// @details If two paths differs only for a weight smaller than the treshold, the two paths are
+    /// considered equivalent.
+    void setWeightTreshold(double weightTreshold) { m_weightTreshold = weightTreshold; }
 
     /// @brief Set the destination nodes
     /// @param destinationNodes The destination nodes (as an initializer list)
@@ -343,7 +358,9 @@ namespace dsm {
   Dynamics<agent_t>::Dynamics(Graph& graph,
                               bool useCache,
                               std::optional<unsigned int> seed)
-      : m_bCacheEnabled{useCache},
+      : m_weightFunction{weight_functions::streetLength},
+        m_weightTreshold{1.},
+        m_bCacheEnabled{useCache},
         m_graph{std::move(graph)},
         m_time{0},
         m_previousSpireTime{0},
@@ -369,6 +386,12 @@ namespace dsm {
         m_itineraries.cbegin(), m_itineraries.cend(), [this](auto const& pair) -> void {
           this->m_updatePath(pair.second);
         });
+  }
+
+  template <typename agent_t>
+  void Dynamics<agent_t>::setWeightFunction(
+      std::function<double(const Graph*, Id, Id)> weightFunction) {
+    m_weightFunction = weightFunction;
   }
 
   template <typename agent_t>
@@ -546,7 +569,7 @@ namespace dsm {
 
   template <typename agent_t>
   Measurement<double> Dynamics<agent_t>::streetMeanDensity(bool normalized) const {
-    if (m_graph.streetSet().size() == 0) {
+    if (m_graph.streetSet().empty()) {
       return Measurement(0., 0.);
     }
     std::vector<double> densities;

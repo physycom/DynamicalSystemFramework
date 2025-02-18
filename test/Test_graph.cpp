@@ -147,12 +147,28 @@ TEST_CASE("Graph") {
           CHECK_EQ(nodes.at(1)->coords(), std::make_pair(1., 0.));
           CHECK_EQ(nodes.at(2)->coords(), std::make_pair(2., 0.));
         }
-        THEN("We are able to save coordinates in csv format") {
-          graph.exportCoordinates("./data/coordinates.csv");
+        graph.buildAdj();
+        auto const& adj{graph.adjMatrix()};
+        THEN("The adjacency matrix is correctly built") {
+          CHECK(adj(0, 1));
+          CHECK(adj(1, 0));
+          CHECK(adj(2, 0));
+          CHECK(adj(2, 2));
+        }
+        auto const& streets{graph.streetSet()};
+        THEN("The streets angles are correctly computed") {
+          CHECK_EQ(streets.at(1)->angle(), std::numbers::pi / 2);
+          CHECK_EQ(streets.at(3)->angle(), 3 * std::numbers::pi / 2);
+          CHECK_EQ(streets.at(6)->angle(), 3 * std::numbers::pi / 2);
+          CHECK_EQ(streets.at(8)->angle(), 0.);
+        }
+        THEN("We are able to save nodes and edges in csv format") {
+          graph.exportNodes("./data/nodes.csv");
+          graph.exportEdges("./data/edges.csv");
         }
       }
       WHEN("We import the coordinates in csv format") {
-        graph.importCoordinates("./data/coordinates.csv");
+        graph.importCoordinates("./data/nodes.csv");
         THEN("The coordinates are correctly imported") {
           CHECK_EQ(nodes.at(0)->coords(), std::make_pair(0., 0.));
           CHECK_EQ(nodes.at(1)->coords(), std::make_pair(1., 0.));

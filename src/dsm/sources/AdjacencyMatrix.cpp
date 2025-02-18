@@ -108,6 +108,10 @@ namespace dsm {
     assert(m_columnIndices.size() == m_rowIndices.size());
     return m_columnIndices.size();
   }
+  bool AdjacencyMatrix::empty() const {
+    assert(m_columnIndices.size() == m_rowIndices.size());
+    return m_columnIndices.empty();
+  }
 
   void AdjacencyMatrix::insert(Id row, Id col) {
     m_n = std::max(m_n, static_cast<size_t>(row + 1));
