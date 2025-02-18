@@ -131,7 +131,7 @@ namespace dsm {
         if (minDistance < 0.) {
           continue;
         }
-        auto const& row{m_graph.adjMatrix().getRow(nodeId)};
+        auto const& row{m_graph.adjacencyMatrix().getRow(nodeId)};
         for (const auto nextNodeId : row) {
           if (nextNodeId == destinationID) {
             if (std::abs(m_weightFunction(&m_graph, nodeId, nextNodeId) - minDistance) <
@@ -207,7 +207,8 @@ namespace dsm {
     /// @details The weight function must return the weight of the edge between the source and the
     /// target node. One can use the predefined weight functions in the DijkstraWeights.hpp file,
     /// like weight_functions::streetLength or weight_functions::streetTime.
-    void setWeightFunction(std::function<double(const RoadNetwork*, Id, Id)> weightFunction);
+    void setWeightFunction(
+        std::function<double(const RoadNetwork*, Id, Id)> weightFunction);
     /// @brief Set the weight treshold for updating the paths
     /// @param weightTreshold The weight treshold
     /// @details If two paths differs only for a weight smaller than the treshold, the two paths are
@@ -422,9 +423,9 @@ namespace dsm {
   template <typename agent_t>
   void Dynamics<agent_t>::addAgent(std::unique_ptr<agent_t> agent) {
     if (m_agents.size() + 1 > m_graph.maxCapacity()) {
-      throw std::overflow_error(Logger::buildExceptionMessage(
-          std::format("RoadNetwork is already holding the max possible number of agents ({})",
-                      m_graph.maxCapacity())));
+      throw std::overflow_error(Logger::buildExceptionMessage(std::format(
+          "RoadNetwork is already holding the max possible number of agents ({})",
+          m_graph.maxCapacity())));
     }
     if (m_agents.contains(agent->id())) {
       throw std::invalid_argument(Logger::buildExceptionMessage(

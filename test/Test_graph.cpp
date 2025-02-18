@@ -39,7 +39,7 @@ TEST_CASE("RoadNetwork") {
     graph.buildAdj();
     CHECK_EQ(graph.nEdges(), 1);
     CHECK_EQ(graph.nNodes(), 2);
-    CHECK_EQ(graph.adjMatrix().size(), graph.nEdges());
+    CHECK_EQ(graph.adjacencyMatrix().size(), graph.nEdges());
   }
 
   SUBCASE("Constructor_2") {
@@ -52,11 +52,11 @@ TEST_CASE("RoadNetwork") {
     RoadNetwork graph{sm};
     CHECK_EQ(graph.nNodes(), 4);
     CHECK_EQ(graph.nEdges(), 5);
-    CHECK_EQ(graph.adjMatrix().size(), graph.nEdges());
-    CHECK(graph.adjMatrix().contains(1, 2));
-    CHECK(graph.adjMatrix().contains(2, 3));
-    CHECK(graph.adjMatrix().contains(3, 2));
-    CHECK_FALSE(graph.adjMatrix().contains(2, 1));
+    CHECK_EQ(graph.adjacencyMatrix().size(), graph.nEdges());
+    CHECK(graph.adjacencyMatrix().contains(1, 2));
+    CHECK(graph.adjacencyMatrix().contains(2, 3));
+    CHECK(graph.adjacencyMatrix().contains(3, 2));
+    CHECK_FALSE(graph.adjacencyMatrix().contains(2, 1));
   }
 
   SUBCASE("Construction with addStreet") {
@@ -75,11 +75,11 @@ TEST_CASE("RoadNetwork") {
 
     CHECK_EQ(graph.nEdges(), 5);
     CHECK_EQ(graph.nNodes(), 4);
-    CHECK_EQ(graph.adjMatrix().size(), 5);
-    CHECK(graph.adjMatrix().contains(0, 1));
-    CHECK(graph.adjMatrix().contains(1, 2));
-    CHECK(graph.adjMatrix().contains(0, 2));
-    CHECK_FALSE(graph.adjMatrix().contains(1, 3));
+    CHECK_EQ(graph.adjacencyMatrix().size(), 5);
+    CHECK(graph.adjacencyMatrix().contains(0, 1));
+    CHECK(graph.adjacencyMatrix().contains(1, 2));
+    CHECK(graph.adjacencyMatrix().contains(0, 2));
+    CHECK_FALSE(graph.adjacencyMatrix().contains(1, 3));
   }
 
   SUBCASE("Construction with addStreets") {
@@ -94,11 +94,11 @@ TEST_CASE("RoadNetwork") {
 
     CHECK_EQ(graph.nEdges(), 5);
     CHECK_EQ(graph.nNodes(), 4);
-    CHECK_EQ(graph.adjMatrix().size(), graph.nEdges());
-    CHECK(graph.adjMatrix().contains(0, 1));
-    CHECK(graph.adjMatrix().contains(1, 2));
-    CHECK(graph.adjMatrix().contains(0, 2));
-    CHECK_FALSE(graph.adjMatrix().contains(1, 3));
+    CHECK_EQ(graph.adjacencyMatrix().size(), graph.nEdges());
+    CHECK(graph.adjacencyMatrix().contains(0, 1));
+    CHECK(graph.adjacencyMatrix().contains(1, 2));
+    CHECK(graph.adjacencyMatrix().contains(0, 2));
+    CHECK_FALSE(graph.adjacencyMatrix().contains(1, 3));
   }
 
   SUBCASE("importMatrix - dsm") {
@@ -111,11 +111,11 @@ TEST_CASE("RoadNetwork") {
       WHEN("A matrix in dsm format is imported") {
         graph.importMatrix("./data/matrix.dsm");
         THEN("The graph is correctly built") {
-          CHECK_EQ(graph.adjMatrix().n(), 3);
-          CHECK(graph.adjMatrix().operator()(2, 2));
-          CHECK(graph.adjMatrix().operator()(2, 0));
-          CHECK(graph.adjMatrix().operator()(1, 0));
-          CHECK(graph.adjMatrix().operator()(0, 1));
+          CHECK_EQ(graph.adjacencyMatrix().n(), 3);
+          CHECK(graph.adjacencyMatrix().operator()(2, 2));
+          CHECK(graph.adjacencyMatrix().operator()(2, 0));
+          CHECK(graph.adjacencyMatrix().operator()(1, 0));
+          CHECK(graph.adjacencyMatrix().operator()(0, 1));
           CHECK_EQ(graph.nNodes(), 3);
           CHECK_EQ(graph.nEdges(), 4);
         }
@@ -124,11 +124,11 @@ TEST_CASE("RoadNetwork") {
       WHEN("The exported one is imported") {
         graph.importMatrix("./data/temp.dsm");
         THEN("The graph is correctly built") {
-          CHECK_EQ(graph.adjMatrix().n(), 3);
-          CHECK(graph.adjMatrix().operator()(2, 2));
-          CHECK(graph.adjMatrix().operator()(2, 0));
-          CHECK(graph.adjMatrix().operator()(1, 0));
-          CHECK(graph.adjMatrix().operator()(0, 1));
+          CHECK_EQ(graph.adjacencyMatrix().n(), 3);
+          CHECK(graph.adjacencyMatrix().operator()(2, 2));
+          CHECK(graph.adjacencyMatrix().operator()(2, 0));
+          CHECK(graph.adjacencyMatrix().operator()(1, 0));
+          CHECK(graph.adjacencyMatrix().operator()(0, 1));
           CHECK_EQ(graph.nNodes(), 3);
           CHECK_EQ(graph.nEdges(), 4);
         }
@@ -148,7 +148,7 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(nodes.at(2)->coords(), std::make_pair(2., 0.));
         }
         graph.buildAdj();
-        auto const& adj{graph.adjMatrix()};
+        auto const& adj{graph.adjacencyMatrix()};
         THEN("The adjacency matrix is correctly built") {
           CHECK(adj(0, 1));
           CHECK(adj(1, 0));
@@ -180,11 +180,11 @@ TEST_CASE("RoadNetwork") {
   SUBCASE("importMatrix - raw matrix") {
     RoadNetwork graph{};
     graph.importMatrix("./data/rawMatrix.txt", false);
-    CHECK_EQ(graph.adjMatrix().n(), 3);
-    CHECK(graph.adjMatrix().operator()(0, 1));
-    CHECK(graph.adjMatrix().operator()(1, 0));
-    CHECK(graph.adjMatrix().operator()(1, 2));
-    CHECK(graph.adjMatrix().operator()(2, 1));
+    CHECK_EQ(graph.adjacencyMatrix().n(), 3);
+    CHECK(graph.adjacencyMatrix().operator()(0, 1));
+    CHECK(graph.adjacencyMatrix().operator()(1, 0));
+    CHECK(graph.adjacencyMatrix().operator()(1, 2));
+    CHECK(graph.adjacencyMatrix().operator()(2, 1));
     CHECK_EQ(graph.nNodes(), 3);
     CHECK_EQ(graph.nEdges(), 4);
     CHECK_EQ(graph.edges().at(1)->length(), 500);
@@ -227,7 +227,7 @@ TEST_CASE("RoadNetwork") {
         }
         THEN("We are able to build the adjacency matrix") {
           graph.buildAdj();
-          CHECK_EQ(graph.adjMatrix().size(), nEdges);
+          CHECK_EQ(graph.adjacencyMatrix().size(), nEdges);
         }
       }
       WHEN("We import many nodes and edges from OSM") {
@@ -253,7 +253,7 @@ TEST_CASE("RoadNetwork") {
         }
         THEN("We are able to build the adjacency matrix") {
           graph.buildAdj();
-          CHECK_EQ(graph.adjMatrix().size(), nEdges);
+          CHECK_EQ(graph.adjacencyMatrix().size(), nEdges);
         }
       }
     }
@@ -583,15 +583,15 @@ TEST_CASE("Dijkstra") {
     RoadNetwork graph{};
     graph.importMatrix("./data/matrix.dat", false);
     // check correct import
-    CHECK_EQ(graph.adjMatrix().n(), 120);
-    CHECK_EQ(graph.adjMatrix().size(), 436);
+    CHECK_EQ(graph.adjacencyMatrix().n(), 120);
+    CHECK_EQ(graph.adjacencyMatrix().size(), 436);
     // check that the path exists
-    CHECK(graph.adjMatrix().operator()(46, 58));
-    CHECK(graph.adjMatrix().operator()(58, 70));
-    CHECK(graph.adjMatrix().operator()(70, 82));
-    CHECK(graph.adjMatrix().operator()(82, 94));
-    CHECK(graph.adjMatrix().operator()(94, 106));
-    CHECK(graph.adjMatrix().operator()(106, 118));
+    CHECK(graph.adjacencyMatrix().operator()(46, 58));
+    CHECK(graph.adjacencyMatrix().operator()(58, 70));
+    CHECK(graph.adjacencyMatrix().operator()(70, 82));
+    CHECK(graph.adjacencyMatrix().operator()(82, 94));
+    CHECK(graph.adjacencyMatrix().operator()(94, 106));
+    CHECK(graph.adjacencyMatrix().operator()(106, 118));
 
     auto result = graph.shortestPath(46, 118);
     CHECK(result.has_value());

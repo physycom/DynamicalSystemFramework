@@ -199,7 +199,7 @@ namespace dsm {
       m_turnMapping.emplace(streetId, std::array<long, 4>{-1, -1, -1, -1});
       // Turn mappings
       const auto& srcNodeId = street->target();
-      for (const auto& targetId : this->m_graph.adjMatrix().getRow(srcNodeId)) {
+      for (const auto& targetId : this->m_graph.adjacencyMatrix().getRow(srcNodeId)) {
         auto const ss = srcNodeId * this->m_graph.nNodes() + targetId;
         const auto& delta = street->angle() - this->m_graph.edge(ss)->angle();
         if (std::abs(delta) < std::numbers::pi) {
@@ -224,7 +224,7 @@ namespace dsm {
                                            Id nodeId,
                                            std::optional<Id> streetId) {
     auto const& pAgent{this->agents().at(agentId)};
-    auto possibleMoves = this->m_graph.adjMatrix().getRow(nodeId);
+    auto possibleMoves = this->m_graph.adjacencyMatrix().getRow(nodeId);
     if (!pAgent->isRandom()) {
       std::uniform_real_distribution<double> uniformDist{0., 1.};
       if (!(this->itineraries().empty())) {
@@ -721,21 +721,21 @@ namespace dsm {
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
     auto const N{this->m_graph.nNodes()};
-    std::for_each(
-        this->m_graph.nodes().cbegin(),
-        this->m_graph.nodes().cend(),
-        [&](const auto& pair) {
-          for (auto const& sourceId : this->m_graph.adjMatrix().getCol(pair.first)) {
-            auto const streetId = sourceId * N + pair.first;
-            auto const& pStreet{this->m_graph.edge(streetId)};
-            if (bUpdateData) {
-              m_streetTails[streetId] += pStreet->nExitingAgents();
-            }
-            for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-              this->m_evolveStreet(pStreet, reinsert_agents);
-            }
-          }
-        });
+    std::for_each(this->m_graph.nodes().cbegin(),
+                  this->m_graph.nodes().cend(),
+                  [&](const auto& pair) {
+                    for (auto const& sourceId :
+                         this->m_graph.adjacencyMatrix().getCol(pair.first)) {
+                      auto const streetId = sourceId * N + pair.first;
+                      auto const& pStreet{this->m_graph.edge(streetId)};
+                      if (bUpdateData) {
+                        m_streetTails[streetId] += pStreet->nExitingAgents();
+                      }
+                      for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
+                        this->m_evolveStreet(pStreet, reinsert_agents);
+                      }
+                    }
+                  });
     std::for_each(this->m_agentsToRemove.cbegin(),
                   this->m_agentsToRemove.cend(),
                   [this](const auto& agentId) { this->removeAgent(agentId); });
@@ -779,7 +779,7 @@ namespace dsm {
 
       double inputGreenSum{0.}, inputRedSum{0.};
       auto const N{this->m_graph.nNodes()};
-      auto column = this->m_graph.adjMatrix().getCol(nodeId);
+      auto column = this->m_graph.adjacencyMatrix().getCol(nodeId);
       for (const auto& sourceId : column) {
         auto const streetId = sourceId * N + nodeId;
         auto const& pStreet{this->m_graph.edge(streetId)};
@@ -824,7 +824,7 @@ namespace dsm {
         //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
         //    - If the previous check fails, do nothing
         double outputGreenSum{0.}, outputRedSum{0.};
-        for (auto const& targetId : this->m_graph.adjMatrix().getRow(nodeId)) {
+        for (auto const& targetId : this->m_graph.adjacencyMatrix().getRow(nodeId)) {
           auto const streetId = nodeId * N + targetId;
           auto const& pStreet{this->m_graph.edge(streetId)};
           if (streetPriorities.contains(streetId)) {

@@ -199,9 +199,6 @@ namespace dsm {
                (is_street_v<std::remove_reference_t<Tn>> && ...)
     void addStreets(T1&& street, Tn&&... streets);
 
-    /// @brief Get the graph's adjacency matrix
-    /// @return A const reference to the graph's adjacency matrix
-    AdjacencyMatrix const& adjMatrix() const { return m_adjacencyMatrix; }
     /// @brief Get a street from the graph
     /// @param source The source node
     /// @param destination The destination node
@@ -225,7 +222,8 @@ namespace dsm {
     /// @param destination The destination node
     /// @return A DijkstraResult object containing the path and the distance
     template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
-      requires(std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+      requires(
+          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
     std::optional<DijkstraResult> shortestPath(
         const Node& source,
         const Node& destination,
@@ -236,7 +234,8 @@ namespace dsm {
     /// @param destination The destination node id
     /// @return A DijkstraResult object containing the path and the distance
     template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
-      requires(std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+      requires(
+          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
     std::optional<DijkstraResult> shortestPath(
         Id source, Id destination, Func f = weight_functions::streetLength) const;
   };
@@ -268,18 +267,20 @@ namespace dsm {
   }
 
   template <typename Func>
-    requires(std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+    requires(
+        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
   std::optional<DijkstraResult> RoadNetwork::shortestPath(const Node& source,
-                                                    const Node& destination,
-                                                    Func f) const {
+                                                          const Node& destination,
+                                                          Func f) const {
     return this->shortestPath(source.id(), destination.id());
   }
 
   template <typename Func>
-    requires(std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+    requires(
+        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
   std::optional<DijkstraResult> RoadNetwork::shortestPath(Id source,
-                                                    Id destination,
-                                                    Func getStreetWeight) const {
+                                                          Id destination,
+                                                          Func getStreetWeight) const {
     const Id sourceId{source};
 
     std::unordered_set<Id> unvisitedNodes;

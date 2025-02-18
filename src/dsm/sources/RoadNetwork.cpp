@@ -29,7 +29,8 @@ namespace dsm {
       : Network{adj},
         m_maxAgentCapacity{std::numeric_limits<unsigned long long>::max()} {}
 
-  RoadNetwork::RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet)
+  RoadNetwork::RoadNetwork(
+      const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet)
       : Network{AdjacencyMatrix(streetSet)} {
     // for (auto& street : streetSet) {
     //   m_edges.emplace(street.second->id(), street.second.get());
@@ -142,7 +143,9 @@ namespace dsm {
     }
   }
 
-  void RoadNetwork::importMatrix(const std::string& fileName, bool isAdj, double defaultSpeed) {
+  void RoadNetwork::importMatrix(const std::string& fileName,
+                                 bool isAdj,
+                                 double defaultSpeed) {
     // check the file extension
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
     if (fileExt == "dsm") {
@@ -529,8 +532,8 @@ namespace dsm {
   }
 
   TrafficLight& RoadNetwork::makeTrafficLight(Id const nodeId,
-                                        Delay const cycleTime,
-                                        Delay const counter) {
+                                              Delay const cycleTime,
+                                              Delay const counter) {
     auto& pNode = m_nodes.at(nodeId);
     pNode = std::make_unique<TrafficLight>(*pNode, cycleTime, counter);
     return node<TrafficLight>(nodeId);
@@ -547,7 +550,8 @@ namespace dsm {
     pNode = std::make_unique<Station>(*pNode, managementTime);
     return node<Station>(nodeId);
   }
-  StochasticStreet& RoadNetwork::makeStochasticStreet(Id streetId, double const flowRate) {
+  StochasticStreet& RoadNetwork::makeStochasticStreet(Id streetId,
+                                                      double const flowRate) {
     auto& pStreet = m_edges.at(streetId);
     pStreet = std::make_unique<StochasticStreet>(pStreet->id(), *pStreet, flowRate);
     return edge<StochasticStreet>(streetId);
