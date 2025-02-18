@@ -1,16 +1,21 @@
 #pragma once
 
 #include <utility>
+#include <vector>
 #include "../utility/Typedef.hpp"
 
 namespace dsm {
   class Edge {
   protected:
+    std::vector<std::pair<double, double>> m_geometry;
     Id m_id;
     std::pair<Id, Id> m_nodePair;
     int m_capacity;
     int m_transportCapacity;
     double m_angle;
+
+    void m_setAngle(std::pair<double, double> srcNodeCoordinates,
+                    std::pair<double, double> dstNodeCoordinates);
 
   public:
     /// @brief Construct a new Edge object
@@ -25,12 +30,11 @@ namespace dsm {
          std::pair<Id, Id> nodePair,
          int capacity = 1,
          int transportCapacity = 1,
-         double angle = 0.0);
+         std::vector<std::pair<double, double>> geometry = {});
 
     void setCapacity(int capacity);
     void setTransportCapacity(int capacity);
-    void setAngle(std::pair<double, double> srcNodeCoordinates,
-                  std::pair<double, double> dstNodeCoordinates);
+    void setGeometry(std::vector<std::pair<double, double>> geometry);
 
     /// @brief Get the edge's id
     /// @return Id The edge's id
@@ -45,6 +49,8 @@ namespace dsm {
     /// @return std::pair<Id, Id> The edge's node pair, where the first element is the source node id and the second
     /// element is the target node id. The pair is (u, v) with the edge u -> v.
     std::pair<Id, Id> const& nodePair() const;
+
+    std::vector<std::pair<double, double>> const& geometry() const;
     /// @brief Get the edge's capacity, in number of agents
     /// @return int The edge's capacity, in number of agents
     int capacity() const;

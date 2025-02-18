@@ -56,6 +56,7 @@ namespace dsm {
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     std::unordered_map<Id, double> m_streetTails;
+    std::vector<Id> m_agentsToRemove;
 
     /// @brief Get the next street id
     /// @param agentId The id of the agent
@@ -326,7 +327,8 @@ namespace dsm {
           // reset Agent's values
           pAgent->reset();
         } else {
-          this->removeAgent(agentId);
+          m_agentsToRemove.push_back(agentId);
+          // this->removeAgent(agentId);
         }
         continue;
       }
@@ -343,7 +345,7 @@ namespace dsm {
       if (destinationNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
         auto const delta{nextStreet->deltaAngle(pStreet->angle())};
-        m_increaseTurnCounts(pStreet->id(), delta);
+        // m_increaseTurnCounts(pStreet->id(), delta);
         intersection.addAgent(delta, agentId);
       } else if (destinationNode->isRoundabout()) {
         auto& roundabout = dynamic_cast<Roundabout&>(*destinationNode);
@@ -417,7 +419,7 @@ namespace dsm {
         0, static_cast<Id>(this->m_graph.nNodes() - 1)};
     for (const auto& [agentId, agent] : this->agents()) {
       if (agent->delay() > 0) {
-        const auto& street{this->m_graph.streetSet()[agent->streetId().value()]};
+        const auto& street{this->m_graph.street(agent->streetId().value())};
         if (agent->delay() > 1) {
           agent->incrementDistance();
         } else {
@@ -434,11 +436,11 @@ namespace dsm {
           bool bArrived{false};
           if (!agent->isRandom()) {
             if (this->itineraries().at(agent->itineraryId())->destination() ==
-                street->nodePair().second) {
+                street->target()) {
               agent->updateItinerary();
             }
             if (this->itineraries().at(agent->itineraryId())->destination() ==
-                street->nodePair().second) {
+                street->target()) {
               bArrived = true;
             }
           }
@@ -719,31 +721,37 @@ namespace dsm {
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
     auto const N{this->m_graph.nNodes()};
-    for (auto const& [nodeId, _] : this->m_graph.nodeSet()) {
-      for (auto const& srcNodeId : this->m_graph.adjMatrix().getCol(nodeId)) {
-        auto const streetId{srcNodeId * N + nodeId};
-        auto const& pStreet{this->m_graph.street(streetId)};
-        // Logger::info(std::format("Evolving street {}", streetId));
-        if (bUpdateData) {
-          m_streetTails[streetId] += pStreet->nExitingAgents();
-        }
-        for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-          this->m_evolveStreet(pStreet, reinsert_agents);
-        }
-      }
-    }
+    std::for_each(
+        this->m_graph.nodeSet().cbegin(),
+        this->m_graph.nodeSet().cend(),
+        [&](const auto& pair) {
+          for (auto const& sourceId : this->m_graph.adjMatrix().getCol(pair.first)) {
+            auto const streetId = sourceId * N + pair.first;
+            auto const& pStreet{this->m_graph.street(streetId)};
+            if (bUpdateData) {
+              m_streetTails[streetId] += pStreet->nExitingAgents();
+            }
+            for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
+              this->m_evolveStreet(pStreet, reinsert_agents);
+            }
+          }
+        });
+    std::for_each(this->m_agentsToRemove.cbegin(),
+                  this->m_agentsToRemove.cend(),
+                  [this](const auto& agentId) { this->removeAgent(agentId); });
+    m_agentsToRemove.clear();
     // Move transport capacity agents from each node
-    for (const auto& [nodeId, pNode] : this->m_graph.nodeSet()) {
-      for (auto i = 0; i < pNode->transportCapacity(); ++i) {
-        if (!this->m_evolveNode(pNode)) {
-          break;
-        }
-      }
-      if (pNode->isTrafficLight()) {
-        auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-        ++tl;  // Increment the counter
-      }
-    }
+    std::for_each(this->m_graph.nodeSet().cbegin(),
+                  this->m_graph.nodeSet().cend(),
+                  [&](const auto& pair) {
+                    for (auto i = 0; i < pair.second->transportCapacity(); ++i) {
+                      this->m_evolveNode(pair.second);
+                    }
+                    if (pair.second->isTrafficLight()) {
+                      auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
+                      ++tl;
+                    }
+                  });
     // cycle over agents and update their times
     this->m_evolveAgents();
     // increment time simulation

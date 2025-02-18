@@ -140,7 +140,7 @@ TEST_CASE("Street") {
     /// THEN: The angle is returned and is correct
     Street street{1, std::make_pair(0, 1), 3.5};
     CHECK_EQ(street.angle(), 0);
-    street.setAngle(std::make_pair(0, 1), std::make_pair(1, 0));
+    street.setGeometry(std::vector<std::pair<double, double>>{{1, 0}, {0, 1}});
     CHECK_EQ(street.angle(), 3 * std::numbers::pi / 4);
   }
 }
