@@ -2,7 +2,7 @@
 #include <cassert>
 #include <cstdint>
 
-#include "Graph.hpp"
+#include "RoadNetwork.hpp"
 #include "Node.hpp"
 #include "Road.hpp"
 #include "Street.hpp"
@@ -10,7 +10,7 @@
 
 #include "doctest.h"
 
-using Graph = dsm::Graph;
+using RoadNetwork = dsm::RoadNetwork;
 using AdjacencyMatrix = dsm::AdjacencyMatrix;
 using Street = dsm::Street;
 using Road = dsm::Road;
@@ -31,10 +31,10 @@ bool checkPath(const std::vector<T1>& path1, const std::vector<T2>& path2) {
   return equal;
 }
 
-TEST_CASE("Graph") {
+TEST_CASE("RoadNetwork") {
   Road::setMeanVehicleLength(5.);
   SUBCASE("Constructor_1") {
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addEdge<Street>(1, std::make_pair(0, 1));
     graph.buildAdj();
     CHECK_EQ(graph.nEdges(), 1);
@@ -49,7 +49,7 @@ TEST_CASE("Graph") {
     sm.insert(1, 2);
     sm.insert(2, 3);
     sm.insert(3, 2);
-    Graph graph{sm};
+    RoadNetwork graph{sm};
     CHECK_EQ(graph.nNodes(), 4);
     CHECK_EQ(graph.nEdges(), 5);
     CHECK_EQ(graph.adjMatrix().size(), graph.nEdges());
@@ -65,7 +65,7 @@ TEST_CASE("Graph") {
     Street s3(3, std::make_pair(0, 2));
     Street s4(4, std::make_pair(0, 3));
     Street s5(5, std::make_pair(2, 3));
-    Graph graph;
+    RoadNetwork graph;
     graph.addStreet(s1);
     graph.addStreet(s2);
     graph.addStreet(s3);
@@ -88,7 +88,7 @@ TEST_CASE("Graph") {
     Street s3(3, std::make_pair(0, 2));
     Street s4(4, std::make_pair(0, 3));
     Street s5(5, std::make_pair(2, 3));
-    Graph graph;
+    RoadNetwork graph;
     graph.addStreets(s1, s2, s3, s4, s5);
     graph.buildAdj();
 
@@ -107,7 +107,7 @@ TEST_CASE("Graph") {
     // WHEN: we import a .dsm file
     // THEN: the graph's adjacency matrix is the same as the one in the file
     GIVEN("An empty graph") {
-      Graph graph{};
+      RoadNetwork graph{};
       WHEN("A matrix in dsm format is imported") {
         graph.importMatrix("./data/matrix.dsm");
         THEN("The graph is correctly built") {
@@ -136,8 +136,8 @@ TEST_CASE("Graph") {
     }
   }
   SUBCASE("Coordinates import/export") {
-    GIVEN("A Graph object with the adj matrix imported") {
-      Graph graph{};
+    GIVEN("A RoadNetwork object with the adj matrix imported") {
+      RoadNetwork graph{};
       graph.importMatrix("./data/matrix.dsm");
       auto const& nodes = graph.nodes();
       WHEN("We import the coordinates in dsm format") {
@@ -178,7 +178,7 @@ TEST_CASE("Graph") {
     }
   }
   SUBCASE("importMatrix - raw matrix") {
-    Graph graph{};
+    RoadNetwork graph{};
     graph.importMatrix("./data/rawMatrix.txt", false);
     CHECK_EQ(graph.adjMatrix().n(), 3);
     CHECK(graph.adjMatrix().operator()(0, 1));
@@ -197,13 +197,13 @@ TEST_CASE("Graph") {
     // GIVEN: a graph
     // WHEN: we import a file with a wrong format
     // THEN: an exception is thrown
-    Graph graph{};
+    RoadNetwork graph{};
     CHECK_THROWS(graph.importMatrix("./data/matrix.nogood"));
     CHECK_THROWS(graph.importMatrix("./data/not_found.dsm"));
   }
   SUBCASE("importOSMNodes and importOSMEdges") {
     GIVEN("A graph object") {
-      Graph graph{};
+      RoadNetwork graph{};
       WHEN("We import nodes and edges from OSM") {
         graph.importOSMNodes("./data/postua_nodes.csv");
         graph.importOSMEdges("./data/postua_edges.csv");
@@ -262,7 +262,7 @@ TEST_CASE("Graph") {
     /// GIVEN: a graph
     /// WHEN: we add a street
     /// THEN: the street is added
-    Graph graph{};
+    RoadNetwork graph{};
     Street street{1, std::make_pair(0, 1), 1.};
     graph.addStreet(street);
     auto result = graph.street(0, 1);
@@ -275,7 +275,7 @@ TEST_CASE("Graph") {
   }
   SUBCASE("make trafficlight") {
     GIVEN("A graph object with two nodes and one street") {
-      Graph graph{};
+      RoadNetwork graph{};
       graph.addStreet(Street{1, std::make_pair(0, 1)});
       graph.buildAdj();
       WHEN("We make node 0 a traffic light") {
@@ -290,7 +290,7 @@ TEST_CASE("Graph") {
   }
   SUBCASE("make roundabout") {
     GIVEN("A graph object with two nodes and one street") {
-      Graph graph{};
+      RoadNetwork graph{};
       graph.addStreet(Street{1, std::make_pair(0, 1)});
       graph.buildAdj();
       WHEN("We make node 0 a roundabout") {
@@ -301,7 +301,7 @@ TEST_CASE("Graph") {
   }
   SUBCASE("make spire street") {
     GIVEN("A graph object with two nodes and one street") {
-      Graph graph{};
+      RoadNetwork graph{};
       graph.addStreet(Street{0, std::make_pair(0, 1)});
       graph.buildAdj();
       WHEN("We make the street a spire street") {
@@ -319,7 +319,7 @@ TEST_CASE("Dijkstra") {
     Street s3{2, std::make_pair(2, 3), 4.};
     Street s4{3, std::make_pair(3, 0), 5.};
     Street s5{4, std::make_pair(0, 2), 6.};
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(s1, s2, s3, s4, s5);
     graph.buildAdj();
     auto result = graph.shortestPath(0, 1);
@@ -340,7 +340,7 @@ TEST_CASE("Dijkstra") {
     Street s1(0, std::make_pair(0, 1), 1.);
     Street s2(1, std::make_pair(1, 2), 1.);
     Street s3(2, std::make_pair(0, 2), 6.);
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
     graph.buildAdj();
     auto result = graph.shortestPath(0, 2);
@@ -355,7 +355,7 @@ TEST_CASE("Dijkstra") {
     Street s1(0, std::make_pair(0, 1), 5.);
     Street s2(1, std::make_pair(1, 2), 4.);
     Street s3(2, std::make_pair(0, 2), 6.);
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
     graph.buildAdj();
     auto result = graph.shortestPath(0, 2);
@@ -381,7 +381,7 @@ TEST_CASE("Dijkstra") {
     Street s12(11, std::make_pair(4, 1), 1.);
     Street s13(12, std::make_pair(3, 1), 5.);
     Street s14(13, std::make_pair(4, 3), 7.);
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14);
     graph.buildAdj();
     auto result = graph.shortestPath(2, 4);
@@ -429,7 +429,7 @@ TEST_CASE("Dijkstra") {
     Street s16(15, std::make_pair(5, 4), 6.);
     Street s17(16, std::make_pair(6, 4), 2.);
     Street s18(17, std::make_pair(6, 5), 6.);
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18);
     graph.buildAdj();
@@ -495,7 +495,7 @@ TEST_CASE("Dijkstra") {
     Street s16(15, std::make_pair(5, 2), 2.);
     Street s17(16, std::make_pair(4, 3), 6.);
     Street s18(17, std::make_pair(4, 5), 9.);
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18);
     graph.buildAdj();
@@ -511,7 +511,7 @@ TEST_CASE("Dijkstra") {
     Street s1(0, std::make_pair(1, 2), 1.);
     Street s2(1, std::make_pair(0, 2), 6.);
     Street s3(2, std::make_pair(2, 0), 6.);
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
     graph.buildAdj();
     auto result = graph.shortestPath(0, 1);
@@ -522,7 +522,7 @@ TEST_CASE("Dijkstra") {
     Street s1(0, std::make_pair(1, 2), 1.);
     Street s2(1, std::make_pair(0, 2), 6.);
     Street s3(2, std::make_pair(2, 0), 6.);
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
     graph.buildAdj();
     auto result = graph.shortestPath(3, 1);
@@ -533,7 +533,7 @@ TEST_CASE("Dijkstra") {
     Street s1(0, std::make_pair(1, 2), 1.);
     Street s2(1, std::make_pair(0, 2), 6.);
     Street s3(2, std::make_pair(2, 0), 6.);
-    Graph graph{};
+    RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
     graph.buildAdj();
     auto result = graph.shortestPath(1, 3);
@@ -541,8 +541,8 @@ TEST_CASE("Dijkstra") {
   }
 
   SUBCASE("street and oppositeStreet") {
-    GIVEN("A Graph object with two streets") {
-      Graph graph{};
+    GIVEN("A RoadNetwork object with two streets") {
+      RoadNetwork graph{};
       Street street{1, std::make_pair(0, 1), 1.};
       Street opposite{2, std::make_pair(1, 0), 1.};
       graph.addStreets(street, opposite);
@@ -580,7 +580,7 @@ TEST_CASE("Dijkstra") {
   }
 
   SUBCASE("equal length") {
-    Graph graph{};
+    RoadNetwork graph{};
     graph.importMatrix("./data/matrix.dat", false);
     // check correct import
     CHECK_EQ(graph.adjMatrix().n(), 120);
@@ -602,7 +602,7 @@ TEST_CASE("Dijkstra") {
       Street s2(1, std::make_pair(1, 2), 40., 30., 2);
       Street s3(2, std::make_pair(3, 1), 75., 30., 3);
       Street s4(3, std::make_pair(1, 4), 55., 30., 1);
-      Graph graph{};
+      RoadNetwork graph{};
       graph.addStreets(s1, s2, s3, s4);
       graph.buildAdj();
       WHEN("We adjust node capacities") {

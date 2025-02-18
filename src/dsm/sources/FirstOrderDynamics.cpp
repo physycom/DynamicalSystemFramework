@@ -1,7 +1,7 @@
 #include "../headers/FirstOrderDynamics.hpp"
 
 namespace dsm {
-  FirstOrderDynamics::FirstOrderDynamics(Graph& graph,
+  FirstOrderDynamics::FirstOrderDynamics(RoadNetwork& graph,
                                          bool useCache,
                                          std::optional<unsigned int> seed,
                                          double alpha)

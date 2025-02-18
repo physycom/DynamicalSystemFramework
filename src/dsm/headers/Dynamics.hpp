@@ -28,7 +28,7 @@
 
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
-#include "Graph.hpp"
+#include "RoadNetwork.hpp"
 #include "SparseMatrix.hpp"
 #include "../utility/TypeTraits/is_agent.hpp"
 #include "../utility/TypeTraits/is_itinerary.hpp"
@@ -73,12 +73,12 @@ namespace dsm {
   private:
     std::map<Id, std::unique_ptr<agent_t>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
-    std::function<double(const Graph*, Id, Id)> m_weightFunction;
+    std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
     double m_weightTreshold;
     bool m_bCacheEnabled;
 
   protected:
-    Graph m_graph;
+    RoadNetwork m_graph;
     Time m_time, m_previousSpireTime;
     std::mt19937_64 m_generator;
 
@@ -191,7 +191,7 @@ namespace dsm {
     /// @param graph The graph representing the network
     /// @param useCache If true, the paths are cached (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
-    Dynamics(Graph& graph,
+    Dynamics(RoadNetwork& graph,
              bool useCache = false,
              std::optional<unsigned int> seed = std::nullopt);
 
@@ -207,7 +207,7 @@ namespace dsm {
     /// @details The weight function must return the weight of the edge between the source and the
     /// target node. One can use the predefined weight functions in the DijkstraWeights.hpp file,
     /// like weight_functions::streetLength or weight_functions::streetTime.
-    void setWeightFunction(std::function<double(const Graph*, Id, Id)> weightFunction);
+    void setWeightFunction(std::function<double(const RoadNetwork*, Id, Id)> weightFunction);
     /// @brief Set the weight treshold for updating the paths
     /// @param weightTreshold The weight treshold
     /// @details If two paths differs only for a weight smaller than the treshold, the two paths are
@@ -280,8 +280,8 @@ namespace dsm {
     void resetTime();
 
     /// @brief Get the graph
-    /// @return const Graph&, The graph
-    const Graph& graph() const { return m_graph; };
+    /// @return const RoadNetwork&, The graph
+    const RoadNetwork& graph() const { return m_graph; };
     /// @brief Get the itineraries
     /// @return const std::unordered_map<Id, Itinerary>&, The itineraries
     const std::unordered_map<Id, std::unique_ptr<Itinerary>>& itineraries() const {
@@ -355,7 +355,7 @@ namespace dsm {
   };
 
   template <typename agent_t>
-  Dynamics<agent_t>::Dynamics(Graph& graph,
+  Dynamics<agent_t>::Dynamics(RoadNetwork& graph,
                               bool useCache,
                               std::optional<unsigned int> seed)
       : m_weightFunction{weight_functions::streetLength},
@@ -390,7 +390,7 @@ namespace dsm {
 
   template <typename agent_t>
   void Dynamics<agent_t>::setWeightFunction(
-      std::function<double(const Graph*, Id, Id)> weightFunction) {
+      std::function<double(const RoadNetwork*, Id, Id)> weightFunction) {
     m_weightFunction = weightFunction;
   }
 
@@ -423,7 +423,7 @@ namespace dsm {
   void Dynamics<agent_t>::addAgent(std::unique_ptr<agent_t> agent) {
     if (m_agents.size() + 1 > m_graph.maxCapacity()) {
       throw std::overflow_error(Logger::buildExceptionMessage(
-          std::format("Graph is already holding the max possible number of agents ({})",
+          std::format("RoadNetwork is already holding the max possible number of agents ({})",
                       m_graph.maxCapacity())));
     }
     if (m_agents.contains(agent->id())) {

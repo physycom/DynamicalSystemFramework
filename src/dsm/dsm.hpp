@@ -19,7 +19,7 @@ namespace dsm {
 
 #include "headers/AdjacencyMatrix.hpp"
 #include "headers/Agent.hpp"
-#include "headers/Graph.hpp"
+#include "headers/RoadNetwork.hpp"
 #include "headers/Itinerary.hpp"
 #include "headers/Intersection.hpp"
 #include "headers/TrafficLight.hpp"

@@ -24,7 +24,7 @@ std::atomic<unsigned int> progress{0};
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using Graph = dsm::Graph;
+using RoadNetwork = dsm::RoadNetwork;
 using Itinerary = dsm::Itinerary;
 using Dynamics = dsm::FirstOrderDynamics;
 using Street = dsm::Street;
@@ -51,7 +51,7 @@ int main() {
   const auto MAX_TIME{static_cast<Unit>(timeUnit * vehiclesToInsert.size())};
 
   // Create the graph
-  Graph graph;
+  RoadNetwork graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
   dsm::Road::setMeanVehicleLength(8.);

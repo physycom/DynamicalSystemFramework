@@ -13,7 +13,7 @@ namespace dsm {
     /// @param useCache If true, the cache is used (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
     /// @param alpha The minimum speed rate (default is 0)
-    explicit FirstOrderDynamics(Graph& graph,
+    explicit FirstOrderDynamics(RoadNetwork& graph,
                                 bool useCache = false,
                                 std::optional<unsigned int> seed = std::nullopt,
                                 double alpha = 0.);

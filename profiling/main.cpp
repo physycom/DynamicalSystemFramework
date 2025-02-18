@@ -8,12 +8,12 @@
 
 using unit = uint32_t;
 
-using Graph = dsm::Graph;
+using RoadNetwork = dsm::RoadNetwork;
 using Itinerary = dsm::Itinerary;
 using Dynamics = dsm::FirstOrderDynamics;
 
 int main() {
-  Graph graph{};
+  RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
   graph.importMatrix("../test/data/rawMatrix.dat", false);
   std::cout << "Number of nodes: " << graph.nodes().size() << '\n'

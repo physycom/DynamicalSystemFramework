@@ -1,10 +1,10 @@
 
-#include "../headers/Graph.hpp"
+#include "../headers/RoadNetwork.hpp"
 
 #include <algorithm>
 
 namespace dsm {
-  void Graph::m_addMissingNodes(Id const nodeId) {
+  void RoadNetwork::m_addMissingNodes(Id const nodeId) {
     auto const srcNodeId{m_edges.at(nodeId)->source()};
     auto const dstNodeId{m_edges.at(nodeId)->target()};
     if (srcNodeId < m_adjacencyMatrix.n() && dstNodeId < m_adjacencyMatrix.n()) {
@@ -21,15 +21,15 @@ namespace dsm {
       m_nodes.emplace(dstNodeId, std::make_unique<Intersection>(dstNodeId));
     }
   }
-  Graph::Graph()
+  RoadNetwork::RoadNetwork()
       : Network{AdjacencyMatrix()},
         m_maxAgentCapacity{std::numeric_limits<unsigned long long>::max()} {}
 
-  Graph::Graph(AdjacencyMatrix const& adj)
+  RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj)
       : Network{adj},
         m_maxAgentCapacity{std::numeric_limits<unsigned long long>::max()} {}
 
-  Graph::Graph(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet)
+  RoadNetwork::RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet)
       : Network{AdjacencyMatrix(streetSet)} {
     // for (auto& street : streetSet) {
     //   m_edges.emplace(street.second->id(), street.second.get());
@@ -43,7 +43,7 @@ namespace dsm {
     // buildAdj();
   }
 
-  void Graph::m_reassignIds() {
+  void RoadNetwork::m_reassignIds() {
     // not sure about this, might need a bit more work
     auto const oldStreetSet{std::move(m_edges)};
     auto const N{nNodes()};
@@ -96,7 +96,7 @@ namespace dsm {
     }
   }
 
-  void Graph::buildAdj() {
+  void RoadNetwork::buildAdj() {
     // find max values in streets node pairs
     m_maxAgentCapacity = 0;
     for (const auto& [streetId, pStreet] : m_edges) {
@@ -117,7 +117,7 @@ namespace dsm {
     this->m_reassignIds();
   }
 
-  void Graph::adjustNodeCapacities() {
+  void RoadNetwork::adjustNodeCapacities() {
     int16_t value;
     for (Id nodeId = 0; nodeId < m_nodes.size(); ++nodeId) {
       value = 0;
@@ -142,7 +142,7 @@ namespace dsm {
     }
   }
 
-  void Graph::importMatrix(const std::string& fileName, bool isAdj, double defaultSpeed) {
+  void RoadNetwork::importMatrix(const std::string& fileName, bool isAdj, double defaultSpeed) {
     // check the file extension
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
     if (fileExt == "dsm") {
@@ -229,7 +229,7 @@ namespace dsm {
     }
   }
 
-  void Graph::importCoordinates(const std::string& fileName) {
+  void RoadNetwork::importCoordinates(const std::string& fileName) {
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
     if (fileExt == "dsm") {
       // first input number is the number of nodes
@@ -294,7 +294,7 @@ namespace dsm {
     }
   }
 
-  void Graph::importOSMNodes(const std::string& fileName) {
+  void RoadNetwork::importOSMNodes(const std::string& fileName) {
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
     if (fileExt == "csv") {
       std::ifstream file{fileName};
@@ -345,7 +345,7 @@ namespace dsm {
     Logger::info(std::format("Successfully imported {} nodes", nNodes()));
   }
 
-  void Graph::importOSMEdges(const std::string& fileName) {
+  void RoadNetwork::importOSMEdges(const std::string& fileName) {
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
     auto const nNodes{m_nodes.size()};
     if (fileExt == "csv") {
@@ -465,7 +465,7 @@ namespace dsm {
     Logger::info(std::format("Successfully imported {} edges", nEdges()));
   }
 
-  void Graph::exportNodes(std::string const& path) {
+  void RoadNetwork::exportNodes(std::string const& path) {
     // assert that path ends with ".csv"
     assert((void("Only csv export is supported."),
             path.substr(path.find_last_of(".")) == ".csv"));
@@ -483,7 +483,7 @@ namespace dsm {
     }
     file.close();
   }
-  void Graph::exportEdges(std::string const& path) {
+  void RoadNetwork::exportEdges(std::string const& path) {
     // assert that path ends with ".csv"
     assert((void("Only csv export is supported."),
             path.substr(path.find_last_of(".")) == ".csv"));
@@ -509,7 +509,7 @@ namespace dsm {
     }
     file.close();
   }
-  void Graph::exportMatrix(std::string path, bool isAdj) {
+  void RoadNetwork::exportMatrix(std::string path, bool isAdj) {
     std::ofstream file{path};
     if (!file.is_open()) {
       throw std::invalid_argument(
@@ -528,7 +528,7 @@ namespace dsm {
     }
   }
 
-  TrafficLight& Graph::makeTrafficLight(Id const nodeId,
+  TrafficLight& RoadNetwork::makeTrafficLight(Id const nodeId,
                                         Delay const cycleTime,
                                         Delay const counter) {
     auto& pNode = m_nodes.at(nodeId);
@@ -536,23 +536,23 @@ namespace dsm {
     return node<TrafficLight>(nodeId);
   }
 
-  Roundabout& Graph::makeRoundabout(Id nodeId) {
+  Roundabout& RoadNetwork::makeRoundabout(Id nodeId) {
     auto& pNode = m_nodes.at(nodeId);
     pNode = std::make_unique<Roundabout>(*pNode);
     return node<Roundabout>(nodeId);
   }
 
-  Station& Graph::makeStation(Id nodeId, const unsigned int managementTime) {
+  Station& RoadNetwork::makeStation(Id nodeId, const unsigned int managementTime) {
     auto& pNode = m_nodes.at(nodeId);
     pNode = std::make_unique<Station>(*pNode, managementTime);
     return node<Station>(nodeId);
   }
-  StochasticStreet& Graph::makeStochasticStreet(Id streetId, double const flowRate) {
+  StochasticStreet& RoadNetwork::makeStochasticStreet(Id streetId, double const flowRate) {
     auto& pStreet = m_edges.at(streetId);
     pStreet = std::make_unique<StochasticStreet>(pStreet->id(), *pStreet, flowRate);
     return edge<StochasticStreet>(streetId);
   }
-  void Graph::makeSpireStreet(Id streetId) {
+  void RoadNetwork::makeSpireStreet(Id streetId) {
     auto& pStreet = m_edges.at(streetId);
     if (pStreet->isStochastic()) {
       pStreet = std::make_unique<StochasticSpireStreet>(
@@ -562,7 +562,7 @@ namespace dsm {
     pStreet = std::make_unique<SpireStreet>(pStreet->id(), *pStreet);
   }
 
-  void Graph::addStreet(const Street& street) {
+  void RoadNetwork::addStreet(const Street& street) {
     if (m_edges.contains(street.id())) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} from {} to {} already exists.",
@@ -584,7 +584,7 @@ namespace dsm {
     m_adjacencyMatrix.insert(srcId, dstId);
   }
 
-  const std::unique_ptr<Street>* Graph::street(Id source, Id destination) const {
+  const std::unique_ptr<Street>* RoadNetwork::street(Id source, Id destination) const {
     auto streetIt = std::find_if(m_edges.begin(),
                                  m_edges.end(),
                                  [source, destination](const auto& street) -> bool {
@@ -606,7 +606,7 @@ namespace dsm {
     return &(streetIt->second);
   }
 
-  const std::unique_ptr<Street>* Graph::oppositeStreet(Id streetId) const {
+  const std::unique_ptr<Street>* RoadNetwork::oppositeStreet(Id streetId) const {
     if (!m_edges.contains(streetId)) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} does not exist: maybe it has changed "

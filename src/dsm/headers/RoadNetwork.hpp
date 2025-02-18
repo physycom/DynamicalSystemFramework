@@ -1,9 +1,9 @@
-/// @file       /src/dsm/headers/Graph.hpp
-/// @file       /src/dsm/headers/Graph.hpp
-/// @brief      Defines the Graph class.
+/// @file       /src/dsm/headers/RoadNetwork.hpp
+/// @file       /src/dsm/headers/RoadNetwork.hpp
+/// @brief      Defines the RoadNetwork class.
 ///
-/// @details    This file contains the definition of the Graph class.
-///             The Graph class represents a graph in the network. It is templated by the type
+/// @details    This file contains the definition of the RoadNetwork class.
+///             The RoadNetwork class represents a graph in the network. It is templated by the type
 ///             of the graph's id and the type of the graph's capacity.
 ///             The graph's id and capacity must be unsigned integral types.
 
@@ -42,10 +42,10 @@
 
 namespace dsm {
 
-  /// @brief The Graph class represents a graph in the network.
+  /// @brief The RoadNetwork class represents a graph in the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
-  class Graph : public Network<Node, Street> {
+  class RoadNetwork : public Network<Node, Street> {
   private:
     std::unordered_map<std::string, Id> m_nodeMapping;
     std::vector<Id> m_inputNodes;
@@ -63,15 +63,15 @@ namespace dsm {
     void m_addMissingNodes(Id const nodeId) final;
 
   public:
-    Graph();
-    /// @brief Construct a new Graph object
+    RoadNetwork();
+    /// @brief Construct a new RoadNetwork object
     /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
-    Graph(AdjacencyMatrix const& adj);
-    /// @brief Construct a new Graph object
+    RoadNetwork(AdjacencyMatrix const& adj);
+    /// @brief Construct a new RoadNetwork object
     /// @param streetSet A map of streets representing the graph's streets
-    Graph(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
+    RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
 
-    Graph(const Graph& other) : Network{AdjacencyMatrix()} {
+    RoadNetwork(const RoadNetwork& other) : Network{AdjacencyMatrix()} {
       std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
         this->m_nodes.emplace(pair.first, pair.second.get());
       });
@@ -84,7 +84,7 @@ namespace dsm {
       m_outputNodes = other.m_outputNodes;
     }
 
-    Graph& operator=(const Graph& other) {
+    RoadNetwork& operator=(const RoadNetwork& other) {
       std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
         this->m_nodes.insert_or_assign(pair.first,
                                        std::unique_ptr<Node>(pair.second.get()));
@@ -101,8 +101,8 @@ namespace dsm {
       return *this;
     }
 
-    Graph(Graph&&) = default;
-    Graph& operator=(Graph&&) = default;
+    RoadNetwork(RoadNetwork&&) = default;
+    RoadNetwork& operator=(RoadNetwork&&) = default;
 
     /// @brief Build the graph's adjacency matrix and computes max capacity
     /// @details The adjacency matrix is built using the graph's streets and nodes. N.B.: The street ids
@@ -224,8 +224,8 @@ namespace dsm {
     /// @param source The source node
     /// @param destination The destination node
     /// @return A DijkstraResult object containing the path and the distance
-    template <typename Func = std::function<double(const Graph*, Id, Id)>>
-      requires(std::is_same_v<std::invoke_result_t<Func, const Graph*, Id, Id>, double>)
+    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
+      requires(std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
     std::optional<DijkstraResult> shortestPath(
         const Node& source,
         const Node& destination,
@@ -235,8 +235,8 @@ namespace dsm {
     /// @param source The source node id
     /// @param destination The destination node id
     /// @return A DijkstraResult object containing the path and the distance
-    template <typename Func = std::function<double(const Graph*, Id, Id)>>
-      requires(std::is_same_v<std::invoke_result_t<Func, const Graph*, Id, Id>, double>)
+    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
+      requires(std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
     std::optional<DijkstraResult> shortestPath(
         Id source, Id destination, Func f = weight_functions::streetLength) const;
   };
@@ -244,14 +244,14 @@ namespace dsm {
   template <typename T1, typename... Tn>
     requires is_node_v<std::remove_reference_t<T1>> &&
              (is_node_v<std::remove_reference_t<Tn>> && ...)
-  void Graph::addNodes(T1&& node, Tn&&... nodes) {
+  void RoadNetwork::addNodes(T1&& node, Tn&&... nodes) {
     addNode(std::forward<T1>(node));
     addNodes(std::forward<Tn>(nodes)...);
   }
 
   template <typename T1>
     requires is_street_v<std::remove_reference_t<T1>>
-  void Graph::addStreets(T1&& street) {
+  void RoadNetwork::addStreets(T1&& street) {
     if (m_edges.contains(street.id())) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} already exists.", street.id())));
@@ -262,22 +262,22 @@ namespace dsm {
   template <typename T1, typename... Tn>
     requires is_street_v<std::remove_reference_t<T1>> &&
              (is_street_v<std::remove_reference_t<Tn>> && ...)
-  void Graph::addStreets(T1&& street, Tn&&... streets) {
+  void RoadNetwork::addStreets(T1&& street, Tn&&... streets) {
     addStreet(std::forward<T1>(street));
     addStreets(std::forward<Tn>(streets)...);
   }
 
   template <typename Func>
-    requires(std::is_same_v<std::invoke_result_t<Func, const Graph*, Id, Id>, double>)
-  std::optional<DijkstraResult> Graph::shortestPath(const Node& source,
+    requires(std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+  std::optional<DijkstraResult> RoadNetwork::shortestPath(const Node& source,
                                                     const Node& destination,
                                                     Func f) const {
     return this->shortestPath(source.id(), destination.id());
   }
 
   template <typename Func>
-    requires(std::is_same_v<std::invoke_result_t<Func, const Graph*, Id, Id>, double>)
-  std::optional<DijkstraResult> Graph::shortestPath(Id source,
+    requires(std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+  std::optional<DijkstraResult> RoadNetwork::shortestPath(Id source,
                                                     Id destination,
                                                     Func getStreetWeight) const {
     const Id sourceId{source};

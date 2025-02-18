@@ -34,7 +34,7 @@ std::atomic<bool> bExitFlag{false};
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using Graph = dsm::Graph;
+using RoadNetwork = dsm::RoadNetwork;
 using Dynamics = dsm::FirstOrderDynamics;
 using Street = dsm::Street;
 using SpireStreet = dsm::SpireStreet;
@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
   fs::create_directory(OUT_FOLDER);
   // Starting
   std::cout << "Using dsm version: " << dsm::version() << '\n';
-  Graph graph{};
+  RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
   graph.importMatrix(IN_MATRIX, false);
   graph.importCoordinates(IN_COORDS);

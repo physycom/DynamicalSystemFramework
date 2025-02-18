@@ -5,9 +5,9 @@
 #include <utility>
 #include "Bench.hpp"
 
-#include "Graph.hpp"
+#include "RoadNetwork.hpp"
 
-using Graph = dsm::Graph;
+using RoadNetwork = dsm::RoadNetwork;
 using Intersection = dsm::Intersection;
 using Street = dsm::Street;
 using SparseMatrix = dsm::SparseMatrix<bool>;
@@ -15,7 +15,7 @@ using SparseMatrix = dsm::SparseMatrix<bool>;
 using Bench = sb::Bench<long long int>;
 
 int main() {
-  Graph g1;
+  RoadNetwork g1;
   const int n_rep{1000};
   Bench b1(n_rep);
 
@@ -48,18 +48,18 @@ int main() {
   }
   Bench b2;
   std::cout << "Benchmarking construction with adjacency matrix\n";
-  b2.benchmark([&sm]() -> void { Graph g(sm); });
+  b2.benchmark([&sm]() -> void { RoadNetwork g(sm); });
   b2.print<sb::milliseconds>();
 
   // Bench b3(1);
-  // Graph g2(sm);
+  // RoadNetwork g2(sm);
   // std::cout << "Benchmarking building the adjacency matrix\n";
   // b3.benchmark([&g2]() -> void { g2.buildAdj(); });
   // b3.print<sb::microseconds>();
 
   // Bench b4(3);
-  // Graph g3;
-  // g3.importMatrix("./Graph/data/matrix.dat");
+  // RoadNetwork g3;
+  // g3.importMatrix("./RoadNetwork/data/matrix.dat");
   // std::cout << "Benchmarking the algorithm for the shortest path\n";
   // b4.benchmark([&g3]() -> void { g3.shortestPath(0, 1); });
   // b4.print<sb::microseconds>();

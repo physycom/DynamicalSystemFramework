@@ -1,5 +1,5 @@
 #include "AdjacencyMatrix.hpp"
-#include "Graph.hpp"
+#include "RoadNetwork.hpp"
 
 #include "doctest.h"
 
@@ -120,7 +120,7 @@ TEST_CASE("Test default construction and insertion") {
   }
 }
 TEST_CASE("Test construction from edge map") {
-  Graph g;
+  RoadNetwork g;
   g.addEdge<Street>(0, std::make_pair<Id, Id>(0, 1));
   g.addEdge<Street>(1, std::make_pair<Id, Id>(1, 2));
   g.addEdge<Street>(2, std::make_pair<Id, Id>(1, 3));
