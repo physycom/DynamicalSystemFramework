@@ -24,7 +24,7 @@ std::atomic<unsigned int> progress{0};
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using Graph = dsm::Graph;
+using RoadNetwork = dsm::RoadNetwork;
 using Itinerary = dsm::Itinerary;
 using Dynamics = dsm::FirstOrderDynamics;
 using Street = dsm::Street;
@@ -51,7 +51,7 @@ int main() {
   const auto MAX_TIME{static_cast<Unit>(timeUnit * vehiclesToInsert.size())};
 
   // Create the graph
-  Graph graph;
+  RoadNetwork graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
   dsm::Road::setMeanVehicleLength(8.);
@@ -60,23 +60,27 @@ int main() {
   Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};
   Street s34{19, std::make_pair(3, 4), 651., 13.9, 2};
   // Viale Aldo Moro
-  auto& tl1 = graph.addNode<TrafficLight>(1, 132);
+  graph.addNode<TrafficLight>(1, 132);
+  auto& tl1 = graph.node<TrafficLight>(1);
   tl1.setCycle(s01.id(), dsm::Direction::ANY, {62, 0});
   // Via Donato Creti
-  auto& tl2 = graph.addNode<TrafficLight>(2, 141);
+  graph.addNode<TrafficLight>(2, 141);
+  auto& tl2 = graph.node<TrafficLight>(2);
   tl2.setCycle(s12.id(), dsm::Direction::ANY, {72, 0});
   // Via del Lavoro
-  auto& tl3 = graph.addNode<TrafficLight>(3, 138);
+  graph.addNode<TrafficLight>(3, 138);
+  auto& tl3 = graph.node<TrafficLight>(3);
   tl3.setCycle(s23.id(), dsm::Direction::ANY, {88, 0});
   // Viali
-  auto& tl4 = graph.addNode<TrafficLight>(4, 131);
+  graph.addNode<TrafficLight>(4, 131);
+  auto& tl4 = graph.node<TrafficLight>(4);
   tl4.setCycle(s34.id(), dsm::Direction::ANY, {81, 0});
 
   graph.addStreets(s01, s12, s23, s34);
   graph.buildAdj();
   graph.adjustNodeCapacities();
   graph.makeSpireStreet(19);
-  auto& spire = dynamic_cast<SpireStreet&>(*graph.street(19));
+  auto& spire = graph.edge<SpireStreet>(19);
 
   dsm::Logger::info(std::format("Intersections: {}", graph.nNodes()));
   dsm::Logger::info(std::format("Streets: {}", graph.nEdges()));

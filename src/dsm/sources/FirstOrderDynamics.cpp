@@ -1,7 +1,7 @@
 #include "../headers/FirstOrderDynamics.hpp"
 
 namespace dsm {
-  FirstOrderDynamics::FirstOrderDynamics(Graph& graph,
+  FirstOrderDynamics::FirstOrderDynamics(RoadNetwork& graph,
                                          bool useCache,
                                          std::optional<unsigned int> seed,
                                          double alpha)
@@ -12,7 +12,7 @@ namespace dsm {
       Logger::error(std::format("The minimum speed rateo ({}) must be in [0, 1[", alpha));
     }
     double globMaxTimePenalty{0.};
-    for (const auto& [streetId, street] : this->m_graph.streetSet()) {
+    for (const auto& [streetId, street] : this->m_graph.edges()) {
       globMaxTimePenalty =
           std::max(globMaxTimePenalty,
                    std::ceil(street->length() / ((1. - m_alpha) * street->maxSpeed())));
@@ -28,7 +28,7 @@ namespace dsm {
 
   void FirstOrderDynamics::setAgentSpeed(Size agentId) {
     const auto& agent{this->agents().at(agentId)};
-    const auto& street{this->m_graph.street(agent->streetId().value())};
+    const auto& street{this->m_graph.edge(agent->streetId().value())};
     double speed{street->maxSpeed() * (1. - m_alpha * street->density(true))};
     if (m_speedFluctuationSTD > 0.) {
       std::normal_distribution<double> speedDist{speed, speed * m_speedFluctuationSTD};
@@ -48,7 +48,7 @@ namespace dsm {
   }
 
   double FirstOrderDynamics::streetMeanSpeed(Id streetId) const {
-    const auto& street{this->m_graph.street(streetId)};
+    const auto& street{this->m_graph.edge(streetId)};
     if (street->nAgents() == 0) {
       return street->maxSpeed();
     }
@@ -98,8 +98,8 @@ namespace dsm {
       return Measurement(0., 0.);
     }
     std::vector<double> speeds;
-    speeds.reserve(this->m_graph.streetSet().size());
-    for (const auto& [streetId, street] : this->m_graph.streetSet()) {
+    speeds.reserve(this->m_graph.edges().size());
+    for (const auto& [streetId, street] : this->m_graph.edges()) {
       speeds.push_back(this->streetMeanSpeed(streetId));
     }
     return Measurement<double>(speeds);
@@ -110,8 +110,8 @@ namespace dsm {
       return Measurement(0., 0.);
     }
     std::vector<double> speeds;
-    speeds.reserve(this->m_graph.streetSet().size());
-    for (const auto& [streetId, street] : this->m_graph.streetSet()) {
+    speeds.reserve(this->m_graph.edges().size());
+    for (const auto& [streetId, street] : this->m_graph.edges()) {
       if (above) {
         if (street->density(true) > threshold) {
           speeds.push_back(this->streetMeanSpeed(streetId));

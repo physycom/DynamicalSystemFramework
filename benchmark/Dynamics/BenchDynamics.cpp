@@ -1,18 +1,18 @@
 #include <cstdint>
 
-#include "Graph.hpp"
+#include "RoadNetwork.hpp"
 #include "Itinerary.hpp"
 #include "FirstOrderDynamics.hpp"
 #include "Bench.hpp"
 
-using Graph = dsm::Graph;
+using RoadNetwork = dsm::RoadNetwork;
 using Itinerary = dsm::Itinerary;
 using Dynamics = dsm::FirstOrderDynamics;
 
 using Bench = sb::Bench<long long int>;
 
 int main() {
-  Graph graph{};
+  RoadNetwork graph{};
   graph.importOSMNodes("../test/data/forlì_nodes.csv");
   graph.importOSMEdges("../test/data/forlì_edges.csv");
   graph.buildAdj();

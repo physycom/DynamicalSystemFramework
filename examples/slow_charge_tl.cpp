@@ -34,7 +34,7 @@ std::atomic<bool> bExitFlag{false};
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using Graph = dsm::Graph;
+using RoadNetwork = dsm::RoadNetwork;
 using Dynamics = dsm::FirstOrderDynamics;
 using Street = dsm::Street;
 using SpireStreet = dsm::SpireStreet;
@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
   fs::create_directory(OUT_FOLDER);
   // Starting
   std::cout << "Using dsm version: " << dsm::version() << '\n';
-  Graph graph{};
+  RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
   graph.importMatrix(IN_MATRIX, false);
   graph.importCoordinates(IN_COORDS);
@@ -152,16 +152,16 @@ int main(int argc, char** argv) {
     graph.makeTrafficLight(i, 120);
   }
   std::cout << "Making every street a spire...\n";
-  for (const auto& [id, street] : graph.streetSet()) {
+  for (const auto& [id, street] : graph.edges()) {
     graph.makeSpireStreet(id);
   }
   // check isSpire for each street
-  for (const auto& [id, street] : graph.streetSet()) {
+  for (const auto& [id, street] : graph.edges()) {
     if (!street->isSpire()) {
       std::cerr << "Street " << id << " is not a spire.\n";
     }
   }
-  auto const degreeVector = graph.adjMatrix().getOutDegreeVector();
+  auto const degreeVector = graph.adjacencyMatrix().getOutDegreeVector();
   // create gaussian random number generator
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
   std::array<uint8_t, 2> sda{0, 0};
   auto random = [&d, &gen]() { return std::round(d(gen)); };
   std::cout << "Setting traffic light parameters..." << '\n';
-  for (const auto& [nodeId, node] : graph.nodeSet()) {
+  for (const auto& [nodeId, node] : graph.nodes()) {
     auto& tl = dynamic_cast<TrafficLight&>(*node);
     tl.setCapacity(degreeVector[nodeId]);
     tl.setTransportCapacity(degreeVector[nodeId]);
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
     while (value < 0.) {
       value = random();
     }
-    const auto& col = graph.adjMatrix().getCol(nodeId);
+    const auto& col = graph.adjacencyMatrix().getCol(nodeId);
     std::set<Unit> streets;
     const auto& refLat = node->coords().value().first;
     for (const auto& id : col) {
@@ -208,7 +208,7 @@ int main(int argc, char** argv) {
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, true, SEED, 0.6};
-  auto const& adj{dynamics.graph().adjMatrix()};
+  auto const& adj{dynamics.graph().adjacencyMatrix()};
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_DENSITIES
   std::ofstream streetDensity(OUT_FOLDER + "densities.csv");
   streetDensity << "time";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     streetDensity << ';' << id;
   }
   streetDensity << '\n';
@@ -249,7 +249,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_FLOWS
   std::ofstream streetFlow(OUT_FOLDER + "flows.csv");
   streetFlow << "time";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     streetFlow << ';' << id;
   }
   streetFlow << '\n';
@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_SPEEDS
   std::ofstream streetSpeed(OUT_FOLDER + "speeds.csv");
   streetSpeed << "time";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     streetSpeed << ';' << id;
   }
   streetSpeed << '\n';
@@ -267,7 +267,7 @@ int main(int argc, char** argv) {
   std::ofstream inSpires(OUT_FOLDER + "in_spires.csv");
   outSpires << "time";
   inSpires << "time";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     outSpires << ';' << id;
     inSpires << ';' << id;
   }
@@ -277,7 +277,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_TP
   std::ofstream outTP(OUT_FOLDER + "turn_probabilities.csv");
   outTP << "time";
-  for (const auto& [id, street] : dynamics.graph().streetSet()) {
+  for (const auto& [id, street] : dynamics.graph().edges()) {
     outTP << ';' << id;
   }
   outTP << '\n';
@@ -335,7 +335,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_OUT_SPIRES
       outSpires << dynamics.time();
       inSpires << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         auto& spire = dynamic_cast<SpireStreet&>(*street);
         outSpires << ';' << spire.outputCounts(false);
         inSpires << ';' << spire.inputCounts(false);
@@ -359,7 +359,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_TP
       const auto& tc{dynamics.turnCounts()};
       outTP << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& probs{tc.at(id)};
         outTP << ";[";
         const auto& nextStreets = TM.at(id);
@@ -391,14 +391,14 @@ int main(int argc, char** argv) {
     if (dynamics.time() % 10 == 0) {
 #ifdef PRINT_DENSITIES
       streetDensity << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         streetDensity << ';' << street->density();
       }
       streetDensity << std::endl;
 #endif
 #ifdef PRINT_FLOWS
       streetFlow << ';' << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& meanSpeed = dynamics.streetMeanSpeed(id);
         if (meanSpeed.has_value()) {
           streetFlow << ';' << meanSpeed.value() * street->density();
@@ -410,7 +410,7 @@ int main(int argc, char** argv) {
 #endif
 #ifdef PRINT_SPEEDS
       streetSpeed << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().streetSet()) {
+      for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& meanSpeed = dynamics.streetMeanSpeed(id);
         if (meanSpeed.has_value()) {
           streetSpeed << ';' << meanSpeed.value();

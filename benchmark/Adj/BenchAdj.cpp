@@ -1,6 +1,6 @@
 #include <cstdint>
 
-#include "Graph.hpp"
+#include "RoadNetwork.hpp"
 #include "Itinerary.hpp"
 #include "FirstOrderDynamics.hpp"
 #include "SparseMatrix.hpp"
@@ -11,11 +11,11 @@ using namespace dsm;
 using Bench = sb::Bench<long long int>;
 
 int main() {
-  Graph graph{};
+  RoadNetwork graph{};
   graph.importOSMNodes("../test/data/forlì_nodes.csv");
   graph.importOSMEdges("../test/data/forlì_edges.csv");
   graph.buildAdj();
-  auto const& adj{graph.adjMatrix()};
+  auto const& adj{graph.adjacencyMatrix()};
   auto const N{adj.n()};
   SparseMatrix<bool> sm(N, N);
   for (const auto& [srcId, dstId] : adj.elements()) {

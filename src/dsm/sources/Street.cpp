@@ -174,6 +174,7 @@ namespace dsm {
   }
   void StochasticSpireStreet::addAgent(Id agentId) {
     Street::addAgent(agentId);
+    Logger::info(std::format("Adding agent {} to spire street {}", agentId, this->id()));
     increaseInputCounter();
   }
 

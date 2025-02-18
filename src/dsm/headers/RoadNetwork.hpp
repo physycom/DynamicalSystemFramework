@@ -1,9 +1,9 @@
-/// @file       /src/dsm/headers/Graph.hpp
-/// @file       /src/dsm/headers/Graph.hpp
-/// @brief      Defines the Graph class.
+/// @file       /src/dsm/headers/RoadNetwork.hpp
+/// @file       /src/dsm/headers/RoadNetwork.hpp
+/// @brief      Defines the RoadNetwork class.
 ///
-/// @details    This file contains the definition of the Graph class.
-///             The Graph class represents a graph in the network. It is templated by the type
+/// @details    This file contains the definition of the RoadNetwork class.
+///             The RoadNetwork class represents a graph in the network. It is templated by the type
 ///             of the graph's id and the type of the graph's capacity.
 ///             The graph's id and capacity must be unsigned integral types.
 
@@ -28,7 +28,7 @@
 
 #include "AdjacencyMatrix.hpp"
 #include "DijkstraWeights.hpp"
-#include "Node.hpp"
+#include "Network.hpp"
 #include "Intersection.hpp"
 #include "TrafficLight.hpp"
 #include "Roundabout.hpp"
@@ -42,14 +42,11 @@
 
 namespace dsm {
 
-  /// @brief The Graph class represents a graph in the network.
+  /// @brief The RoadNetwork class represents a graph in the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
-  class Graph {
+  class RoadNetwork : public Network<Node, Street> {
   private:
-    std::unordered_map<Id, std::unique_ptr<Node>> m_nodes;
-    std::unordered_map<Id, std::unique_ptr<Street>> m_streets;
-    AdjacencyMatrix m_adjacencyMatrix;
     std::unordered_map<std::string, Id> m_nodeMapping;
     std::vector<Id> m_inputNodes;
     std::vector<Id> m_outputNodes;
@@ -63,39 +60,39 @@ namespace dsm {
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
 
-  public:
-    Graph();
-    /// @brief Construct a new Graph object
-    /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
-    Graph(AdjacencyMatrix const& adj);
-    /// @brief Construct a new Graph object
-    /// @param streetSet A map of streets representing the graph's streets
-    Graph(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
+    void m_addMissingNodes(Id const nodeId) final;
 
-    Graph(const Graph& other) {
+  public:
+    RoadNetwork();
+    /// @brief Construct a new RoadNetwork object
+    /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
+    RoadNetwork(AdjacencyMatrix const& adj);
+    /// @brief Construct a new RoadNetwork object
+    /// @param streetSet A map of streets representing the graph's streets
+    RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
+
+    RoadNetwork(const RoadNetwork& other) : Network{AdjacencyMatrix()} {
       std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
         this->m_nodes.emplace(pair.first, pair.second.get());
       });
-      std::for_each(
-          other.m_streets.begin(), other.m_streets.end(), [this](const auto& pair) {
-            this->m_streets.emplace(pair.first, pair.second.get());
-          });
+      std::for_each(other.m_edges.begin(), other.m_edges.end(), [this](const auto& pair) {
+        this->m_edges.emplace(pair.first, pair.second.get());
+      });
       m_nodeMapping = other.m_nodeMapping;
       m_adjacencyMatrix = other.m_adjacencyMatrix;
       m_inputNodes = other.m_inputNodes;
       m_outputNodes = other.m_outputNodes;
     }
 
-    Graph& operator=(const Graph& other) {
+    RoadNetwork& operator=(const RoadNetwork& other) {
       std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
         this->m_nodes.insert_or_assign(pair.first,
                                        std::unique_ptr<Node>(pair.second.get()));
       });
-      std::for_each(
-          other.m_streets.begin(), other.m_streets.end(), [this](const auto& pair) {
-            this->m_streets.insert_or_assign(pair.first,
-                                             std::make_unique<Street>(*pair.second));
-          });
+      std::for_each(other.m_edges.begin(), other.m_edges.end(), [this](const auto& pair) {
+        this->m_edges.insert_or_assign(pair.first,
+                                       std::make_unique<Street>(*pair.second));
+      });
       m_nodeMapping = other.m_nodeMapping;
       m_adjacencyMatrix = other.m_adjacencyMatrix;
       m_inputNodes = other.m_inputNodes;
@@ -104,8 +101,8 @@ namespace dsm {
       return *this;
     }
 
-    Graph(Graph&&) = default;
-    Graph& operator=(Graph&&) = default;
+    RoadNetwork(RoadNetwork&&) = default;
+    RoadNetwork& operator=(RoadNetwork&&) = default;
 
     /// @brief Build the graph's adjacency matrix and computes max capacity
     /// @details The adjacency matrix is built using the graph's streets and nodes. N.B.: The street ids
@@ -157,18 +154,6 @@ namespace dsm {
     /// @throws std::invalid_argument if the file is not found or invalid
     void exportMatrix(std::string path = "./matrix.dsm", bool isAdj = true);
 
-    /// @brief Add a node to the graph
-    /// @param node A std::unique_ptr to the node to add
-    void addNode(std::unique_ptr<Node> node);
-    /// @brief Add a node of type node_t to the graph
-    /// @param id The node's id
-    /// @param args The node's arguments to forward to the constructor
-    /// @return A reference to the added node
-    template <typename node_t, typename... TArgs>
-      requires(std::is_base_of_v<Node, node_t>,
-               std::constructible_from<node_t, Id, TArgs...>)
-    node_t& addNode(Id id, TArgs&&... args);
-
     template <typename T1, typename... Tn>
       requires is_node_v<std::remove_reference_t<T1>> &&
                (is_node_v<std::remove_reference_t<Tn>> && ...)
@@ -201,17 +186,6 @@ namespace dsm {
     /// @throws std::invalid_argument if the node does not exist
     Station& makeStation(Id nodeId, const unsigned int managementTime);
 
-    /// @brief Add an edge of type edge_t to the graph
-    /// @param edge A std::unique_ptr to the edge to add
-    /// @param args The edge's arguments to forward to the constructor
-    /// @return A reference to the added edge
-    template <typename edge_t, typename... TArgs>
-      requires(std::is_base_of_v<Street, edge_t>,
-               std::constructible_from<edge_t, Id, TArgs...>)
-    edge_t& addEdge(Id id, TArgs&&... args);
-    /// @brief Add a street to the graph
-    /// @param street A std::unique_ptr to the street to add
-    void addStreet(std::unique_ptr<Street> street);
     /// @brief Add a street to the graph
     /// @param street A reference to the street to add
     void addStreet(const Street& street);
@@ -225,37 +199,6 @@ namespace dsm {
                (is_street_v<std::remove_reference_t<Tn>> && ...)
     void addStreets(T1&& street, Tn&&... streets);
 
-    /// @brief Get the graph's adjacency matrix
-    /// @return A const reference to the graph's adjacency matrix
-    AdjacencyMatrix const& adjMatrix() const { return m_adjacencyMatrix; }
-    /// @brief Get the graph's number of nodes
-    /// @return size_t The number of nodes in the graph
-    size_t nNodes() const { return m_nodes.size(); }
-    /// @brief Get the graph's node map
-    /// @return A std::unordered_map containing the graph's nodes
-    const std::unordered_map<Id, std::unique_ptr<Node>>& nodeSet() const {
-      return m_nodes;
-    }
-    /// @brief Get the graph's node map
-    /// @return A std::unordered_map containing the graph's nodes
-    std::unordered_map<Id, std::unique_ptr<Node>>& nodeSet() { return m_nodes; }
-    /// @brief Get a node from the graph
-    /// @param id The node's id
-    const std::unique_ptr<Node>& node(Id id) const { return m_nodes.at(id); }
-    /// @brief Get the Graph's number of streets
-    /// @return size_t The number of streets in the graph
-    size_t nEdges() const { return m_streets.size(); }
-    /// @brief Get the graph's street map
-    /// @return A std::unordered_map containing the graph's streets
-    const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet() const {
-      return m_streets;
-    }
-    /// @brief Get the graph's street map
-    /// @return A std::unordered_map containing the graph's streets
-    std::unordered_map<Id, std::unique_ptr<Street>>& streetSet() { return m_streets; }
-    /// @brief Get a street from the graph
-    /// @param id The street's id
-    const std::unique_ptr<Street>& street(Id id) const { return m_streets.at(id); }
     /// @brief Get a street from the graph
     /// @param source The source node
     /// @param destination The destination node
@@ -278,8 +221,9 @@ namespace dsm {
     /// @param source The source node
     /// @param destination The destination node
     /// @return A DijkstraResult object containing the path and the distance
-    template <typename Func = std::function<double(const Graph*, Id, Id)>>
-      requires(std::is_same_v<std::invoke_result_t<Func, const Graph*, Id, Id>, double>)
+    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
+      requires(
+          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
     std::optional<DijkstraResult> shortestPath(
         const Node& source,
         const Node& destination,
@@ -289,77 +233,54 @@ namespace dsm {
     /// @param source The source node id
     /// @param destination The destination node id
     /// @return A DijkstraResult object containing the path and the distance
-    template <typename Func = std::function<double(const Graph*, Id, Id)>>
-      requires(std::is_same_v<std::invoke_result_t<Func, const Graph*, Id, Id>, double>)
+    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
+      requires(
+          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
     std::optional<DijkstraResult> shortestPath(
         Id source, Id destination, Func f = weight_functions::streetLength) const;
   };
 
-  template <typename node_t, typename... TArgs>
-    requires(std::is_base_of_v<Node, node_t>,
-             std::constructible_from<node_t, Id, TArgs...>)
-  node_t& Graph::addNode(Id id, TArgs&&... args) {
-    addNode(std::make_unique<node_t>(id, std::forward<TArgs>(args)...));
-    return dynamic_cast<node_t&>(*m_nodes.at(id));
-  }
   template <typename T1, typename... Tn>
     requires is_node_v<std::remove_reference_t<T1>> &&
              (is_node_v<std::remove_reference_t<Tn>> && ...)
-  void Graph::addNodes(T1&& node, Tn&&... nodes) {
+  void RoadNetwork::addNodes(T1&& node, Tn&&... nodes) {
     addNode(std::forward<T1>(node));
     addNodes(std::forward<Tn>(nodes)...);
   }
 
-  template <typename edge_t, typename... TArgs>
-    requires(std::is_base_of_v<Street, edge_t>,
-             std::constructible_from<edge_t, Id, TArgs...>)
-  edge_t& Graph::addEdge(Id id, TArgs&&... args) {
-    addStreet(std::make_unique<edge_t>(id, std::forward<TArgs>(args)...));
-    return dynamic_cast<edge_t&>(*m_streets.at(id));
-  }
-
   template <typename T1>
     requires is_street_v<std::remove_reference_t<T1>>
-  void Graph::addStreets(T1&& street) {
-    if (m_streets.contains(street.id())) {
+  void RoadNetwork::addStreets(T1&& street) {
+    if (m_edges.contains(street.id())) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} already exists.", street.id())));
     }
-    // emplace nodes
-    auto const srcId{street.source()};
-    auto const dstId{street.target()};
-    if (!m_nodes.contains(srcId)) {
-      m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
-    }
-    if (!m_nodes.contains(dstId)) {
-      m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
-    }
-    // emplace street
-    m_streets.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
-    m_adjacencyMatrix.insert(srcId, dstId);
+    addEdge<Street>(street.id(), street);
   }
 
   template <typename T1, typename... Tn>
     requires is_street_v<std::remove_reference_t<T1>> &&
              (is_street_v<std::remove_reference_t<Tn>> && ...)
-  void Graph::addStreets(T1&& street, Tn&&... streets) {
+  void RoadNetwork::addStreets(T1&& street, Tn&&... streets) {
     addStreet(std::forward<T1>(street));
     addStreets(std::forward<Tn>(streets)...);
   }
 
   template <typename Func>
-    requires(std::is_same_v<std::invoke_result_t<Func, const Graph*, Id, Id>, double>)
-  std::optional<DijkstraResult> Graph::shortestPath(const Node& source,
-                                                    const Node& destination,
-                                                    Func f) const {
+    requires(
+        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+  std::optional<DijkstraResult> RoadNetwork::shortestPath(const Node& source,
+                                                          const Node& destination,
+                                                          Func f) const {
     return this->shortestPath(source.id(), destination.id());
   }
 
   template <typename Func>
-    requires(std::is_same_v<std::invoke_result_t<Func, const Graph*, Id, Id>, double>)
-  std::optional<DijkstraResult> Graph::shortestPath(Id source,
-                                                    Id destination,
-                                                    Func getStreetWeight) const {
+    requires(
+        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+  std::optional<DijkstraResult> RoadNetwork::shortestPath(Id source,
+                                                          Id destination,
+                                                          Func getStreetWeight) const {
     const Id sourceId{source};
 
     std::unordered_set<Id> unvisitedNodes;

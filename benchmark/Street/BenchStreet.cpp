@@ -4,7 +4,7 @@
 #include <random>
 #include "Bench.hpp"
 
-#include "Graph.hpp"
+#include "RoadNetwork.hpp"
 
 using Agent = dsm::Agent<double>;
 using Street = dsm::Street;
