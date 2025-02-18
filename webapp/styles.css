@@ -1,0 +1,46 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Fullscreen map */
+  #map {
+    width: 100%;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  
+  /* Slider container */
+  .slider-container {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: 80%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.8);
+  }
+  
+  .slider-container input {
+    width: 100%;
+  }
+  
+  /* SVG container on top of Leaflet */
+  .leaflet-overlay-pane svg {
+    position: absolute;
+  }
+  .leaflet-zoom-hide {
+    pointer-events: auto;
+  }
+  
+  circle {
+    fill: black;
+    stroke: white;
+    stroke-width: 1;
+  }
+  
