@@ -48,7 +48,7 @@ Promise.all([
 
   // Function to project geographic coordinates into Leaflet's layer point coordinates
   function project(d) {
-    return map.latLngToLayerPoint([d.y, d.x]);
+    return map.latLngToLayerPoint([d.lat, d.lon]);
   }
 
   // D3 line generator to draw paths
@@ -71,7 +71,7 @@ Promise.all([
     .on("click", function(event, d) {
       const densityData = densities.find(row => row.time === timeStep);
       const densityValue = densityData ? densityData.densities[edges.indexOf(d)] : "N/A";
-      alert(`Edge ID: ${d.osm_id} - from ${d.u} to ${d.v}.\n\nDensity at time step ${timeStep}:  ${densityValue}`);
+      alert(`Edge ID: ${d.id} - from ${d.source_id} to ${d.target_id}.\n\nDensity at time step ${timeStep}:  ${densityValue}`);
     });
 
 
@@ -95,21 +95,21 @@ Promise.all([
     link.attr("d", d => {
       if (d.geometry && d.geometry.length > 0) {
         const projectedCoords = d.geometry.map(pt => {
-          const point = map.latLngToLayerPoint([pt.y, pt.x]);
-          return [point.x, point.y];
+          const point = map.latLngToLayerPoint([pt.lat, pt.lon]);
+          return [point.lat, point.lon];
         });
         return lineGenerator(projectedCoords);
       } else {
         // Fallback: draw a straight line between the two nodes
-        const start = project(nodeMap.get(d.u));
-        const end = project(nodeMap.get(d.v));
-        return lineGenerator([[start.x, start.y], [end.x, end.y]]);
+        const start = project(nodeMap.get(d.source_id));
+        const end = project(nodeMap.get(d.target_id));
+        return lineGenerator([[start.lon, start.lat], [end.lon, end.lat]]);
       }
     });
 
     // Update node positions
-    node.attr("cx", d => d.projected.x)
-        .attr("cy", d => d.projected.y);
+    node.attr("cx", d => d.projected.lon)
+        .attr("cy", d => d.projected.lat);
 
 
     // Update node radius based on zoom level
@@ -186,8 +186,8 @@ Promise.all([
 function parseNodes(d) {
       return {
         id: d.id,
-        x: +d.x, // Longitude
-        y: +d.y  // Latitude
+        x: +d.lon, // Longitude
+        y: +d.lat  // Latitude
       };
 }
 
