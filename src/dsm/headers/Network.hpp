@@ -36,6 +36,9 @@ namespace dsm {
       requires(std::is_base_of_v<edge_t, TEdge> &&
                std::constructible_from<TEdge, Id, TArgs...>)
     void addEdge(Id edgeId, TArgs&&... args);
+
+    std::unique_ptr<node_t> const& node(Id nodeId) const;
+    std::unique_ptr<edge_t> const& edge(Id edgeId) const;
   };
 
   template <typename node_t, typename edge_t>
@@ -126,5 +129,16 @@ namespace dsm {
     m_edges.emplace(std::make_pair(
         edgeId, std::make_unique<TEdge>(edgeId, std::forward<TArgs>(args)...)));
     m_addMissingNodes(edgeId);
+  }
+
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  std::unique_ptr<node_t> const& Network<node_t, edge_t>::node(Id nodeId) const {
+    return m_nodes.at(nodeId);
+  }
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  std::unique_ptr<edge_t> const& Network<node_t, edge_t>::edge(Id edgeId) const {
+    return m_edges.at(edgeId);
   }
 }  // namespace dsm

@@ -68,7 +68,6 @@ namespace dsm {
         addEdge<StochasticStreet>(
             newStreetId, *street, dynamic_cast<StochasticStreet&>(*street).flowRate());
       } else if (street->isSpire()) {
-        Logger::info(std::format("Street {} is a SpireStreet", streetId));
         addEdge<SpireStreet>(newStreetId, *street);
       } else {
         addEdge<Street>(newStreetId, *street);

@@ -202,15 +202,6 @@ namespace dsm {
     /// @brief Get the graph's adjacency matrix
     /// @return A const reference to the graph's adjacency matrix
     AdjacencyMatrix const& adjMatrix() const { return m_adjacencyMatrix; }
-    /// @brief Get the graph's number of nodes
-    /// @return size_t The number of nodes in the graph
-    size_t nNodes() const { return m_nodes.size(); }
-    /// @brief Get a node from the graph
-    /// @param id The node's id
-    const std::unique_ptr<Node>& node(Id id) const { return m_nodes.at(id); }
-    /// @brief Get a street from the graph
-    /// @param id The street's id
-    const std::unique_ptr<Street>& street(Id id) const { return m_edges.at(id); }
     /// @brief Get a street from the graph
     /// @param source The source node
     /// @param destination The destination node
@@ -265,18 +256,7 @@ namespace dsm {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} already exists.", street.id())));
     }
-    // emplace nodes
-    auto const srcId{street.source()};
-    auto const dstId{street.target()};
-    if (!m_nodes.contains(srcId)) {
-      m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
-    }
-    if (!m_nodes.contains(dstId)) {
-      m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
-    }
-    // emplace street
-    m_edges.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
-    m_adjacencyMatrix.insert(srcId, dstId);
+    addEdge<Street>(street.id(), street);
   }
 
   template <typename T1, typename... Tn>

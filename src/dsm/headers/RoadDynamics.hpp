@@ -201,7 +201,7 @@ namespace dsm {
       const auto& srcNodeId = street->target();
       for (const auto& targetId : this->m_graph.adjMatrix().getRow(srcNodeId)) {
         auto const ss = srcNodeId * this->m_graph.nNodes() + targetId;
-        const auto& delta = street->angle() - this->m_graph.street(ss)->angle();
+        const auto& delta = street->angle() - this->m_graph.edge(ss)->angle();
         if (std::abs(delta) < std::numbers::pi) {
           if (delta < 0.) {
             m_turnMapping[streetId][dsm::Direction::RIGHT] = ss;
@@ -249,8 +249,8 @@ namespace dsm {
       nextStreetId =
           nodeId * this->m_graph.nNodes() + possibleMoves[moveDist(this->m_generator)];
     } while (!this->m_graph.node(nodeId)->isRoundabout() && streetId.has_value() &&
-             (this->m_graph.street(nextStreetId)->target() ==
-              this->m_graph.street(streetId.value())->source()) &&
+             (this->m_graph.edge(nextStreetId)->target() ==
+              this->m_graph.edge(streetId.value())->source()) &&
              (possibleMoves.size() > 1));
     return nextStreetId;
   }
@@ -333,7 +333,7 @@ namespace dsm {
         continue;
       }
       auto const& nextStreet{
-          this->m_graph.street(this->agents().at(agentId)->nextStreetId().value())};
+          this->m_graph.edge(this->agents().at(agentId)->nextStreetId().value())};
       if (nextStreet->isFull()) {
         continue;
       }
@@ -364,7 +364,7 @@ namespace dsm {
       }
       for (auto const [angle, agentId] : intersection.agents()) {
         auto const& nextStreet{
-            this->m_graph.street(this->agents().at(agentId)->nextStreetId().value())};
+            this->m_graph.edge(this->agents().at(agentId)->nextStreetId().value())};
         if (nextStreet->isFull()) {
           if (m_forcePriorities) {
             return false;
@@ -387,11 +387,11 @@ namespace dsm {
       }
       auto const agentId{roundabout.agents().front()};
       auto const& nextStreet{
-          this->m_graph.street(this->agents().at(agentId)->nextStreetId().value())};
+          this->m_graph.edge(this->agents().at(agentId)->nextStreetId().value())};
       if (!(nextStreet->isFull())) {
         if (this->agents().at(agentId)->streetId().has_value()) {
           const auto streetId = this->agents().at(agentId)->streetId().value();
-          auto delta = nextStreet->angle() - this->m_graph.street(streetId)->angle();
+          auto delta = nextStreet->angle() - this->m_graph.edge(streetId)->angle();
           if (delta > std::numbers::pi) {
             delta -= 2 * std::numbers::pi;
           } else if (delta < -std::numbers::pi) {
@@ -419,7 +419,7 @@ namespace dsm {
         0, static_cast<Id>(this->m_graph.nNodes() - 1)};
     for (const auto& [agentId, agent] : this->agents()) {
       if (agent->delay() > 0) {
-        const auto& street{this->m_graph.street(agent->streetId().value())};
+        const auto& street{this->m_graph.edge(agent->streetId().value())};
         if (agent->delay() > 1) {
           agent->incrementDistance();
         } else {
@@ -451,7 +451,7 @@ namespace dsm {
           } else {
             auto const nextStreetId =
                 this->m_nextStreetId(agentId, street->target(), street->id());
-            auto const& pNextStreet{this->m_graph.street(nextStreetId)};
+            auto const& pNextStreet{this->m_graph.edge(nextStreetId)};
             agent->setNextStreetId(nextStreetId);
             if (nLanes == 1) {
               street->enqueue(agentId, 0);
@@ -501,7 +501,7 @@ namespace dsm {
           continue;
         }
         const auto& nextStreet{
-            this->m_graph.street(this->m_nextStreetId(agentId, srcNode->id()))};
+            this->m_graph.edge(this->m_nextStreetId(agentId, srcNode->id()))};
         if (nextStreet->isFull()) {
           continue;
         }
@@ -575,9 +575,9 @@ namespace dsm {
         Size step = streetDist(this->m_generator);
         std::advance(streetIt, step);
         streetId = streetIt->first;
-      } while (this->m_graph.street(streetId)->isFull() &&
+      } while (this->m_graph.edge(streetId)->isFull() &&
                this->nAgents() < this->m_graph.maxCapacity());
-      const auto& street{this->m_graph.street(streetId)};
+      const auto& street{this->m_graph.edge(streetId)};
       this->addAgent(agentId, itineraryId, street->nodePair().first);
       auto const& pAgent{this->agents().at(agentId)};
       pAgent->setStreetId(streetId);
@@ -727,7 +727,7 @@ namespace dsm {
         [&](const auto& pair) {
           for (auto const& sourceId : this->m_graph.adjMatrix().getCol(pair.first)) {
             auto const streetId = sourceId * N + pair.first;
-            auto const& pStreet{this->m_graph.street(streetId)};
+            auto const& pStreet{this->m_graph.edge(streetId)};
             if (bUpdateData) {
               m_streetTails[streetId] += pStreet->nExitingAgents();
             }
@@ -782,7 +782,7 @@ namespace dsm {
       auto column = this->m_graph.adjMatrix().getCol(nodeId);
       for (const auto& sourceId : column) {
         auto const streetId = sourceId * N + nodeId;
-        auto const& pStreet{this->m_graph.street(streetId)};
+        auto const& pStreet{this->m_graph.edge(streetId)};
         if (streetPriorities.contains(streetId)) {
           inputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
         } else {
@@ -826,7 +826,7 @@ namespace dsm {
         double outputGreenSum{0.}, outputRedSum{0.};
         for (auto const& targetId : this->m_graph.adjMatrix().getRow(nodeId)) {
           auto const streetId = nodeId * N + targetId;
-          auto const& pStreet{this->m_graph.street(streetId)};
+          auto const& pStreet{this->m_graph.edge(streetId)};
           if (streetPriorities.contains(streetId)) {
             outputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
           } else {

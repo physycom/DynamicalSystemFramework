@@ -530,7 +530,7 @@ namespace dsm {
 
   template <typename agent_t>
   double Dynamics<agent_t>::streetMeanSpeed(Id streetId) const {
-    auto const& pStreet{m_graph.street(streetId)};
+    auto const& pStreet{m_graph.edge(streetId)};
     auto const nAgents{pStreet->nAgents()};
     if (nAgents == 0) {
       return 0.;

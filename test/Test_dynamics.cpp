@@ -89,7 +89,7 @@ TEST_CASE("Dynamics") {
       WHEN("We transorm a street into a spire and create the dynamcis") {
         graph.makeSpireStreet(8);
         Dynamics dynamics{graph, false, 69};
-        THEN("The street is a spire") { CHECK(dynamics.graph().street(8)->isSpire()); }
+        THEN("The street is a spire") { CHECK(dynamics.graph().edge(8)->isSpire()); }
       }
     }
   }
@@ -921,7 +921,7 @@ TEST_CASE("Dynamics") {
     for (const auto& [agentId, agent] : dynamics.agents()) {
       meanSpeed += agent->speed();
     }
-    auto const& pStreet{dynamics.graph().street(1)};
+    auto const& pStreet{dynamics.graph().edge(1)};
     meanSpeed /= (pStreet->nExitingAgents() + pStreet->movingAgents().size());
     CHECK_EQ(dynamics.streetMeanSpeed(1), meanSpeed);
     // I don't think the mean speed of agents should be equal to the street's
