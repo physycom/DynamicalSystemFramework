@@ -28,17 +28,11 @@ namespace dsm {
     size_t nNodes() const;
     size_t nEdges() const;
 
-    template <typename... TArgs>
-      requires(std::constructible_from<node_t, Id, TArgs...>)
-    void addNode(Id nodeId, TArgs&&... args);
-    template <typename TNode, typename... TArgs>
+    template <typename TNode = node_t, typename... TArgs>
       requires(std::is_base_of_v<node_t, TNode> &&
                std::constructible_from<TNode, Id, TArgs...>)
     void addNode(Id nodeId, TArgs&&... args);
-    template <typename... TArgs>
-      requires(std::constructible_from<edge_t, Id, TArgs...>)
-    void addEdge(Id edgeId, TArgs&&... args);
-    template <typename TEdge, typename... TArgs>
+    template <typename TEdge = edge_t, typename... TArgs>
       requires(std::is_base_of_v<edge_t, TEdge> &&
                std::constructible_from<TEdge, Id, TArgs...>)
     void addEdge(Id edgeId, TArgs&&... args);
@@ -114,15 +108,6 @@ namespace dsm {
 
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  template <typename... TArgs>
-    requires(std::constructible_from<node_t, Id, TArgs...>)
-  void Network<node_t, edge_t>::addNode(Id nodeId, TArgs&&... args) {
-    assert(!m_nodes.contains(nodeId));
-    m_nodes.emplace(std::make_pair(
-        nodeId, std::make_unique<node_t>(nodeId, std::forward<TArgs>(args)...)));
-  }
-  template <typename node_t, typename edge_t>
-    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   template <typename TNode, typename... TArgs>
     requires(std::is_base_of_v<node_t, TNode> &&
              std::constructible_from<TNode, Id, TArgs...>)
@@ -130,16 +115,6 @@ namespace dsm {
     assert(!m_nodes.contains(nodeId));
     m_nodes.emplace(std::make_pair(
         nodeId, std::make_unique<TNode>(nodeId, std::forward<TArgs>(args)...)));
-  }
-  template <typename node_t, typename edge_t>
-    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  template <typename... TArgs>
-    requires(std::constructible_from<edge_t, Id, TArgs...>)
-  void Network<node_t, edge_t>::addEdge(Id edgeId, TArgs&&... args) {
-    assert(!m_edges.contains(edgeId));
-    m_edges.emplace(std::make_pair(
-        edgeId, std::make_unique<edge_t>(edgeId, std::forward<TArgs>(args)...)));
-    m_addMissingNodes(edgeId);
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
