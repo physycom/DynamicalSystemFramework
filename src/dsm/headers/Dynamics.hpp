@@ -387,10 +387,12 @@ namespace dsm {
 
   template <typename agent_t>
   void Dynamics<agent_t>::updatePaths() {
+    Logger::debug("Init updating paths...");
     tbb::parallel_for_each(
         m_itineraries.cbegin(), m_itineraries.cend(), [this](auto const& pair) -> void {
           this->m_updatePath(pair.second);
         });
+    Logger::debug("End updating paths.");
   }
 
   template <typename agent_t>
