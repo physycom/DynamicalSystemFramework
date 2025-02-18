@@ -205,7 +205,8 @@ namespace dsm {
     /// @param weightFunction A std::function returning a double value and taking as arguments a
     /// pointer to the graph, an id of a source node and an id of a target node (for the edge)
     /// @details The weight function must return the weight of the edge between the source and the
-    /// target node. One can use the predefined weight functions in the DijkstraWeights.hpp file.
+    /// target node. One can use the predefined weight functions in the DijkstraWeights.hpp file,
+    /// like weight_functions::streetLength or weight_functions::streetTime.
     void setWeightFunction(std::function<double(const Graph*, Id, Id)> weightFunction);
     /// @brief Set the weight treshold for updating the paths
     /// @param weightTreshold The weight treshold
