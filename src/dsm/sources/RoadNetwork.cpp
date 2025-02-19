@@ -249,7 +249,7 @@ namespace dsm {
         file >> lon >> lat;
         auto const& it{m_nodes.find(i)};
         if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(lon, lat));
+          it->second->setCoords(std::make_pair(lat, lon));
         } else {
           Logger::warning(std::format("Node with id {} not found.", i));
         }
@@ -282,7 +282,7 @@ namespace dsm {
         dLat = lat == "Nan" ? 0. : std::stod(lat);
         auto const& it{m_nodes.find(std::stoul(nodeId))};
         if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(dLon, dLat));
+          it->second->setCoords(std::make_pair(dLat, dLon));
         } else {
           Logger::warning(
               std::format("Node with id {} not found. Skipping coordinates ({}, {}).",
@@ -478,7 +478,7 @@ namespace dsm {
     for (auto const& [nodeId, pNode] : m_nodes) {
       file << nodeId << ';';
       if (pNode->coords().has_value()) {
-        file << pNode->coords().value().first << ';' << pNode->coords().value().second;
+        file << pNode->coords().value().second << ';' << pNode->coords().value().first;
       } else {
         file << "Nan;Nan";
       }
