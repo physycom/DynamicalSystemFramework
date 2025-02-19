@@ -191,11 +191,15 @@ namespace dsm {
     /// @param graph The graph representing the network
     /// @param useCache If true, the paths are cached (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
+    /// @param weightFunction The weight function for the Dijkstra's algorithm (default is
+    /// weight_functions::streetLength)
+    /// @param weightTreshold The weight treshold for updating the paths (default is 1.)
     Dynamics(RoadNetwork& graph,
              bool useCache = false,
              std::optional<unsigned int> seed = std::nullopt,
              std::function<double(const RoadNetwork*, Id, Id)> weightFunction =
-                 weight_functions::streetLength);
+                 weight_functions::streetLength,
+             double weightTreshold = 1.);
 
     virtual void setAgentSpeed(Size agentId) = 0;
     virtual void evolve(bool reinsert_agents = false) = 0;
@@ -362,9 +366,10 @@ namespace dsm {
       RoadNetwork& graph,
       bool useCache,
       std::optional<unsigned int> seed,
-      std::function<double(const RoadNetwork*, Id, Id)> weightFunction)
+      std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
+      double weightTreshold)
       : m_weightFunction{weightFunction},
-        m_weightTreshold{1.},
+        m_weightTreshold{weightTreshold},
         m_bCacheEnabled{useCache},
         m_graph{std::move(graph)},
         m_time{0},

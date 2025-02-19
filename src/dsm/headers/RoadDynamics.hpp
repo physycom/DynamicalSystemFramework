@@ -89,11 +89,14 @@ namespace dsm {
     /// @param graph The graph representing the network
     /// @param useCache If true, the cache is used (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
+    /// @param weightFunction The weight function for the Dijkstra's algorithm (default is weight_functions::streetTime)
+    /// @param weightTreshold The weight treshold for updating the paths (default is 60.)
     RoadDynamics(RoadNetwork& graph,
                  bool useCache = false,
                  std::optional<unsigned int> seed = std::nullopt,
                  std::function<double(const RoadNetwork*, Id, Id)> weightFunction =
-                     weight_functions::streetTime);
+                     weight_functions::streetTime,
+                 double weightTreshold = 60.);  // 60 seconds thresholds for paths
 
     /// @brief Set the error probability
     /// @param errorProbability The error probability
@@ -190,8 +193,9 @@ namespace dsm {
       RoadNetwork& graph,
       bool useCache,
       std::optional<unsigned int> seed,
-      std::function<double(const RoadNetwork*, Id, Id)> weightFunction)
-      : Dynamics<Agent<delay_t>>(graph, useCache, seed, weightFunction),
+      std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
+      double weightTreshold)
+      : Dynamics<Agent<delay_t>>(graph, useCache, seed, weightFunction, weightTreshold),
         m_previousOptimizationTime{0},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
