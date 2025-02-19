@@ -1,9 +1,11 @@
 #include "../headers/Sensors.hpp"
 
 namespace dsm {
+  void Counter::setCode(std::string const& code) { m_code = code; }
   void Counter::increaseInputCounter() { m_counters.first++; }
   void Counter::increaseOutputCounter() { m_counters.second++; }
 
+  std::string const& Counter::code() const { return m_code; }
   int Counter::inputCounts(bool reset) {
     if (reset) {
       int count{0};
