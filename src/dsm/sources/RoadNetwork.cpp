@@ -265,7 +265,7 @@ namespace dsm {
       // Check if the first line is nodeId;lat;lon
       std::string line;
       std::getline(ifs, line);
-      if (line != "id;lon;lat") {
+      if (line != "id;lon;lat;type") {
         throw std::invalid_argument(
             Logger::buildExceptionMessage("Invalid file format."));
       }
@@ -276,15 +276,21 @@ namespace dsm {
           continue;
         }
         std::istringstream iss{line};
-        std::string nodeId, lat, lon;
+        std::string nodeId, lat, lon, type;
         std::getline(iss, nodeId, ';');
         std::getline(iss, lon, ';');
-        std::getline(iss, lat, '\n');
+        std::getline(iss, lat, ';');
+        std::getline(iss, type, '\n');
         dLon = lon == "Nan" ? 0. : std::stod(lon);
         dLat = lat == "Nan" ? 0. : std::stod(lat);
         auto const& it{m_nodes.find(std::stoul(nodeId))};
         if (it != m_nodes.cend()) {
           it->second->setCoords(std::make_pair(dLat, dLon));
+          if (type == "traffic_light" && !it->second->isTrafficLight()) {
+            makeTrafficLight(it->first, 60);
+          } else if (type == "roundabout" && !it->second->isRoundabout()) {
+            makeRoundabout(it->first);
+          }
         } else {
           Logger::warning(
               std::format("Node with id {} not found. Skipping coordinates ({}, {}).",
