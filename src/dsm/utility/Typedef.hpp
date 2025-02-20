@@ -30,6 +30,6 @@ namespace dsm {
     FRECCIAROSSA = 6,  // Frecciarossa
     ES = 7,            // Eurostar
   };
-  enum log_level_t : uint8_t { DEBUG = 0, INFO = 1, WARNING = 2, ERROR = 3 };
+  enum log_level_t : uint8_t { DEBUG = 0, WARNING = 1, INFO = 2, ERROR = 3 };
 
 };  // namespace dsm
