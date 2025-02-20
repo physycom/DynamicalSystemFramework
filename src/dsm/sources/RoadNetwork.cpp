@@ -466,8 +466,8 @@ namespace dsm {
                         coords);
         if (!coilcode.empty()) {
           makeSpireStreet(streetId);
-          auto& coil = dynamic_cast<SpireStreet&>(edge<SpireStreet>(streetId));
-          coil.setCode(coilcode);
+          auto& coil = edge<SpireStreet>(streetId);
+          coil.setCode(static_cast<Id>(std::stoul(coilcode)));
         }
       }
     } else {
