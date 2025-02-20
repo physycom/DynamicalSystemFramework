@@ -24,7 +24,7 @@
 #include <fstream>
 #include <filesystem>
 #include <functional>
-#include <tbb/parallel_for_each.h>
+#include <tbb/tbb.h>
 
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
@@ -73,6 +73,11 @@ namespace dsm {
   private:
     std::map<Id, std::unique_ptr<agent_t>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
+
+  protected:
+    tbb::task_arena m_arena;
+
+  private:
     std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
     double m_weightTreshold;
     bool m_bCacheEnabled;
@@ -384,6 +389,7 @@ namespace dsm {
       }
       Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
     }
+    m_arena.initialize(static_cast<int>(std::thread::hardware_concurrency()));
     for (const auto& nodeId : this->m_graph.outputNodes()) {
       addItinerary(nodeId, nodeId);
     }
