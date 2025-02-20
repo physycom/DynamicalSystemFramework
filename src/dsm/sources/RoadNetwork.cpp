@@ -483,13 +483,20 @@ namespace dsm {
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;lon;lat\n";
+    file << "id;lon;lat;type\n";
     for (auto const& [nodeId, pNode] : m_nodes) {
       file << nodeId << ';';
       if (pNode->coords().has_value()) {
         file << pNode->coords().value().second << ';' << pNode->coords().value().first;
       } else {
         file << "Nan;Nan";
+      }
+      if (pNode->isTrafficLight()) {
+        file << ";traffic_light";
+      } else if (pNode->isRoundabout()) {
+        file << ";roundabout";
+      } else {
+        file << ";intersection";
       }
       file << '\n';
     }
@@ -501,7 +508,7 @@ namespace dsm {
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;source_id;target_id;name;coil_name;geometry\n";
+    file << "id;source_id;target_id;name;coil_code;geometry\n";
     for (auto const& [streetId, pStreet] : m_edges) {
       file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';'
            << pStreet->name() << ';';
