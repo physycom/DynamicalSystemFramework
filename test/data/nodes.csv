@@ -1,4 +1,4 @@
-id;lon;lat
-1;0;1
-0;0;0
-2;0;2
+id;lon;lat;type
+1;0;1;intersection
+0;0;0;intersection
+2;0;2;intersection

@@ -70,6 +70,8 @@ namespace dsm {
             newStreetId, *street, dynamic_cast<StochasticStreet&>(*street).flowRate());
       } else if (street->isSpire()) {
         addEdge<SpireStreet>(newStreetId, *street);
+        dynamic_cast<SpireStreet&>(*m_edges.at(newStreetId))
+            .setCode(dynamic_cast<SpireStreet&>(*street).code());
       } else {
         addEdge<Street>(newStreetId, *street);
       }
@@ -263,7 +265,7 @@ namespace dsm {
       // Check if the first line is nodeId;lat;lon
       std::string line;
       std::getline(ifs, line);
-      if (line != "id;lon;lat") {
+      if (line != "id;lon;lat;type") {
         throw std::invalid_argument(
             Logger::buildExceptionMessage("Invalid file format."));
       }
@@ -274,15 +276,21 @@ namespace dsm {
           continue;
         }
         std::istringstream iss{line};
-        std::string nodeId, lat, lon;
+        std::string nodeId, lat, lon, type;
         std::getline(iss, nodeId, ';');
         std::getline(iss, lon, ';');
-        std::getline(iss, lat, '\n');
+        std::getline(iss, lat, ';');
+        std::getline(iss, type, '\n');
         dLon = lon == "Nan" ? 0. : std::stod(lon);
         dLat = lat == "Nan" ? 0. : std::stod(lat);
         auto const& it{m_nodes.find(std::stoul(nodeId))};
         if (it != m_nodes.cend()) {
           it->second->setCoords(std::make_pair(dLat, dLon));
+          if (type == "traffic_light" && !it->second->isTrafficLight()) {
+            makeTrafficLight(it->first, 60);
+          } else if (type == "roundabout" && !it->second->isRoundabout()) {
+            makeRoundabout(it->first);
+          }
         } else {
           Logger::warning(
               std::format("Node with id {} not found. Skipping coordinates ({}, {}).",
@@ -365,8 +373,9 @@ namespace dsm {
           continue;
         }
         std::istringstream iss{line};
-        std::string sourceId, targetId, length, lanes, highway, maxspeed, name, geometry;
-        // u;v;length;highway;maxspeed;name;geometry
+        std::string sourceId, targetId, length, lanes, highway, maxspeed, name, geometry,
+            coilcode;
+        // u;v;length;highway;maxspeed;name;geometry;coilcode
         std::getline(iss, sourceId, ';');
         std::getline(iss, targetId, ';');
         std::getline(iss, length, ';');
@@ -374,7 +383,8 @@ namespace dsm {
         std::getline(iss, highway, ';');
         std::getline(iss, maxspeed, ';');
         std::getline(iss, name, ';');
-        std::getline(iss, geometry, '\n');
+        std::getline(iss, geometry, ';');
+        std::getline(iss, coilcode, '\n');
         if (maxspeed.empty()) {
           maxspeed = "30";  // Default to 30 km/h if no maxspeed is provided
         } else {
@@ -460,6 +470,11 @@ namespace dsm {
                         std::stoul(lanes),
                         name,
                         coords);
+        if (!coilcode.empty()) {
+          makeSpireStreet(streetId);
+          auto& coil = edge<SpireStreet>(streetId);
+          coil.setCode(static_cast<Id>(std::stoul(coilcode)));
+        }
       }
     } else {
       throw std::invalid_argument(
@@ -474,13 +489,20 @@ namespace dsm {
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;lon;lat\n";
+    file << "id;lon;lat;type\n";
     for (auto const& [nodeId, pNode] : m_nodes) {
       file << nodeId << ';';
       if (pNode->coords().has_value()) {
         file << pNode->coords().value().second << ';' << pNode->coords().value().first;
       } else {
         file << "Nan;Nan";
+      }
+      if (pNode->isTrafficLight()) {
+        file << ";traffic_light";
+      } else if (pNode->isRoundabout()) {
+        file << ";roundabout";
+      } else {
+        file << ";intersection";
       }
       file << '\n';
     }
@@ -492,10 +514,15 @@ namespace dsm {
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;source_id;target_id;name;geometry\n";
+    file << "id;source_id;target_id;name;coil_code;geometry\n";
     for (auto const& [streetId, pStreet] : m_edges) {
       file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';'
            << pStreet->name() << ';';
+      if (pStreet->isSpire()) {
+        file << dynamic_cast<SpireStreet&>(*pStreet).code() << ';';
+      } else {
+        file << ';';
+      }
       if (!pStreet->geometry().empty()) {
         file << "LINESTRING(";
         for (size_t i{0}; i < pStreet->geometry().size(); ++i) {
