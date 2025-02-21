@@ -35,8 +35,6 @@
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
-static auto constexpr g_cacheFolder = "./.dsmcache/";
-
 namespace dsm {
   /// @brief The Measurement struct represents the mean of a quantity and its standard deviation
   /// @tparam T The type of the quantity
@@ -73,166 +71,20 @@ namespace dsm {
   private:
     std::map<Id, std::unique_ptr<agent_t>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
-    std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
-    double m_weightTreshold;
-    bool m_bCacheEnabled;
 
   protected:
     RoadNetwork m_graph;
     Time m_time, m_previousSpireTime;
     std::mt19937_64 m_generator;
 
-    virtual void m_evolveStreet(const std::unique_ptr<Street>& pStreet,
-                                bool reinsert_agents) = 0;
-    virtual bool m_evolveNode(const std::unique_ptr<Node>& pNode) = 0;
-    virtual void m_evolveAgents() = 0;
-
-    /// @brief Update the path of a single itinerary using Dijsktra's algorithm
-    /// @param pItinerary An std::unique_prt to the itinerary
-    void m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
-      if (m_bCacheEnabled) {
-        auto const& file = std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
-        if (std::filesystem::exists(file)) {
-          pItinerary->setPath(AdjacencyMatrix(file));
-          Logger::debug(
-              std::format("Loaded cached path for itinerary {}", pItinerary->id()));
-          return;
-        }
-      }
-
-      auto const destinationID = pItinerary->destination();
-      std::vector<double> shortestDistances(m_graph.nNodes());
-      tbb::parallel_for_each(
-          m_graph.nodes().cbegin(),
-          m_graph.nodes().cend(),
-          [this, &shortestDistances, &destinationID](auto const& it) -> void {
-            auto const nodeId{it.first};
-            if (nodeId == destinationID) {
-              shortestDistances[nodeId] = -1.;
-            } else {
-              auto result = m_graph.shortestPath(nodeId, destinationID, m_weightFunction);
-              if (result.has_value()) {
-                shortestDistances[nodeId] = result.value().distance();
-              } else {
-                Logger::warning(std::format(
-                    "No path found from node {} to node {}", nodeId, destinationID));
-                shortestDistances[nodeId] = -1.;
-              }
-            }
-          });
-      AdjacencyMatrix path;
-      // cycle over the nodes
-      for (const auto& [nodeId, node] : m_graph.nodes()) {
-        if (nodeId == destinationID) {
-          continue;
-        }
-        // save the minimum distance between i and the destination
-        const auto minDistance{shortestDistances[nodeId]};
-        if (minDistance < 0.) {
-          continue;
-        }
-        auto const& row{m_graph.adjacencyMatrix().getRow(nodeId)};
-        for (const auto nextNodeId : row) {
-          if (nextNodeId == destinationID) {
-            if (std::abs(m_weightFunction(&m_graph, nodeId, nextNodeId) - minDistance) <
-                m_weightTreshold)  // 1 meter tolerance between shortest paths
-            {
-              path.insert(nodeId, nextNodeId);
-            } else {
-              Logger::debug(
-                  std::format("Found a path from {} to {} which differs for more than {} "
-                              "unit(s) from the shortest one.",
-                              nodeId,
-                              destinationID,
-                              m_weightTreshold));
-            }
-            continue;
-          }
-          auto const distance{shortestDistances[nextNodeId]};
-          if (distance < 0.) {
-            continue;
-          }
-          bool const bIsMinDistance{
-              std::abs(m_weightFunction(&m_graph, nodeId, nextNodeId) + distance -
-                       minDistance) <
-              m_weightTreshold};  // 1 meter tolerance between shortest paths
-          if (bIsMinDistance) {
-            path.insert(nodeId, nextNodeId);
-          } else {
-            Logger::debug(
-                std::format("Found a path from {} to {} which differs for more than {} "
-                            "unit(s) from the shortest one.",
-                            nodeId,
-                            destinationID,
-                            m_weightTreshold));
-          }
-        }
-      }
-
-      if (path.empty()) {
-        Logger::error(
-            std::format("Path with id {} and destination {} is empty. Please check the "
-                        "adjacency matrix.",
-                        pItinerary->id(),
-                        pItinerary->destination()));
-      }
-
-      pItinerary->setPath(path);
-      if (m_bCacheEnabled) {
-        pItinerary->path()->save(
-            std::format("{}it{}.adj", g_cacheFolder, pItinerary->id()));
-        Logger::debug(
-            std::format("Saved path in cache for itinerary {}", pItinerary->id()));
-      }
-    }
+  protected:
+    void m_evolve() { ++m_time; };
 
   public:
     /// @brief Construct a new Dynamics object
     /// @param graph The graph representing the network
-    /// @param useCache If true, the paths are cached (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
-    /// @param weightFunction The weight function for the Dijkstra's algorithm (default is
-    /// weight_functions::streetLength)
-    /// @param weightTreshold The weight treshold for updating the paths (default is 1.)
-    Dynamics(RoadNetwork& graph,
-             bool useCache = false,
-             std::optional<unsigned int> seed = std::nullopt,
-             std::function<double(const RoadNetwork*, Id, Id)> weightFunction =
-                 weight_functions::streetLength,
-             double weightTreshold = 1.);
-
-    virtual void setAgentSpeed(Size agentId) = 0;
-    virtual void evolve(bool reinsert_agents = false) = 0;
-
-    /// @brief Update the paths of the itineraries based on the actual travel times
-    virtual void updatePaths();
-
-    /// @brief Set the weight function for the Dijkstra's algorithm
-    /// @param weightFunction A std::function returning a double value and taking as arguments a
-    /// pointer to the graph, an id of a source node and an id of a target node (for the edge)
-    /// @details The weight function must return the weight of the edge between the source and the
-    /// target node. One can use the predefined weight functions in the DijkstraWeights.hpp file,
-    /// like weight_functions::streetLength or weight_functions::streetTime.
-    void setWeightFunction(
-        std::function<double(const RoadNetwork*, Id, Id)> weightFunction);
-    /// @brief Set the weight treshold for updating the paths
-    /// @param weightTreshold The weight treshold
-    /// @details If two paths differs only for a weight smaller than the treshold, the two paths are
-    /// considered equivalent.
-    void setWeightTreshold(double weightTreshold) { m_weightTreshold = weightTreshold; }
-
-    /// @brief Set the destination nodes
-    /// @param destinationNodes The destination nodes (as an initializer list)
-    /// @param updatePaths If true, the paths are updated
-    void setDestinationNodes(std::initializer_list<Id> destinationNodes,
-                             bool updatePaths = true);
-    /// @brief Set the destination nodes
-    /// @param destinationNodes A container of destination nodes ids
-    /// @param updatePaths If true, the paths are updated
-    /// @details The container must have a value_type convertible to Id and begin() and end() methods
-    template <typename TContainer>
-      requires(std::is_convertible_v<typename TContainer::value_type, Id>)
-    void setDestinationNodes(TContainer const& destinationNodes, bool updatePaths = true);
+    Dynamics(RoadNetwork& graph, std::optional<unsigned int> seed = std::nullopt);
 
     /// @brief Add an agent to the simulation
     /// @param agent std::unique_ptr to the agent
@@ -362,72 +214,13 @@ namespace dsm {
   };
 
   template <typename agent_t>
-  Dynamics<agent_t>::Dynamics(
-      RoadNetwork& graph,
-      bool useCache,
-      std::optional<unsigned int> seed,
-      std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
-      double weightTreshold)
-      : m_weightFunction{weightFunction},
-        m_weightTreshold{weightTreshold},
-        m_bCacheEnabled{useCache},
-        m_graph{std::move(graph)},
+  Dynamics<agent_t>::Dynamics(RoadNetwork& graph, std::optional<unsigned int> seed)
+      : m_graph{std::move(graph)},
         m_time{0},
         m_previousSpireTime{0},
         m_generator{std::random_device{}()} {
     if (seed.has_value()) {
       m_generator.seed(seed.value());
-    }
-    if (m_bCacheEnabled) {
-      if (!std::filesystem::exists(g_cacheFolder)) {
-        std::filesystem::create_directory(g_cacheFolder);
-      }
-      Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
-    }
-    for (const auto& nodeId : this->m_graph.outputNodes()) {
-      addItinerary(nodeId, nodeId);
-    }
-    updatePaths();
-  }
-
-  template <typename agent_t>
-  void Dynamics<agent_t>::updatePaths() {
-    Logger::debug("Init updating paths...");
-    tbb::parallel_for_each(
-        m_itineraries.cbegin(), m_itineraries.cend(), [this](auto const& pair) -> void {
-          this->m_updatePath(pair.second);
-        });
-    Logger::debug("End updating paths.");
-  }
-
-  template <typename agent_t>
-  void Dynamics<agent_t>::setWeightFunction(
-      std::function<double(const RoadNetwork*, Id, Id)> weightFunction) {
-    m_weightFunction = weightFunction;
-  }
-
-  template <typename agent_t>
-  void Dynamics<agent_t>::setDestinationNodes(std::initializer_list<Id> destinationNodes,
-                                              bool updatePaths) {
-    std::for_each(
-        destinationNodes.begin(),
-        destinationNodes.end(),
-        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
-    if (updatePaths) {
-      this->updatePaths();
-    }
-  }
-  template <typename agent_t>
-  template <typename TContainer>
-    requires(std::is_convertible_v<typename TContainer::value_type, Id>)
-  void Dynamics<agent_t>::setDestinationNodes(TContainer const& destinationNodes,
-                                              bool updatePaths) {
-    std::for_each(
-        destinationNodes.begin(),
-        destinationNodes.end(),
-        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
-    if (updatePaths) {
-      this->updatePaths();
     }
   }
 

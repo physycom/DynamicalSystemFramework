@@ -410,8 +410,8 @@ TEST_CASE("Dynamics") {
       RoadNetwork graph;
       graph.addStreets(s1, s2, s3, s4);
       graph.buildAdj();
-      Dynamics dynamics{graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-      dynamics.setWeightFunction(dsm::weight_functions::streetTime);
+      Dynamics dynamics{graph, false, 69, 0., dsm::weight_functions::streetTime, 1.};
+      // dynamics.setWeightFunction(dsm::weight_functions::streetTime);
       dynamics.addItinerary(0, 2);
       WHEN("We update the paths") {
         dynamics.updatePaths();
