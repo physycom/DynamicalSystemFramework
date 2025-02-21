@@ -24,6 +24,8 @@
 #include <fstream>
 #include <iomanip>
 
+#include <tbb/tbb.h>
+
 #include "Dynamics.hpp"
 #include "Agent.hpp"
 #include "DijkstraWeights.hpp"
@@ -39,30 +41,31 @@ static auto constexpr g_cacheFolder = "./.dsmcache/";
 
 namespace dsm {
   /// @brief The RoadDynamics class represents the dynamics of the network.
-  /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
-  /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
+  /// @tparam delay_t The type of the agent's delay
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  class RoadDynamics : public Dynamics<Agent<delay_t>> {
-  protected:
-    Time m_previousOptimizationTime;
-
-  private:
-    std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
-    double m_weightTreshold;
-    bool m_bCacheEnabled;
-    std::optional<double> m_errorProbability;
-    std::optional<double> m_passageProbability;
+  class RoadDynamics : public Dynamics<RoadNetwork> {
+    std::map<Id, std::unique_ptr<Agent<delay_t>>> m_agents;
+    std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
 
   protected:
-    tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
-    bool m_forcePriorities;
-    std::optional<delay_t> m_dataUpdatePeriod;
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     std::unordered_map<Id, double> m_streetTails;
+    tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     tbb::concurrent_vector<Id> m_agentsToRemove;
+    Time m_previousOptimizationTime, m_previousSpireTime;
 
+  private:
+    std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
+    std::optional<double> m_errorProbability;
+    std::optional<double> m_passageProbability;
+    double m_weightTreshold;
+    std::optional<delay_t> m_dataUpdatePeriod;
+    bool m_bCacheEnabled;
+    bool m_forcePriorities;
+
+  private:
     /// @brief Update the path of a single itinerary using Dijsktra's algorithm
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(std::unique_ptr<Itinerary> const& pItinerary);
@@ -159,6 +162,54 @@ namespace dsm {
 
     void addAgentsRandomly(Size nAgents, const size_t minNodeDistance = 0);
 
+    /// @brief Add an agent to the simulation
+    /// @param agent std::unique_ptr to the agent
+    void addAgent(std::unique_ptr<Agent<delay_t>> agent);
+
+    template <typename... TArgs>
+      requires(std::is_constructible_v<Agent<delay_t>, TArgs...>)
+    void addAgent(TArgs&&... args);
+
+    template <typename... TArgs>
+      requires(std::is_constructible_v<Agent<delay_t>, Id, TArgs...>)
+    void addAgents(Size nAgents, TArgs&&... args);
+    /// @brief Add a pack of agents to the simulation
+    /// @param agents Parameter pack of agents
+    template <typename... Tn>
+      requires(is_agent_v<Tn> && ...)
+    void addAgents(Tn... agents);
+    /// @brief Add a pack of agents to the simulation
+    /// @param agent An agent
+    /// @param agents Parameter pack of agents
+    template <typename T1, typename... Tn>
+      requires(is_agent_v<T1> && (is_agent_v<Tn> && ...))
+    void addAgents(T1 agent, Tn... agents);
+    /// @brief Add a set of agents to the simulation
+    /// @param agents Generic container of agents, represented by an std::span
+    void addAgents(std::span<Agent<delay_t>> agents);
+
+    /// @brief Remove an agent from the simulation
+    /// @param agentId the id of the agent to remove
+    void removeAgent(Size agentId);
+    template <typename T1, typename... Tn>
+      requires(std::is_convertible_v<T1, Id> && (std::is_convertible_v<Tn, Size> && ...))
+    /// @brief Remove a pack of agents from the simulation
+    /// @param id the id of the first agent to remove
+    /// @param ids the pack of ides of the agents to remove
+    void removeAgents(T1 id, Tn... ids);
+
+    /// @brief Add an itinerary
+    /// @param ...args The arguments to construct the itinerary
+    /// @details The arguments must be compatible with any constructor of the Itinerary class
+    template <typename... TArgs>
+      requires(std::is_constructible_v<Itinerary, TArgs...>)
+    void addItinerary(TArgs&&... args);
+    /// @brief Add an itinerary
+    /// @param itinerary std::unique_ptr to the itinerary
+    /// @throws std::invalid_argument If the itinerary already exists
+    /// @throws std::invalid_argument If the itinerary's destination is not a node of the graph
+    void addItinerary(std::unique_ptr<Itinerary> itinerary);
+
     /// @brief Evolve the simulation
     /// @details Evolve the simulation by moving the agents and updating the travel times.
     /// In particular:
@@ -178,6 +229,21 @@ namespace dsm {
     void optimizeTrafficLights(double const threshold = 0.,
                                TrafficLightOptimization optimizationType =
                                    TrafficLightOptimization::DOUBLE_TAIL);
+
+    /// @brief Get the itineraries
+    /// @return const std::unordered_map<Id, Itinerary>&, The itineraries
+    const std::unordered_map<Id, std::unique_ptr<Itinerary>>& itineraries() const {
+      return m_itineraries;
+    }
+    /// @brief Get the agents
+    /// @return const std::unordered_map<Id, Agent<Id>>&, The agents
+    const std::map<Id, std::unique_ptr<Agent<delay_t>>>& agents() const {
+      return m_agents;
+    }
+    /// @brief Get the number of agents currently in the simulation
+    /// @return Size The number of agents
+    Size nAgents() const { return m_agents.size(); }
+
     /// @brief Get the mean travel time of the agents in \f$s\f$
     /// @param clearData If true, the travel times are cleared after the computation
     /// @return Measurement<double> The mean travel time of the agents and the standard deviation
@@ -205,6 +271,57 @@ namespace dsm {
       return m_turnMapping;
     }
 
+    /// @brief Get the mean speed of the agents in \f$m/s\f$
+    /// @return Measurement<double> The mean speed of the agents and the standard deviation
+    Measurement<double> agentMeanSpeed() const;
+    // TODO: implement the following functions
+    // We can implement the base version of these functions by cycling over agents... I won't do it for now.
+    // Grufoony - 19/02/2024
+    virtual double streetMeanSpeed(Id streetId) const;
+    virtual Measurement<double> streetMeanSpeed() const;
+    virtual Measurement<double> streetMeanSpeed(double, bool) const;
+    /// @brief Get the mean density of the streets in \f$m^{-1}\f$
+    /// @return Measurement<double> The mean density of the streets and the standard deviation
+    Measurement<double> streetMeanDensity(bool normalized = false) const;
+    /// @brief Get the mean flow of the streets in \f$s^{-1}\f$
+    /// @return Measurement<double> The mean flow of the streets and the standard deviation
+    Measurement<double> streetMeanFlow() const;
+    /// @brief Get the mean flow of the streets in \f$s^{-1}\f$
+    /// @param threshold The density threshold to consider
+    /// @param above If true, the function returns the mean flow of the streets with a density above the threshold, otherwise below
+    /// @return Measurement<double> The mean flow of the streets and the standard deviation
+    Measurement<double> streetMeanFlow(double threshold, bool above) const;
+    /// @brief Get the mean spire input flow of the streets in \f$s^{-1}\f$
+    /// @param resetValue If true, the spire input/output flows are cleared after the computation
+    /// @return Measurement<double> The mean spire input flow of the streets and the standard deviation
+    /// @details The spire input flow is computed as the sum of counts over the product of the number of spires and the time delta
+    Measurement<double> meanSpireInputFlow(bool resetValue = true);
+    /// @brief Get the mean spire output flow of the streets in \f$s^{-1}\f$
+    /// @param resetValue If true, the spire output/input flows are cleared after the computation
+    /// @return Measurement<double> The mean spire output flow of the streets and the standard deviation
+    /// @details The spire output flow is computed as the sum of counts over the product of the number of spires and the time delta
+    Measurement<double> meanSpireOutputFlow(bool resetValue = true);
+
+    /// @brief Save the street densities in csv format
+    /// @param filename The name of the file
+    /// @param normalized If true, the densities are normalized in [0, 1]
+    void saveStreetDensities(const std::string& filename,
+                             bool normalized = true,
+                             char const separator = ';') const;
+    /// @brief Save the street input counts in csv format
+    /// @param filename The name of the file
+    /// @param reset If true, the input counts are cleared after the computation
+    /// @details NOTE: counts are printed only if the street is a spire
+    void saveInputStreetCounts(const std::string& filename,
+                               bool reset = false,
+                               char const separator = ';');
+    /// @brief Save the street output counts in csv format
+    /// @param filename The name of the file
+    /// @param reset If true, the output counts are cleared after the computation
+    /// @details NOTE: counts are printed only if the street is a spire
+    void saveOutputStreetCounts(const std::string& filename,
+                                bool reset = false,
+                                char const separator = ';');
     /// @brief Save the travel speeds of the agents in csv format
     /// @param filename The name of the file
     /// @param reset If true, the travel speeds are cleared after the computation
@@ -219,13 +336,14 @@ namespace dsm {
       std::optional<unsigned int> seed,
       std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
       double weightTreshold)
-      : Dynamics<Agent<delay_t>>(graph, seed),
+      : Dynamics<RoadNetwork>(graph, seed),
         m_previousOptimizationTime{0},
+        m_previousSpireTime{0},
         m_weightFunction{weightFunction},
-        m_weightTreshold{weightTreshold},
-        m_bCacheEnabled{useCache},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
+        m_weightTreshold{weightTreshold},
+        m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
     if (m_bCacheEnabled) {
       if (!std::filesystem::exists(g_cacheFolder)) {
@@ -233,39 +351,45 @@ namespace dsm {
       }
       Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
     }
-    for (const auto& nodeId : this->m_graph.outputNodes()) {
+    for (const auto& nodeId : this->graph().outputNodes()) {
       this->addItinerary(nodeId, nodeId);
     }
     updatePaths();
-    for (const auto& [streetId, street] : this->m_graph.edges()) {
-      m_streetTails.emplace(streetId, 0);
-      m_turnCounts.emplace(streetId, std::array<unsigned long long, 4>{0, 0, 0, 0});
-      // fill turn mapping as [streetId, [left street Id, straight street Id, right street Id, U self street Id]]
-      m_turnMapping.emplace(streetId, std::array<long, 4>{-1, -1, -1, -1});
-      // Turn mappings
-      const auto& srcNodeId = street->target();
-      for (const auto& targetId : this->m_graph.adjacencyMatrix().getRow(srcNodeId)) {
-        auto const ss = srcNodeId * this->m_graph.nNodes() + targetId;
-        const auto& delta = street->angle() - this->m_graph.edge(ss)->angle();
-        if (std::abs(delta) < std::numbers::pi) {
-          if (delta < 0.) {
-            m_turnMapping[streetId][dsm::Direction::RIGHT] = ss;
-            ;  // right
-          } else if (delta > 0.) {
-            m_turnMapping[streetId][dsm::Direction::LEFT] = ss;  // left
-          } else {
-            m_turnMapping[streetId][dsm::Direction::STRAIGHT] = ss;  // straight
+    std::for_each(
+        this->graph().edges().cbegin(),
+        this->graph().edges().cend(),
+        [this](auto const& pair) {
+          m_streetTails.emplace(pair.first, 0);
+          m_turnCounts.emplace(pair.first, std::array<unsigned long long, 4>{0, 0, 0, 0});
+          // fill turn mapping as [pair.first, [left street Id, straight street Id, right street Id, U self street Id]]
+          m_turnMapping.emplace(pair.first, std::array<long, 4>{-1, -1, -1, -1});
+          // Turn mappings
+          const auto& srcNodeId = pair.second->target();
+          for (const auto& targetId : this->graph().adjacencyMatrix().getRow(srcNodeId)) {
+            auto const previousStreetId = srcNodeId * this->graph().nNodes() + targetId;
+            auto const& delta{
+                pair.second->deltaAngle(this->graph().edge(previousStreetId)->angle())};
+            if (std::abs(delta) < std::numbers::pi) {
+              if (delta < 0.) {
+                m_turnMapping[pair.first][dsm::Direction::RIGHT] = previousStreetId;
+                ;  // right
+              } else if (delta > 0.) {
+                m_turnMapping[pair.first][dsm::Direction::LEFT] =
+                    previousStreetId;  // left
+              } else {
+                m_turnMapping[pair.first][dsm::Direction::STRAIGHT] =
+                    previousStreetId;  // straight
+              }
+            } else {
+              m_turnMapping[pair.first][dsm::Direction::UTURN] = previousStreetId;  // U
+            }
           }
-        } else {
-          m_turnMapping[streetId][dsm::Direction::UTURN] = ss;  // U
-        }
-      }
-    }
+        });
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
+  void RoadDynamics<delay_t>::m_updatePath(std::unique_ptr<Itinerary> const& pItinerary) {
     if (m_bCacheEnabled) {
       auto const& file = std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
       if (std::filesystem::exists(file)) {
@@ -370,7 +494,7 @@ namespace dsm {
                                            Id nodeId,
                                            std::optional<Id> streetId) {
     auto const& pAgent{this->agents().at(agentId)};
-    auto possibleMoves = this->m_graph.adjacencyMatrix().getRow(nodeId);
+    auto possibleMoves = this->graph().adjacencyMatrix().getRow(nodeId);
     if (!pAgent->isRandom()) {
       std::uniform_real_distribution<double> uniformDist{0., 1.};
       if (!(this->itineraries().empty())) {
@@ -393,10 +517,10 @@ namespace dsm {
     Id nextStreetId;
     do {
       nextStreetId =
-          nodeId * this->m_graph.nNodes() + possibleMoves[moveDist(this->m_generator)];
-    } while (!this->m_graph.node(nodeId)->isRoundabout() && streetId.has_value() &&
-             (this->m_graph.edge(nextStreetId)->target() ==
-              this->m_graph.edge(streetId.value())->source()) &&
+          nodeId * this->graph().nNodes() + possibleMoves[moveDist(this->m_generator)];
+    } while (!this->graph().node(nodeId)->isRoundabout() && streetId.has_value() &&
+             (this->graph().edge(nextStreetId)->target() ==
+              this->graph().edge(streetId.value())->source()) &&
              (possibleMoves.size() > 1));
     return nextStreetId;
   }
@@ -439,7 +563,7 @@ namespace dsm {
         continue;
       }
       pAgent->setSpeed(0.);
-      const auto& destinationNode{this->m_graph.node(pStreet->target())};
+      const auto& destinationNode{this->graph().node(pStreet->target())};
       if (destinationNode->isFull()) {
         continue;
       }
@@ -479,7 +603,7 @@ namespace dsm {
         continue;
       }
       auto const& nextStreet{
-          this->m_graph.edge(this->agents().at(agentId)->nextStreetId().value())};
+          this->graph().edge(this->agents().at(agentId)->nextStreetId().value())};
       if (nextStreet->isFull()) {
         continue;
       }
@@ -510,7 +634,7 @@ namespace dsm {
       }
       for (auto const [angle, agentId] : intersection.agents()) {
         auto const& nextStreet{
-            this->m_graph.edge(this->agents().at(agentId)->nextStreetId().value())};
+            this->graph().edge(this->agents().at(agentId)->nextStreetId().value())};
         if (nextStreet->isFull()) {
           if (m_forcePriorities) {
             return false;
@@ -533,11 +657,11 @@ namespace dsm {
       }
       auto const agentId{roundabout.agents().front()};
       auto const& nextStreet{
-          this->m_graph.edge(this->agents().at(agentId)->nextStreetId().value())};
+          this->graph().edge(this->agents().at(agentId)->nextStreetId().value())};
       if (!(nextStreet->isFull())) {
         // if (this->agents().at(agentId)->streetId().has_value()) {
         //   const auto streetId = this->agents().at(agentId)->streetId().value();
-        //   auto delta = nextStreet->angle() - this->m_graph.edge(streetId)->angle();
+        //   auto delta = nextStreet->angle() - this->graph().edge(streetId)->angle();
         //   if (delta > std::numbers::pi) {
         //     delta -= 2 * std::numbers::pi;
         //   } else if (delta < -std::numbers::pi) {
@@ -563,9 +687,9 @@ namespace dsm {
   void RoadDynamics<delay_t>::m_evolveAgent(
       std::unique_ptr<Agent<delay_t>> const& pAgent) {
     std::uniform_int_distribution<Id> nodeDist{
-        0, static_cast<Id>(this->m_graph.nNodes() - 1)};
+        0, static_cast<Id>(this->graph().nNodes() - 1)};
     if (pAgent->delay() > 0) {
-      const auto& street{this->m_graph.edge(pAgent->streetId().value())};
+      const auto& street{this->graph().edge(pAgent->streetId().value())};
       if (pAgent->delay() > 1) {
         pAgent->incrementDistance();
       } else {
@@ -597,7 +721,7 @@ namespace dsm {
         } else {
           auto const nextStreetId =
               this->m_nextStreetId(pAgent->id(), street->target(), street->id());
-          auto const& pNextStreet{this->m_graph.edge(nextStreetId)};
+          auto const& pNextStreet{this->graph().edge(nextStreetId)};
           pAgent->setNextStreetId(nextStreetId);
           if (nLanes == 1) {
             street->enqueue(pAgent->id(), 0);
@@ -642,12 +766,12 @@ namespace dsm {
     } else if (!pAgent->streetId().has_value() && !pAgent->nextStreetId().has_value()) {
       Id srcNodeId = pAgent->srcNodeId().has_value() ? pAgent->srcNodeId().value()
                                                      : nodeDist(this->m_generator);
-      const auto& srcNode{this->m_graph.node(srcNodeId)};
+      const auto& srcNode{this->graph().node(srcNodeId)};
       if (srcNode->isFull()) {
         return;
       }
       const auto& nextStreet{
-          this->m_graph.edge(this->m_nextStreetId(pAgent->id(), srcNode->id()))};
+          this->graph().edge(this->m_nextStreetId(pAgent->id(), srcNode->id()))};
       if (nextStreet->isFull()) {
         return;
       }
@@ -741,7 +865,7 @@ namespace dsm {
     std::uniform_int_distribution<Size> itineraryDist{
         0, static_cast<Size>(this->itineraries().size() - 1)};
     std::uniform_int_distribution<Size> streetDist{
-        0, static_cast<Size>(this->m_graph.nEdges() - 1)};
+        0, static_cast<Size>(this->graph().nEdges() - 1)};
     for (Size i{0}; i < nAgents; ++i) {
       if (randomItinerary) {
         auto itineraryIt{this->itineraries().cbegin()};
@@ -754,13 +878,13 @@ namespace dsm {
       }
       Id streetId{0};
       do {
-        auto streetIt = this->m_graph.edges().begin();
+        auto streetIt = this->graph().edges().begin();
         Size step = streetDist(this->m_generator);
         std::advance(streetIt, step);
         streetId = streetIt->first;
-      } while (this->m_graph.edge(streetId)->isFull() &&
-               this->nAgents() < this->m_graph.maxCapacity());
-      const auto& street{this->m_graph.edge(streetId)};
+      } while (this->graph().edge(streetId)->isFull() &&
+               this->nAgents() < this->graph().maxCapacity());
+      const auto& street{this->graph().edge(streetId)};
       this->addAgent(agentId, itineraryId, street->nodePair().first);
       auto const& pAgent{this->agents().at(agentId)};
       pAgent->setStreetId(streetId);
@@ -856,7 +980,7 @@ namespace dsm {
           }
           if (nDestinations > 1 && minNodeDistance > 0) {
             // NOTE: Result must have a value in this case, so we can use value() as sort-of assertion
-            if (this->m_graph.shortestPath(srcId, id).value().path().size() <
+            if (this->graph().shortestPath(srcId, id).value().path().size() <
                 minNodeDistance) {
               continue;
             }
@@ -888,13 +1012,115 @@ namespace dsm {
   void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
                                                 const size_t minNodeDistance) {
     std::unordered_map<Id, double> src_weights, dst_weights;
-    for (auto const& id : this->m_graph.inputNodes()) {
+    for (auto const& id : this->graph().inputNodes()) {
       src_weights[id] = 1.;
     }
-    for (auto const& id : this->m_graph.outputNodes()) {
+    for (auto const& id : this->graph().outputNodes()) {
       dst_weights[id] = 1.;
     }
     addAgentsRandomly(nAgents, src_weights, dst_weights, minNodeDistance);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent<delay_t>> agent) {
+    if (m_agents.size() + 1 > this->graph().maxCapacity()) {
+      throw std::overflow_error(Logger::buildExceptionMessage(std::format(
+          "RoadNetwork is already holding the max possible number of agents ({})",
+          this->graph().maxCapacity())));
+    }
+    if (m_agents.contains(agent->id())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Agent with id {} already exists.", agent->id())));
+    }
+    m_agents.emplace(agent->id(), std::move(agent));
+    // Logger::info(std::format("Added agent with id {} from node {} to node {}",
+    //                           m_agents.rbegin()->first,
+    //                           m_agents.rbegin()->second->srcNodeId().value_or(-1),
+    //                           m_agents.rbegin()->second->itineraryId()));
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  template <typename... TArgs>
+    requires(std::is_constructible_v<Agent<delay_t>, TArgs...>)
+  void RoadDynamics<delay_t>::addAgent(TArgs&&... args) {
+    addAgent(std::make_unique<Agent<delay_t>>(std::forward<TArgs>(args)...));
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  template <typename... TArgs>
+    requires(std::is_constructible_v<Agent<delay_t>, Id, TArgs...>)
+  void RoadDynamics<delay_t>::addAgents(Size nAgents, TArgs&&... args) {
+    Id agentId{0};
+    if (!m_agents.empty()) {
+      agentId = m_agents.rbegin()->first + 1;
+    }
+    for (size_t i{0}; i < nAgents; ++i, ++agentId) {
+      addAgent(std::make_unique<Agent<delay_t>>(agentId, std::forward<TArgs>(args)...));
+    }
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  template <typename... Tn>
+    requires(is_agent_v<Tn> && ...)
+  void RoadDynamics<delay_t>::addAgents(Tn... agents) {}
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  template <typename T1, typename... Tn>
+    requires(is_agent_v<T1> && (is_agent_v<Tn> && ...))
+  void RoadDynamics<delay_t>::addAgents(T1 agent, Tn... agents) {
+    addAgent(std::make_unique<Agent<delay_t>>(agent));
+    addAgents(agents...);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::addAgents(std::span<Agent<delay_t>> agents) {
+    std::ranges::for_each(agents, [this](const auto& agent) -> void {
+      addAgent(std::make_unique<Agent<delay_t>>(agent));
+    });
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::removeAgent(Size agentId) {
+    m_agents.erase(agentId);
+    Logger::debug(std::format("Removed agent with id {}", agentId));
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  template <typename T1, typename... Tn>
+    requires(std::is_convertible_v<T1, Size> && (std::is_convertible_v<Tn, Size> && ...))
+  void RoadDynamics<delay_t>::removeAgents(T1 id, Tn... ids) {
+    removeAgent(id);
+    removeAgents(ids...);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  template <typename... TArgs>
+    requires(std::is_constructible_v<Itinerary, TArgs...>)
+  void RoadDynamics<delay_t>::addItinerary(TArgs&&... args) {
+    addItinerary(std::make_unique<Itinerary>(std::forward<TArgs>(args)...));
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::addItinerary(std::unique_ptr<Itinerary> itinerary) {
+    if (m_itineraries.contains(itinerary->id())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Itinerary with id {} already exists.", itinerary->id())));
+    }
+    if (!this->graph().nodes().contains(itinerary->destination())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
+          "Destination node with id {} not found", itinerary->destination())));
+    }
+    m_itineraries.emplace(itinerary->id(), std::move(itinerary));
   }
 
   template <typename delay_t>
@@ -903,22 +1129,21 @@ namespace dsm {
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->m_time % m_dataUpdatePeriod.value() == 0;
-    auto const N{this->m_graph.nNodes()};
+    auto const numNodes{this->graph().nNodes()};
     const auto& nodes =
-        this->m_graph.nodes();  // assuming a container with contiguous indices
-    const size_t numNodes = this->m_graph.nNodes();
+        this->graph().nodes();  // assuming a container with contiguous indices
     const unsigned int concurrency = std::thread::hardware_concurrency();
     // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
     const size_t grainSize = std::max(size_t(1), numNodes / concurrency);
-    this->m_arena.execute([&] {
+    this->m_taskArena.execute([&] {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, numNodes, grainSize),
                         [&](const tbb::blocked_range<size_t>& range) {
                           for (size_t i = range.begin(); i != range.end(); ++i) {
                             const auto& pNode = nodes.at(i);
                             for (auto const& sourceId :
-                                 this->m_graph.adjacencyMatrix().getCol(pNode->id())) {
-                              auto const streetId = sourceId * N + pNode->id();
-                              auto const& pStreet = this->m_graph.edge(streetId);
+                                 this->graph().adjacencyMatrix().getCol(pNode->id())) {
+                              auto const streetId = sourceId * numNodes + pNode->id();
+                              auto const& pStreet = this->graph().edge(streetId);
 
                               if (bUpdateData) {
                                 m_streetTails[streetId] += pStreet->nExitingAgents();
@@ -936,7 +1161,7 @@ namespace dsm {
                   [this](const auto& agentId) { this->removeAgent(agentId); });
     m_agentsToRemove.clear();
     // Move transport capacity agents from each node
-    this->m_arena.execute([&] {
+    this->m_taskArena.execute([&] {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, numNodes, grainSize),
                         [&](const tbb::blocked_range<size_t>& range) {
                           for (size_t i = range.begin(); i != range.end(); ++i) {
@@ -971,9 +1196,9 @@ namespace dsm {
       Logger::error(
           std::format("The threshold parameter ({}) must be greater than 0.", threshold));
     }
-    auto const nCycles{static_cast<double>(this->m_time - m_previousOptimizationTime) /
+    auto const nCycles{static_cast<double>(this->time() - m_previousOptimizationTime) /
                        m_dataUpdatePeriod.value()};
-    for (const auto& [nodeId, pNode] : this->m_graph.nodes()) {
+    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
       if (!pNode->isTrafficLight()) {
         continue;
       }
@@ -983,11 +1208,11 @@ namespace dsm {
       auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
 
       double inputGreenSum{0.}, inputRedSum{0.};
-      auto const N{this->m_graph.nNodes()};
-      auto column = this->m_graph.adjacencyMatrix().getCol(nodeId);
+      auto const N{this->graph().nNodes()};
+      auto column = this->graph().adjacencyMatrix().getCol(nodeId);
       for (const auto& sourceId : column) {
         auto const streetId = sourceId * N + nodeId;
-        auto const& pStreet{this->m_graph.edge(streetId)};
+        auto const& pStreet{this->graph().edge(streetId)};
         if (streetPriorities.contains(streetId)) {
           inputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
         } else {
@@ -1029,9 +1254,9 @@ namespace dsm {
         //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
         //    - If the previous check fails, do nothing
         double outputGreenSum{0.}, outputRedSum{0.};
-        for (auto const& targetId : this->m_graph.adjacencyMatrix().getRow(nodeId)) {
+        for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
           auto const streetId = nodeId * N + targetId;
-          auto const& pStreet{this->m_graph.edge(streetId)};
+          auto const& pStreet{this->graph().edge(streetId)};
           if (streetPriorities.contains(streetId)) {
             outputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
           } else {
@@ -1064,7 +1289,7 @@ namespace dsm {
     for (auto& [id, element] : m_streetTails) {
       element = 0.;
     }
-    m_previousOptimizationTime = this->m_time;
+    m_previousOptimizationTime = this->time();
   }
 
   template <typename delay_t>
@@ -1134,6 +1359,255 @@ namespace dsm {
     return res;
   }
 
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::agentMeanSpeed() const {
+    std::vector<double> speeds;
+    if (!this->agents().empty()) {
+      speeds.reserve(this->nAgents());
+      for (const auto& [agentId, agent] : this->agents()) {
+        speeds.push_back(agent->speed());
+      }
+    }
+    return Measurement<double>(speeds);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  double RoadDynamics<delay_t>::streetMeanSpeed(Id streetId) const {
+    auto const& pStreet{this->graph().edge(streetId)};
+    auto const nAgents{pStreet->nAgents()};
+    if (nAgents == 0) {
+      return 0.;
+    }
+    double speed{0.};
+    for (auto const& agentId : pStreet->movingAgents()) {
+      speed += this->agents().at(agentId)->speed();
+    }
+    return speed / nAgents;
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::streetMeanSpeed() const {
+    std::vector<double> speeds;
+    speeds.reserve(this->graph().nEdges());
+    for (const auto& [streetId, street] : this->graph().edges()) {
+      speeds.push_back(streetMeanSpeed(streetId));
+    }
+    return Measurement<double>(speeds);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::streetMeanSpeed(double threshold,
+                                                             bool above) const {
+    std::vector<double> speeds;
+    speeds.reserve(this->graph().nEdges());
+    for (const auto& [streetId, street] : this->graph().edges()) {
+      if (above && (street->density(true) > threshold)) {
+        speeds.push_back(streetMeanSpeed(streetId));
+      } else if (!above && (street->density(true) < threshold)) {
+        speeds.push_back(streetMeanSpeed(streetId));
+      }
+    }
+    return Measurement<double>(speeds);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::streetMeanDensity(bool normalized) const {
+    if (this->graph().edges().empty()) {
+      return Measurement(0., 0.);
+    }
+    std::vector<double> densities;
+    densities.reserve(this->graph().nEdges());
+    if (normalized) {
+      for (const auto& [streetId, street] : this->graph().edges()) {
+        densities.push_back(street->density(true));
+      }
+    } else {
+      double sum{0.};
+      for (const auto& [streetId, street] : this->graph().edges()) {
+        densities.push_back(street->density(false) * street->length());
+        sum += street->length();
+      }
+      if (sum == 0) {
+        return Measurement(0., 0.);
+      }
+      auto meanDensity{std::accumulate(densities.begin(), densities.end(), 0.) / sum};
+      return Measurement(meanDensity, 0.);
+    }
+    return Measurement<double>(densities);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::streetMeanFlow() const {
+    std::vector<double> flows;
+    flows.reserve(this->graph().nEdges());
+    for (const auto& [streetId, street] : this->graph().edges()) {
+      flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+    }
+    return Measurement<double>(flows);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::streetMeanFlow(double threshold,
+                                                            bool above) const {
+    std::vector<double> flows;
+    flows.reserve(this->graph().nEdges());
+    for (const auto& [streetId, street] : this->graph().edges()) {
+      if (above && (street->density(true) > threshold)) {
+        flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+      } else if (!above && (street->density(true) < threshold)) {
+        flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+      }
+    }
+    return Measurement<double>(flows);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::meanSpireInputFlow(bool resetValue) {
+    auto deltaTime{this->time() - m_previousSpireTime};
+    if (deltaTime == 0) {
+      return Measurement(0., 0.);
+    }
+    m_previousSpireTime = this->time();
+    std::vector<double> flows;
+    flows.reserve(this->graph().nEdges());
+    for (const auto& [streetId, street] : this->graph().edges()) {
+      if (street->isSpire()) {
+        auto& spire = dynamic_cast<SpireStreet&>(*street);
+        flows.push_back(static_cast<double>(spire.inputCounts(resetValue)) / deltaTime);
+      }
+    }
+    return Measurement<double>(flows);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  Measurement<double> RoadDynamics<delay_t>::meanSpireOutputFlow(bool resetValue) {
+    auto deltaTime{this->time() - m_previousSpireTime};
+    if (deltaTime == 0) {
+      return Measurement(0., 0.);
+    }
+    m_previousSpireTime = this->time();
+    std::vector<double> flows;
+    flows.reserve(this->graph().nEdges());
+    for (auto const& [streetId, street] : this->graph().edges()) {
+      if (street->isSpire()) {
+        auto& spire = dynamic_cast<SpireStreet&>(*street);
+        flows.push_back(static_cast<double>(spire.outputCounts(resetValue)) / deltaTime);
+      }
+    }
+    return Measurement<double>(flows);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::saveStreetDensities(const std::string& filename,
+                                                  bool normalized,
+                                                  char const separator) const {
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    if (bEmptyFile) {
+      file << "time";
+      for (auto const& [streetId, _] : this->graph().edges()) {
+        file << separator << streetId;
+      }
+      file << std::endl;
+    }
+    file << this->time();
+    for (auto const& [_, pStreet] : this->graph().edges()) {
+      // keep 2 decimal digits;
+      file << separator << std::fixed << std::setprecision(2)
+           << pStreet->density(normalized);
+    }
+    file << std::endl;
+    file.close();
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::saveInputStreetCounts(const std::string& filename,
+                                                    bool reset,
+                                                    char const separator) {
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    if (bEmptyFile) {
+      file << "time";
+      for (auto const& [streetId, _] : this->graph().edges()) {
+        file << separator << streetId;
+      }
+      file << std::endl;
+    }
+    file << this->time();
+    for (auto const& [_, pStreet] : this->graph().edges()) {
+      int value{0};
+      if (pStreet->isSpire()) {
+        if (pStreet->isStochastic()) {
+          value = dynamic_cast<StochasticSpireStreet&>(*pStreet).inputCounts(reset);
+        } else {
+          value = dynamic_cast<SpireStreet&>(*pStreet).inputCounts(reset);
+        }
+      }
+      file << separator << value;
+    }
+    file << std::endl;
+    file.close();
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::saveOutputStreetCounts(const std::string& filename,
+                                                     bool reset,
+                                                     char const separator) {
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    if (bEmptyFile) {
+      file << "time";
+      for (auto const& [streetId, _] : this->graph().edges()) {
+        file << separator << streetId;
+      }
+      file << std::endl;
+    }
+    file << this->time();
+    for (auto const& [_, pStreet] : this->graph().edges()) {
+      int value{0};
+      if (pStreet->isSpire()) {
+        if (pStreet->isStochastic()) {
+          value = dynamic_cast<StochasticSpireStreet&>(*pStreet).outputCounts(reset);
+        } else {
+          value = dynamic_cast<SpireStreet&>(*pStreet).outputCounts(reset);
+        }
+      }
+      file << separator << value;
+    }
+    file << std::endl;
+    file.close();
+  }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::saveTravelSpeeds(const std::string& filename, bool reset) {
