@@ -87,11 +87,6 @@ namespace dsm {
     Time m_time, m_previousSpireTime;
     std::mt19937_64 m_generator;
 
-    virtual void m_evolveStreet(const std::unique_ptr<Street>& pStreet,
-                                bool reinsert_agents) = 0;
-    virtual bool m_evolveNode(const std::unique_ptr<Node>& pNode) = 0;
-    virtual void m_evolveAgents() = 0;
-
     /// @brief Update the path of a single itinerary using Dijsktra's algorithm
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
