@@ -35,6 +35,8 @@
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
+static auto constexpr g_cacheFolder = "./.dsmcache/";
+
 namespace dsm {
   /// @brief The RoadDynamics class represents the dynamics of the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
@@ -46,6 +48,9 @@ namespace dsm {
     Time m_previousOptimizationTime;
 
   private:
+    std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
+    double m_weightTreshold;
+    bool m_bCacheEnabled;
     std::optional<double> m_errorProbability;
     std::optional<double> m_passageProbability;
 
@@ -57,6 +62,10 @@ namespace dsm {
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     std::unordered_map<Id, double> m_streetTails;
     tbb::concurrent_vector<Id> m_agentsToRemove;
+
+    /// @brief Update the path of a single itinerary using Dijsktra's algorithm
+    /// @param pItinerary An std::unique_prt to the itinerary
+    void m_updatePath(std::unique_ptr<Itinerary> const& pItinerary);
 
     /// @brief Get the next street id
     /// @param agentId The id of the agent
@@ -113,7 +122,23 @@ namespace dsm {
     void setDataUpdatePeriod(delay_t dataUpdatePeriod) {
       m_dataUpdatePeriod = dataUpdatePeriod;
     }
+    /// @brief Set the destination nodes
+    /// @param destinationNodes The destination nodes (as an initializer list)
+    /// @param updatePaths If true, the paths are updated
+    void setDestinationNodes(std::initializer_list<Id> destinationNodes,
+                             bool updatePaths = true);
+    /// @brief Set the destination nodes
+    /// @param destinationNodes A container of destination nodes ids
+    /// @param updatePaths If true, the paths are updated
+    /// @details The container must have a value_type convertible to Id and begin() and end() methods
+    template <typename TContainer>
+      requires(std::is_convertible_v<typename TContainer::value_type, Id>)
+    void setDestinationNodes(TContainer const& destinationNodes, bool updatePaths = true);
 
+    virtual void setAgentSpeed(Size agentId) = 0;
+
+    /// @brief Update the paths of the itineraries based on the given weight function
+    void updatePaths();
     /// @brief Add a set of agents to the simulation
     /// @param nAgents The number of agents to add
     /// @param uniformly If true, the agents are added uniformly on the streets
@@ -143,7 +168,7 @@ namespace dsm {
     /// If the agent is in the destination node, it is removed from the simulation (and then reinserted if reinsert_agents is true)
     /// - Cycle over agents and update their times
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
-    void evolve(bool reinsert_agents = false) override;
+    void evolve(bool reinsert_agents = false);
     /// @brief Optimize the traffic lights by changing the green and red times
     /// @param threshold double, The minimum difference between green and red queues to trigger the optimization (n agents - default is 0)
     /// @param optimizationType TrafficLightOptimization, The type of optimization. Default is DOUBLE_TAIL
@@ -194,11 +219,24 @@ namespace dsm {
       std::optional<unsigned int> seed,
       std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
       double weightTreshold)
-      : Dynamics<Agent<delay_t>>(graph, useCache, seed, weightFunction, weightTreshold),
+      : Dynamics<Agent<delay_t>>(graph, seed),
         m_previousOptimizationTime{0},
+        m_weightFunction{weightFunction},
+        m_weightTreshold{weightTreshold},
+        m_bCacheEnabled{useCache},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
         m_forcePriorities{false} {
+    if (m_bCacheEnabled) {
+      if (!std::filesystem::exists(g_cacheFolder)) {
+        std::filesystem::create_directory(g_cacheFolder);
+      }
+      Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
+    }
+    for (const auto& nodeId : this->m_graph.outputNodes()) {
+      this->addItinerary(nodeId, nodeId);
+    }
+    updatePaths();
     for (const auto& [streetId, street] : this->m_graph.edges()) {
       m_streetTails.emplace(streetId, 0);
       m_turnCounts.emplace(streetId, std::array<unsigned long long, 4>{0, 0, 0, 0});
@@ -222,6 +260,107 @@ namespace dsm {
           m_turnMapping[streetId][dsm::Direction::UTURN] = ss;  // U
         }
       }
+    }
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_updatePath(const std::unique_ptr<Itinerary>& pItinerary) {
+    if (m_bCacheEnabled) {
+      auto const& file = std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
+      if (std::filesystem::exists(file)) {
+        pItinerary->setPath(AdjacencyMatrix(file));
+        Logger::debug(
+            std::format("Loaded cached path for itinerary {}", pItinerary->id()));
+        return;
+      }
+    }
+
+    auto const destinationID = pItinerary->destination();
+    std::vector<double> shortestDistances(this->graph().nNodes());
+    tbb::parallel_for_each(
+        this->graph().nodes().cbegin(),
+        this->graph().nodes().cend(),
+        [this, &shortestDistances, &destinationID](auto const& it) -> void {
+          auto const nodeId{it.first};
+          if (nodeId == destinationID) {
+            shortestDistances[nodeId] = -1.;
+          } else {
+            auto result =
+                this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
+            if (result.has_value()) {
+              shortestDistances[nodeId] = result.value().distance();
+            } else {
+              Logger::warning(std::format(
+                  "No path found from node {} to node {}", nodeId, destinationID));
+              shortestDistances[nodeId] = -1.;
+            }
+          }
+        });
+    AdjacencyMatrix path;
+    // cycle over the nodes
+    for (const auto& [nodeId, node] : this->graph().nodes()) {
+      if (nodeId == destinationID) {
+        continue;
+      }
+      // save the minimum distance between i and the destination
+      const auto minDistance{shortestDistances[nodeId]};
+      if (minDistance < 0.) {
+        continue;
+      }
+      auto const& row{this->graph().adjacencyMatrix().getRow(nodeId)};
+      for (const auto nextNodeId : row) {
+        if (nextNodeId == destinationID) {
+          if (std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) -
+                       minDistance) <
+              m_weightTreshold)  // 1 meter tolerance between shortest paths
+          {
+            path.insert(nodeId, nextNodeId);
+          } else {
+            Logger::debug(
+                std::format("Found a path from {} to {} which differs for more than {} "
+                            "unit(s) from the shortest one.",
+                            nodeId,
+                            destinationID,
+                            m_weightTreshold));
+          }
+          continue;
+        }
+        auto const distance{shortestDistances[nextNodeId]};
+        if (distance < 0.) {
+          continue;
+        }
+        bool const bIsMinDistance{
+            std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) + distance -
+                     minDistance) <
+            m_weightTreshold};  // 1 meter tolerance between shortest paths
+        if (bIsMinDistance) {
+          path.insert(nodeId, nextNodeId);
+        } else {
+          Logger::debug(
+              std::format("Found a path from {} to {} which differs for more than {} "
+                          "unit(s) from the shortest one.",
+                          nodeId,
+                          destinationID,
+                          m_weightTreshold));
+        }
+      }
+    }
+
+    if (path.empty()) {
+      Logger::error(
+          std::format("Path with id {} and destination {} is empty. Please check the "
+                      "adjacency matrix.",
+                      pItinerary->id(),
+                      pItinerary->destination()));
+    }
+
+    pItinerary->setPath(path);
+    if (m_bCacheEnabled) {
+      pItinerary->path()->save(
+          std::format("{}it{}.adj", g_cacheFolder, pItinerary->id()));
+      Logger::debug(
+          std::format("Saved path in cache for itinerary {}", pItinerary->id()));
     }
   }
 
@@ -425,7 +564,6 @@ namespace dsm {
       std::unique_ptr<Agent<delay_t>> const& pAgent) {
     std::uniform_int_distribution<Id> nodeDist{
         0, static_cast<Id>(this->m_graph.nNodes() - 1)};
-    auto const agentId{pAgent->id()};
     if (pAgent->delay() > 0) {
       const auto& street{this->m_graph.edge(pAgent->streetId().value())};
       if (pAgent->delay() > 1) {
@@ -455,14 +593,14 @@ namespace dsm {
         if (bArrived) {
           std::uniform_int_distribution<size_t> laneDist{0,
                                                          static_cast<size_t>(nLanes - 1)};
-          street->enqueue(agentId, laneDist(this->m_generator));
+          street->enqueue(pAgent->id(), laneDist(this->m_generator));
         } else {
           auto const nextStreetId =
-              this->m_nextStreetId(agentId, street->target(), street->id());
+              this->m_nextStreetId(pAgent->id(), street->target(), street->id());
           auto const& pNextStreet{this->m_graph.edge(nextStreetId)};
           pAgent->setNextStreetId(nextStreetId);
           if (nLanes == 1) {
-            street->enqueue(agentId, 0);
+            street->enqueue(pAgent->id(), 0);
           } else {
             auto const deltaAngle{pNextStreet->deltaAngle(street->angle())};
             if (std::abs(deltaAngle) < std::numbers::pi) {
@@ -489,14 +627,14 @@ namespace dsm {
                 }
                 std::discrete_distribution<size_t> laneDist{weights.begin(),
                                                             weights.end()};
-                street->enqueue(agentId, laneDist(this->m_generator));
-              } else if (deltaAngle < 0.) {            // Right
-                street->enqueue(agentId, 0);           // Always the first lane
-              } else {                                 // Left (deltaAngle > 0.)
-                street->enqueue(agentId, nLanes - 1);  // Always the last lane
+                street->enqueue(pAgent->id(), laneDist(this->m_generator));
+              } else if (deltaAngle < 0.) {                 // Right
+                street->enqueue(pAgent->id(), 0);           // Always the first lane
+              } else {                                      // Left (deltaAngle > 0.)
+                street->enqueue(pAgent->id(), nLanes - 1);  // Always the last lane
               }
-            } else {                                 // U turn
-              street->enqueue(agentId, nLanes - 1);  // Always the last lane
+            } else {                                      // U turn
+              street->enqueue(pAgent->id(), nLanes - 1);  // Always the last lane
             }
           }
         }
@@ -509,17 +647,17 @@ namespace dsm {
         return;
       }
       const auto& nextStreet{
-          this->m_graph.edge(this->m_nextStreetId(agentId, srcNode->id()))};
+          this->m_graph.edge(this->m_nextStreetId(pAgent->id(), srcNode->id()))};
       if (nextStreet->isFull()) {
         return;
       }
       assert(srcNode->id() == nextStreet->nodePair().first);
       if (srcNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*srcNode);
-        intersection.addAgent(0., agentId);
+        intersection.addAgent(0., pAgent->id());
       } else if (srcNode->isRoundabout()) {
         auto& roundabout = dynamic_cast<Roundabout&>(*srcNode);
-        roundabout.enqueue(agentId);
+        roundabout.enqueue(pAgent->id());
       }
       pAgent->setNextStreetId(nextStreet->id());
     } else if (pAgent->delay() == 0) {
@@ -546,6 +684,44 @@ namespace dsm {
                                 passageProbability));
     }
     m_passageProbability = passageProbability;
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::setDestinationNodes(
+      std::initializer_list<Id> destinationNodes, bool updatePaths) {
+    std::for_each(
+        destinationNodes.begin(),
+        destinationNodes.end(),
+        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
+    if (updatePaths) {
+      this->updatePaths();
+    }
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  template <typename TContainer>
+    requires(std::is_convertible_v<typename TContainer::value_type, Id>)
+  void RoadDynamics<delay_t>::setDestinationNodes(TContainer const& destinationNodes,
+                                                  bool updatePaths) {
+    std::for_each(
+        destinationNodes.begin(),
+        destinationNodes.end(),
+        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
+    if (updatePaths) {
+      this->updatePaths();
+    }
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::updatePaths() {
+    Logger::debug("Init updating paths...");
+    tbb::parallel_for_each(
+        this->itineraries().cbegin(),
+        this->itineraries().cend(),
+        [this](auto const& pair) -> void { this->m_updatePath(pair.second); });
+    Logger::debug("End updating paths.");
   }
 
   template <typename delay_t>
