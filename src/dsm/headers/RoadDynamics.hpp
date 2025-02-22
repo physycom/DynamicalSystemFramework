@@ -167,26 +167,12 @@ namespace dsm {
     void addAgent(std::unique_ptr<Agent<delay_t>> agent);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent<delay_t>, TArgs...>)
+      requires(std::is_constructible_v<Agent<delay_t>, Time, TArgs...>)
     void addAgent(TArgs&&... args);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent<delay_t>, Id, TArgs...>)
+      requires(std::is_constructible_v<Agent<delay_t>, Time, Id, TArgs...>)
     void addAgents(Size nAgents, TArgs&&... args);
-    /// @brief Add a pack of agents to the simulation
-    /// @param agents Parameter pack of agents
-    template <typename... Tn>
-      requires(is_agent_v<Tn> && ...)
-    void addAgents(Tn... agents);
-    /// @brief Add a pack of agents to the simulation
-    /// @param agent An agent
-    /// @param agents Parameter pack of agents
-    template <typename T1, typename... Tn>
-      requires(is_agent_v<T1> && (is_agent_v<Tn> && ...))
-    void addAgents(T1 agent, Tn... agents);
-    /// @brief Add a set of agents to the simulation
-    /// @param agents Generic container of agents, represented by an std::span
-    void addAgents(std::span<Agent<delay_t>> agents);
 
     /// @brief Remove an agent from the simulation
     /// @param agentId the id of the agent to remove
@@ -592,10 +578,11 @@ namespace dsm {
       }
       if (bArrived) {
         pStreet->dequeue(queueIndex);
-        m_travelDTs.push_back({pAgent->distance(), static_cast<double>(pAgent->time())});
+        m_travelDTs.push_back({pAgent->distance(),
+                               static_cast<double>(this->time() - pAgent->spawnTime())});
         if (reinsert_agents) {
           // reset Agent's values
-          pAgent->reset();
+          pAgent->reset(this->time());
         } else {
           m_agentsToRemove.push_back(agentId);
           // this->removeAgent(agentId);
@@ -787,7 +774,6 @@ namespace dsm {
     } else if (pAgent->delay() == 0) {
       pAgent->setSpeed(0.);
     }
-    pAgent->incrementTime();
   }
 
   template <typename delay_t>
@@ -1043,46 +1029,25 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent<delay_t>, TArgs...>)
+    requires(std::is_constructible_v<Agent<delay_t>, Time, TArgs...>)
   void RoadDynamics<delay_t>::addAgent(TArgs&&... args) {
-    addAgent(std::make_unique<Agent<delay_t>>(std::forward<TArgs>(args)...));
+    addAgent(
+        std::make_unique<Agent<delay_t>>(this->time(), std::forward<TArgs>(args)...));
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent<delay_t>, Id, TArgs...>)
+    requires(std::is_constructible_v<Agent<delay_t>, Time, Id, TArgs...>)
   void RoadDynamics<delay_t>::addAgents(Size nAgents, TArgs&&... args) {
     Id agentId{0};
     if (!m_agents.empty()) {
       agentId = m_agents.rbegin()->first + 1;
     }
     for (size_t i{0}; i < nAgents; ++i, ++agentId) {
-      addAgent(std::make_unique<Agent<delay_t>>(agentId, std::forward<TArgs>(args)...));
+      addAgent(std::make_unique<Agent<delay_t>>(
+          this->time(), agentId, std::forward<TArgs>(args)...));
     }
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  template <typename... Tn>
-    requires(is_agent_v<Tn> && ...)
-  void RoadDynamics<delay_t>::addAgents(Tn... agents) {}
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  template <typename T1, typename... Tn>
-    requires(is_agent_v<T1> && (is_agent_v<Tn> && ...))
-  void RoadDynamics<delay_t>::addAgents(T1 agent, Tn... agents) {
-    addAgent(std::make_unique<Agent<delay_t>>(agent));
-    addAgents(agents...);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgents(std::span<Agent<delay_t>> agents) {
-    std::ranges::for_each(agents, [this](const auto& agent) -> void {
-      addAgent(std::make_unique<Agent<delay_t>>(agent));
-    });
   }
 
   template <typename delay_t>

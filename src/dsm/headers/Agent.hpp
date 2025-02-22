@@ -30,30 +30,34 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   class Agent {
   private:
+    Time m_spawnTime;
     Id m_id;
     std::vector<Id> m_trip;
     std::optional<Id> m_streetId;
     std::optional<Id> m_srcNodeId;
     std::optional<Id> m_nextStreetId;
+    size_t m_itineraryIdx;
     delay_t m_delay;
     double m_speed;
-    double m_distance;    // Travelled distance
-    unsigned int m_time;  // Travelled time
-    size_t m_itineraryIdx;
+    double m_distance;  // Travelled distance
 
   public:
     /// @brief Construct a new Agent object
     /// @param id The agent's id
     /// @param itineraryId Optional, The agent's destination node. If not provided, the agent is a random agent
     /// @param srcNodeId Optional, The id of the source node of the agent
-    Agent(Id id,
+    Agent(Time const& spawnTime,
+          Id id,
           std::optional<Id> itineraryId = std::nullopt,
           std::optional<Id> srcNodeId = std::nullopt);
     /// @brief Construct a new Agent object
     /// @param id The agent's id
     /// @param itineraryIds The agent's itinerary
     /// @param srcNodeId Optional, The id of the source node of the agent
-    Agent(Id id, std::vector<Id> const& trip, std::optional<Id> srcNodeId = std::nullopt);
+    Agent(Time const& spawnTime,
+          Id id,
+          std::vector<Id> const& trip,
+          std::optional<Id> srcNodeId = std::nullopt);
     /// @brief Set the street occupied by the agent
     /// @param streetId The id of the street currently occupied by the agent
     void setStreetId(Id streetId);
@@ -80,15 +84,6 @@ namespace dsm {
     /// @param distance The value to increment the agent's distance byù
     /// @throw std::invalid_argument, if distance is negative
     void incrementDistance(double distance);
-    /// @brief Increment the agent's time by 1
-    /// @throw std::overflow_error, if time has reached its maximum value
-    void incrementTime();
-    /// @brief Increment the agent's time by a given value
-    /// @param time The value to increment the agent's time by
-    /// @throw std::overflow_error, if time has reached its maximum value
-    void incrementTime(unsigned int const time);
-    /// @brief Reset the agent's time to 0
-    void resetTime() { m_time = 0; }
     /// @brief Update the agent's itinerary
     /// @details If possible, the agent's itinerary is updated by removing the first element
     /// from the itinerary's vector.
@@ -101,8 +96,11 @@ namespace dsm {
     /// - distance = 0
     /// - time = 0
     /// - itinerary index = 0
-    void reset();
+    void reset(Time const& spawnTime);
 
+    /// @brief Get the agent's spawn time
+    /// @return The agent's spawn time
+    Time const& spawnTime() const { return m_spawnTime; }
     /// @brief Get the agent's id
     /// @return The agent's id
     Id id() const { return m_id; }
@@ -130,9 +128,6 @@ namespace dsm {
     /// @brief Get the agent's travelled distance
     /// @return The agent's travelled distance
     double distance() const { return m_distance; }
-    /// @brief Get the agent's travel time
-    /// @return The agent's travel time
-    unsigned int time() const { return m_time; }
     /// @brief Return true if the agent is a random agent
     /// @return True if the agent is a random agent, false otherwise
     bool isRandom() const { return m_trip.empty(); }
@@ -140,30 +135,36 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  Agent<delay_t>::Agent(Id id, std::optional<Id> itineraryId, std::optional<Id> srcNodeId)
-      : m_id{id},
-        m_trip{itineraryId.has_value() ? std::vector<Id>{itineraryId.value()}
+  Agent<delay_t>::Agent(Time const& spawnTime,
+                        Id id,
+                        std::optional<Id> itineraryId,
+                        std::optional<Id> srcNodeId)
+      : m_spawnTime{spawnTime},
+        m_id{id},
+        m_trip{itineraryId.has_value() ? std::vector<Id>{*itineraryId}
                                        : std::vector<Id>{}},
         m_srcNodeId{srcNodeId},
         m_nextStreetId{std::nullopt},
+        m_itineraryIdx{0},
         m_delay{0},
         m_speed{0.},
-        m_distance{0.},
-        m_time{0},
-        m_itineraryIdx{0} {}
+        m_distance{0.} {}
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  Agent<delay_t>::Agent(Id id, std::vector<Id> const& trip, std::optional<Id> srcNodeId)
-      : m_id{id},
+  Agent<delay_t>::Agent(Time const& spawnTime,
+                        Id id,
+                        std::vector<Id> const& trip,
+                        std::optional<Id> srcNodeId)
+      : m_spawnTime{spawnTime},
+        m_id{id},
         m_trip{trip},
         m_srcNodeId{srcNodeId},
         m_nextStreetId{std::nullopt},
+        m_itineraryIdx{0},
         m_delay{0},
         m_speed{0.},
-        m_distance{0.},
-        m_time{0},
-        m_itineraryIdx{0} {}
+        m_distance{0.} {}
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
@@ -197,12 +198,12 @@ namespace dsm {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void Agent<delay_t>::reset() {
+  void Agent<delay_t>::reset(Time const& spawnTime) {
+    m_spawnTime = spawnTime;
     m_streetId = std::nullopt;
     m_delay = 0;
     m_speed = 0.;
     m_distance = 0.;
-    m_time = 0;
     m_itineraryIdx = 0;
   }
   template <typename delay_t>
@@ -241,24 +242,5 @@ namespace dsm {
           "Distance travelled ({}) by agent {} must be positive", distance, m_id));
     }
     m_distance += distance;
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void Agent<delay_t>::incrementTime() {
-    if (m_time == std::numeric_limits<unsigned int>::max()) {
-      throw std::overflow_error(
-          Logger::buildExceptionMessage("Time has reached its maximum value"));
-    }
-    ++m_time;
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void Agent<delay_t>::incrementTime(unsigned int const time) {
-    if (m_time + time < m_time) {
-      throw std::overflow_error(
-          Logger::buildExceptionMessage("Time has reached its maximum value"));
-    }
-    m_time += time;
   }
 };  // namespace dsm

@@ -453,7 +453,7 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
         THEN("The agent evolves") {
-          CHECK_EQ(dynamics.agents().at(0)->time(), 2);
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 2);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK(dynamics.agents().at(0)->streetId().has_value());
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
@@ -461,7 +461,7 @@ TEST_CASE("Dynamics") {
         }
         dynamics.evolve(false);
         THEN("The agent evolves again, changing street") {
-          CHECK_EQ(dynamics.agents().at(0)->time(), 3);
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 3);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
@@ -484,7 +484,7 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
         THEN("The agent evolves") {
-          CHECK_EQ(dynamics.agents().at(0)->time(), 2);
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 2);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
@@ -508,7 +508,7 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(true);
         dynamics.evolve(true);
         THEN("The agent has correct values") {
-          CHECK_EQ(dynamics.agents().at(0)->time(), 2);
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 2);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
@@ -517,7 +517,7 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(true);
         THEN("The agent is reinserted") {
           CHECK_EQ(dynamics.nAgents(), 1);
-          CHECK_EQ(dynamics.agents().at(0)->time(), 1);
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 1);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK_FALSE(dynamics.agents().at(0)->streetId().has_value());
           CHECK_EQ(dynamics.agents().at(0)->speed(), 0.);
@@ -638,9 +638,8 @@ TEST_CASE("Dynamics") {
       dynamics.setDestinationNodes({0, 2, 3, 4});
 
       WHEN("We add agents and make the system evolve") {
-        Agent agent1{0, 2, 0};
-        Agent agent2{1, 4, 0};
-        dynamics.addAgents(agent1, agent2);
+        dynamics.addAgent(0, 2, 0);
+        dynamics.addAgent(1, 4, 0);
         dynamics.evolve(false);  // Counter 0
         THEN("The agents are not yet on the streets") {
           CHECK_FALSE(dynamics.agents().at(0)->streetId().has_value());
@@ -702,9 +701,8 @@ TEST_CASE("Dynamics") {
       dynamics.setDestinationNodes({0, 2, 3, 4});
 
       WHEN("We add agents and make the system evolve") {
-        Agent agent1{0, 2, 0};
-        Agent agent2{1, 4, 0};
-        dynamics.addAgents(agent1, agent2);
+        dynamics.addAgent(0, 2, 0);
+        dynamics.addAgent(1, 4, 0);
         dynamics.evolve(false);  // Counter 0
         dynamics.evolve(false);  // Counter 1
         THEN("The agents are correctly placed") {
@@ -845,7 +843,7 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
         THEN("The agent has travelled the correct distance") {
-          CHECK_EQ(dynamics.agents().at(0)->time(), 2);
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 2);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
@@ -875,7 +873,7 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(false);
 #ifndef __APPLE__
         THEN("The agent has travelled the correct distance") {
-          CHECK_EQ(dynamics.agents().at(0)->time(), 6);
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 6);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
@@ -885,7 +883,7 @@ TEST_CASE("Dynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
         THEN("The agent has travelled the correct distance") {
-          CHECK_EQ(dynamics.agents().at(0)->time(), 8);
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 8);
           CHECK_EQ(dynamics.agents().at(0)->delay(), 0);
           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
