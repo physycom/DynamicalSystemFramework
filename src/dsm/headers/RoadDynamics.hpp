@@ -545,7 +545,7 @@ namespace dsm {
       }
       const auto agentId{pStreet->queue(queueIndex).front()};
       auto const& pAgent{this->agents().at(agentId)};
-      if (pAgent->delay() > 0) {
+      if (pAgent->freeTime() > this->time()) {
         continue;
       }
       pAgent->setSpeed(0.);
@@ -631,7 +631,8 @@ namespace dsm {
         intersection.removeAgent(agentId);
         this->agents().at(agentId)->setStreetId(nextStreet->id());
         this->setAgentSpeed(agentId);
-        this->agents().at(agentId)->incrementDelay(
+        this->agents().at(agentId)->setFreeTime(
+            this->time() +
             std::ceil(nextStreet->length() / this->agents().at(agentId)->speed()));
         nextStreet->addAgent(agentId);
         return true;
@@ -659,7 +660,8 @@ namespace dsm {
         roundabout.dequeue();
         this->agents().at(agentId)->setStreetId(nextStreet->id());
         this->setAgentSpeed(agentId);
-        this->agents().at(agentId)->incrementDelay(
+        this->agents().at(agentId)->setFreeTime(
+            this->time() +
             std::ceil(nextStreet->length() / this->agents().at(agentId)->speed()));
         nextStreet->addAgent(agentId);
       } else {
@@ -675,78 +677,66 @@ namespace dsm {
       std::unique_ptr<Agent<delay_t>> const& pAgent) {
     std::uniform_int_distribution<Id> nodeDist{
         0, static_cast<Id>(this->graph().nNodes() - 1)};
-    if (pAgent->delay() > 0) {
-      const auto& street{this->graph().edge(pAgent->streetId().value())};
-      if (pAgent->delay() > 1) {
-        pAgent->incrementDistance();
-      } else {
-        double distance{std::fmod(street->length(), pAgent->speed())};
-        if (distance < std::numeric_limits<double>::epsilon()) {
-          pAgent->incrementDistance();
-        } else {
-          pAgent->incrementDistance(distance);
+    // The "cost" of enqueuing is one time unit, so we consider it as passed
+    if (pAgent->freeTime() == this->time() + 1 && pAgent->streetId().has_value()) {
+      const auto& street{this->graph().edge(*pAgent->streetId())};
+      auto const nLanes = street->nLanes();
+      bool bArrived{false};
+      if (!pAgent->isRandom()) {
+        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
+            street->target()) {
+          pAgent->updateItinerary();
+        }
+        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
+            street->target()) {
+          bArrived = true;
         }
       }
-      pAgent->decrementDelay();
-      if (pAgent->delay() == 0) {
-        auto const nLanes = street->nLanes();
-        bool bArrived{false};
-        if (!pAgent->isRandom()) {
-          if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-              street->target()) {
-            pAgent->updateItinerary();
-          }
-          if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-              street->target()) {
-            bArrived = true;
-          }
-        }
-        if (bArrived) {
-          std::uniform_int_distribution<size_t> laneDist{0,
-                                                         static_cast<size_t>(nLanes - 1)};
-          street->enqueue(pAgent->id(), laneDist(this->m_generator));
+      pAgent->incrementDistance(street->length());
+      if (bArrived) {
+        std::uniform_int_distribution<size_t> laneDist{0,
+                                                       static_cast<size_t>(nLanes - 1)};
+        street->enqueue(pAgent->id(), laneDist(this->m_generator));
+      } else {
+        auto const nextStreetId =
+            this->m_nextStreetId(pAgent->id(), street->target(), street->id());
+        auto const& pNextStreet{this->graph().edge(nextStreetId)};
+        pAgent->setNextStreetId(nextStreetId);
+        if (nLanes == 1) {
+          street->enqueue(pAgent->id(), 0);
         } else {
-          auto const nextStreetId =
-              this->m_nextStreetId(pAgent->id(), street->target(), street->id());
-          auto const& pNextStreet{this->graph().edge(nextStreetId)};
-          pAgent->setNextStreetId(nextStreetId);
-          if (nLanes == 1) {
-            street->enqueue(pAgent->id(), 0);
-          } else {
-            auto const deltaAngle{pNextStreet->deltaAngle(street->angle())};
-            if (std::abs(deltaAngle) < std::numbers::pi) {
-              // Lanes are counted as 0 is the far right lane
-              if (std::abs(deltaAngle) < std::numbers::pi / 4) {
-                std::vector<double> weights;
-                for (auto const& queue : street->exitQueues()) {
-                  weights.push_back(1. / (queue.size() + 1));
-                }
-                // If all weights are the same, make the last 0
-                if (std::all_of(weights.begin(), weights.end(), [&](double w) {
-                      return std::abs(w - weights.front()) <
-                             std::numeric_limits<double>::epsilon();
-                    })) {
-                  weights.back() = 0.;
-                  if (nLanes > 2) {
-                    weights.front() = 0.;
-                  }
-                }
-                // Normalize the weights
-                auto const sum = std::accumulate(weights.begin(), weights.end(), 0.);
-                for (auto& w : weights) {
-                  w /= sum;
-                }
-                std::discrete_distribution<size_t> laneDist{weights.begin(),
-                                                            weights.end()};
-                street->enqueue(pAgent->id(), laneDist(this->m_generator));
-              } else if (deltaAngle < 0.) {                 // Right
-                street->enqueue(pAgent->id(), 0);           // Always the first lane
-              } else {                                      // Left (deltaAngle > 0.)
-                street->enqueue(pAgent->id(), nLanes - 1);  // Always the last lane
+          auto const deltaAngle{pNextStreet->deltaAngle(street->angle())};
+          if (std::abs(deltaAngle) < std::numbers::pi) {
+            // Lanes are counted as 0 is the far right lane
+            if (std::abs(deltaAngle) < std::numbers::pi / 4) {
+              std::vector<double> weights;
+              for (auto const& queue : street->exitQueues()) {
+                weights.push_back(1. / (queue.size() + 1));
               }
-            } else {                                      // U turn
+              // If all weights are the same, make the last 0
+              if (std::all_of(weights.begin(), weights.end(), [&](double w) {
+                    return std::abs(w - weights.front()) <
+                           std::numeric_limits<double>::epsilon();
+                  })) {
+                weights.back() = 0.;
+                if (nLanes > 2) {
+                  weights.front() = 0.;
+                }
+              }
+              // Normalize the weights
+              auto const sum = std::accumulate(weights.begin(), weights.end(), 0.);
+              for (auto& w : weights) {
+                w /= sum;
+              }
+              std::discrete_distribution<size_t> laneDist{weights.begin(), weights.end()};
+              street->enqueue(pAgent->id(), laneDist(this->m_generator));
+            } else if (deltaAngle < 0.) {                 // Right
+              street->enqueue(pAgent->id(), 0);           // Always the first lane
+            } else {                                      // Left (deltaAngle > 0.)
               street->enqueue(pAgent->id(), nLanes - 1);  // Always the last lane
             }
+          } else {                                      // U turn
+            street->enqueue(pAgent->id(), nLanes - 1);  // Always the last lane
           }
         }
       }
@@ -771,7 +761,7 @@ namespace dsm {
         roundabout.enqueue(pAgent->id());
       }
       pAgent->setNextStreetId(nextStreet->id());
-    } else if (pAgent->delay() == 0) {
+    } else if (pAgent->freeTime() == this->time()) {
       pAgent->setSpeed(0.);
     }
   }
@@ -875,8 +865,7 @@ namespace dsm {
       auto const& pAgent{this->agents().at(agentId)};
       pAgent->setStreetId(streetId);
       this->setAgentSpeed(agentId);
-      pAgent->incrementDelay(
-          std::ceil(street->length() / this->agents().at(agentId)->speed()));
+      pAgent->setFreeTime(this->time() + std::ceil(street->length() / pAgent->speed()));
       street->addAgent(agentId);
       ++agentId;
     }

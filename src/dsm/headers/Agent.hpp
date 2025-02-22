@@ -30,14 +30,13 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   class Agent {
   private:
-    Time m_spawnTime;
+    Time m_spawnTime, m_freeTime;
     Id m_id;
     std::vector<Id> m_trip;
     std::optional<Id> m_streetId;
     std::optional<Id> m_srcNodeId;
     std::optional<Id> m_nextStreetId;
     size_t m_itineraryIdx;
-    delay_t m_delay;
     double m_speed;
     double m_distance;  // Travelled distance
 
@@ -68,18 +67,9 @@ namespace dsm {
     /// @param speed, The agent's speed
     /// @throw std::invalid_argument, if speed is negative
     void setSpeed(double speed);
-    /// @brief Increment the agent's delay by 1
-    /// @throw std::overflow_error, if delay has reached its maximum value
-    void incrementDelay();
-    /// @brief Increment the agent's delay by a given value
-    /// @param delay The agent's delay
-    /// @throw std::overflow_error, if delay has reached its maximum value
-    void incrementDelay(delay_t const delay);
-    /// @brief Decrement the agent's delay by 1
-    /// @throw std::underflow_error, if delay has reached its minimum value
-    void decrementDelay();
-    /// @brief Increment the agent's distance by its speed * 1 second
-    void incrementDistance() { m_distance += m_speed; }
+    /// @brief Set the agent's free time
+    /// @param freeTime The agent's free time
+    void setFreeTime(Time const& freeTime) { m_freeTime = freeTime; }
     /// @brief Increment the agent's distance by a given value
     /// @param distance The value to increment the agent's distance byù
     /// @throw std::invalid_argument, if distance is negative
@@ -101,6 +91,9 @@ namespace dsm {
     /// @brief Get the agent's spawn time
     /// @return The agent's spawn time
     Time const& spawnTime() const { return m_spawnTime; }
+    /// @brief Get the agent's free time
+    /// @return The agent's free time
+    Time const& freeTime() const { return m_freeTime; }
     /// @brief Get the agent's id
     /// @return The agent's id
     Id id() const { return m_id; }
@@ -122,9 +115,6 @@ namespace dsm {
     /// @brief Get the agent's speed
     /// @return The agent's speed
     double speed() const { return m_speed; }
-    /// @brief Get the agent's delay
-    /// @return	The agent's delay
-    delay_t delay() const { return m_delay; }
     /// @brief Get the agent's travelled distance
     /// @return The agent's travelled distance
     double distance() const { return m_distance; }
@@ -140,13 +130,13 @@ namespace dsm {
                         std::optional<Id> itineraryId,
                         std::optional<Id> srcNodeId)
       : m_spawnTime{spawnTime},
+        m_freeTime{0},
         m_id{id},
         m_trip{itineraryId.has_value() ? std::vector<Id>{*itineraryId}
                                        : std::vector<Id>{}},
         m_srcNodeId{srcNodeId},
         m_nextStreetId{std::nullopt},
         m_itineraryIdx{0},
-        m_delay{0},
         m_speed{0.},
         m_distance{0.} {}
 
@@ -157,12 +147,12 @@ namespace dsm {
                         std::vector<Id> const& trip,
                         std::optional<Id> srcNodeId)
       : m_spawnTime{spawnTime},
+        m_freeTime{spawnTime},
         m_id{id},
         m_trip{trip},
         m_srcNodeId{srcNodeId},
         m_nextStreetId{std::nullopt},
         m_itineraryIdx{0},
-        m_delay{0},
         m_speed{0.},
         m_distance{0.} {}
 
@@ -200,38 +190,11 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void Agent<delay_t>::reset(Time const& spawnTime) {
     m_spawnTime = spawnTime;
+    m_freeTime = 0;
     m_streetId = std::nullopt;
-    m_delay = 0;
     m_speed = 0.;
     m_distance = 0.;
     m_itineraryIdx = 0;
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void Agent<delay_t>::incrementDelay() {
-    if (m_delay == std::numeric_limits<delay_t>::max()) {
-      throw std::overflow_error(
-          Logger::buildExceptionMessage("delay_t has reached its maximum value"));
-    }
-    ++m_delay;
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void Agent<delay_t>::incrementDelay(delay_t const delay) {
-    if (m_delay + delay < m_delay) {
-      throw std::overflow_error(
-          Logger::buildExceptionMessage("delay_t has reached its maximum value"));
-    }
-    m_delay += delay;
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void Agent<delay_t>::decrementDelay() {
-    if (m_delay == 0) {
-      throw std::underflow_error(
-          Logger::buildExceptionMessage("delay_t has reached its minimum value"));
-    }
-    --m_delay;
   }
 
   template <typename delay_t>

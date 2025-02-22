@@ -21,7 +21,7 @@ TEST_CASE("Agent") {
           CHECK_FALSE(agent.streetId().has_value());
           CHECK_FALSE(agent.srcNodeId().has_value());
           CHECK_EQ(agent.speed(), 0);
-          CHECK_EQ(agent.delay(), 0);
+          CHECK_EQ(agent.freeTime(), 0);
           CHECK_EQ(agent.spawnTime(), 0);
         }
       }
@@ -39,7 +39,7 @@ TEST_CASE("Agent") {
           CHECK(agent.srcNodeId().has_value());
           CHECK_EQ(agent.srcNodeId().value(), srcNodeId);
           CHECK_EQ(agent.speed(), 0);
-          CHECK_EQ(agent.delay(), 0);
+          CHECK_EQ(agent.freeTime(), 0);
           CHECK_EQ(agent.spawnTime(), 0);
         }
       }
