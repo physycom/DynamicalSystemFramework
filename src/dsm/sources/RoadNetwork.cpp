@@ -619,8 +619,8 @@ namespace dsm {
     auto streetIt = std::find_if(m_edges.begin(),
                                  m_edges.end(),
                                  [source, destination](const auto& street) -> bool {
-                                   return street.second->nodePair().first == source &&
-                                          street.second->nodePair().second == destination;
+                                   return street.second->source() == source &&
+                                          street.second->target() == destination;
                                  });
     if (streetIt == m_edges.end()) {
       return nullptr;
@@ -629,11 +629,11 @@ namespace dsm {
     auto id1 = streetIt->first;
     auto id2 = source * n + destination;
     assert(id1 == id2);
-    if (id1 != id2) {
-      std::cout << "node size: " << n << std::endl;
-      std::cout << "Street id: " << id1 << std::endl;
-      std::cout << "Nodes: " << id2 << std::endl;
-    }
+    // if (id1 != id2) {
+    //   std::cout << "node size: " << n << std::endl;
+    //   std::cout << "Street id: " << id1 << std::endl;
+    //   std::cout << "Nodes: " << id2 << std::endl;
+    // }
     return &(streetIt->second);
   }
 

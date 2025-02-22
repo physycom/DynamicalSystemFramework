@@ -6,7 +6,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
-using Agent = dsm::Agent<uint16_t>;
+using Agent = dsm::Agent;
 
 TEST_CASE("Agent") {
   SUBCASE("Constructors") {

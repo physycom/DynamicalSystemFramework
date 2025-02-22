@@ -9,7 +9,7 @@
 
 #include "doctest.h"
 
-using Agent = dsm::Agent<double>;
+using Agent = dsm::Agent;
 using Intersection = dsm::Intersection;
 using Street = dsm::Street;
 using Road = dsm::Road;

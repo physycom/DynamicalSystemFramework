@@ -45,7 +45,7 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   class RoadDynamics : public Dynamics<RoadNetwork> {
-    std::map<Id, std::unique_ptr<Agent<delay_t>>> m_agents;
+    std::map<Id, std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
 
   protected:
@@ -93,7 +93,7 @@ namespace dsm {
     /// @brief Evolve the agents.
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
-    void m_evolveAgent(std::unique_ptr<Agent<delay_t>> const& pAgent);
+    void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
 
   public:
     /// @brief Construct a new RoadDynamics object
@@ -164,14 +164,14 @@ namespace dsm {
 
     /// @brief Add an agent to the simulation
     /// @param agent std::unique_ptr to the agent
-    void addAgent(std::unique_ptr<Agent<delay_t>> agent);
+    void addAgent(std::unique_ptr<Agent> agent);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent<delay_t>, Time, TArgs...>)
+      requires(std::is_constructible_v<Agent, Time, TArgs...>)
     void addAgent(TArgs&&... args);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent<delay_t>, Time, Id, TArgs...>)
+      requires(std::is_constructible_v<Agent, Time, Id, TArgs...>)
     void addAgents(Size nAgents, TArgs&&... args);
 
     /// @brief Remove an agent from the simulation
@@ -223,9 +223,7 @@ namespace dsm {
     }
     /// @brief Get the agents
     /// @return const std::unordered_map<Id, Agent<Id>>&, The agents
-    const std::map<Id, std::unique_ptr<Agent<delay_t>>>& agents() const {
-      return m_agents;
-    }
+    const std::map<Id, std::unique_ptr<Agent>>& agents() const { return m_agents; }
     /// @brief Get the number of agents currently in the simulation
     /// @return Size The number of agents
     Size nAgents() const { return m_agents.size(); }
@@ -673,8 +671,7 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_evolveAgent(
-      std::unique_ptr<Agent<delay_t>> const& pAgent) {
+  void RoadDynamics<delay_t>::m_evolveAgent(std::unique_ptr<Agent> const& pAgent) {
     std::uniform_int_distribution<Id> nodeDist{
         0, static_cast<Id>(this->graph().nNodes() - 1)};
     // The "cost" of enqueuing is one time unit, so we consider it as passed
@@ -998,7 +995,7 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent<delay_t>> agent) {
+  void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent> agent) {
     if (m_agents.size() + 1 > this->graph().maxCapacity()) {
       throw std::overflow_error(Logger::buildExceptionMessage(std::format(
           "RoadNetwork is already holding the max possible number of agents ({})",
@@ -1018,24 +1015,23 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent<delay_t>, Time, TArgs...>)
+    requires(std::is_constructible_v<Agent, Time, TArgs...>)
   void RoadDynamics<delay_t>::addAgent(TArgs&&... args) {
-    addAgent(
-        std::make_unique<Agent<delay_t>>(this->time(), std::forward<TArgs>(args)...));
+    addAgent(std::make_unique<Agent>(this->time(), std::forward<TArgs>(args)...));
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent<delay_t>, Time, Id, TArgs...>)
+    requires(std::is_constructible_v<Agent, Time, Id, TArgs...>)
   void RoadDynamics<delay_t>::addAgents(Size nAgents, TArgs&&... args) {
     Id agentId{0};
     if (!m_agents.empty()) {
       agentId = m_agents.rbegin()->first + 1;
     }
     for (size_t i{0}; i < nAgents; ++i, ++agentId) {
-      addAgent(std::make_unique<Agent<delay_t>>(
-          this->time(), agentId, std::forward<TArgs>(args)...));
+      addAgent(
+          std::make_unique<Agent>(this->time(), agentId, std::forward<TArgs>(args)...));
     }
   }
 
