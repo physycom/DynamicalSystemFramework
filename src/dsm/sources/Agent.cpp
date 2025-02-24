@@ -2,12 +2,11 @@
 
 namespace dsm {
   Agent::Agent(Time const& spawnTime,
-               Id id,
                std::optional<Id> itineraryId,
                std::optional<Id> srcNodeId)
       : m_spawnTime{spawnTime},
         m_freeTime{0},
-        m_id{id},
+        m_id{0},
         m_trip{itineraryId.has_value() ? std::vector<Id>{*itineraryId}
                                        : std::vector<Id>{}},
         m_srcNodeId{srcNodeId},
@@ -16,12 +15,11 @@ namespace dsm {
         m_speed{0.},
         m_distance{0.} {}
   Agent::Agent(Time const& spawnTime,
-               Id id,
                std::vector<Id> const& trip,
                std::optional<Id> srcNodeId)
       : m_spawnTime{spawnTime},
         m_freeTime{spawnTime},
-        m_id{id},
+        m_id{0},
         m_trip{trip},
         m_srcNodeId{srcNodeId},
         m_nextStreetId{std::nullopt},
