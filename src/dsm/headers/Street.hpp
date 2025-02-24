@@ -36,7 +36,7 @@ namespace dsm {
   class Street : public Road {
   private:
     std::vector<dsm::queue<std::unique_ptr<Agent>>> m_exitQueues;
-    std::priority_queue<std::unique_ptr<Agent>> m_movingAgents;
+    dsm::priority_queue<std::unique_ptr<Agent>> m_movingAgents;
     std::vector<Direction> m_laneMapping;
 
   public:
@@ -92,7 +92,7 @@ namespace dsm {
     /// @return bool, True if the street is full, false otherwise
     bool isFull() const final { return nAgents() == m_capacity; }
 
-    std::priority_queue<std::unique_ptr<Agent>>& movingAgents() { return m_movingAgents; }
+    dsm::priority_queue<std::unique_ptr<Agent>>& movingAgents() { return m_movingAgents; }
     int nMovingAgents() const override { return m_movingAgents.size(); }
     /// @brief Get the number of agents on all queues
     /// @return Size The number of agents on all queues

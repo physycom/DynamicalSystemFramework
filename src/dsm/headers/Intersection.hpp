@@ -87,7 +87,7 @@ namespace dsm {
     virtual const std::set<Id>& streetPriorities() const { return m_streetPriorities; };
     /// @brief Get the node's agent ids
     /// @return std::set<Id> A std::set containing the node's agent ids
-    const std::multimap<int16_t, std::unique_ptr<Agent>>& agents() { return m_agents; };
+    std::multimap<int16_t, std::unique_ptr<Agent>>& agents() { return m_agents; };
     /// @brief Returns the number of agents that have passed through the node
     /// @return Size The number of agents that have passed through the node
     /// @details This function returns the number of agents that have passed through the node
