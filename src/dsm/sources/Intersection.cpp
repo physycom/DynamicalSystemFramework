@@ -18,7 +18,7 @@ namespace dsm {
   void Intersection::addAgent(double angle, std::unique_ptr<Agent> pAgent) {
     assert(!isFull());
     auto iAngle{static_cast<int16_t>(angle * 100)};
-    m_agents.emplace(iAngle, (std::move(pAgent)));
+    m_agents.emplace(iAngle, std::move(pAgent));
     ++m_agentCounter;
   }
 

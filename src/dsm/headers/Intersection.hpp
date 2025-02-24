@@ -36,6 +36,8 @@ namespace dsm {
 
     Intersection(Node const& node) : Node{node} {};
 
+    Intersection(Intersection const&) = delete;
+
     virtual ~Intersection() = default;
 
     /// @brief Set the node's capacity
