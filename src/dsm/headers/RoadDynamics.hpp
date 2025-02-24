@@ -1025,7 +1025,9 @@ namespace dsm {
                   this->graph().nodes().cend(),
                   [&](const auto& pair) {
                     for (auto i = 0; i < pair.second->transportCapacity(); ++i) {
-                      m_evolveNode(pair.second);
+                      if (!m_evolveNode(pair.second)) {
+                        break;
+                      }
                     }
                     // Remove all nullptrs from the agents' list
                     if (pair.second->isIntersection()) {

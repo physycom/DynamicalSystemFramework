@@ -794,50 +794,59 @@ TEST_CASE("Dynamics") {
     //       }
     //     }
   }
-  //   SUBCASE("Roundabout") {
-  //     GIVEN(
-  //         "A dynamics object with four streets, one agent for each street, two "
-  //         "itineraries "
-  //         "and a roundabout") {
-  //       Road::setMeanVehicleLength(10.);
-  //       Street s1{1, std::make_pair(0, 1), 10., 10.};
-  //       Street s2{7, std::make_pair(2, 1), 10., 10.};
-  //       Street s3{3, std::make_pair(1, 0), 10., 10.};
-  //       Street s4{5, std::make_pair(1, 2), 10., 10.};
-  //       RoadNetwork graph2;
-  //       graph2.addStreets(s1, s2, s3, s4);
-  //       graph2.buildAdj();
-  //       auto& rb = graph2.makeRoundabout(1);
-  //       graph2.adjustNodeCapacities();
-  //       Dynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       dynamics.addItinerary(0, 0);
-  //       dynamics.addItinerary(2, 2);
-  //       dynamics.updatePaths();
-  //       dynamics.addAgent(0, 2, 0);
-  //       dynamics.addAgent(1, 0, 2);
-  //       WHEN(
-  //           "We evolve the dynamics adding an agent on the path of the agent "
-  //           "with "
-  //           "priority") {
-  //         dynamics.evolve(false);
-  //         dynamics.addAgent(2, 2, 1);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         THEN("The agents are trapped into the roundabout") {
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
-  //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 7);
-  //           CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 5);
-  //           CHECK_EQ(rb.agents().size(), 1);
-  //         }
-  //         dynamics.evolve(false);
-  //         THEN("The agent with priority leaves the roundabout") {
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
-  //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 3);
-  //           CHECK(rb.agents().empty());
-  //         }
-  //       }
-  //     }
-  //   }
+  SUBCASE("Roundabout") {
+    GIVEN(
+        "A dynamics object with four streets, one agent for each street, two "
+        "itineraries "
+        "and a roundabout") {
+      Road::setMeanVehicleLength(10.);
+      Street s1{1, std::make_pair(0, 1), 10., 10.};
+      Street s2{7, std::make_pair(2, 1), 10., 10.};
+      Street s3{3, std::make_pair(1, 0), 10., 10.};
+      Street s4{5, std::make_pair(1, 2), 10., 10.};
+      RoadNetwork graph2;
+      graph2.addStreets(s1, s2, s3, s4);
+      graph2.buildAdj();
+      auto& rb = graph2.makeRoundabout(1);
+      graph2.adjustNodeCapacities();
+      Dynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.addItinerary(0, 0);
+      dynamics.addItinerary(2, 2);
+      dynamics.updatePaths();
+      dynamics.addAgent(2, 0);
+      dynamics.addAgent(0, 2);
+      WHEN(
+          "We evolve the dynamics adding an agent on the path of the agent "
+          "with "
+          "priority") {
+        dynamics.evolve(false);  // Agents into sources
+        dynamics.evolve(false);  // Agents from sources to streets
+        dynamics.addAgent(2, 1);
+        dynamics.evolve(false);  // Agents into queues, other agent into roundabout
+        dynamics.evolve(false);  // Agents from queues to roundabout
+        auto const& streets{dynamics.graph().edges()};
+        THEN("The agents are trapped into the roundabout") {
+          CHECK_EQ(streets.at(1)->nAgents(), 0);
+          CHECK_EQ(streets.at(5)->nAgents(), 1);
+          CHECK_EQ(streets.at(7)->nAgents(), 1);
+          CHECK_EQ(rb.agents().size(), 1);
+        }
+        dynamics.evolve(false);
+        THEN("The agent with priority leaves the roundabout") {
+          CHECK_EQ(streets.at(3)->nAgents(), 0);
+          CHECK_EQ(streets.at(5)->nAgents(), 1);
+          CHECK_EQ(streets.at(7)->nAgents(), 0);
+          CHECK_EQ(rb.agents().size(), 2);
+        }
+        dynamics.evolve(false);
+        THEN("The agent with priority leaves the roundabout") {
+          CHECK_EQ(streets.at(3)->nAgents(), 1);
+          CHECK_EQ(streets.at(5)->nAgents(), 1);
+          CHECK(rb.agents().empty());
+        }
+      }
+    }
+  }
   //   SUBCASE("Travelled distance") {
   //     GIVEN("A dynamics with a two-streets network and an agent") {
   //       Street s1{0, std::make_pair(0, 1), 3.};
