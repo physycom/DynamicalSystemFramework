@@ -40,12 +40,6 @@ namespace dsm {
     std::vector<Direction> m_laneMapping;
 
   public:
-    /// @brief Construct a new Street object starting from an existing street
-    /// @details The new street has different id but same capacity, length, speed limit, and node pair as the
-    ///          existing street.
-    /// @param Street The existing street
-    /// @param id The new street's id
-    Street(Id id, Street&&);
     /// @brief Construct a new Street object
     /// @param id The street's id
     /// @param nodePair The street's node pair
@@ -64,7 +58,8 @@ namespace dsm {
            std::vector<std::pair<double, double>> geometry = {},
            std::optional<int> capacity = std::nullopt,
            int transportCapacity = 1);
-    virtual ~Street() = default;
+    Street(Street&&) = default;
+    Street(Street const&) = delete;
 
     /// @brief Set the street's queue
     /// @param queue The street's queue
@@ -130,7 +125,7 @@ namespace dsm {
     double m_flowRate;
 
   public:
-    StochasticStreet(Id id, const Street& street, double flowRate);
+    StochasticStreet(Street&&, double flowRate);
     StochasticStreet(Id id,
                      std::pair<Id, Id> nodePair,
                      double length = Road::meanVehicleLength(),
@@ -155,6 +150,9 @@ namespace dsm {
   private:
   public:
     using Street::Street;
+    SpireStreet(Street&& street) : Street(std::move(street)) {}
+    SpireStreet(SpireStreet&&) = default;
+    SpireStreet(SpireStreet const&) = delete;
     ~SpireStreet() = default;
 
     /// @brief Add an agent to the street's queue

@@ -59,19 +59,14 @@
 //     CHECK_FALSE(graph.adjacencyMatrix().contains(2, 1));
 //   }
 
-//   SUBCASE("Construction with addStreet") {
-//     Street s1(1, std::make_pair(0, 1));
-//     Street s2(2, std::make_pair(1, 2));
-//     Street s3(3, std::make_pair(0, 2));
-//     Street s4(4, std::make_pair(0, 3));
-//     Street s5(5, std::make_pair(2, 3));
-//     RoadNetwork graph;
-//     graph.addStreet(s1);
-//     graph.addStreet(s2);
-//     graph.addStreet(s3);
-//     graph.addStreet(s4);
-//     graph.addStreet(s5);
-//     graph.buildAdj();
+// SUBCASE("Construction with addStreet") {
+//   RoadNetwork graph;
+//   graph.addEdge<Street>(1, std::make_pair(0, 1));
+//   graph.addEdge<Street>(2, std::make_pair(1, 2));
+//   graph.addEdge<Street>(3, std::make_pair(0, 2));
+//   graph.addEdge<Street>(4, std::make_pair(0, 3));
+//   graph.addEdge<Street>(5, std::make_pair(2, 3));
+//   graph.buildAdj();
 
 //     CHECK_EQ(graph.nEdges(), 5);
 //     CHECK_EQ(graph.nNodes(), 4);

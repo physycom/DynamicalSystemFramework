@@ -5,23 +5,6 @@
 #include <cassert>
 
 namespace dsm {
-  Street::Street(Id id, Street&& street)
-      : Road(id,
-             street.nodePair(),
-             street.length(),
-             street.maxSpeed(),
-             street.nLanes(),
-             street.name(),
-             street.geometry(),
-             street.capacity(),
-             street.transportCapacity()),
-             m_movingAgents{std::priority_queue<std::unique_ptr<Agent>>()} {
-    for (auto i{0}; i < street.nLanes(); ++i) {
-      m_exitQueues.push_back(dsm::queue<std::unique_ptr<Agent>>());
-    }
-    m_laneMapping = street.laneMapping();
-  }
-
   Street::Street(Id id,
                  std::pair<Id, Id> nodePair,
                  double length,
@@ -40,7 +23,7 @@ namespace dsm {
              std::move(geometry),
              capacity,
              transportCapacity),
-             m_movingAgents{std::priority_queue<std::unique_ptr<Agent>>()} {
+        m_movingAgents{std::priority_queue<std::unique_ptr<Agent>>()} {
     m_exitQueues.resize(nLanes);
     for (auto i{0}; i < nLanes; ++i) {
       m_exitQueues.push_back(dsm::queue<std::unique_ptr<Agent>>());
@@ -105,8 +88,8 @@ namespace dsm {
     return nAgents;
   }
 
-  StochasticStreet::StochasticStreet(Id id, const Street& street, double flowRate)
-      : Street(id, street) {
+  StochasticStreet::StochasticStreet(Street&& street, double flowRate)
+      : Street(std::move(street)) {
     setFlowRate(flowRate);
   }
   StochasticStreet::StochasticStreet(Id id,
