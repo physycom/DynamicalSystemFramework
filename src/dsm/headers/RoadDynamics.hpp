@@ -627,7 +627,7 @@ namespace dsm {
           continue;
         }
         intersection.removeAgent(agentId);
-        this->agents().at(agentId)->setStreetId(nextStreet->id());
+        this->agents().at(agentId)->setStreetId();
         this->setAgentSpeed(agentId);
         this->agents().at(agentId)->setFreeTime(
             this->time() +
@@ -656,7 +656,7 @@ namespace dsm {
           m_increaseTurnCounts(streetId, delta);
         }
         roundabout.dequeue();
-        this->agents().at(agentId)->setStreetId(nextStreet->id());
+        this->agents().at(agentId)->setStreetId();
         this->setAgentSpeed(agentId);
         this->agents().at(agentId)->setFreeTime(
             this->time() +
