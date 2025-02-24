@@ -23,11 +23,8 @@ namespace dsm {
              std::move(geometry),
              capacity,
              transportCapacity),
+        m_exitQueues{std::vector<dsm::queue<std::unique_ptr<Agent>>>(nLanes)},
         m_movingAgents{std::priority_queue<std::unique_ptr<Agent>>()} {
-    m_exitQueues.resize(nLanes);
-    for (auto i{0}; i < nLanes; ++i) {
-      m_exitQueues.push_back(dsm::queue<std::unique_ptr<Agent>>());
-    }
     switch (nLanes) {
       case 1:
         m_laneMapping.emplace_back(Direction::ANY);
@@ -57,7 +54,8 @@ namespace dsm {
   }
   void Street::enqueue(size_t const& queueId) {
     assert(!m_movingAgents.empty());
-    m_exitQueues[queueId].push(m_movingAgents.top());
+    m_exitQueues[queueId].push(
+        std::move(const_cast<std::unique_ptr<Agent>&>(m_movingAgents.top())));
     m_movingAgents.pop();
   }
   std::unique_ptr<Agent> Street::dequeue(size_t index) {

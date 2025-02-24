@@ -78,7 +78,7 @@ namespace dsm {
     }
     /// @brief Get the street's queues
     /// @return std::vector<dsm::queue<Size>> The street's queues
-    const std::vector<dsm::queue<std::unique_ptr<Agent>>>& exitQueues() const {
+    std::vector<dsm::queue<std::unique_ptr<Agent>>> const& exitQueues() const {
       return m_exitQueues;
     }
     /// @brief  Get the number of agents on the street
