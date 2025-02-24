@@ -1,11 +1,14 @@
 #pragma once
 
+#include "Agent.hpp"
 #include "Edge.hpp"
 
+#include <memory>
 #include <optional>
 #include <string>
 
 namespace dsm {
+  class Agent;
   class Road : public Edge {
   protected:
     static double m_meanVehicleLength;
@@ -65,7 +68,7 @@ namespace dsm {
     /// @return std::string The name
     std::string name() const;
 
-    virtual void addAgent(Id agentId) = 0;
+    virtual void addAgent(std::unique_ptr<Agent> pAgent) = 0;
 
     virtual int nAgents() const = 0;
     virtual int nMovingAgents() const = 0;
