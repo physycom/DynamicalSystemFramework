@@ -44,6 +44,7 @@ namespace dsm {
     assert(!(std::abs(m_angle) > 2 * std::numbers::pi));
   }
 
+  void Edge::resetId(Id newId) { m_id = newId; }
   void Edge::setCapacity(int capacity) {
     if (capacity < 1) {
       Logger::error(std::format("Edge capacity ({}) must be greater than 0.", capacity));

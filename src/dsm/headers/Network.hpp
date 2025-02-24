@@ -48,6 +48,10 @@ namespace dsm {
       requires(std::is_base_of_v<node_t, TNode> &&
                std::constructible_from<TNode, Id, TArgs...>)
     void addNode(Id nodeId, TArgs&&... args);
+
+    template <typename TEdge = edge_t>
+      requires(std::is_base_of_v<edge_t, TEdge>)
+    void addEdge(TEdge&& edge);
     /// @brief Add an edge to the network
     /// @tparam TEdge The type of the edge (default is edge_t)
     /// @tparam TArgs The types of the arguments
@@ -159,6 +163,15 @@ namespace dsm {
     assert(!m_nodes.contains(nodeId));
     m_nodes.emplace(std::make_pair(
         nodeId, std::make_unique<TNode>(nodeId, std::forward<TArgs>(args)...)));
+  }
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  template <typename TEdge>
+    requires(std::is_base_of_v<edge_t, TEdge>)
+  void Network<node_t, edge_t>::addEdge(TEdge&& edge) {
+    assert(!m_edges.contains(edge.id()));
+    m_edges.emplace(std::make_pair(edge.id(), std::make_unique<TEdge>(std::move(edge))));
+    m_addMissingNodes(edge.id());
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)

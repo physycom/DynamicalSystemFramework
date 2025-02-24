@@ -71,39 +71,6 @@ namespace dsm {
     /// @param streetSet A map of streets representing the graph's streets
     RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
 
-    RoadNetwork(const RoadNetwork& other) : Network{AdjacencyMatrix()} {
-      std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
-        this->m_nodes.emplace(pair.first, pair.second.get());
-      });
-      std::for_each(other.m_edges.begin(), other.m_edges.end(), [this](const auto& pair) {
-        this->m_edges.emplace(pair.first, pair.second.get());
-      });
-      m_nodeMapping = other.m_nodeMapping;
-      m_adjacencyMatrix = other.m_adjacencyMatrix;
-      m_inputNodes = other.m_inputNodes;
-      m_outputNodes = other.m_outputNodes;
-    }
-
-    RoadNetwork& operator=(const RoadNetwork& other) {
-      std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
-        this->m_nodes.insert_or_assign(pair.first,
-                                       std::unique_ptr<Node>(pair.second.get()));
-      });
-      std::for_each(other.m_edges.begin(), other.m_edges.end(), [this](const auto& pair) {
-        this->m_edges.insert_or_assign(pair.first,
-                                       std::make_unique<Street>(*pair.second));
-      });
-      m_nodeMapping = other.m_nodeMapping;
-      m_adjacencyMatrix = other.m_adjacencyMatrix;
-      m_inputNodes = other.m_inputNodes;
-      m_outputNodes = other.m_outputNodes;
-
-      return *this;
-    }
-
-    RoadNetwork(RoadNetwork&&) = default;
-    RoadNetwork& operator=(RoadNetwork&&) = default;
-
     /// @brief Build the graph's adjacency matrix and computes max capacity
     /// @details The adjacency matrix is built using the graph's streets and nodes. N.B.: The street ids
     /// are reassigned using the max node id, i.e. newStreetId = srcId * n + dstId, where n is the max node id.
@@ -174,7 +141,7 @@ namespace dsm {
     /// @throws std::invalid_argument if the node does not exist
     Roundabout& makeRoundabout(Id nodeId);
 
-    StochasticStreet& makeStochasticStreet(Id streetId, double const flowRate);
+    void makeStochasticStreet(Id streetId, double const flowRate);
     /// @brief Convert an existing street into a spire street
     /// @param streetId The id of the street to convert to a spire street
     /// @throws std::invalid_argument if the street does not exist
@@ -188,7 +155,7 @@ namespace dsm {
 
     /// @brief Add a street to the graph
     /// @param street A reference to the street to add
-    void addStreet(const Street& street);
+    void addStreet(Street&& street);
 
     template <typename T1>
       requires is_street_v<std::remove_reference_t<T1>>
@@ -255,14 +222,14 @@ namespace dsm {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street with id {} already exists.", street.id())));
     }
-    addEdge<Street>(street.id(), street);
+    addEdge(std::move(street));
   }
 
   template <typename T1, typename... Tn>
     requires is_street_v<std::remove_reference_t<T1>> &&
              (is_street_v<std::remove_reference_t<Tn>> && ...)
   void RoadNetwork::addStreets(T1&& street, Tn&&... streets) {
-    addStreet(std::forward<T1>(street));
+    addStreet(std::move(street));
     addStreets(std::forward<Tn>(streets)...);
   }
 

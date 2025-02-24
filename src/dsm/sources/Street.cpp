@@ -5,22 +5,6 @@
 #include <cassert>
 
 namespace dsm {
-  Street::Street(Id id, const Street& street)
-      : Road(id,
-             street.nodePair(),
-             street.length(),
-             street.maxSpeed(),
-             street.nLanes(),
-             street.name(),
-             street.geometry(),
-             street.capacity(),
-             street.transportCapacity()) {
-    for (auto i{0}; i < street.nLanes(); ++i) {
-      m_exitQueues.push_back(dsm::queue<Size>());
-    }
-    m_laneMapping = street.laneMapping();
-  }
-
   Street::Street(Id id,
                  std::pair<Id, Id> nodePair,
                  double length,
@@ -127,8 +111,8 @@ namespace dsm {
     return nAgents;
   }
 
-  StochasticStreet::StochasticStreet(Id id, const Street& street, double flowRate)
-      : Street(id, street) {
+  StochasticStreet::StochasticStreet(Street&& street, double flowRate)
+      : Street(std::move(street)) {
     setFlowRate(flowRate);
   }
   StochasticStreet::StochasticStreet(Id id,

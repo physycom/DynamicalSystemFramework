@@ -15,12 +15,6 @@ namespace dsm {
     std::string m_name;
 
   public:
-    /// @brief Construct a new Road object starting from an existing road
-    /// @details The new road has different id but same capacity, length, speed limit, and node pair as the
-    ///          existing road.
-    /// @param Road The existing road
-    /// @param id The new road's id
-    Road(Id id, const Road&);
     /// @brief Construct a new Road object
     /// @param id The road's id
     /// @param nodePair The road's node pair
