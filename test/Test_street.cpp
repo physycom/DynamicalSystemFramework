@@ -199,33 +199,33 @@ TEST_CASE("SpireStreet") {
         THEN("Mean flow is zero") { CHECK_EQ(street.meanFlow(), 0); }
       }
       WHEN("Input is greater than output") {
-        // street.addAgent(1);
-        // street.enqueue(1, 0);
-        // street.addAgent(2);
-        // street.enqueue(2, 0);
-        // street.dequeue(0);
-        // street.dequeue(0);
-        // street.addAgent(3);
-        // street.enqueue(3, 0);
-        // THEN("The density is updated") {
-        //   CHECK_EQ(doctest::Approx(street.density()), 0.285714);
-        // }
-        // THEN("Mean flow is one") { CHECK_EQ(street.meanFlow(), 1); }
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.dequeue(0);
+        street.dequeue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        THEN("The density is updated") {
+          CHECK_EQ(doctest::Approx(street.density()), 0.285714);
+        }
+        THEN("Mean flow is one") { CHECK_EQ(street.meanFlow(), 1); }
       }
       WHEN("Output is greater than input") {
-        // street.addAgent(1);
-        // street.enqueue(1, 0);
-        // street.addAgent(2);
-        // street.enqueue(2, 0);
-        // street.meanFlow();
-        // street.addAgent(3);
-        // street.enqueue(3, 0);
-        // street.dequeue(0);
-        // street.dequeue(0);
-        // THEN("The density is updated") {
-        //   CHECK_EQ(doctest::Approx(street.density()), 0.285714);
-        // }
-        // THEN("Mean flow is minus one") { CHECK_EQ(street.meanFlow(), -1); }
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.meanFlow();
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.dequeue(0);
+        street.dequeue(0);
+        THEN("The density is updated") {
+          CHECK_EQ(doctest::Approx(street.density()), 0.285714);
+        }
+        THEN("Mean flow is minus one") { CHECK_EQ(street.meanFlow(), -1); }
       }
     }
   }
