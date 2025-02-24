@@ -5,7 +5,7 @@
 #include <cassert>
 
 namespace dsm {
-  Street::Street(Id id, const Street& street)
+  Street::Street(Id id, Street&& street)
       : Road(id,
              street.nodePair(),
              street.length(),
@@ -14,7 +14,8 @@ namespace dsm {
              street.name(),
              street.geometry(),
              street.capacity(),
-             street.transportCapacity()) {
+             street.transportCapacity()),
+             m_movingAgents{std::priority_queue<std::unique_ptr<Agent>>()} {
     for (auto i{0}; i < street.nLanes(); ++i) {
       m_exitQueues.push_back(dsm::queue<std::unique_ptr<Agent>>());
     }
@@ -38,7 +39,8 @@ namespace dsm {
              std::move(name),
              std::move(geometry),
              capacity,
-             transportCapacity) {
+             transportCapacity),
+             m_movingAgents{std::priority_queue<std::unique_ptr<Agent>>()} {
     m_exitQueues.resize(nLanes);
     for (auto i{0}; i < nLanes; ++i) {
       m_exitQueues.push_back(dsm::queue<std::unique_ptr<Agent>>());

@@ -7,8 +7,11 @@
 
 #pragma once
 
+#include "Agent.hpp"
 #include "Node.hpp"
 #include "../utility/queue.hpp"
+
+#include <memory>
 
 namespace dsm {
   /// @brief The Roundabout class represents a roundabout node in the network.
@@ -16,7 +19,7 @@ namespace dsm {
   /// @tparam Size The type of the node's capacity
   class Roundabout : public Node {
   protected:
-    dsm::queue<Id> m_agents;
+    dsm::queue<std::unique_ptr<Agent>> m_agents;
 
   public:
     /// @brief Construct a new Roundabout object
@@ -35,13 +38,13 @@ namespace dsm {
     /// @brief Put an agent in the node
     /// @param agentId The agent's id
     /// @throws std::runtime_error if the node is full
-    void enqueue(Id agentId);
+    void enqueue(std::unique_ptr<Agent> agentId);
     /// @brief Removes the first agent from the node
     /// @return Id The agent's id
-    Id dequeue();
+    std::unique_ptr<Agent> dequeue();
     /// @brief Get the node's queue
     /// @return dsm::queue<Id> The node's queue
-    const dsm::queue<Id>& agents() const { return m_agents; }
+    dsm::queue<std::unique_ptr<Agent>> const& agents() const { return m_agents; }
     /// @brief Returns the node's density
     /// @return double The node's density
     double density() const override {

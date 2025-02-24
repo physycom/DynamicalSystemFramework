@@ -71,36 +71,6 @@ namespace dsm {
     /// @param streetSet A map of streets representing the graph's streets
     RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
 
-    RoadNetwork(const RoadNetwork& other) : Network{AdjacencyMatrix()} {
-      std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
-        this->m_nodes.emplace(pair.first, pair.second.get());
-      });
-      std::for_each(other.m_edges.begin(), other.m_edges.end(), [this](const auto& pair) {
-        this->m_edges.emplace(pair.first, pair.second.get());
-      });
-      m_nodeMapping = other.m_nodeMapping;
-      m_adjacencyMatrix = other.m_adjacencyMatrix;
-      m_inputNodes = other.m_inputNodes;
-      m_outputNodes = other.m_outputNodes;
-    }
-
-    RoadNetwork& operator=(const RoadNetwork& other) {
-      std::for_each(other.m_nodes.begin(), other.m_nodes.end(), [this](const auto& pair) {
-        this->m_nodes.insert_or_assign(pair.first,
-                                       std::unique_ptr<Node>(pair.second.get()));
-      });
-      std::for_each(other.m_edges.begin(), other.m_edges.end(), [this](const auto& pair) {
-        this->m_edges.insert_or_assign(pair.first,
-                                       std::make_unique<Street>(*pair.second));
-      });
-      m_nodeMapping = other.m_nodeMapping;
-      m_adjacencyMatrix = other.m_adjacencyMatrix;
-      m_inputNodes = other.m_inputNodes;
-      m_outputNodes = other.m_outputNodes;
-
-      return *this;
-    }
-
     RoadNetwork(RoadNetwork&&) = default;
     RoadNetwork& operator=(RoadNetwork&&) = default;
 

@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "Agent.hpp"
 #include "Road.hpp"
 #include "Sensors.hpp"
 #include "../utility/TypeTraits/is_numeric.hpp"
@@ -28,6 +29,9 @@
 #include "../utility/Typedef.hpp"
 
 namespace dsm {
+
+  class Agent;
+
   /// @brief The Street class represents a street in the network.
   class Street : public Road {
   private:
@@ -41,7 +45,7 @@ namespace dsm {
     ///          existing street.
     /// @param Street The existing street
     /// @param id The new street's id
-    Street(Id id, const Street&);
+    Street(Id id, Street&&);
     /// @brief Construct a new Street object
     /// @param id The street's id
     /// @param nodePair The street's node pair
@@ -101,7 +105,7 @@ namespace dsm {
 
     inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
 
-    void addAgent(std::unique_ptr<Agent> pAgent) override;
+    virtual void addAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
@@ -156,7 +160,7 @@ namespace dsm {
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
-    void addAgent(std::unique_ptr<Agent> agentId) final;
+    void addAgent(std::unique_ptr<Agent> pAgent) final;
 
     /// @brief Get the mean flow of the street
     /// @return int The flow of the street, i.e. the difference between input and output flows
@@ -177,7 +181,7 @@ namespace dsm {
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
-    void addAgent(std::unique_ptr<Agent> agentId) final;
+    void addAgent(std::unique_ptr<Agent> pAgent) final;
 
     /// @brief Get the mean flow of the street
     /// @return int The flow of the street, i.e. the difference between input and output flows

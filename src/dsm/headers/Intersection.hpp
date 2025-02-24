@@ -8,9 +8,11 @@
 
 #pragma once
 
+#include "Agent.hpp"
 #include "Node.hpp"
 
 #include <map>
+#include <memory>
 #include <set>
 
 namespace dsm {
@@ -18,7 +20,7 @@ namespace dsm {
   /// @tparam Id The type of the node's id. It must be an unsigned integral type.
   class Intersection : public Node {
   protected:
-    std::multimap<int16_t, Id> m_agents;
+    std::multimap<int16_t, std::unique_ptr<Agent>> m_agents;
     std::set<Id>
         m_streetPriorities;  // A set containing the street ids that have priority - like main roads
     Size m_agentCounter;
@@ -47,17 +49,17 @@ namespace dsm {
     ///          The agent with the smallest angle difference is the first one to be
     ///          removed from the node.
     /// @throws std::runtime_error if the node is full
-    void addAgent(double angle, Id agentId);
+    void addAgent(double angle, std::unique_ptr<Agent> pAgent);
     /// @brief Put an agent in the node
     /// @param agentId The agent's id
     /// @details The agent's angle difference is used to order the agents in the node.
     ///          The agent with the smallest angle difference is the first one to be
     ///          removed from the node.
     /// @throws std::runtime_error if the node is full
-    void addAgent(Id agentId);
-    /// @brief Removes an agent from the node
-    /// @param agentId The agent's id
-    void removeAgent(Id agentId);
+    void addAgent(std::unique_ptr<Agent> pAgent);
+    // /// @brief Removes an agent from the node
+    // /// @param agentId The agent's id
+    // void removeAgent(Id agentId);
     /// @brief Set the node streets with priority
     /// @param streetPriorities A std::set containing the node's street priorities
     void setStreetPriorities(std::set<Id> streetPriorities) {
@@ -83,7 +85,7 @@ namespace dsm {
     virtual const std::set<Id>& streetPriorities() const { return m_streetPriorities; };
     /// @brief Get the node's agent ids
     /// @return std::set<Id> A std::set containing the node's agent ids
-    const std::multimap<int16_t, Id>& agents() { return m_agents; };
+    const std::multimap<int16_t, std::unique_ptr<Agent>>& agents() { return m_agents; };
     /// @brief Returns the number of agents that have passed through the node
     /// @return Size The number of agents that have passed through the node
     /// @details This function returns the number of agents that have passed through the node
