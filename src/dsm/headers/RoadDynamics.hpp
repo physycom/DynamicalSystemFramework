@@ -802,7 +802,6 @@ namespace dsm {
         })};
     std::uniform_real_distribution<double> srcUniformDist{0., srcSum};
     std::uniform_real_distribution<double> dstUniformDist{0., dstSum};
-    Id agentId{0};
     Logger::debug(std::format("Adding {} agents at time {}.", nAgents, this->time()));
     while (nAgents > 0) {
       Id srcId{0}, dstId{0};
