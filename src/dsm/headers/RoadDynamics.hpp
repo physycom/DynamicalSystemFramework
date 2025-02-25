@@ -45,7 +45,7 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   class RoadDynamics : public Dynamics<RoadNetwork> {
-    std::map<Id, std::unique_ptr<Agent<delay_t>>> m_agents;
+    std::map<Id, std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
 
   protected:
@@ -93,7 +93,7 @@ namespace dsm {
     /// @brief Evolve the agents.
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
-    void m_evolveAgent(std::unique_ptr<Agent<delay_t>> const& pAgent);
+    void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
 
   public:
     /// @brief Construct a new RoadDynamics object
@@ -164,29 +164,15 @@ namespace dsm {
 
     /// @brief Add an agent to the simulation
     /// @param agent std::unique_ptr to the agent
-    void addAgent(std::unique_ptr<Agent<delay_t>> agent);
+    void addAgent(std::unique_ptr<Agent> agent);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent<delay_t>, TArgs...>)
+      requires(std::is_constructible_v<Agent, Time, TArgs...>)
     void addAgent(TArgs&&... args);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent<delay_t>, Id, TArgs...>)
+      requires(std::is_constructible_v<Agent, Time, Id, TArgs...>)
     void addAgents(Size nAgents, TArgs&&... args);
-    /// @brief Add a pack of agents to the simulation
-    /// @param agents Parameter pack of agents
-    template <typename... Tn>
-      requires(is_agent_v<Tn> && ...)
-    void addAgents(Tn... agents);
-    /// @brief Add a pack of agents to the simulation
-    /// @param agent An agent
-    /// @param agents Parameter pack of agents
-    template <typename T1, typename... Tn>
-      requires(is_agent_v<T1> && (is_agent_v<Tn> && ...))
-    void addAgents(T1 agent, Tn... agents);
-    /// @brief Add a set of agents to the simulation
-    /// @param agents Generic container of agents, represented by an std::span
-    void addAgents(std::span<Agent<delay_t>> agents);
 
     /// @brief Remove an agent from the simulation
     /// @param agentId the id of the agent to remove
@@ -237,9 +223,7 @@ namespace dsm {
     }
     /// @brief Get the agents
     /// @return const std::unordered_map<Id, Agent<Id>>&, The agents
-    const std::map<Id, std::unique_ptr<Agent<delay_t>>>& agents() const {
-      return m_agents;
-    }
+    const std::map<Id, std::unique_ptr<Agent>>& agents() const { return m_agents; }
     /// @brief Get the number of agents currently in the simulation
     /// @return Size The number of agents
     Size nAgents() const { return m_agents.size(); }
@@ -559,7 +543,7 @@ namespace dsm {
       }
       const auto agentId{pStreet->queue(queueIndex).front()};
       auto const& pAgent{this->agents().at(agentId)};
-      if (pAgent->delay() > 0) {
+      if (pAgent->freeTime() > this->time()) {
         continue;
       }
       pAgent->setSpeed(0.);
@@ -592,10 +576,11 @@ namespace dsm {
       }
       if (bArrived) {
         pStreet->dequeue(queueIndex);
-        m_travelDTs.push_back({pAgent->distance(), static_cast<double>(pAgent->time())});
+        m_travelDTs.push_back({pAgent->distance(),
+                               static_cast<double>(this->time() - pAgent->spawnTime())});
         if (reinsert_agents) {
           // reset Agent's values
-          pAgent->reset();
+          pAgent->reset(this->time());
         } else {
           m_agentsToRemove.push_back(agentId);
           // this->removeAgent(agentId);
@@ -644,7 +629,8 @@ namespace dsm {
         intersection.removeAgent(agentId);
         this->agents().at(agentId)->setStreetId(nextStreet->id());
         this->setAgentSpeed(agentId);
-        this->agents().at(agentId)->incrementDelay(
+        this->agents().at(agentId)->setFreeTime(
+            this->time() +
             std::ceil(nextStreet->length() / this->agents().at(agentId)->speed()));
         nextStreet->addAgent(agentId);
         return true;
@@ -672,7 +658,8 @@ namespace dsm {
         roundabout.dequeue();
         this->agents().at(agentId)->setStreetId(nextStreet->id());
         this->setAgentSpeed(agentId);
-        this->agents().at(agentId)->incrementDelay(
+        this->agents().at(agentId)->setFreeTime(
+            this->time() +
             std::ceil(nextStreet->length() / this->agents().at(agentId)->speed()));
         nextStreet->addAgent(agentId);
       } else {
@@ -684,82 +671,69 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_evolveAgent(
-      std::unique_ptr<Agent<delay_t>> const& pAgent) {
+  void RoadDynamics<delay_t>::m_evolveAgent(std::unique_ptr<Agent> const& pAgent) {
     std::uniform_int_distribution<Id> nodeDist{
         0, static_cast<Id>(this->graph().nNodes() - 1)};
-    if (pAgent->delay() > 0) {
-      const auto& street{this->graph().edge(pAgent->streetId().value())};
-      if (pAgent->delay() > 1) {
-        pAgent->incrementDistance();
-      } else {
-        double distance{std::fmod(street->length(), pAgent->speed())};
-        if (distance < std::numeric_limits<double>::epsilon()) {
-          pAgent->incrementDistance();
-        } else {
-          pAgent->incrementDistance(distance);
+    // The "cost" of enqueuing is one time unit, so we consider it as passed
+    if (pAgent->freeTime() == this->time() + 1 && pAgent->streetId().has_value()) {
+      const auto& street{this->graph().edge(*pAgent->streetId())};
+      auto const nLanes = street->nLanes();
+      bool bArrived{false};
+      if (!pAgent->isRandom()) {
+        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
+            street->target()) {
+          pAgent->updateItinerary();
+        }
+        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
+            street->target()) {
+          bArrived = true;
         }
       }
-      pAgent->decrementDelay();
-      if (pAgent->delay() == 0) {
-        auto const nLanes = street->nLanes();
-        bool bArrived{false};
-        if (!pAgent->isRandom()) {
-          if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-              street->target()) {
-            pAgent->updateItinerary();
-          }
-          if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-              street->target()) {
-            bArrived = true;
-          }
-        }
-        if (bArrived) {
-          std::uniform_int_distribution<size_t> laneDist{0,
-                                                         static_cast<size_t>(nLanes - 1)};
-          street->enqueue(pAgent->id(), laneDist(this->m_generator));
+      pAgent->incrementDistance(street->length());
+      if (bArrived) {
+        std::uniform_int_distribution<size_t> laneDist{0,
+                                                       static_cast<size_t>(nLanes - 1)};
+        street->enqueue(pAgent->id(), laneDist(this->m_generator));
+      } else {
+        auto const nextStreetId =
+            this->m_nextStreetId(pAgent->id(), street->target(), street->id());
+        auto const& pNextStreet{this->graph().edge(nextStreetId)};
+        pAgent->setNextStreetId(nextStreetId);
+        if (nLanes == 1) {
+          street->enqueue(pAgent->id(), 0);
         } else {
-          auto const nextStreetId =
-              this->m_nextStreetId(pAgent->id(), street->target(), street->id());
-          auto const& pNextStreet{this->graph().edge(nextStreetId)};
-          pAgent->setNextStreetId(nextStreetId);
-          if (nLanes == 1) {
-            street->enqueue(pAgent->id(), 0);
-          } else {
-            auto const deltaAngle{pNextStreet->deltaAngle(street->angle())};
-            if (std::abs(deltaAngle) < std::numbers::pi) {
-              // Lanes are counted as 0 is the far right lane
-              if (std::abs(deltaAngle) < std::numbers::pi / 4) {
-                std::vector<double> weights;
-                for (auto const& queue : street->exitQueues()) {
-                  weights.push_back(1. / (queue.size() + 1));
-                }
-                // If all weights are the same, make the last 0
-                if (std::all_of(weights.begin(), weights.end(), [&](double w) {
-                      return std::abs(w - weights.front()) <
-                             std::numeric_limits<double>::epsilon();
-                    })) {
-                  weights.back() = 0.;
-                  if (nLanes > 2) {
-                    weights.front() = 0.;
-                  }
-                }
-                // Normalize the weights
-                auto const sum = std::accumulate(weights.begin(), weights.end(), 0.);
-                for (auto& w : weights) {
-                  w /= sum;
-                }
-                std::discrete_distribution<size_t> laneDist{weights.begin(),
-                                                            weights.end()};
-                street->enqueue(pAgent->id(), laneDist(this->m_generator));
-              } else if (deltaAngle < 0.) {                 // Right
-                street->enqueue(pAgent->id(), 0);           // Always the first lane
-              } else {                                      // Left (deltaAngle > 0.)
-                street->enqueue(pAgent->id(), nLanes - 1);  // Always the last lane
+          auto const deltaAngle{pNextStreet->deltaAngle(street->angle())};
+          if (std::abs(deltaAngle) < std::numbers::pi) {
+            // Lanes are counted as 0 is the far right lane
+            if (std::abs(deltaAngle) < std::numbers::pi / 4) {
+              std::vector<double> weights;
+              for (auto const& queue : street->exitQueues()) {
+                weights.push_back(1. / (queue.size() + 1));
               }
-            } else {                                      // U turn
+              // If all weights are the same, make the last 0
+              if (std::all_of(weights.begin(), weights.end(), [&](double w) {
+                    return std::abs(w - weights.front()) <
+                           std::numeric_limits<double>::epsilon();
+                  })) {
+                weights.back() = 0.;
+                if (nLanes > 2) {
+                  weights.front() = 0.;
+                }
+              }
+              // Normalize the weights
+              auto const sum = std::accumulate(weights.begin(), weights.end(), 0.);
+              for (auto& w : weights) {
+                w /= sum;
+              }
+              std::discrete_distribution<size_t> laneDist{weights.begin(), weights.end()};
+              street->enqueue(pAgent->id(), laneDist(this->m_generator));
+            } else if (deltaAngle < 0.) {                 // Right
+              street->enqueue(pAgent->id(), 0);           // Always the first lane
+            } else {                                      // Left (deltaAngle > 0.)
               street->enqueue(pAgent->id(), nLanes - 1);  // Always the last lane
             }
+          } else {                                      // U turn
+            street->enqueue(pAgent->id(), nLanes - 1);  // Always the last lane
           }
         }
       }
@@ -784,10 +758,9 @@ namespace dsm {
         roundabout.enqueue(pAgent->id());
       }
       pAgent->setNextStreetId(nextStreet->id());
-    } else if (pAgent->delay() == 0) {
+    } else if (pAgent->freeTime() == this->time()) {
       pAgent->setSpeed(0.);
     }
-    pAgent->incrementTime();
   }
 
   template <typename delay_t>
@@ -889,8 +862,7 @@ namespace dsm {
       auto const& pAgent{this->agents().at(agentId)};
       pAgent->setStreetId(streetId);
       this->setAgentSpeed(agentId);
-      pAgent->incrementDelay(
-          std::ceil(street->length() / this->agents().at(agentId)->speed()));
+      pAgent->setFreeTime(this->time() + std::ceil(street->length() / pAgent->speed()));
       street->addAgent(agentId);
       ++agentId;
     }
@@ -1023,7 +995,7 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent<delay_t>> agent) {
+  void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent> agent) {
     if (m_agents.size() + 1 > this->graph().maxCapacity()) {
       throw std::overflow_error(Logger::buildExceptionMessage(std::format(
           "RoadNetwork is already holding the max possible number of agents ({})",
@@ -1043,46 +1015,24 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent<delay_t>, TArgs...>)
+    requires(std::is_constructible_v<Agent, Time, TArgs...>)
   void RoadDynamics<delay_t>::addAgent(TArgs&&... args) {
-    addAgent(std::make_unique<Agent<delay_t>>(std::forward<TArgs>(args)...));
+    addAgent(std::make_unique<Agent>(this->time(), std::forward<TArgs>(args)...));
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent<delay_t>, Id, TArgs...>)
+    requires(std::is_constructible_v<Agent, Time, Id, TArgs...>)
   void RoadDynamics<delay_t>::addAgents(Size nAgents, TArgs&&... args) {
     Id agentId{0};
     if (!m_agents.empty()) {
       agentId = m_agents.rbegin()->first + 1;
     }
     for (size_t i{0}; i < nAgents; ++i, ++agentId) {
-      addAgent(std::make_unique<Agent<delay_t>>(agentId, std::forward<TArgs>(args)...));
+      addAgent(
+          std::make_unique<Agent>(this->time(), agentId, std::forward<TArgs>(args)...));
     }
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  template <typename... Tn>
-    requires(is_agent_v<Tn> && ...)
-  void RoadDynamics<delay_t>::addAgents(Tn... agents) {}
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  template <typename T1, typename... Tn>
-    requires(is_agent_v<T1> && (is_agent_v<Tn> && ...))
-  void RoadDynamics<delay_t>::addAgents(T1 agent, Tn... agents) {
-    addAgent(std::make_unique<Agent<delay_t>>(agent));
-    addAgents(agents...);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgents(std::span<Agent<delay_t>> agents) {
-    std::ranges::for_each(agents, [this](const auto& agent) -> void {
-      addAgent(std::make_unique<Agent<delay_t>>(agent));
-    });
   }
 
   template <typename delay_t>

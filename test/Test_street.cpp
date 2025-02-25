@@ -9,7 +9,7 @@
 
 #include "doctest.h"
 
-using Agent = dsm::Agent<double>;
+using Agent = dsm::Agent;
 using Intersection = dsm::Intersection;
 using Street = dsm::Street;
 using Road = dsm::Road;
@@ -76,10 +76,10 @@ TEST_CASE("Street") {
     /*This tests the insertion of an agent in a street's queue*/
 
     // define some agents
-    Agent a1{1, 1, 0};  // they are all in street 1
-    Agent a2{2, 1, 0};
-    Agent a3{3, 1, 0};
-    Agent a4{4, 1, 0};
+    Agent a1{0, 1, 1, 0};  // they are all in street 1
+    Agent a2{0, 2, 1, 0};
+    Agent a3{0, 3, 1, 0};
+    Agent a4{0, 4, 1, 0};
 
     Street street{1, std::make_pair(0, 1), 3.5};
     // fill the queue
@@ -104,10 +104,10 @@ TEST_CASE("Street") {
     /*This tests the exit of an agent from a street's queue*/
 
     // define some agents
-    Agent a1{1, 1, 0};  // they are all in street 1
-    Agent a2{2, 1, 0};
-    Agent a3{3, 1, 0};
-    Agent a4{4, 1, 0};
+    Agent a1{0, 1, 1, 0};  // they are all in street 1
+    Agent a2{0, 2, 1, 0};
+    Agent a3{0, 3, 1, 0};
+    Agent a4{0, 4, 1, 0};
 
     Street street{1, std::make_pair(0, 1), 3.5};
     // fill the queue
