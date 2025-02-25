@@ -1031,40 +1031,36 @@ namespace dsm {
     std::uniform_int_distribution<Id> nodeDist{
         0, static_cast<Id>(this->graph().nNodes() - 1)};
     Logger::debug("Pre-agents");
-    std::for_each(m_agents.begin(), m_agents.end(), [this, &nodeDist](auto& pAgent) {
-      Logger::debug("Init evolving agents");
-      if (!pAgent->streetId().has_value() && !pAgent->nextStreetId().has_value()) {
-        Id srcNodeId = pAgent->srcNodeId().has_value() ? pAgent->srcNodeId().value()
-                                                       : nodeDist(this->m_generator);
-        const auto& srcNode{this->graph().node(srcNodeId)};
-        if (srcNode->isFull()) {
-          return;
-        }
-        const auto& nextStreet{
-            this->graph().edge(this->m_nextStreetId(pAgent, srcNode->id()))};
-        if (nextStreet->isFull()) {
-          return;
-        }
-        assert(srcNode->id() == nextStreet->nodePair().first);
-        pAgent->setNextStreetId(nextStreet->id());
-        if (srcNode->isIntersection()) {
-          auto& intersection = dynamic_cast<Intersection&>(*srcNode);
-          intersection.addAgent(0., std::move(pAgent));
-        } else if (srcNode->isRoundabout()) {
-          auto& roundabout = dynamic_cast<Roundabout&>(*srcNode);
-          roundabout.enqueue(std::move(pAgent));
-        }
-      } else if (pAgent->freeTime() == this->time()) {
-        pAgent->setSpeed(0.);
+    for (auto itAgent{m_agents.begin()}; itAgent != m_agents.end();) {
+      auto& pAgent{*itAgent};
+      if (!pAgent->srcNodeId().has_value()) {
+        pAgent->setSrcNodeId(nodeDist(this->m_generator));
       }
-      Logger::debug("End evolving agents");
-    });
-    // Remove nullptr from the agents' list
-    m_agents.erase(std::remove_if(m_agents.begin(),
-                                  m_agents.end(),
-                                  [](const auto& pAgent) { return pAgent == nullptr; }),
-                   m_agents.end());
-
+      auto const& srcNode{this->graph().node(pAgent->srcNodeId().value())};
+      if (srcNode->isFull()) {
+        ++itAgent;
+        continue;
+      }
+      if (!pAgent->nextStreetId().has_value()) {
+        pAgent->setNextStreetId(
+            this->m_nextStreetId(pAgent, srcNode->id(), pAgent->streetId()));
+      }
+      auto const& nextStreet{
+          this->graph().edge(pAgent->nextStreetId().value())};  // next street
+      if (nextStreet->isFull()) {
+        ++itAgent;
+        continue;
+      }
+      assert(srcNode->id() == nextStreet->source());
+      if (srcNode->isIntersection()) {
+        auto& intersection = dynamic_cast<Intersection&>(*srcNode);
+        intersection.addAgent(0., std::move(pAgent));
+      } else if (srcNode->isRoundabout()) {
+        auto& roundabout = dynamic_cast<Roundabout&>(*srcNode);
+        roundabout.enqueue(std::move(pAgent));
+      }
+      itAgent = m_agents.erase(itAgent);
+    }
     Dynamics<RoadNetwork>::m_evolve();
   }
 

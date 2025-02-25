@@ -30,6 +30,7 @@ namespace dsm {
     return m_freeTime < other.m_freeTime;
   }
 
+  void Agent::setSrcNodeId(Id srcNodeId) { m_srcNodeId = srcNodeId; }
   void Agent::setStreetId(std::optional<Id> streetId) {
     if (!streetId.has_value()) {
       assert(m_nextStreetId.has_value());
