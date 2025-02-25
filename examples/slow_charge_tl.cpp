@@ -314,14 +314,15 @@ int main(int argc, char** argv) {
     if (dynamics.time() % 2400 == 0 && nAgents > 0) {
       // auto meanDelta = std::accumulate(deltas.begin(), deltas.end(), 0) /
       // deltas.size();
-      deltaAgents = dynamics.agents().size() - previousAgents;
+      auto const totalDynamicsAgents{dynamics.nAgents()};
+      deltaAgents = totalDynamicsAgents - previousAgents;
       if (deltaAgents < 0) {
         ++nAgents;
         std::cout << "- Now I'm adding " << nAgents << " agents.\n";
         std::cout << "Delta agents: " << deltaAgents << '\n';
         std::cout << "At time: " << dynamics.time() << '\n';
       }
-      previousAgents = dynamics.agents().size();
+      previousAgents = totalDynamicsAgents;
       // deltas.clear();
     }
 

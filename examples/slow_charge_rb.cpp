@@ -209,14 +209,15 @@ int main(int argc, char** argv) {
     dynamics.evolve(false);
 
     if (dynamics.time() % 2400 == 0) {
-      deltaAgents = dynamics.agents().size() - previousAgents;
+      auto const totalDynamicsAgents{dynamics.nAgents()};
+      deltaAgents = totalDynamicsAgents - previousAgents;
       if (deltaAgents < 0) {
         ++nAgents;
         std::cout << "- Now I'm adding " << nAgents << " agents.\n";
         std::cout << "Delta agents: " << deltaAgents << '\n';
         std::cout << "At time: " << dynamics.time() << '\n';
       }
-      previousAgents = dynamics.agents().size();
+      previousAgents = totalDynamicsAgents;
     }
 
     if (dynamics.time() % 300 == 0) {
