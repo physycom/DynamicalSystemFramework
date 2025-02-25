@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
                                      BASE_OUT_FOLDER,
                                      ERROR_PROBABILITY,
                                      std::to_string(SEED))};  // output folder
-  constexpr auto MAX_TIME{static_cast<unsigned int>(1e6)};  // maximum time of simulation
+  constexpr auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
 
   std::cout << "-------------------------------------------------\n";
   std::cout << "Input parameters:\n";

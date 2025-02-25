@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
                                            BASE_OUT_FOLDER,
                                            ERROR_PROBABILITY,
                                            std::to_string(SEED))};  // output folder
-  const auto MAX_TIME{static_cast<unsigned int>(1e6)};  // maximum time of simulation
+  const auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
 
   // Clear output folder or create it if it doesn't exist
   if (!fs::exists(BASE_OUT_FOLDER)) {
