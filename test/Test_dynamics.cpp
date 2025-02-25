@@ -594,134 +594,131 @@ TEST_CASE("FirstOrderDynamics") {
         }
       }
     }
-    //     GIVEN(
-    //         "A traffic light managing an intersection with 4 3-lanes streets and 4 1-lane "
-    //         "streets") {
-    //       // Streets
-    //       Street s0_1{1, std::make_pair(0, 1), 30., 15., 3};
-    //       Street s1_0{5, std::make_pair(1, 0), 30., 15., 3};
-    //       Street s1_2{7, std::make_pair(1, 2), 30., 15., 3};
-    //       Street s2_1{11, std::make_pair(2, 1), 30., 15., 3};
+    GIVEN(
+        "A traffic light managing an intersection with 4 3-lanes streets and 4 1-lane "
+        "streets") {
+      // Streets
+      Street s0_1{1, std::make_pair(0, 1), 30., 15., 3};
+      Street s1_0{5, std::make_pair(1, 0), 30., 15., 3};
+      Street s1_2{7, std::make_pair(1, 2), 30., 15., 3};
+      Street s2_1{11, std::make_pair(2, 1), 30., 15., 3};
 
-    //       Street s3_1{8, std::make_pair(3, 1), 30., 15.};
-    //       Street s1_3{16, std::make_pair(1, 3), 30., 15.};
-    //       Street s4_1{21, std::make_pair(4, 1), 30., 15.};
-    //       Street s1_4{9, std::make_pair(1, 4), 30., 15.};
+      Street s3_1{8, std::make_pair(3, 1), 30., 15.};
+      Street s1_3{16, std::make_pair(1, 3), 30., 15.};
+      Street s4_1{21, std::make_pair(4, 1), 30., 15.};
+      Street s1_4{9, std::make_pair(1, 4), 30., 15.};
 
-    //       RoadNetwork graph2;
-    //       {
-    //         graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
-    //         auto& tl = graph2.node<TrafficLight>(1);
-    //         tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 2});
-    //         tl.setCycle(1, dsm::Direction::LEFT, {1, 4});
-    //         tl.setCycle(11, dsm::Direction::ANY, {3, 2});
-    //         tl.setComplementaryCycle(8, 11);
-    //         tl.setComplementaryCycle(21, 11);
-    //       }
-    //       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
-    //       auto const& nodes = graph2.nodes();
-    //       nodes.at(0)->setCoords({0., -1.});
-    //       nodes.at(2)->setCoords({0., 1.});
-    //       nodes.at(3)->setCoords({-1., 0.});
-    //       nodes.at(4)->setCoords({1., 0.});
-    //       graph2.buildAdj();
-    //       graph2.adjustNodeCapacities();
+      RoadNetwork graph2;
+      {
+        graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
+        auto& tl = graph2.node<TrafficLight>(1);
+        tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 2});
+        tl.setCycle(1, dsm::Direction::LEFT, {1, 4});
+        tl.setCycle(11, dsm::Direction::ANY, {3, 2});
+        tl.setComplementaryCycle(8, 11);
+        tl.setComplementaryCycle(21, 11);
+      }
+      graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
+      auto const& nodes = graph2.nodes();
+      nodes.at(0)->setCoords({0., -1.});
+      nodes.at(2)->setCoords({0., 1.});
+      nodes.at(3)->setCoords({-1., 0.});
+      nodes.at(4)->setCoords({1., 0.});
+      graph2.buildAdj();
+      graph2.adjustNodeCapacities();
 
-    //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-    //       dynamics.setDestinationNodes({0, 2, 3, 4});
+      FirstOrderDynamics dynamics{
+          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.setDestinationNodes({0, 2, 3, 4});
 
-    //       WHEN("We add agents and make the system evolve") {
-    //         dynamics.addAgent(0, 2, 0);
-    //         dynamics.addAgent(1, 4, 0);
-    //         dynamics.evolve(false);  // Counter 0
-    //         THEN("The agents are not yet on the streets") {
-    //           CHECK_FALSE(dynamics.agents().at(0)->streetId().has_value());
-    //           CHECK_FALSE(dynamics.agents().at(1)->streetId().has_value());
-    //         }
-    //         dynamics.evolve(false);  // Counter 1
-    //         THEN("The agents are correctly placed") {
-    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
-    //         }
-    //         dynamics.evolve(false);  // Counter 2
-    //         dynamics.evolve(false);  // Counter 3
-    //         THEN("The agent 0 passes and agent 1 waits") {
-    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 7);
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
-    //         }
-    //         dynamics.evolve(false);  // Counter 4
-    //         THEN("The agent 1 passes") {
-    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 7);
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 9);
-    //         }
-    //       }
-    //     }
-    //     GIVEN(
-    //         "A traffic light managing an intersection with 4 3-lanes streets and 4 1-lane "
-    //         "streets") {
-    //       // Streets
-    //       Street s0_1{1, std::make_pair(0, 1), 30., 15., 3};
-    //       Street s1_0{5, std::make_pair(1, 0), 30., 15., 3};
-    //       Street s1_2{7, std::make_pair(1, 2), 30., 15., 3};
-    //       Street s2_1{11, std::make_pair(2, 1), 30., 15., 3};
+      WHEN("We add agents and make the system evolve") {
+        dynamics.addAgent(2, 0);
+        dynamics.addAgent(4, 0);
+        THEN("The agents are not yet on the streets") {
+          CHECK_FALSE(dynamics.agents().at(0)->streetId().has_value());
+          CHECK_FALSE(dynamics.agents().at(1)->streetId().has_value());
+        }
+        dynamics.evolve(false);  // Counter 0
+        dynamics.evolve(false);  // Counter 1
+        THEN("The agents are correctly placed") {
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 2);
+        }
+        dynamics.evolve(false);  // Counter 2
+        dynamics.evolve(false);  // Counter 3
+        THEN("The agent 0 passes and agent 1 waits") {
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(7)->nAgents(), 1);
+        }
+        dynamics.evolve(false);  // Counter 4
+        THEN("The agent 1 passes") {
+          CHECK_EQ(dynamics.graph().edge(7)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(9)->nAgents(), 1);
+        }
+      }
+    }
+    GIVEN(
+        "A traffic light managing an intersection with 4 3-lanes streets and 4 1-lane "
+        "streets") {
+      // Streets
+      Street s0_1{1, std::make_pair(0, 1), 30., 15., 3};
+      Street s1_0{5, std::make_pair(1, 0), 30., 15., 3};
+      Street s1_2{7, std::make_pair(1, 2), 30., 15., 3};
+      Street s2_1{11, std::make_pair(2, 1), 30., 15., 3};
 
-    //       Street s3_1{8, std::make_pair(3, 1), 30., 15.};
-    //       Street s1_3{16, std::make_pair(1, 3), 30., 15.};
-    //       Street s4_1{21, std::make_pair(4, 1), 30., 15.};
-    //       Street s1_4{9, std::make_pair(1, 4), 30., 15.};
+      Street s3_1{8, std::make_pair(3, 1), 30., 15.};
+      Street s1_3{16, std::make_pair(1, 3), 30., 15.};
+      Street s4_1{21, std::make_pair(4, 1), 30., 15.};
+      Street s1_4{9, std::make_pair(1, 4), 30., 15.};
 
-    //       RoadNetwork graph2;
-    //       {
-    //         graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
-    //         auto& tl = graph2.node<TrafficLight>(1);
-    //         // Now testing red light = NO PHASE
-    //         tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 0});
-    //         tl.setCycle(1, dsm::Direction::LEFT, {1, 2});
-    //         tl.setCycle(11, dsm::Direction::ANY, {3, 0});
-    //         tl.setComplementaryCycle(8, 11);
-    //         tl.setComplementaryCycle(21, 11);
-    //       }
-    //       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
-    //       auto const& nodes = graph2.nodes();
-    //       nodes.at(0)->setCoords({0., -1.});
-    //       nodes.at(2)->setCoords({0., 1.});
-    //       nodes.at(3)->setCoords({-1., 0.});
-    //       nodes.at(4)->setCoords({1., 0.});
-    //       graph2.buildAdj();
-    //       graph2.adjustNodeCapacities();
+      RoadNetwork graph2;
+      {
+        graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
+        auto& tl = graph2.node<TrafficLight>(1);
+        // Now testing red light = NO PHASE
+        tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 0});
+        tl.setCycle(1, dsm::Direction::LEFT, {1, 2});
+        tl.setCycle(11, dsm::Direction::ANY, {3, 0});
+        tl.setComplementaryCycle(8, 11);
+        tl.setComplementaryCycle(21, 11);
+      }
+      graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
+      auto const& nodes = graph2.nodes();
+      nodes.at(0)->setCoords({0., -1.});
+      nodes.at(2)->setCoords({0., 1.});
+      nodes.at(3)->setCoords({-1., 0.});
+      nodes.at(4)->setCoords({1., 0.});
+      graph2.buildAdj();
+      graph2.adjustNodeCapacities();
 
-    //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-    //       dynamics.setDestinationNodes({0, 2, 3, 4});
+      FirstOrderDynamics dynamics{
+          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.setDestinationNodes({0, 2, 3, 4});
 
-    //       WHEN("We add agents and make the system evolve") {
-    //         dynamics.addAgent(0, 2, 0);
-    //         dynamics.addAgent(1, 4, 0);
-    //         dynamics.evolve(false);  // Counter 0
-    //         dynamics.evolve(false);  // Counter 1
-    //         THEN("The agents are correctly placed") {
-    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
-    //         }
-    //         dynamics.evolve(false);  // Counter 2
-    //         dynamics.evolve(false);  // Counter 3
-    //         THEN("The agents are still") {
-    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
-    //         }
-    //         dynamics.evolve(false);  // Counter 4
-    //         dynamics.evolve(false);  // Counter 5
-    //         dynamics.evolve(false);  // Counter 0
-    //         THEN("The agent 0 passes and agent 1 waits") {
-    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 7);
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
-    //         }
-    //         dynamics.evolve(false);  // Counter 1
-    //         dynamics.evolve(false);  // Counter 2
-    //         THEN("The agent 1 passes") {
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 9);
-    //         }
-    //       }
-    //     }
+      WHEN("We add agents and make the system evolve") {
+        dynamics.addAgent(2, 0);
+        dynamics.addAgent(4, 0);
+        dynamics.evolve(false);  // Counter 0
+        dynamics.evolve(false);  // Counter 1
+        THEN("The agents are correctly placed") {
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 2);
+        }
+        dynamics.evolve(false);  // Counter 2
+        dynamics.evolve(false);  // Counter 3
+        THEN("The agents are still") {
+          CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(), 2);
+        }
+        dynamics.evolve(false);  // Counter 4
+        dynamics.evolve(false);  // Counter 5
+        dynamics.evolve(false);  // Counter 0
+        THEN("The agent 0 passes and agent 1 waits") {
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(7)->nAgents(), 1);
+        }
+        dynamics.evolve(false);  // Counter 1
+        dynamics.evolve(false);  // Counter 2
+        THEN("The agent 1 passes") { CHECK_EQ(dynamics.graph().edge(9)->nAgents(), 1); }
+      }
+    }
     //     SUBCASE("Traffic Lights optimization algorithm") {
     //       GIVEN("A dynamics object with a traffic light intersection") {
     //         double length{90.}, max_speed{15.};
