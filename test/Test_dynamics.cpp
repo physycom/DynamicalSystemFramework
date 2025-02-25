@@ -138,105 +138,86 @@ TEST_CASE("FirstOrderDynamics") {
         }
       }
     }
-    //     GIVEN("A dynamics object and many itineraries") {
-    //       auto graph = RoadNetwork{};
-    //       graph.importMatrix("./data/matrix.dsm");
-    //       FirstOrderDynamics dynamics{graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-    //       dynamics.addItinerary(2, 2);
-    //       dynamics.addItinerary(1, 1);
-    //       WHEN("We add many agents") {
-    //         dynamics.addAgentsUniformly(3);
-    //         THEN(
-    //             "The number of agents is 3, the destination and the street is the "
-    //             "same as "
-    //             "the itinerary") {
-    //           CHECK_EQ(dynamics.nAgents(), 3);
-    //           CHECK(dynamics.agents().at(0)->streetId().has_value());
-    //           CHECK(dynamics.agents().at(1)->streetId().has_value());
-    //           CHECK(dynamics.agents().at(2)->streetId().has_value());
-    // #ifdef __APPLE__
-    //           CHECK_EQ(dynamics.itineraries()
-    //                        .at(dynamics.agents().at(0)->itineraryId())
-    //                        ->destination(),
-    //                    1);
-    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 6);
-    //           CHECK_EQ(dynamics.itineraries()
-    //                        .at(dynamics.agents().at(1)->itineraryId())
-    //                        ->destination(),
-    //                    2);
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
-    //           CHECK_EQ(dynamics.itineraries()
-    //                        .at(dynamics.agents().at(2)->itineraryId())
-    //                        ->destination(),
-    //                    2);
-    //           CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 8);
-    // #else
-    //           CHECK_EQ(dynamics.itineraries()
-    //                        .at(dynamics.agents().at(0)->itineraryId())
-    //                        ->destination(),
-    //                    2);
-    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 3);
-    //           CHECK_EQ(dynamics.itineraries()
-    //                        .at(dynamics.agents().at(1)->itineraryId())
-    //                        ->destination(),
-    //                    2);
-    //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 8);
-    //           CHECK_EQ(dynamics.itineraries()
-    //                        .at(dynamics.agents().at(2)->itineraryId())
-    //                        ->destination(),
-    //                    1);
-    //           CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 1);
-    // #endif
-    //         }
-    //       }
-    //     }
+    GIVEN("A dynamics object and many itineraries") {
+      auto graph = RoadNetwork{};
+      graph.importMatrix("./data/matrix.dsm");
+      FirstOrderDynamics dynamics{
+          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.addItinerary(2, 2);
+      dynamics.addItinerary(1, 1);
+      WHEN("We add many agents") {
+        dynamics.addAgentsUniformly(3);
+        THEN(
+            "The number of agents is 3, the destination and the street is the "
+            "same as "
+            "the itinerary") {
+          CHECK_EQ(dynamics.nAgents(), 3);
+#ifdef __APPLE__
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(1)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(6)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(6)->movingAgents().top()->itineraryId(), 1);
+          CHECK_EQ(dynamics.graph().edge(8)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(8)->movingAgents().top()->itineraryId(), 2);
+#else
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(1)->movingAgents().top()->itineraryId(), 1);
+          CHECK_EQ(dynamics.graph().edge(3)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(3)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(8)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(8)->movingAgents().top()->itineraryId(), 2);
+#endif
+        }
+      }
+    }
   }
-  //   SUBCASE("addAgentsRandomly") {
-  //     GIVEN("A graph object") {
-  //       auto graph = RoadNetwork{};
-  //       graph.importMatrix("./data/matrix.dat");
-  //       FirstOrderDynamics dynamics{graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       WHEN("We add one agent for existing itinerary") {
-  //         std::unordered_map<uint32_t, double> src{{0, 1.}};
-  //         std::unordered_map<uint32_t, double> dst{{2, 1.}};
-  //         dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
-  //         dynamics.addAgentsRandomly(1, src, dst);
-  //         THEN("The agents are correctly set") {
-  //           CHECK_EQ(dynamics.nAgents(), 1);
-  //           CHECK_EQ(dynamics.itineraries()
-  //                        .at(dynamics.agents().at(0)->itineraryId())
-  //                        ->destination(),
-  //                    2);
-  //           CHECK_EQ(dynamics.agents().at(0)->srcNodeId().value(), 0);
-  //         }
-  //       }
-  //       WHEN("We add agents for existing itineraries") {
-  //         std::unordered_map<uint32_t, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
-  //         std::unordered_map<uint32_t, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
-  //         std::vector<dsm::Id> destinations{14, 102, 107};
-  //         dynamics.setDestinationNodes(destinations);
-  //         dynamics.addAgentsRandomly(3, src, dst);
-  //         THEN("The agents are correctly set") {
-  //           CHECK_EQ(dynamics.nAgents(), 3);
-  //           CHECK_EQ(dynamics.itineraries()
-  //                        .at(dynamics.agents().at(0)->itineraryId())
-  //                        ->destination(),
-  //                    107);
-  //           CHECK_EQ(dynamics.agents().at(0)->srcNodeId().value(), 27);
-  //           CHECK_EQ(dynamics.itineraries()
-  //                        .at(dynamics.agents().at(1)->itineraryId())
-  //                        ->destination(),
-  //                    14);
-  //           CHECK_EQ(dynamics.agents().at(1)->srcNodeId().value(), 1);
-  //           CHECK_EQ(dynamics.itineraries()
-  //                        .at(dynamics.agents().at(2)->itineraryId())
-  //                        ->destination(),
-  //                    14);
-  //           CHECK_EQ(dynamics.agents().at(2)->srcNodeId().value(), 118);
-  //         }
-  //       }
-  //     }
-  //   }
+  SUBCASE("addAgentsRandomly") {
+    GIVEN("A graph object") {
+      auto graph = RoadNetwork{};
+      graph.importMatrix("./data/matrix.dat");
+      FirstOrderDynamics dynamics{
+          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      WHEN("We add one agent for existing itinerary") {
+        std::unordered_map<uint32_t, double> src{{0, 1.}};
+        std::unordered_map<uint32_t, double> dst{{2, 1.}};
+        dynamics.addItinerary(2, 2);
+        dynamics.addAgentsRandomly(1, src, dst);
+        THEN("The agents are correctly set") {
+          CHECK_EQ(dynamics.nAgents(), 1);
+          CHECK_EQ(dynamics.itineraries()
+                       .at(dynamics.agents().at(0)->itineraryId())
+                       ->destination(),
+                   2);
+          CHECK_EQ(dynamics.agents().at(0)->srcNodeId().value(), 0);
+        }
+      }
+      WHEN("We add agents for existing itineraries") {
+        std::unordered_map<uint32_t, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
+        std::unordered_map<uint32_t, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
+        std::vector<dsm::Id> destinations{14, 102, 107};
+        dynamics.setDestinationNodes(destinations);
+        dynamics.addAgentsRandomly(3, src, dst);
+        THEN("The agents are correctly set") {
+          CHECK_EQ(dynamics.nAgents(), 3);
+          CHECK_EQ(dynamics.itineraries()
+                       .at(dynamics.agents().at(0)->itineraryId())
+                       ->destination(),
+                   107);
+          CHECK_EQ(dynamics.agents().at(0)->srcNodeId().value(), 27);
+          CHECK_EQ(dynamics.itineraries()
+                       .at(dynamics.agents().at(1)->itineraryId())
+                       ->destination(),
+                   14);
+          CHECK_EQ(dynamics.agents().at(1)->srcNodeId().value(), 1);
+          CHECK_EQ(dynamics.itineraries()
+                       .at(dynamics.agents().at(2)->itineraryId())
+                       ->destination(),
+                   14);
+          CHECK_EQ(dynamics.agents().at(2)->srcNodeId().value(), 118);
+        }
+      }
+    }
+  }
   SUBCASE("addRandomAgents") {
     GIVEN("A dynamics object") {
       auto const p{0.1};
