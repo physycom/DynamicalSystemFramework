@@ -167,7 +167,7 @@ namespace dsm {
     void addAgent(TArgs&&... args);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent, Time, Id, TArgs...>)
+      requires(std::is_constructible_v<Agent, Time, TArgs...>)
     void addAgents(Size nAgents, TArgs&&... args);
 
     /// @brief Add an itinerary
@@ -890,15 +890,10 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent, Time, Id, TArgs...>)
+    requires(std::is_constructible_v<Agent, Time, TArgs...>)
   void RoadDynamics<delay_t>::addAgents(Size nAgents, TArgs&&... args) {
-    Id agentId{0};
-    // if (!m_agents.empty()) {
-    //   agentId = m_agents.rbegin()->first + 1;
-    // }
-    for (size_t i{0}; i < nAgents; ++i, ++agentId) {
-      addAgent(
-          std::make_unique<Agent>(this->time(), agentId, std::forward<TArgs>(args)...));
+    for (size_t i{0}; i < nAgents; ++i) {
+      addAgent(std::make_unique<Agent>(this->time(), std::forward<TArgs>(args)...));
     }
   }
 

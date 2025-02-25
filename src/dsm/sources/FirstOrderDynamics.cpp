@@ -106,9 +106,6 @@ namespace dsm {
   }
   Measurement<double> FirstOrderDynamics::streetMeanSpeed(double threshold,
                                                           bool above) const {
-    if (this->agents().empty()) {
-      return Measurement(0., 0.);
-    }
     std::vector<double> speeds;
     speeds.reserve(this->graph().edges().size());
     for (const auto& [streetId, street] : this->graph().edges()) {

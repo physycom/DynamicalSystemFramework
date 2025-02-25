@@ -899,56 +899,43 @@ TEST_CASE("FirstOrderDynamics") {
     //       }
     //     }
   }
-  //   SUBCASE("streetMeanSpeed") {
-  //     /// GIVEN: a dynamics object
-  //     /// WHEN: we evolve the dynamics
-  //     /// THEN: the agent mean speed is the same as the street mean speed
-  //     Road::setMeanVehicleLength(2.);
-  //     Street s1{0, std::make_pair(0, 1), 20., 20.};
-  //     Street s2{1, std::make_pair(1, 2), 30., 15.};
-  //     Street s3{2, std::make_pair(3, 1), 30., 15.};
-  //     Street s4{3, std::make_pair(1, 4), 30., 15.};
-  //     RoadNetwork graph2;
-  //     graph2.addStreets(s1, s2, s3, s4);
-  //     graph2.buildAdj();
-  //     for (const auto& [nodeId, node] : graph2.nodes()) {
-  //       node->setCapacity(4);
-  //       node->setTransportCapacity(4);
-  //     }
-  //     FirstOrderDynamics dynamics{graph2, false, 69, 0.5};
-  //     dynamics.addItinerary(2, 2);
-  //     dynamics.updatePaths();
-  //     dynamics.addAgents(4, 2, 0);
-  //     dynamics.evolve(false);
-  //     dynamics.evolve(false);
-  //     double meanSpeed{0.};
-  //     for (const auto& pAgent : dynamics.agents()) {
-  //       meanSpeed += pAgent->speed();
-  //     }
-  //     auto const& pStreet{dynamics.graph().edge(1)};
-  //     meanSpeed /= (pStreet->nExitingAgents() + pStreet->movingAgents().size());
-  //     CHECK_EQ(dynamics.streetMeanSpeed(1), meanSpeed);
-  //     // I don't think the mean speed of agents should be equal to the street's
-  //     // one... CHECK_EQ(dynamics.streetMeanSpeed().mean,
-  //     // dynamics.agentMeanSpeed().mean); CHECK_EQ(dynamics.streetMeanSpeed().std,
-  //     // 0.); street 1 density should be 0.4 so...
-  //     CHECK_EQ(dynamics.streetMeanSpeed(0.2, true).mean, meanSpeed);
-  //     CHECK_EQ(dynamics.streetMeanSpeed(0.2, true).std, 0.);
-  //     CHECK_EQ(dynamics.streetMeanSpeed(0.2, false).mean, 15.);
-  //     CHECK_EQ(dynamics.streetMeanSpeed(0.2, false).std, 0.);
-  //     dynamics.evolve(false);
-  //     meanSpeed = 0.;
-  //     for (auto const& pAgent : dynamics.agents()) {
-  //       if (!pAgent->streetId().has_value())
-  //         continue;
-  //       if (pAgent->streetId().value() == 1) {
-  //         meanSpeed += pAgent->speed();
-  //       }
-  //     }
-  //     meanSpeed /= pStreet->queue(0).size();
-  //     CHECK_EQ(pStreet->queue(0).size(), 3);
-  //     CHECK_EQ(dynamics.streetMeanSpeed(1), meanSpeed);
-  //   }
+  SUBCASE("streetMeanSpeed") {
+    /// GIVEN: a dynamics object
+    /// WHEN: we evolve the dynamics
+    /// THEN: the agent mean speed is the same as the street mean speed
+    Road::setMeanVehicleLength(2.);
+    Street s1{0, std::make_pair(0, 1), 20., 20.};
+    Street s2{1, std::make_pair(1, 2), 30., 15.};
+    Street s3{2, std::make_pair(3, 1), 30., 15.};
+    Street s4{3, std::make_pair(1, 4), 30., 15.};
+    RoadNetwork graph2;
+    graph2.addStreets(s1, s2, s3, s4);
+    graph2.buildAdj();
+    for (const auto& [nodeId, node] : graph2.nodes()) {
+      node->setCapacity(4);
+      node->setTransportCapacity(4);
+    }
+    FirstOrderDynamics dynamics{graph2, false, 69, 0.5};
+    dynamics.addItinerary(2, 2);
+    dynamics.updatePaths();
+    dynamics.addAgents(4, 2, 0);
+    auto const& pStreet{dynamics.graph().edge(1)};
+    dynamics.evolve(false);
+    dynamics.evolve(false);
+    CHECK_EQ(dynamics.streetMeanSpeed(1), 18.5);
+    // I don't think the mean speed of agents should be equal to the street's
+    // one... CHECK_EQ(dynamics.streetMeanSpeed().mean,
+    // dynamics.agentMeanSpeed().mean); CHECK_EQ(dynamics.streetMeanSpeed().std,
+    // 0.); street 1 density should be 0.4 so...
+    CHECK_EQ(dynamics.streetMeanSpeed(0.2, true).mean, 18.5);
+    CHECK_EQ(dynamics.streetMeanSpeed(0.2, true).std, 0.);
+    CHECK_EQ(dynamics.streetMeanSpeed(0.8, false).mean, 15.875);
+    CHECK_EQ(dynamics.streetMeanSpeed(0.8, false).std, doctest::Approx(1.51554));
+    dynamics.evolve(false);
+    dynamics.evolve(false);
+    CHECK_EQ(pStreet->queue(0).size(), 3);
+    CHECK_EQ(dynamics.streetMeanSpeed(1), 0.);
+  }
   SUBCASE("Intersection priorities") {
     GIVEN("A dynamics object with five nodes and eight streets") {
       RoadNetwork graph2;
