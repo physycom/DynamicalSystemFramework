@@ -85,8 +85,7 @@ namespace dsm {
     void m_evolveStreet(std::unique_ptr<Street> const& pStreet, bool reinsert_agents);
     /// @brief If possible, removes one agent from the node, putting it on the next street.
     /// @param pNode A std::unique_ptr to the node
-    /// @return bool True if the agent has been moved, false otherwise
-    bool m_evolveNode(const std::unique_ptr<Node>& pNode);
+    void m_evolveNode(const std::unique_ptr<Node>& pNode);
     /// @brief Evolve the agents.
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
@@ -591,62 +590,62 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  bool RoadDynamics<delay_t>::m_evolveNode(const std::unique_ptr<Node>& pNode) {
-    if (pNode->isIntersection()) {
-      auto& intersection = dynamic_cast<Intersection&>(*pNode);
-      if (intersection.agents().empty()) {
-        return false;
-      }
-      Logger::debug("Uffa");
-      for (auto& [angle, pAgent] : intersection.agents()) {
-        if (!pAgent) {
-          continue;
+  void RoadDynamics<delay_t>::m_evolveNode(const std::unique_ptr<Node>& pNode) {
+    for (auto i{0}; i < pNode->transportCapacity(); ++i) {
+      if (pNode->isIntersection()) {
+        auto& intersection = dynamic_cast<Intersection&>(*pNode);
+        if (intersection.agents().empty()) {
+          Logger::debug(std::format("No agents on node {}", pNode->id()));
+          return;
         }
-        auto const& nextStreet{this->graph().edge(pAgent->nextStreetId().value())};
-        if (nextStreet->isFull()) {
-          if (m_forcePriorities) {
-            return false;
+        for (auto it{intersection.agents().begin()}; it != intersection.agents().end();) {
+          auto& pAgent{it->second};
+          auto const& nextStreet{this->graph().edge(pAgent->nextStreetId().value())};
+          if (nextStreet->isFull()) {
+            Logger::debug(std::format("Next street {} is full", nextStreet->id()));
+            if (m_forcePriorities) {
+              return;
+            }
+            ++it;
+            continue;
           }
-          continue;
+          pAgent->setStreetId();
+          this->setAgentSpeed(pAgent);
+          pAgent->setFreeTime(this->time() +
+                              std::ceil(nextStreet->length() / pAgent->speed()));
+          nextStreet->addAgent(std::move(pAgent));
+          it = intersection.agents().erase(it);
+          break;
         }
-        Logger::debug("Barffa");
-        pAgent->setStreetId();
-        this->setAgentSpeed(pAgent);
-        pAgent->setFreeTime(this->time() +
-                            std::ceil(nextStreet->length() / pAgent->speed()));
-        nextStreet->addAgent(std::move(pAgent));
-        return true;
-      }
-      return false;
-    } else if (pNode->isRoundabout()) {
-      auto& roundabout = dynamic_cast<Roundabout&>(*pNode);
-      if (roundabout.agents().empty()) {
-        return false;
-      }
-      auto const& pAgentTemp{roundabout.agents().front()};
-      auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
-      if (!(nextStreet->isFull())) {
-        if (pAgentTemp->streetId().has_value()) {
-          const auto streetId = pAgentTemp->streetId().value();
-          auto delta = nextStreet->angle() - this->graph().edge(streetId)->angle();
-          if (delta > std::numbers::pi) {
-            delta -= 2 * std::numbers::pi;
-          } else if (delta < -std::numbers::pi) {
-            delta += 2 * std::numbers::pi;
+      } else if (pNode->isRoundabout()) {
+        auto& roundabout = dynamic_cast<Roundabout&>(*pNode);
+        if (roundabout.agents().empty()) {
+          return;
+        }
+        auto const& pAgentTemp{roundabout.agents().front()};
+        auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
+        if (!(nextStreet->isFull())) {
+          if (pAgentTemp->streetId().has_value()) {
+            const auto streetId = pAgentTemp->streetId().value();
+            auto delta = nextStreet->angle() - this->graph().edge(streetId)->angle();
+            if (delta > std::numbers::pi) {
+              delta -= 2 * std::numbers::pi;
+            } else if (delta < -std::numbers::pi) {
+              delta += 2 * std::numbers::pi;
+            }
+            m_increaseTurnCounts(streetId, delta);
           }
-          m_increaseTurnCounts(streetId, delta);
+          auto pAgent{roundabout.dequeue()};
+          pAgent->setStreetId();
+          this->setAgentSpeed(pAgent);
+          pAgent->setFreeTime(this->time() +
+                              std::ceil(nextStreet->length() / pAgent->speed()));
+          nextStreet->addAgent(std::move(pAgent));
+        } else {
+          return;
         }
-        auto pAgent{roundabout.dequeue()};
-        pAgent->setStreetId();
-        this->setAgentSpeed(pAgent);
-        pAgent->setFreeTime(this->time() +
-                            std::ceil(nextStreet->length() / pAgent->speed()));
-        nextStreet->addAgent(std::move(pAgent));
-      } else {
-        return false;
       }
     }
-    return true;
   }
 
   template <typename delay_t>
@@ -1022,24 +1021,7 @@ namespace dsm {
     std::for_each(this->graph().nodes().cbegin(),
                   this->graph().nodes().cend(),
                   [&](const auto& pair) {
-                    for (auto i = 0; i < pair.second->transportCapacity(); ++i) {
-                      if (!m_evolveNode(pair.second)) {
-                        break;
-                      }
-                    }
-                    // Remove all nullptrs from the agents' list
-                    if (pair.second->isIntersection()) {
-                      auto& intersection = dynamic_cast<Intersection&>(*pair.second);
-                      for (auto it = intersection.agents().begin();
-                           it != intersection.agents().end();) {
-                        if (!it->second) {
-                          Logger::debug("Zio pera");
-                          it = intersection.agents().erase(it);
-                        } else {
-                          ++it;
-                        }
-                      }
-                    }
+                    m_evolveNode(pair.second);
                     if (pair.second->isTrafficLight()) {
                       auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
                       ++tl;

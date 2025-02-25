@@ -80,10 +80,7 @@ namespace dsm {
     /// @brief Set the node's transport capacity
     /// @param capacity The node's transport capacity
     virtual void setTransportCapacity(int capacity) {
-      if (capacity < 1) {
-        Logger::error(std::format(
-            "The transport capacity of a node ({}) must be greater than 0.", capacity));
-      }
+      assert(capacity > 0);
       m_transportCapacity = capacity;
     }
     /// @brief Get the node's id

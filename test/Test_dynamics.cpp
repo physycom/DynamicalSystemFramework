@@ -968,75 +968,80 @@ TEST_CASE("FirstOrderDynamics") {
   //     CHECK_EQ(pStreet->queue(0).size(), 3);
   //     CHECK_EQ(dynamics.streetMeanSpeed(1), meanSpeed);
   //   }
-  //   SUBCASE("Intersection priorities") {
-  //     GIVEN("A dynamics object with five nodes and eight streets") {
-  //       RoadNetwork graph2;
-  //       graph2.addNode<Intersection>(0, std::make_pair(0, 0));
-  //       graph2.addNode<Intersection>(1, std::make_pair(-1, 1));   // A
-  //       graph2.addNode<Intersection>(2, std::make_pair(1, 1));    // B
-  //       graph2.addNode<Intersection>(3, std::make_pair(1, -1));   // C
-  //       graph2.addNode<Intersection>(4, std::make_pair(-1, -1));  // D
-  //       graph2.addEdge<Street>(0, std::make_pair(0, 1), 10., 10.);
-  //       graph2.addEdge<Street>(1, std::make_pair(0, 2), 10., 10.);
-  //       graph2.addEdge<Street>(2, std::make_pair(0, 3), 10., 10.);
-  //       graph2.addEdge<Street>(3, std::make_pair(0, 4), 10., 10.);
-  //       graph2.addEdge<Street>(4, std::make_pair(1, 0), 10., 10.);
-  //       graph2.addEdge<Street>(5, std::make_pair(2, 0), 10., 10.);
-  //       graph2.addEdge<Street>(6, std::make_pair(3, 0), 10., 10.);
-  //       graph2.addEdge<Street>(7, std::make_pair(4, 0), 10., 10.);
-  //       graph2.buildAdj();
-  //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       dynamics.graph().node(0)->setCapacity(3);
-  //       dynamics.addItinerary(1, 1);
-  //       dynamics.addItinerary(2, 2);
-  //       dynamics.updatePaths();
-  //       WHEN("We add agents and evolve the dynamics") {
-  //         // add an agent in C, D, A
-  //         dynamics.addAgent(0, 2, 4);
-  //         dynamics.addAgent(1, 2, 3);
-  //         dynamics.addAgent(2, 2, 1);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         THEN("The agent in A passes first") {
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 20);  // second
-  //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 15);  // third
-  //           CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 2);   // first
-  //         }
-  //         dynamics.evolve(false);
-  //         THEN("The agent in D passes second") {
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 2);   // first
-  //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 15);  // second
-  //         }
-  //         dynamics.evolve(false);
-  //         THEN("The agent in C passes last") {
-  //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 2);
-  //         }
-  //       }
-  //       WHEN("We add agents of another itinerary and update the dynamics") {
-  //         dynamics.addAgent(0, 1, 2);
-  //         dynamics.addAgent(1, 1, 3);
-  //         dynamics.addAgent(2, 1, 4);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         THEN("The agent in D passes first") {
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 10);
-  //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 15);
-  //           CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 1);
-  //         }
-  //         dynamics.evolve(false);
-  //         THEN("The agent in C passes second") {
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 10);
-  //           CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
-  //         }
-  //         dynamics.evolve(false);
-  //         THEN("The agent in C passes last") {
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
-  //         }
-  //       }
-  //     }
-  //   }
+  SUBCASE("Intersection priorities") {
+    GIVEN("A dynamics object with five nodes and eight streets") {
+      RoadNetwork graph2;
+      graph2.addNode<Intersection>(0, std::make_pair(0, 0));
+      graph2.addNode<Intersection>(1, std::make_pair(-1, 1));   // A
+      graph2.addNode<Intersection>(2, std::make_pair(1, 1));    // B
+      graph2.addNode<Intersection>(3, std::make_pair(1, -1));   // C
+      graph2.addNode<Intersection>(4, std::make_pair(-1, -1));  // D
+      graph2.addEdge<Street>(0, std::make_pair(0, 1), 10., 10.);
+      graph2.addEdge<Street>(1, std::make_pair(0, 2), 30., 10.);
+      graph2.addEdge<Street>(2, std::make_pair(0, 3), 10., 10.);
+      graph2.addEdge<Street>(3, std::make_pair(0, 4), 10., 10.);
+      graph2.addEdge<Street>(4, std::make_pair(1, 0), 10., 10.);
+      graph2.addEdge<Street>(5, std::make_pair(2, 0), 10., 10.);
+      graph2.addEdge<Street>(6, std::make_pair(3, 0), 10., 10.);
+      graph2.addEdge<Street>(7, std::make_pair(4, 0), 10., 10.);
+      graph2.buildAdj();
+      FirstOrderDynamics dynamics{
+          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.graph().node(0)->setCapacity(3);
+      dynamics.graph().node(0)->setTransportCapacity(1);
+      auto& nodeO{dynamic_cast<Intersection&>(*dynamics.graph().node(0))};
+      dynamics.addItinerary(2, 2);
+      dynamics.updatePaths();
+      WHEN("We add agents and evolve the dynamics") {
+        // add an agent in C, D, A
+        dynamics.addAgent(2, 4);  // Second
+        dynamics.addAgent(2, 3);  // Third
+        dynamics.addAgent(2, 1);  // First
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        THEN("The agent in A passes first") {
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
+          CHECK_EQ(nodeO.agents().size(), 2);
+          CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 20);
+        }
+        dynamics.evolve(false);
+        THEN("The agent in D passes second") {
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 2);
+          CHECK_EQ(nodeO.agents().size(), 1);
+          CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 15);
+        }
+        dynamics.evolve(false);
+        THEN("The agent in C passes last") {
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 3);
+          CHECK(nodeO.agents().empty());
+        }
+      }
+      // WHEN("We add agents of another itinerary and update the dynamics") {
+      //   dynamics.addAgent(0, 1, 2);
+      //   dynamics.addAgent(1, 1, 3);
+      //   dynamics.addAgent(2, 1, 4);
+      //   dynamics.evolve(false);
+      //   dynamics.evolve(false);
+      //   dynamics.evolve(false);
+      //   THEN("The agent in D passes first") {
+      //     CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 10);
+      //     CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 15);
+      //     CHECK_EQ(dynamics.agents().at(2)->streetId().value(), 1);
+      //   }
+      //   dynamics.evolve(false);
+      //   THEN("The agent in C passes second") {
+      //     CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 10);
+      //     CHECK_EQ(dynamics.agents().at(1)->streetId().value(), 1);
+      //   }
+      //   dynamics.evolve(false);
+      //   THEN("The agent in C passes last") {
+      //     CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
+      //   }
+      // }
+    }
+  }
   SUBCASE("meanSpireFlow") {
     GIVEN("A network with a spireStreet and a normal street") {
       RoadNetwork graph2;
