@@ -25,6 +25,8 @@
 #include <filesystem>
 #include <functional>
 
+#include <tbb/tbb.h>
+
 #include "Network.hpp"
 #include "../utility/TypeTraits/is_agent.hpp"
 #include "../utility/TypeTraits/is_itinerary.hpp"
@@ -67,6 +69,7 @@ namespace dsm {
     network_t m_graph;
 
   protected:
+    tbb::task_arena m_taskArena;
     Time m_time;
     std::mt19937_64 m_generator;
 
@@ -96,5 +99,6 @@ namespace dsm {
     if (seed.has_value()) {
       m_generator.seed(*seed);
     }
+    m_taskArena.initialize();
   }
 };  // namespace dsm
