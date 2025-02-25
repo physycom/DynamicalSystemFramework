@@ -953,6 +953,7 @@ namespace dsm {
               if (pAgent->freeTime() < this->time()) {
                 break;
               }
+              pAgent->setSpeed(0.);
               auto const nLanes = pStreet->nLanes();
               bool bArrived{false};
               if (!pAgent->isRandom()) {

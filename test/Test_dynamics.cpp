@@ -259,30 +259,31 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
-  //   SUBCASE("addAgents") {
-  //     GIVEN("A dynamics object and one itinerary") {
-  //       auto graph = RoadNetwork{};
-  //       graph.importMatrix("./data/matrix.dsm");
-  //       FirstOrderDynamics dynamics{graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
-  //       WHEN("We add an agent with itinerary 0") {
-  //         dynamics.addAgent(0, 0);
-  //         THEN(
-  //             "The number of agents is 1 and the destination is the same as the "
-  //             "itinerary") {
-  //           CHECK_EQ(dynamics.nAgents(), 1);
-  //           CHECK_EQ(dynamics.itineraries()
-  //                        .at(dynamics.agents().at(0)->itineraryId())
-  //                        ->destination(),
-  //                    2);
-  //         }
-  //       }
-  //       WHEN("We add 69 agents with itinerary 0") {
-  //         dynamics.addAgents(69, 0);
-  //         THEN("The number of agents is 69") { CHECK_EQ(dynamics.nAgents(), 69); }
-  //       }
-  //     }
-  //   }
+  SUBCASE("addAgents") {
+    GIVEN("A dynamics object and one itinerary") {
+      auto graph = RoadNetwork{};
+      graph.importMatrix("./data/matrix.dsm");
+      FirstOrderDynamics dynamics{
+          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.addItinerary(2, 2);
+      WHEN("We add an agent with itinerary 2") {
+        dynamics.addAgent(2, 0);
+        THEN(
+            "The number of agents is 1 and the destination is the same as the "
+            "itinerary") {
+          CHECK_EQ(dynamics.nAgents(), 1);
+          CHECK_EQ(dynamics.itineraries()
+                       .at(dynamics.agents().at(0)->itineraryId())
+                       ->destination(),
+                   2);
+        }
+      }
+      WHEN("We add 69 agents with itinerary 0") {
+        dynamics.addAgents(69, 0);
+        THEN("The number of agents is 69") { CHECK_EQ(dynamics.nAgents(), 69); }
+      }
+    }
+  }
   //   SUBCASE("Add too many agents") {
   //     GIVEN("A simple graph with two nodes and only one street") {
   //       Street s{0, std::make_pair(0, 1), 2.};  // Capacity of 1 agent
@@ -464,7 +465,7 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(dynamics.time() - pAgent->spawnTime(), dynamics.time());
           CHECK_EQ(pAgent->freeTime() + 1, dynamics.time());
           CHECK_EQ(pAgent->streetId().value(), 1);
-          CHECK_EQ(pAgent->speed(), 13.8888888889);
+          CHECK_EQ(pAgent->speed(), 0.);
         }
         dynamics.evolve(false);  // Agent changes street
         THEN("The agent evolves again, changing street") {
@@ -849,71 +850,74 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
-  //   SUBCASE("Travelled distance") {
-  //     GIVEN("A dynamics with a two-streets network and an agent") {
-  //       Street s1{0, std::make_pair(0, 1), 3.};
-  //       Street s2{1, std::make_pair(1, 2), 1.};
-  //       RoadNetwork graph2;
-  //       graph2.addStreets(s1, s2);
-  //       graph2.buildAdj();
-  //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       dynamics.addItinerary(2, 2);
-  //       dynamics.updatePaths();
-  //       dynamics.addAgent(0, 2, 0);
-  //       WHEN("We evolve the dynamics") {
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         THEN("The agent has travelled the correct distance") {
-  //           CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 2);
-  //           CHECK_EQ(dynamics.agents().at(0)->freeTime(), dynamics.time());
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
-  //           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
-  //           CHECK_EQ(dynamics.agents().at(0)->distance(), 3.);
-  //         }
-  //       }
-  //     }
-  //     GIVEN(
-  //         "A dynamics with one stochastic street and one normal street network and an "
-  //         "agent") {
-  //       Street s1{0, std::make_pair(0, 1), 3.};
-  //       Street s2{1, std::make_pair(1, 2), 1.};
-  //       RoadNetwork graph2;
-  //       graph2.addStreets(s1, s2);
-  //       graph2.buildAdj();
-  //       graph2.makeStochasticStreet(1, 0.3);
-  //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       dynamics.addItinerary(2, 2);
-  //       dynamics.updatePaths();
-  //       dynamics.addAgent(0, 2, 0);
-  //       WHEN("We evolve the dynamics") {
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  // #ifndef __APPLE__
-  //         THEN("The agent has travelled the correct distance") {
-  //           CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 6);
-  //           CHECK_EQ(dynamics.agents().at(0)->freeTime(), dynamics.time());
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
-  //           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
-  //           CHECK_EQ(dynamics.agents().at(0)->distance(), 4.);
-  //         }
-  // #else
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         THEN("The agent has travelled the correct distance") {
-  //           CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 8);
-  //           CHECK_EQ(dynamics.agents().at(0)->freeTime(), dynamics.time());
-  //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
-  //           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
-  //           CHECK_EQ(dynamics.agents().at(0)->distance(), 4.);
-  //         }
-  // #endif
-  //       }
-  //     }
-  //   }
+  SUBCASE("Travelled distance") {
+    GIVEN("A dynamics with a two-streets network and an agent") {
+      Street s1{0, std::make_pair(0, 1), 3.};
+      Street s2{1, std::make_pair(1, 2), 1.};
+      RoadNetwork graph2;
+      graph2.addStreets(s1, s2);
+      graph2.buildAdj();
+      FirstOrderDynamics dynamics{
+          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.addItinerary(2, 2);
+      dynamics.updatePaths();
+      dynamics.addAgent(2, 0);
+      WHEN("We evolve the dynamics") {
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        THEN("The agent has travelled the correct distance") {
+          auto const& pAgent{dynamics.graph().edge(1)->queue(0).front()};
+          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), 3);
+          CHECK_EQ(pAgent->freeTime() + 1, dynamics.time());
+          CHECK_EQ(pAgent->streetId().value(), 1);
+          CHECK_EQ(pAgent->speed(), 0.);
+          CHECK_EQ(pAgent->distance(), 3.);
+        }
+      }
+    }
+    //     GIVEN(
+    //         "A dynamics with one stochastic street and one normal street network and an "
+    //         "agent") {
+    //       Street s1{0, std::make_pair(0, 1), 3.};
+    //       Street s2{1, std::make_pair(1, 2), 1.};
+    //       RoadNetwork graph2;
+    //       graph2.addStreets(s1, s2);
+    //       graph2.buildAdj();
+    //       graph2.makeStochasticStreet(1, 0.3);
+    //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+    //       dynamics.addItinerary(2, 2);
+    //       dynamics.updatePaths();
+    //       dynamics.addAgent(0, 2, 0);
+    //       WHEN("We evolve the dynamics") {
+    //         dynamics.evolve(false);
+    //         dynamics.evolve(false);
+    //         dynamics.evolve(false);
+    //         dynamics.evolve(false);
+    //         dynamics.evolve(false);
+    //         dynamics.evolve(false);
+    // #ifndef __APPLE__
+    //         THEN("The agent has travelled the correct distance") {
+    //           CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 6);
+    //           CHECK_EQ(dynamics.agents().at(0)->freeTime(), dynamics.time());
+    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
+    //           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
+    //           CHECK_EQ(dynamics.agents().at(0)->distance(), 4.);
+    //         }
+    // #else
+    //         dynamics.evolve(false);
+    //         dynamics.evolve(false);
+    //         THEN("The agent has travelled the correct distance") {
+    //           CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 8);
+    //           CHECK_EQ(dynamics.agents().at(0)->freeTime(), dynamics.time());
+    //           CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 5);
+    //           CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
+    //           CHECK_EQ(dynamics.agents().at(0)->distance(), 4.);
+    //         }
+    // #endif
+    //       }
+    //     }
+  }
   //   SUBCASE("streetMeanSpeed") {
   //     /// GIVEN: a dynamics object
   //     /// WHEN: we evolve the dynamics
@@ -1033,60 +1037,62 @@ TEST_CASE("FirstOrderDynamics") {
   //       }
   //     }
   //   }
-  //   SUBCASE("meanSpireFlow") {
-  //     GIVEN("A network with a spireStreet and a normal street") {
-  //       RoadNetwork graph2;
-  //       graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
-  //       graph2.addEdge<Street>(1, std::make_pair(1, 2), 10., 10.);
-  //       graph2.buildAdj();
-  //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
-  //       dynamics.updatePaths();
-  //       dynamics.addAgent(0, 2, 0);
-  //       WHEN("We evolve the dynamics") {
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         auto meanSpireFlow = dynamics.meanSpireInputFlow();
-  //         THEN("The mean flow of the spire street is the same as the agent flow") {
-  //           CHECK_EQ(meanSpireFlow.mean, 0.5);
-  //           CHECK_EQ(meanSpireFlow.std, 0);
-  //         }
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         meanSpireFlow = dynamics.meanSpireOutputFlow();
-  //         THEN("The mean flow of the spire street is the same as the agent flow") {
-  //           CHECK_EQ(meanSpireFlow.mean, 0.5);
-  //           CHECK_EQ(meanSpireFlow.std, 0);
-  //         }
-  //       }
-  //     }
-  //   }
-  //   SUBCASE("meanSpireFlow") {
-  //     GIVEN("A network with a spireStreet and a normal street") {
-  //       RoadNetwork graph2;
-  //       graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
-  //       graph2.addEdge(1, std::make_pair(1, 2), 10., 10.);
-  //       graph2.buildAdj();
-  //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       dynamics.addItinerary(2, 2);
-  //       dynamics.updatePaths();
-  //       dynamics.addAgent(0, 2, 0);
-  //       WHEN("We evolve the dynamics") {
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         auto meanSpireFlow = dynamics.meanSpireInputFlow();
-  //         THEN("The mean flow of the spire street is the same as the agent flow") {
-  //           CHECK_EQ(meanSpireFlow.mean, 0.5);
-  //           CHECK_EQ(meanSpireFlow.std, 0);
-  //         }
-  //         dynamics.evolve(false);
-  //         dynamics.evolve(false);
-  //         meanSpireFlow = dynamics.meanSpireOutputFlow();
-  //         THEN("The mean flow of the spire street is the same as the agent flow") {
-  //           CHECK_EQ(meanSpireFlow.mean, 0.5);
-  //           CHECK_EQ(meanSpireFlow.std, 0);
-  //         }
-  //       }
-  //     }
-  //   }
+  SUBCASE("meanSpireFlow") {
+    GIVEN("A network with a spireStreet and a normal street") {
+      RoadNetwork graph2;
+      graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
+      graph2.addEdge<Street>(1, std::make_pair(1, 2), 10., 10.);
+      graph2.buildAdj();
+      FirstOrderDynamics dynamics{
+          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
+      dynamics.updatePaths();
+      dynamics.addAgent(2, 0);
+      WHEN("We evolve the dynamics") {
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        auto meanSpireFlow = dynamics.meanSpireInputFlow();
+        THEN("The mean flow of the spire street is the same as the agent flow") {
+          CHECK_EQ(meanSpireFlow.mean, 0.5);
+          CHECK_EQ(meanSpireFlow.std, 0);
+        }
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        meanSpireFlow = dynamics.meanSpireOutputFlow();
+        THEN("The mean flow of the spire street is the same as the agent flow") {
+          CHECK_EQ(meanSpireFlow.mean, 0.5);
+          CHECK_EQ(meanSpireFlow.std, 0);
+        }
+      }
+    }
+  }
+  SUBCASE("meanSpireFlow") {
+    GIVEN("A network with a spireStreet and a normal street") {
+      RoadNetwork graph2;
+      graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
+      graph2.addEdge(1, std::make_pair(1, 2), 10., 10.);
+      graph2.buildAdj();
+      FirstOrderDynamics dynamics{
+          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.addItinerary(2, 2);
+      dynamics.updatePaths();
+      dynamics.addAgent(2, 0);
+      WHEN("We evolve the dynamics") {
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        auto meanSpireFlow = dynamics.meanSpireInputFlow();
+        THEN("The mean flow of the spire street is the same as the agent flow") {
+          CHECK_EQ(meanSpireFlow.mean, 0.5);
+          CHECK_EQ(meanSpireFlow.std, 0);
+        }
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        meanSpireFlow = dynamics.meanSpireOutputFlow();
+        THEN("The mean flow of the spire street is the same as the agent flow") {
+          CHECK_EQ(meanSpireFlow.mean, 0.5);
+          CHECK_EQ(meanSpireFlow.std, 0);
+        }
+      }
+    }
+  }
 }
