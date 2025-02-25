@@ -32,8 +32,6 @@
 #include "Itinerary.hpp"
 #include "RoadNetwork.hpp"
 #include "SparseMatrix.hpp"
-#include "../utility/TypeTraits/is_agent.hpp"
-#include "../utility/TypeTraits/is_itinerary.hpp"
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
@@ -858,7 +856,7 @@ namespace dsm {
       if (itineraryIt == this->itineraries().cend()) {
         Logger::error(std::format("Itinerary with destination {} not found.", dstId));
       }
-      this->addAgent(agentId, itineraryIt->first, srcId);
+      this->addAgent(itineraryIt->first, srcId);
       --nAgents;
     }
   }
