@@ -15,14 +15,13 @@
 #include <stdexcept>
 #include <cmath>
 #include <numbers>
-#include <set>
 #include <format>
 #include <cassert>
 #include <string>
 #include <vector>
 
-#include "Road.hpp"
 #include "Agent.hpp"
+#include "Road.hpp"
 #include "Sensors.hpp"
 #include "../utility/TypeTraits/is_numeric.hpp"
 #include "../utility/queue.hpp"
@@ -30,20 +29,17 @@
 #include "../utility/Typedef.hpp"
 
 namespace dsm {
+
+  class Agent;
+
   /// @brief The Street class represents a street in the network.
   class Street : public Road {
   private:
-    std::vector<dsm::queue<Size>> m_exitQueues;
+    std::vector<dsm::queue<std::unique_ptr<Agent>>> m_exitQueues;
+    dsm::priority_queue<std::unique_ptr<Agent>> m_movingAgents;
     std::vector<Direction> m_laneMapping;
-    std::vector<Id> m_movingAgents;
 
   public:
-    /// @brief Construct a new Street object starting from an existing street
-    /// @details The new street has different id but same capacity, length, speed limit, and node pair as the
-    ///          existing street.
-    /// @param Street The existing street
-    /// @param id The new street's id
-    Street(Id id, const Street&);
     /// @brief Construct a new Street object
     /// @param id The street's id
     /// @param nodePair The street's node pair
@@ -62,11 +58,12 @@ namespace dsm {
            std::vector<std::pair<double, double>> geometry = {},
            std::optional<int> capacity = std::nullopt,
            int transportCapacity = 1);
-    virtual ~Street() = default;
+    Street(Street&&) = default;
+    Street(Street const&) = delete;
 
     /// @brief Set the street's queue
     /// @param queue The street's queue
-    inline void setQueue(dsm::queue<Size> queue, size_t index) {
+    inline void setQueue(dsm::queue<std::unique_ptr<Agent>> queue, size_t index) {
       m_exitQueues[index] = std::move(queue);
     }
     /// @brief Set the mean vehicle length
@@ -74,15 +71,16 @@ namespace dsm {
     /// @throw std::invalid_argument If the mean vehicle length is negative
     static void setMeanVehicleLength(double meanVehicleLength);
 
-    /// @brief Get the street's waiting agents
-    /// @return std::set<Id>, The street's waiting agents
-    std::vector<Id> const& movingAgents() const;
     /// @brief Get the street's queue
     /// @return dsm::queue<Size>, The street's queue
-    const dsm::queue<Size>& queue(size_t index) const { return m_exitQueues[index]; }
+    const dsm::queue<std::unique_ptr<Agent>>& queue(size_t const& index) const {
+      return m_exitQueues[index];
+    }
     /// @brief Get the street's queues
     /// @return std::vector<dsm::queue<Size>> The street's queues
-    const std::vector<dsm::queue<Size>>& exitQueues() const { return m_exitQueues; }
+    std::vector<dsm::queue<std::unique_ptr<Agent>>> const& exitQueues() const {
+      return m_exitQueues;
+    }
     /// @brief  Get the number of agents on the street
     /// @return Size, The number of agents on the street
     int nAgents() const final;
@@ -93,6 +91,8 @@ namespace dsm {
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
     bool isFull() const final { return nAgents() == m_capacity; }
+
+    dsm::priority_queue<std::unique_ptr<Agent>>& movingAgents() { return m_movingAgents; }
     int nMovingAgents() const override { return m_movingAgents.size(); }
     /// @brief Get the number of agents on all queues
     /// @return Size The number of agents on all queues
@@ -100,14 +100,14 @@ namespace dsm {
 
     inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
 
-    void addAgent(Id agentId) override;
+    virtual void addAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
-    void enqueue(Id agentId, size_t index);
+    void enqueue(size_t const& queueId);
     /// @brief Remove an agent from the street's queue
     /// @return Id The id of the agent removed from the street's queue
-    virtual Id dequeue(size_t index);
+    virtual std::unique_ptr<Agent> dequeue(size_t index);
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     virtual bool isSpire() const { return false; };
@@ -125,7 +125,7 @@ namespace dsm {
     double m_flowRate;
 
   public:
-    StochasticStreet(Id id, const Street& street, double flowRate);
+    StochasticStreet(Street&&, double flowRate);
     StochasticStreet(Id id,
                      std::pair<Id, Id> nodePair,
                      double length = Road::meanVehicleLength(),
@@ -150,12 +150,15 @@ namespace dsm {
   private:
   public:
     using Street::Street;
+    SpireStreet(Street&& street) : Street(std::move(street)) {}
+    SpireStreet(SpireStreet&&) = default;
+    SpireStreet(SpireStreet const&) = delete;
     ~SpireStreet() = default;
 
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
-    void addAgent(Id agentId) final;
+    void addAgent(std::unique_ptr<Agent> pAgent) final;
 
     /// @brief Get the mean flow of the street
     /// @return int The flow of the street, i.e. the difference between input and output flows
@@ -164,7 +167,7 @@ namespace dsm {
     int meanFlow();
     /// @brief Remove an agent from the street's queue
     /// @return Id The id of the agent removed from the street's queue
-    Id dequeue(size_t index) final;
+    std::unique_ptr<Agent> dequeue(size_t index) final;
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     bool isSpire() const final { return true; };
@@ -176,7 +179,7 @@ namespace dsm {
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
     /// @throw std::runtime_error If the street's queue is full
-    void addAgent(Id agentId) final;
+    void addAgent(std::unique_ptr<Agent> pAgent) final;
 
     /// @brief Get the mean flow of the street
     /// @return int The flow of the street, i.e. the difference between input and output flows
@@ -185,7 +188,7 @@ namespace dsm {
     int meanFlow();
     /// @brief Remove an agent from the street's queue
     /// @return std::optional<Id> The id of the agent removed from the street's queue
-    Id dequeue(size_t index) final;
+    std::unique_ptr<Agent> dequeue(size_t index) final;
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
     bool isSpire() const final { return true; };

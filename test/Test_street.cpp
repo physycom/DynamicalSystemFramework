@@ -76,24 +76,24 @@ TEST_CASE("Street") {
     /*This tests the insertion of an agent in a street's queue*/
 
     // define some agents
-    Agent a1{0, 1, 1, 0};  // they are all in street 1
-    Agent a2{0, 2, 1, 0};
-    Agent a3{0, 3, 1, 0};
-    Agent a4{0, 4, 1, 0};
+    Agent a1{0, 1, 0};  // they are all in street 1
+    Agent a2{0, 1, 0};
+    Agent a3{0, 1, 0};
+    Agent a4{0, 1, 0};
 
     Street street{1, std::make_pair(0, 1), 3.5};
     // fill the queue
-    street.addAgent(a1.id());
-    street.enqueue(a1.id(), 0);
-    street.addAgent(a2.id());
-    street.enqueue(a2.id(), 0);
+    street.addAgent(std::make_unique<Agent>(a1));
+    street.enqueue(0);
+    street.addAgent(std::make_unique<Agent>(a2));
+    street.enqueue(0);
     CHECK_EQ(doctest::Approx(street.density()), 0.571429);
-    street.addAgent(a3.id());
-    street.enqueue(a3.id(), 0);
-    street.addAgent(a4.id());
-    street.enqueue(a4.id(), 0);
-    CHECK_EQ(street.queue(0).front(), 1);
-    CHECK_EQ(street.queue(0).back(), 4);
+    street.addAgent(std::make_unique<Agent>(a3));
+    street.enqueue(0);
+    street.addAgent(std::make_unique<Agent>(a4));
+    street.enqueue(0);
+    CHECK(street.queue(0).front());
+    CHECK(street.queue(0).back());
     CHECK_EQ(street.queue(0).size(), street.capacity());
     CHECK_EQ(street.queue(0).size(), street.capacity());
     CHECK_EQ(doctest::Approx(street.density()), 1.14286);
@@ -104,31 +104,30 @@ TEST_CASE("Street") {
     /*This tests the exit of an agent from a street's queue*/
 
     // define some agents
-    Agent a1{0, 1, 1, 0};  // they are all in street 1
-    Agent a2{0, 2, 1, 0};
-    Agent a3{0, 3, 1, 0};
-    Agent a4{0, 4, 1, 0};
+    Agent a1{0, 1, 0};  // they are all in street 1
+    Agent a2{0, 1, 0};
+    Agent a3{0, 1, 0};
+    Agent a4{0, 1, 0};
 
     Street street{1, std::make_pair(0, 1), 3.5};
     // fill the queue
-    street.addAgent(a1.id());
-    street.enqueue(a1.id(), 0);
-    street.addAgent(a2.id());
-    street.enqueue(a2.id(), 0);
-    street.addAgent(a3.id());
-    street.enqueue(a3.id(), 0);
-    street.addAgent(a4.id());
-    street.enqueue(a4.id(), 0);
-    CHECK_EQ(street.queue(0).front(),
-             1);  // check that agent 1 is at the front of the queue
+    street.addAgent(std::make_unique<Agent>(a1));
+    street.enqueue(0);
+    street.addAgent(std::make_unique<Agent>(a2));
+    street.enqueue(0);
+    street.addAgent(std::make_unique<Agent>(a3));
+    street.enqueue(0);
+    street.addAgent(std::make_unique<Agent>(a4));
+    street.enqueue(0);
+    CHECK(street.queue(0).front());
     // dequeue
     street.dequeue(0);
-    CHECK_EQ(street.queue(0).front(), 2);  // check that agent 2 is now at front
+    CHECK(street.queue(0).front());  // check that agent 2 is now at front
     // check that the length of the queue has decreased
     CHECK_EQ(street.queue(0).size(), 3);
     CHECK_EQ(street.queue(0).size(), 3);
     // check that the next agent dequeued is agent 2
-    CHECK_EQ(street.dequeue(0), 2);
+    CHECK(street.dequeue(0));
     CHECK_EQ(street.queue(0).size(), 2);
     street.dequeue(0);
     street.dequeue(0);  // the queue is now empty
@@ -150,9 +149,9 @@ TEST_CASE("SpireStreet") {
     GIVEN("A spire street") {
       SpireStreet street{1, std::make_pair(0, 1), 3.5};
       WHEN("An agent is enqueued") {
-        street.addAgent(1);
+        street.addAgent(std::make_unique<Agent>(0, 1));
         THEN("The input flow is one") { CHECK_EQ(street.inputCounts(), 1); }
-        street.enqueue(1, 0);
+        street.enqueue(0);
         THEN("The density is updated") {
           CHECK_EQ(doctest::Approx(street.density()), 0.285714);
         }
@@ -160,12 +159,12 @@ TEST_CASE("SpireStreet") {
         THEN("Mean flow is one") { CHECK_EQ(street.meanFlow(), 1); }
       }
       WHEN("Three agents are enqueued") {
-        street.addAgent(1);
-        street.enqueue(1, 0);
-        street.addAgent(2);
-        street.enqueue(2, 0);
-        street.addAgent(3);
-        street.enqueue(3, 0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
         THEN("The density is updated") {
           CHECK_EQ(doctest::Approx(street.density()), 0.857143);
         }
@@ -174,8 +173,8 @@ TEST_CASE("SpireStreet") {
         THEN("Mean flow is three") { CHECK_EQ(street.meanFlow(), 3); }
       }
       WHEN("An agent is dequeued") {
-        street.addAgent(1);
-        street.enqueue(1, 0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
         street.dequeue(0);
         THEN("The density is updated") { CHECK_EQ(doctest::Approx(street.density()), 0); }
         THEN("Input flow is one") { CHECK_EQ(street.inputCounts(), 1); }
@@ -183,12 +182,12 @@ TEST_CASE("SpireStreet") {
         THEN("Mean flow is zero") { CHECK_EQ(street.meanFlow(), 0); }
       }
       WHEN("Three agents are dequeued") {
-        street.addAgent(1);
-        street.enqueue(1, 0);
-        street.addAgent(2);
-        street.enqueue(2, 0);
-        street.addAgent(3);
-        street.enqueue(3, 0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
         street.dequeue(0);
         street.dequeue(0);
         street.dequeue(0);
@@ -198,27 +197,27 @@ TEST_CASE("SpireStreet") {
         THEN("Mean flow is zero") { CHECK_EQ(street.meanFlow(), 0); }
       }
       WHEN("Input is greater than output") {
-        street.addAgent(1);
-        street.enqueue(1, 0);
-        street.addAgent(2);
-        street.enqueue(2, 0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
         street.dequeue(0);
         street.dequeue(0);
-        street.addAgent(3);
-        street.enqueue(3, 0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
         THEN("The density is updated") {
           CHECK_EQ(doctest::Approx(street.density()), 0.285714);
         }
         THEN("Mean flow is one") { CHECK_EQ(street.meanFlow(), 1); }
       }
       WHEN("Output is greater than input") {
-        street.addAgent(1);
-        street.enqueue(1, 0);
-        street.addAgent(2);
-        street.enqueue(2, 0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
         street.meanFlow();
-        street.addAgent(3);
-        street.enqueue(3, 0);
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
         street.dequeue(0);
         street.dequeue(0);
         THEN("The density is updated") {

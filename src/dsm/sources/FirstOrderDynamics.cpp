@@ -29,16 +29,15 @@ namespace dsm {
     }
   }
 
-  void FirstOrderDynamics::setAgentSpeed(Size agentId) {
-    const auto& agent{this->agents().at(agentId)};
-    const auto& street{this->graph().edge(agent->streetId().value())};
+  void FirstOrderDynamics::setAgentSpeed(std::unique_ptr<Agent> const& pAgent) {
+    const auto& street{this->graph().edge(pAgent->streetId().value())};
     double speed{street->maxSpeed() * (1. - m_alpha * street->density(true))};
     if (m_speedFluctuationSTD > 0.) {
       std::normal_distribution<double> speedDist{speed, speed * m_speedFluctuationSTD};
       speed = speedDist(this->m_generator);
     }
-    speed < 0. ? agent->setSpeed(street->maxSpeed() * (1. - m_alpha))
-               : agent->setSpeed(speed);
+    speed < 0. ? pAgent->setSpeed(street->maxSpeed() * (1. - m_alpha))
+               : pAgent->setSpeed(speed);
   }
 
   void FirstOrderDynamics::setSpeedFluctuationSTD(double speedFluctuationSTD) {
@@ -62,13 +61,13 @@ namespace dsm {
       double alpha{m_alpha / street->capacity()};
       meanSpeed = street->maxSpeed() * n * (1. - 0.5 * alpha * (n - 1.));
     } else {
-      for (const auto& agentId : street->movingAgents()) {
-        meanSpeed += this->agents().at(agentId)->speed();
+      for (auto const& pAgent : street->movingAgents()) {
+        meanSpeed += pAgent->speed();
         ++n;
       }
       for (auto const& queue : street->exitQueues()) {
-        for (const auto& agentId : queue) {
-          meanSpeed += this->agents().at(agentId)->speed();
+        for (auto const& pAgent : queue) {
+          meanSpeed += pAgent->speed();
           ++n;
         }
       }
@@ -76,19 +75,17 @@ namespace dsm {
     const auto& node = this->graph().node(street->nodePair().second);
     if (node->isIntersection()) {
       auto& intersection = dynamic_cast<Intersection&>(*node);
-      for (const auto& [angle, agentId] : intersection.agents()) {
-        const auto& agent{this->agents().at(agentId)};
-        if (agent->streetId().has_value() && agent->streetId().value() == streetId) {
-          meanSpeed += agent->speed();
+      for (auto const& [angle, pAgent] : intersection.agents()) {
+        if (pAgent->streetId().has_value() && pAgent->streetId().value() == streetId) {
+          meanSpeed += pAgent->speed();
           ++n;
         }
       }
     } else if (node->isRoundabout()) {
       auto& roundabout = dynamic_cast<Roundabout&>(*node);
-      for (const auto& agentId : roundabout.agents()) {
-        const auto& agent{this->agents().at(agentId)};
-        if (agent->streetId().has_value() && agent->streetId().value() == streetId) {
-          meanSpeed += agent->speed();
+      for (auto const& pAgent : roundabout.agents()) {
+        if (pAgent->streetId().has_value() && pAgent->streetId().value() == streetId) {
+          meanSpeed += pAgent->speed();
           ++n;
         }
       }
@@ -109,9 +106,6 @@ namespace dsm {
   }
   Measurement<double> FirstOrderDynamics::streetMeanSpeed(double threshold,
                                                           bool above) const {
-    if (this->agents().empty()) {
-      return Measurement(0., 0.);
-    }
     std::vector<double> speeds;
     speeds.reserve(this->graph().edges().size());
     for (const auto& [streetId, street] : this->graph().edges()) {

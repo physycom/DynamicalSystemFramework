@@ -38,22 +38,24 @@ namespace dsm {
   public:
     /// @brief Construct a new Agent object
     /// @param spawnTime The agent's spawn time
-    /// @param id The agent's id
     /// @param itineraryId Optional, The agent's destination node. If not provided, the agent is a random agent
     /// @param srcNodeId Optional, The id of the source node of the agent
     Agent(Time const& spawnTime,
-          Id id,
           std::optional<Id> itineraryId = std::nullopt,
           std::optional<Id> srcNodeId = std::nullopt);
     /// @brief Construct a new Agent object
     /// @param spawnTime The agent's spawn time
-    /// @param id The agent's id
     /// @param itineraryIds The agent's itinerary
     /// @param srcNodeId Optional, The id of the source node of the agent
     Agent(Time const& spawnTime,
-          Id id,
           std::vector<Id> const& trip,
           std::optional<Id> srcNodeId = std::nullopt);
+    /// @brief Compare the free time of two agents
+    /// @param other The agent to compare with
+    /// @return True if the agent's free time is less than the other agent's free time, false otherwise
+    bool operator<(Agent const& other) const;
+
+    void setSrcNodeId(Id srcNodeId);
     /// @brief Set the street occupied by the agent
     /// @param streetId The id of the street currently occupied by the agent
     void setStreetId(std::optional<Id> streetId = std::nullopt);

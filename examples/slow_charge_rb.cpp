@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
                                            BASE_OUT_FOLDER,
                                            ERROR_PROBABILITY,
                                            std::to_string(SEED))};  // output folder
-  const auto MAX_TIME{static_cast<unsigned int>(1e6)};  // maximum time of simulation
+  const auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
 
   // Clear output folder or create it if it doesn't exist
   if (!fs::exists(BASE_OUT_FOLDER)) {
@@ -209,14 +209,15 @@ int main(int argc, char** argv) {
     dynamics.evolve(false);
 
     if (dynamics.time() % 2400 == 0) {
-      deltaAgents = dynamics.agents().size() - previousAgents;
+      auto const totalDynamicsAgents{dynamics.nAgents()};
+      deltaAgents = totalDynamicsAgents - previousAgents;
       if (deltaAgents < 0) {
         ++nAgents;
         std::cout << "- Now I'm adding " << nAgents << " agents.\n";
         std::cout << "Delta agents: " << deltaAgents << '\n';
         std::cout << "At time: " << dynamics.time() << '\n';
       }
-      previousAgents = dynamics.agents().size();
+      previousAgents = totalDynamicsAgents;
     }
 
     if (dynamics.time() % 300 == 0) {
