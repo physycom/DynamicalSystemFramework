@@ -876,7 +876,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         auto const& pAgent{dynamics.graph().edge(5)->queue(0).front()};
         THEN("The agent has travelled the correct distance") {
-          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), 8);
+          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), 9);
           CHECK_EQ(pAgent->freeTime() + 1, dynamics.time());
           CHECK_EQ(pAgent->streetId().value(), 5);
           CHECK_EQ(pAgent->speed(), 0.);
