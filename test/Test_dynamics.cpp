@@ -265,26 +265,6 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
-  //   SUBCASE("Add too many agents") {
-  //     GIVEN("A simple graph with two nodes and only one street") {
-  //       Street s{0, std::make_pair(0, 1), 2.};  // Capacity of 1 agent
-  //       RoadNetwork graph2;
-  //       graph2.addStreets(s);
-  //       graph2.buildAdj();
-  //       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
-  //       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 1)));
-  //       dynamics.updatePaths();
-  //       dynamics.addAgentsUniformly(1);
-  //       WHEN("We add more than one agent") {
-  //         THEN("It throws") {
-  //           CHECK_THROWS_AS(dynamics.addAgentsUniformly(1), std::overflow_error);
-  //           CHECK_THROWS_AS(dynamics.addAgent(1, 0, 0), std::overflow_error);
-  //           CHECK_THROWS_AS(dynamics.addAgent(std::make_unique<Agent>(Agent(1, 0))),
-  //                           std::overflow_error);
-  //         }
-  //       }
-  //     }
-  //   }
   SUBCASE("Update paths") {
     GIVEN("A dynamics object, many streets and an itinerary") {
       Street s1{0, std::make_pair(0, 1), 2.};
