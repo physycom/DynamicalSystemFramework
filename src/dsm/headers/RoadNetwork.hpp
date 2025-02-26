@@ -182,7 +182,9 @@ namespace dsm {
     unsigned long long maxCapacity() const { return m_maxAgentCapacity; }
 
     std::vector<Id> const& inputNodes() const { return m_inputNodes; }
+    std::vector<Id>& inputNodes() { return m_inputNodes; }
     std::vector<Id> const& outputNodes() const { return m_outputNodes; }
+    std::vector<Id>& outputNodes() { return m_outputNodes; }
 
     /// @brief Get the shortest path between two nodes using dijkstra algorithm
     /// @param source The source node
