@@ -490,8 +490,13 @@ namespace dsm {
         file << ";traffic_light";
       } else if (pNode->isRoundabout()) {
         file << ";roundabout";
+      } else if (std::find(m_inputNodes.begin(), m_inputNodes.end(), nodeId) !=
+                     m_inputNodes.end() ||
+                 std::find(m_outputNodes.begin(), m_outputNodes.end(), nodeId) !=
+                     m_outputNodes.end()) {
+        file << ";io";
       } else {
-        file << ";intersection";
+        file << ";";
       }
       file << '\n';
     }
