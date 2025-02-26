@@ -1486,7 +1486,7 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::saveOutputStreetCounts(const std::string& filename,
-                                                     streetMeanSpeedbool reset,
+                                                     bool reset,
                                                      char const separator) {
     bool bEmptyFile{false};
     {
