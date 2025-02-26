@@ -18,6 +18,9 @@ import logging
 from pathlib import Path
 from matplotlib import pyplot as plt
 import osmnx as ox
+import networkx as nx
+import numpy as np
+from shapely.geometry import LineString
 from tqdm import tqdm
 
 __version__ = "2025.2.13"
@@ -160,7 +163,114 @@ if __name__ == "__main__":
     else:
         GRAPH = FULL_GRAPH
         FULL_GRAPH = None
+    # if lanes is a list, keep the max value
+    for u, v, data in GRAPH.edges(data=True):
+        # Check if 'lanes' is a list
+        if isinstance(data.get("lanes", 1), list) and data["lanes"]:
+            data["lanes"] = int(max(data["lanes"]))
+        elif not isinstance(data.get("lanes", 1), list):  # If 'lanes' is not a list, leave it as is
+            # Optionally ensure 'lanes' is an integer (in case it's a string or other format)
+            data["lanes"] = int(data.get("lanes", 1))
+
+
     if parser.consolidate_intersections:
+        roundabout_edges = [
+            edge
+            for edge in GRAPH.edges(data=True)
+            if "roundabout" in edge[2].get("junction", [])
+        ]
+        involved_nodes = set()
+        for edge in roundabout_edges:
+            involved_nodes.add(edge[0])
+            involved_nodes.add(edge[1])
+        print(f"Number of roundabout edges: {len(roundabout_edges)}")
+        print(f"Number of involved nodes: {len(involved_nodes)}")
+        subgraph = GRAPH.subgraph(involved_nodes)
+        clusters = list(nx.weakly_connected_components(subgraph))
+        print(f"Number of clusters: {len(clusters)}")
+        # print(clusters)
+        new_nodes = []
+        new_edges = []
+        for cluster in clusters:
+            cluster_points = np.array(
+                [(GRAPH.nodes[n]["x"], GRAPH.nodes[n]["y"]) for n in cluster]
+            )
+            centroid = np.mean(cluster_points, axis=0)
+            new_node = {
+                    "x": centroid[0],
+                    "y": centroid[1],
+                    "osmid": int(list(cluster)[0]),
+                    "osmid_original": int(list(cluster)[0]),
+                    "highway": "roundabout",
+                }
+            # set osmid for the new node as one of the nodes in the cluster
+            new_nodes.append(
+                new_node
+            )
+            # take the mean length and the mean lanes of the edges in the cluster
+            mean_length = np.mean([
+                data['length']
+                for node in cluster
+                for u, v, data in GRAPH.edges(node, data=True)
+                if 'length' in data
+            ])
+
+            mean_lanes = np.mean([
+                data.get("lanes", 1)
+                for node in cluster
+                for u, v, data in GRAPH.edges(node, data=True)
+                if 'lanes' in data
+            ])
+            # round mean_lanes to upper integer
+            mean_lanes = int(np.ceil(mean_lanes))
+
+            # print(f"Lengths: {mean_length}")
+            # print(f"Lanes: {mean_lanes}")
+            # create new edges from the centroid to the nodes in the cluster
+            for i, node in enumerate(cluster):
+                # check that node is connected to a non-roundabout edge
+                if any(
+                    [
+                        edge
+                        for edge in GRAPH.edges(node, data=True)
+                        if "roundabout" not in edge[2].get("junction", [])
+                    ]
+                ):
+                    new_edges.append(
+                        {
+                            "u": new_node["osmid"],
+                            "v": node,
+                            "length": mean_length,
+                            "lanes": mean_lanes,
+                            "highway": "roundabout",
+                            "maxspeed": 0,
+                            "osmid": 0,
+                            # set geometry as a LineString from the centroid to the node
+                            "geometry": LineString(
+                                [
+                                    (new_node["x"], new_node["y"]),
+                                    (GRAPH.nodes[node]["x"], GRAPH.nodes[node]["y"]),
+                                ]
+                            ),
+                        }
+                    )
+        print(f"Number of new nodes: {len(new_nodes)}")
+        print(f"Number of new edges: {len(new_edges)}")
+        # remove roundabout nodes
+        # keep only involved noed not attached to non-roundabout edges
+        for node in involved_nodes:
+            if all(
+                [
+                    "roundabout" in edge[2].get("junction", [])
+                    for edge in GRAPH.edges(node, data=True)
+                ]
+            ):
+                GRAPH.remove_node(node)
+        # add new nodes and edges
+        for node in new_nodes:
+            GRAPH.add_node(node["osmid"], **node)
+        for edge in new_edges:
+            GRAPH.add_edge(edge["u"], edge["v"], **edge)
         GRAPH = ox.consolidate_intersections(
             ox.project_graph(GRAPH), tolerance=parser.tolerance
         )
@@ -169,6 +279,9 @@ if __name__ == "__main__":
             len(GRAPH.nodes),
             len(GRAPH.edges),
         )
+
+    # exit()
+
     # plot graph on a 16x9 figure and save into file
     fig, ax = plt.subplots(figsize=(24, 24))
     fig.patch.set_facecolor("black")
