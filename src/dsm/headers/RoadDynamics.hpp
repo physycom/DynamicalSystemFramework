@@ -1592,7 +1592,7 @@ namespace dsm {
       file << speed.mean << separator << speed.std << separator;
       file << density.mean << separator << density.std << separator;
       file << flow.mean << separator << flow.std << separator;
-      file << spireFlow.mean << separator << spireFlow.std << std::endl;
+      file << spireFlow.mean << separator << spireFlow.std << separator;
     }
     {
       std::vector<double> distances, times, speeds;
