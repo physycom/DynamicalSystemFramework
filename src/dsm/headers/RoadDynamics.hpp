@@ -1568,7 +1568,7 @@ namespace dsm {
     }
     file << this->time() << separator;
     file << m_agents.size() << separator;
-    file << std::scientific << std::setprecision(3);
+    file << std::scientific << std::setprecision(2);
     {
       std::vector<double> speeds, densities, flows, spireFlows;
       speeds.reserve(this->graph().nEdges());
@@ -1585,16 +1585,14 @@ namespace dsm {
                                (this->time() - m_previousSpireTime));
         }
       }
-      auto speed{Measurement(speeds)};
-      auto density{Measurement(densities)};
-      auto flow{Measurement(flows)};
-      auto spireFlow{Measurement(spireFlows)};
-      file << speed.mean() << separator << speed.error() << separator;
-      file << density.mean() << separator << density.error() << separator;
-      file << flow.mean() << separator << flow.error() << separator;
-      file << meanTravelTime().mean() << separator << meanTravelTime().error()
-           << separator;
-      file << spireFlow.mean() << separator << spireFlow.error() << std::endl;
+      auto speed{Measurement<double>(speeds)};
+      auto density{Measurement<double>(densities)};
+      auto flow{Measurement<double>(flows)};
+      auto spireFlow{Measurement<double>(spireFlows)};
+      file << speed.mean << separator << speed.std << separator;
+      file << density.mean << separator << density.std << separator;
+      file << flow.mean << separator << flow.std << separator;
+      file << spireFlow.mean << separator << spireFlow.std << std::endl;
     }
     {
       std::vector<double> distances, times, speeds;
@@ -1606,12 +1604,12 @@ namespace dsm {
         times.push_back(time);
         speeds.push_back(distance / time);
       }
-      auto distance{Measurement(distances)};
-      auto time{Measurement(times)};
-      auto speed{Measurement(speeds)};
-      file << distance.mean() << separator << distance.error() << separator;
-      file << time.mean() << separator << time.error() << separator;
-      file << speed.mean() << separator << speed.error() << std::endl;
+      auto distance{Measurement<double>(distances)};
+      auto time{Measurement<double>(times)};
+      auto speed{Measurement<double>(speeds)};
+      file << distance.mean << separator << distance.std << separator;
+      file << time.mean << separator << time.std << separator;
+      file << speed.mean << separator << speed.std << std::endl;
     }
     file.close();
   }
