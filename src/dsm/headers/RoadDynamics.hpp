@@ -296,7 +296,21 @@ namespace dsm {
     /// @param filename The name of the file
     /// @param reset If true, the travel speeds are cleared after the computation
     void saveTravelSpeeds(const std::string& filename, bool reset = false);
-
+    /// @brief Save the main macroscopic observables in csv format
+    /// @param filename The name of the file
+    /// @param separator The separator character (default is ';')
+    /// @details The file contains the following columns:
+    /// - time: the time of the simulation
+    /// - n_agents: the number of agents currently in the simulation
+    /// - mean_speed - mean_speed_std: the mean speed of the agents
+    /// - mean_density - mean_density_std: the (normalized) mean density of the streets
+    /// - mean_flow - mean_flow_std: the mean flow of the streets
+    /// - mean_flow_spires - mean_flow_spires_std: the mean flow of the spires
+    /// - mean_traveltime - mean_traveltime_std: the mean travel time of the agents
+    /// - mean_traveldistance - mean_traveldistance_err: the mean travel distance of the agents
+    /// - mean_travelspeed - mean_travelspeed_std: the mean travel speed of the agents
+    ///
+    /// NOTE: the mean density is normalized in [0, 1] and reset is true for all observables which have such parameter
     void saveMacroscopicObservables(const std::string& filename,
                                     char const separator = ';');
   };
@@ -1561,10 +1575,10 @@ namespace dsm {
       Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
     }
     if (bEmptyFile) {
-      file << "time;n_agents;mean_speed;mean_speed_err;mean_density;mean_density_err;"
-              "mean_flow;mean_flow_err;mean_flow_spires;mean_flow_spires_err;mean_"
-              "traveltime;mean_traveltime_err;mean_traveldistance;mean_traveldistance_"
-              "err;mean_travelspeed;mean_travelspeed_err\n";
+      file << "time;n_agents;mean_speed;mean_speed_std;mean_density;mean_density_std;"
+              "mean_flow;mean_flow_std;mean_flow_spires;mean_flow_spires_std;mean_"
+              "traveltime;mean_traveltime_std;mean_traveldistance;mean_traveldistance_"
+              "err;mean_travelspeed;mean_travelspeed_std\n";
     }
     file << this->time() << separator;
     file << m_agents.size() << separator;

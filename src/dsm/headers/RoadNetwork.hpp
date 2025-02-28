@@ -181,9 +181,17 @@ namespace dsm {
     /// @return unsigned long long The maximum agent capacity of the graph
     unsigned long long maxCapacity() const { return m_maxAgentCapacity; }
 
+    /// @brief Get the input nodes of the graph
+    /// @return std::vector<Id> const& The input nodes of the graph
     std::vector<Id> const& inputNodes() const { return m_inputNodes; }
+    /// @brief Get the input nodes of the graph
+    /// @return std::vector<Id>& The input nodes of the graph
     std::vector<Id>& inputNodes() { return m_inputNodes; }
+    /// @brief Get the output nodes of the graph
+    /// @return std::vector<Id> const& The output nodes of the graph
     std::vector<Id> const& outputNodes() const { return m_outputNodes; }
+    /// @brief Get the output nodes of the graph
+    /// @return std::vector<Id>& The output nodes of the graph
     std::vector<Id>& outputNodes() { return m_outputNodes; }
 
     /// @brief Get the shortest path between two nodes using dijkstra algorithm
