@@ -310,6 +310,23 @@ namespace dsm {
     /// @param filename The name of the file
     /// @param reset If true, the travel speeds are cleared after the computation
     void saveTravelSpeeds(const std::string& filename, bool reset = false);
+    /// @brief Save the main macroscopic observables in csv format
+    /// @param filename The name of the file
+    /// @param separator The separator character (default is ';')
+    /// @details The file contains the following columns:
+    /// - time: the time of the simulation
+    /// - n_agents: the number of agents currently in the simulation
+    /// - mean_speed - mean_speed_std: the mean speed of the agents
+    /// - mean_density - mean_density_std: the (normalized) mean density of the streets
+    /// - mean_flow - mean_flow_std: the mean flow of the streets
+    /// - mean_flow_spires - mean_flow_spires_std: the mean flow of the spires
+    /// - mean_traveltime - mean_traveltime_std: the mean travel time of the agents
+    /// - mean_traveldistance - mean_traveldistance_err: the mean travel distance of the agents
+    /// - mean_travelspeed - mean_travelspeed_std: the mean travel speed of the agents
+    ///
+    /// NOTE: the mean density is normalized in [0, 1] and reset is true for all observables which have such parameter
+    void saveMacroscopicObservables(const std::string& filename,
+                                    char const separator = ';');
   };
 
   template <typename delay_t>
@@ -1566,5 +1583,71 @@ namespace dsm {
     if (reset) {
       m_travelDTs.clear();
     }
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::saveMacroscopicObservables(const std::string& filename,
+                                                         char const separator) {
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
+    }
+    if (bEmptyFile) {
+      file << "time;n_agents;mean_speed;mean_speed_std;mean_density;mean_density_std;"
+              "mean_flow;mean_flow_std;mean_flow_spires;mean_flow_spires_std;mean_"
+              "traveltime;mean_traveltime_std;mean_traveldistance;mean_traveldistance_"
+              "err;mean_travelspeed;mean_travelspeed_std\n";
+    }
+    file << this->time() << separator;
+    file << m_agents.size() << separator;
+    file << std::scientific << std::setprecision(2);
+    {
+      std::vector<double> speeds, densities, flows, spireFlows;
+      speeds.reserve(this->graph().nEdges());
+      densities.reserve(this->graph().nEdges());
+      flows.reserve(this->graph().nEdges());
+      spireFlows.reserve(this->graph().nEdges());
+      for (auto const& [streetId, street] : this->graph().edges()) {
+        speeds.push_back(this->streetMeanSpeed(streetId));
+        densities.push_back(street->density(true));
+        flows.push_back(street->density(true) * speeds.back());
+        if (street->isSpire()) {
+          auto& spire = dynamic_cast<SpireStreet&>(*street);
+          spireFlows.push_back(static_cast<double>(spire.inputCounts(true)) /
+                               (this->time() - m_previousSpireTime));
+        }
+      }
+      auto speed{Measurement<double>(speeds)};
+      auto density{Measurement<double>(densities)};
+      auto flow{Measurement<double>(flows)};
+      auto spireFlow{Measurement<double>(spireFlows)};
+      file << speed.mean << separator << speed.std << separator;
+      file << density.mean << separator << density.std << separator;
+      file << flow.mean << separator << flow.std << separator;
+      file << spireFlow.mean << separator << spireFlow.std << separator;
+    }
+    {
+      std::vector<double> distances, times, speeds;
+      distances.reserve(m_travelDTs.size());
+      times.reserve(m_travelDTs.size());
+      speeds.reserve(m_travelDTs.size());
+      for (auto const& [distance, time] : m_travelDTs) {
+        distances.push_back(distance);
+        times.push_back(time);
+        speeds.push_back(distance / time);
+      }
+      auto distance{Measurement<double>(distances)};
+      auto time{Measurement<double>(times)};
+      auto speed{Measurement<double>(speeds)};
+      file << distance.mean << separator << distance.std << separator;
+      file << time.mean << separator << time.std << separator;
+      file << speed.mean << separator << speed.std << std::endl;
+    }
+    file.close();
   }
 };  // namespace dsm
