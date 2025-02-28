@@ -1575,21 +1575,23 @@ namespace dsm {
       Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
     }
     if (bEmptyFile) {
-      file << "time;n_agents;mean_speed;mean_speed_std;mean_density;mean_density_std;"
+      file << "time;n_ghost_agents;n_agents;mean_speed;mean_speed_std;mean_density;mean_"
+              "density_std;"
               "mean_flow;mean_flow_std;mean_flow_spires;mean_flow_spires_std;mean_"
               "traveltime;mean_traveltime_std;mean_traveldistance;mean_traveldistance_"
               "err;mean_travelspeed;mean_travelspeed_std\n";
     }
     file << this->time() << separator;
     file << m_agents.size() << separator;
-    file << std::scientific << std::setprecision(2);
     {
       std::vector<double> speeds, densities, flows, spireFlows;
+      size_t nAgents{0};
       speeds.reserve(this->graph().nEdges());
       densities.reserve(this->graph().nEdges());
       flows.reserve(this->graph().nEdges());
       spireFlows.reserve(this->graph().nEdges());
       for (auto const& [streetId, street] : this->graph().edges()) {
+        nAgents += street->nAgents();
         speeds.push_back(this->streetMeanSpeed(streetId));
         densities.push_back(street->density(true));
         flows.push_back(street->density(true) * speeds.back());
@@ -1599,10 +1601,21 @@ namespace dsm {
                                (this->time() - m_previousSpireTime));
         }
       }
+      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+        if (pNode->isIntersection()) {
+          auto& intersection = dynamic_cast<Intersection&>(*pNode);
+          nAgents += intersection.agents().size();
+        } else if (pNode->isRoundabout()) {
+          auto& roundabout = dynamic_cast<Roundabout&>(*pNode);
+          nAgents += roundabout.agents().size();
+        }
+      }
       auto speed{Measurement<double>(speeds)};
       auto density{Measurement<double>(densities)};
       auto flow{Measurement<double>(flows)};
       auto spireFlow{Measurement<double>(spireFlows)};
+      file << nAgents << separator;
+      file << std::scientific << std::setprecision(2);
       file << speed.mean << separator << speed.std << separator;
       file << density.mean << separator << density.std << separator;
       file << flow.mean << separator << flow.std << separator;
