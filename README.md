@@ -1,9 +1,8 @@
 # DynamicalSystemFramework
+[![Latest Release](https://img.shields.io/github/v/release/physycom/DynamicalSystemFramework)](https://github.com/physycom/DynamicalSystemFramework/releases/latest)
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![TBB](https://img.shields.io/badge/TBB-C%2B%2B20%2F23-blue.svg)](https://github.com/oneapi-src/oneTBB)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
-[![Latest Release](https://img.shields.io/github/v/release/physycom/DynamicalSystemFramework)](https://github.com/physycom/DynamicalSystemFramework/releases/latest)
-
 
 The aim of this project is to rework the original [Traffic Flow Dynamics Model](https://github.com/Grufoony/TrafficFlowDynamicsModel).
 This rework consists of a full code rewriting, in order to implement more features (like *intersections*) and get advantage from the latest C++ updates.
@@ -23,7 +22,7 @@ To install requirements on Ubuntu:
 ```shell
 sudo apt install libtbb-dev cmake
 ```
-To install requirements on MacOS:
+To install requirements on macOS:
 ```shell
 brew install tbb cmake
 ```
@@ -47,6 +46,21 @@ then building and installing it (eventually in sudo mode) with:
 ```shell
 cmake --build build
 cmake --install build
+```
+
+### Optimization
+The library can be optimized for the target architecture by setting the `-DCMAKE_BUILD_TYPE` flag to `Release`:
+```shell
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+```
+This will enable compiler optimizations and disable debugging information.
+Furthermore, one can enable the maximum level of optimization by setting the following flags:
+```shell
+cmake -B build -DCMAKE_CXX_FLAGS_RELEASE="-Ofast -march=native -flto"
+```
+And, then, running the build and installation commands:
+```shell
+make -C build && sudo cmake --install build
 ```
 
 ## Testing
