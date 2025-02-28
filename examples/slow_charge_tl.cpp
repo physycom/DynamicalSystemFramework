@@ -233,11 +233,6 @@ int main(int argc, char** argv) {
 
   std::cout << "Done." << std::endl;
   std::cout << "Running simulation...\n";
-
-  std::ofstream out(OUT_FOLDER + "data.csv");
-  out << "time;n_agents;mean_speed;mean_speed_err;mean_density;mean_density_"
-         "err;mean_flow;mean_flow_err;mean_traveltime;mean_traveltime_err;mean_flow_"
-         "spires;mean_flow_spires_err\n";
 #ifdef PRINT_DENSITIES
   std::ofstream streetDensity(OUT_FOLDER + "densities.csv");
   streetDensity << "time";
@@ -344,17 +339,7 @@ int main(int argc, char** argv) {
       outSpires << std::endl;
       inSpires << std::endl;
 #endif
-      const auto& meanSpeed{dynamics.streetMeanSpeed()};
-      const auto& meanDensity{dynamics.streetMeanDensity()};
-      const auto& meanFlow{dynamics.streetMeanFlow()};
-      const auto& meanTravelTime{dynamics.meanTravelTime()};
-      const auto& meanSpireFlow{dynamics.meanSpireOutputFlow()};
-
-      out << dynamics.time() << ';' << dynamics.agents().size() << ';' << meanSpeed.mean
-          << ';' << meanSpeed.std << ';' << meanDensity.mean << ';' << meanDensity.std
-          << ';' << meanFlow.mean << ';' << meanFlow.std << ';' << meanTravelTime.mean
-          << ';' << meanTravelTime.std << ';' << meanSpireFlow.mean << ';'
-          << meanSpireFlow.std << std::endl;
+      dynamics.saveMacroscopicObservables(std::format("{}data.csv", OUT_FOLDER));
       // deltas.push_back(deltaAgents);
       // previousAgents = dynamics.agents().size();
 #ifdef PRINT_TP
@@ -424,7 +409,6 @@ int main(int argc, char** argv) {
     }
     ++progress;
   }
-  out.close();
 #ifdef PRINT_DENSITIES
   streetDensity.close();
 #endif
