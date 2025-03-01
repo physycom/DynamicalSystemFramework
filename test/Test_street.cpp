@@ -71,7 +71,22 @@ TEST_CASE("Street") {
     CHECK_EQ(street.maxSpeed(), 40.);
     CHECK_EQ(street.nLanes(), 1);
   }
+  SUBCASE("addAgent") {
+    Agent a1{0, 1, 0};
+    a1.setFreeTime(5);
+    Agent a2{0, 1, 0};
+    a2.setFreeTime(3);
+    Agent a3{0, 1, 0};
+    a3.setFreeTime(7);
 
+    Street street{1, std::make_pair(0, 1), 3.5};
+    street.addAgent(std::make_unique<Agent>(a1));
+    CHECK_EQ(street.movingAgents().top()->freeTime(), 5);
+    street.addAgent(std::make_unique<Agent>(a2));
+    CHECK_EQ(street.movingAgents().top()->freeTime(), 3);
+    street.addAgent(std::make_unique<Agent>(a3));
+    CHECK_EQ(street.movingAgents().top()->freeTime(), 3);
+  }
   SUBCASE("Enqueue") {
     /*This tests the insertion of an agent in a street's queue*/
 

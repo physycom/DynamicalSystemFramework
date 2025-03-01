@@ -50,10 +50,6 @@ namespace dsm {
     Agent(Time const& spawnTime,
           std::vector<Id> const& trip,
           std::optional<Id> srcNodeId = std::nullopt);
-    /// @brief Compare the free time of two agents
-    /// @param other The agent to compare with
-    /// @return True if the agent's free time is less than the other agent's free time, false otherwise
-    bool operator<(Agent const& other) const;
 
     void setSrcNodeId(Id srcNodeId);
     /// @brief Set the street occupied by the agent

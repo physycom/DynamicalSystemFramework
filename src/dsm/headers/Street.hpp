@@ -30,13 +30,24 @@
 
 namespace dsm {
 
+  class AgentComparator {
+  public:
+    template <typename T>
+    bool operator()(T const& lhs, T const& rhs) const {
+      return lhs->freeTime() > rhs->freeTime();
+    }
+  };
+
   class Agent;
 
   /// @brief The Street class represents a street in the network.
   class Street : public Road {
   private:
     std::vector<dsm::queue<std::unique_ptr<Agent>>> m_exitQueues;
-    dsm::priority_queue<std::unique_ptr<Agent>> m_movingAgents;
+    dsm::priority_queue<std::unique_ptr<Agent>,
+                        std::vector<std::unique_ptr<Agent>>,
+                        AgentComparator>
+        m_movingAgents;
     std::vector<Direction> m_laneMapping;
 
   public:
@@ -92,7 +103,12 @@ namespace dsm {
     /// @return bool, True if the street is full, false otherwise
     bool isFull() const final { return nAgents() == m_capacity; }
 
-    dsm::priority_queue<std::unique_ptr<Agent>>& movingAgents() { return m_movingAgents; }
+    dsm::priority_queue<std::unique_ptr<Agent>,
+                        std::vector<std::unique_ptr<Agent>>,
+                        AgentComparator>&
+    movingAgents() {
+      return m_movingAgents;
+    }
     int nMovingAgents() const override { return m_movingAgents.size(); }
     /// @brief Get the number of agents on all queues
     /// @return Size The number of agents on all queues
