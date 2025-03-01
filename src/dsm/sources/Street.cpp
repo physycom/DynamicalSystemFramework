@@ -24,7 +24,9 @@ namespace dsm {
              capacity,
              transportCapacity),
         m_exitQueues{std::vector<dsm::queue<std::unique_ptr<Agent>>>(nLanes)},
-        m_movingAgents{dsm::priority_queue<std::unique_ptr<Agent>>()} {
+        m_movingAgents{dsm::priority_queue<std::unique_ptr<Agent>,
+                                           std::vector<std::unique_ptr<Agent>>,
+                                           AgentComparator>()} {
     switch (nLanes) {
       case 1:
         m_laneMapping.emplace_back(Direction::ANY);

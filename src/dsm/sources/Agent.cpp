@@ -26,9 +26,6 @@ namespace dsm {
         m_itineraryIdx{0},
         m_speed{0.},
         m_distance{0.} {}
-  bool Agent::operator<(Agent const& other) const {
-    return m_freeTime < other.m_freeTime;
-  }
 
   void Agent::setSrcNodeId(Id srcNodeId) { m_srcNodeId = srcNodeId; }
   void Agent::setStreetId(std::optional<Id> streetId) {
