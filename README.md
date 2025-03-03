@@ -35,7 +35,7 @@ pip install -r ./requirements.txt
 ## Installation
 The library can be installed using CMake. To build and install the project in the default folder run:
 ```shell
-cmake -B build && cmake --build build
+cmake -B build && cmake --build build --config Release
 sudo cmake --install build
 ```
 Otherwise, it is possible to customize the installation path:
@@ -46,21 +46,6 @@ then building and installing it (eventually in sudo mode) with:
 ```shell
 cmake --build build
 cmake --install build
-```
-
-### Optimization
-The library can be optimized for the target architecture by setting the `-DCMAKE_BUILD_TYPE` flag to `Release`:
-```shell
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-```
-This will enable compiler optimizations and disable debugging information.
-Furthermore, one can enable the maximum level of optimization by setting the following flags:
-```shell
-cmake -B build -DCMAKE_CXX_FLAGS_RELEASE="-Ofast -march=native -flto"
-```
-And, then, running the build and installation commands:
-```shell
-make -C build && sudo cmake --install build
 ```
 
 ## Testing
