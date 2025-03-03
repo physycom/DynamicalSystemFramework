@@ -23,7 +23,7 @@ To install requirements on Ubuntu:
 ```shell
 sudo apt install libtbb-dev cmake
 ```
-To install requirements on MacOS:
+To install requirements on macOS:
 ```shell
 brew install tbb cmake
 ```
@@ -36,7 +36,8 @@ pip install -r ./requirements.txt
 ## Installation
 The library can be installed using CMake. To build and install the project in the default folder run:
 ```shell
-cmake -B build && cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 sudo cmake --install build
 ```
 Otherwise, it is possible to customize the installation path:
