@@ -127,12 +127,14 @@ namespace dsm {
     for (auto const& [streetId, cycles] : m_cycles) {
       if ((priorityStreets && m_streetPriorities.contains(streetId)) ||
           (!priorityStreets && !m_streetPriorities.contains(streetId))) {
-        meanTime += std::accumulate(cycles.begin(),
-                                    cycles.end(),
-                                    0.,
-                                    [](double acc, TrafficLightCycle const& cycle) {
-                                      return acc + cycle.greenTime();
-                                    });
+        meanTime +=
+            std::transform_reduce(cycles.begin(),
+                                  cycles.end(),
+                                  0.0,                  // Initial value (double)
+                                  std::plus<double>(),  // Reduction function (addition)
+                                  [](const TrafficLightCycle& cycle) -> double {
+                                    return static_cast<double>(cycle.greenTime());
+                                  });
         nCycles += cycles.size();
       }
     }
