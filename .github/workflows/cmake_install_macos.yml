@@ -26,7 +26,7 @@ jobs:
       working-directory: ${{github.workspace}}
       run: |
         mkdir -p build && cd build
-        cmake .. -DCMAKE_PREFIX_PATH=$(brew --prefix tbb)
+        cmake .. -DCMAKE_PREFIX_PATH=$(brew --prefix tbb) -DCMAKE_BUILD_TYPE=Release
         cmake --build .
         sudo cmake --install .
 
