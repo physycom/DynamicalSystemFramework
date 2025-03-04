@@ -784,42 +784,9 @@ namespace dsm {
              std::is_same_v<TContainer, std::map<Id, double>>)
   void RoadDynamics<delay_t>::addAgentsRandomly(
       Size nAgents,
-      const TContainer& srcWeights,
-      const TContainer& dstWeights,
+      const TContainer& src_weights,
+      const TContainer& dst_weights,
       const std::variant<std::monostate, size_t, double> minNodeDistance) {
-    std::unordered_map<Id, double> src_weights, dst_weights;
-    for (const auto& [id, weight] : srcWeights) {
-      bool found{false};
-      for (auto const& [dstId, weight] : dstWeights) {
-        if (this->itineraries().at(dstId)->path()->getRow(id).empty()) {
-          continue;
-        }
-        if (std::holds_alternative<size_t>(minNodeDistance)) {
-          auto const minDistance{std::get<size_t>(minNodeDistance)};
-          if (this->graph().shortestPath(id, dstId).value().path().size() < minDistance) {
-            continue;
-          }
-        } else if (std::holds_alternative<double>(minNodeDistance)) {
-          auto const minDistance{std::get<double>(minNodeDistance)};
-          if (this->graph()
-                  .shortestPath(id, dstId, weight_functions::streetLength)
-                  .value()
-                  .distance() < minDistance) {
-            continue;
-          }
-        }
-        found = true;
-        break;
-      }
-      if (found) {
-        src_weights[id] = weight;
-      }
-    }
-    if (src_weights.size() < srcWeights.size()) {
-      Logger::warning(std::format("Reduced size of input nodes from {} to {}.",
-                                  srcWeights.size(),
-                                  src_weights.size()));
-    }
     auto const& nSources{src_weights.size()};
     auto const& nDestinations{dst_weights.size()};
     Logger::debug(
