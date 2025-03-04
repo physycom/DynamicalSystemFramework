@@ -36,8 +36,7 @@ pip install -r ./requirements.txt
 ## Installation
 The library can be installed using CMake. To build and install the project in the default folder run:
 ```shell
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 sudo cmake --install build
 ```
 Otherwise, it is possible to customize the installation path:
