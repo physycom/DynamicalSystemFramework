@@ -251,7 +251,7 @@ namespace dsm {
         file >> lon >> lat;
         auto const& it{m_nodes.find(i)};
         if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(lat, lon));
+          it->second->setCoords(std::make_pair(lon, lat));
         } else {
           Logger::warning(std::format("Node with id {} not found.", i));
         }
@@ -285,7 +285,7 @@ namespace dsm {
         dLat = lat == "Nan" ? 0. : std::stod(lat);
         auto const& it{m_nodes.find(std::stoul(nodeId))};
         if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(dLat, dLon));
+          it->second->setCoords(std::make_pair(dLon, dLat));
           if (type == "traffic_light" && !it->second->isTrafficLight()) {
             makeTrafficLight(it->first, 60);
           } else if (type == "roundabout" && !it->second->isRoundabout()) {
@@ -493,7 +493,7 @@ namespace dsm {
     for (auto const& [nodeId, pNode] : m_nodes) {
       file << nodeId << ';';
       if (pNode->coords().has_value()) {
-        file << pNode->coords().value().second << ';' << pNode->coords().value().first;
+        file << pNode->coords().value().first << ';' << pNode->coords().value().second;
       } else {
         file << "Nan;Nan";
       }
