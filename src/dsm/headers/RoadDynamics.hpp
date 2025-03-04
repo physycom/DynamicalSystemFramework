@@ -833,53 +833,51 @@ namespace dsm {
       }
       double dRand, sum;
       while (srcId == dstId) {
-        while (srcId == dstId) {
-          dRand = srcUniformDist(this->m_generator);
-          sum = 0.;
-          for (const auto& [id, weight] : src_weights) {
-            srcId = id;
-            sum += weight;
-            if (dRand < sum) {
-              break;
-            }
+        dRand = srcUniformDist(this->m_generator);
+        sum = 0.;
+        for (const auto& [id, weight] : src_weights) {
+          srcId = id;
+          sum += weight;
+          if (dRand < sum) {
+            break;
           }
         }
-        if (nSources > 1) {
-          dstId = srcId;
-        }
-        while (dstId == srcId) {
-          dRand = dstUniformDist(this->m_generator);
-          sum = 0.;
-          for (const auto& [id, weight] : dst_weights) {
-            // if the node is at a minimum distance from the destination, skip it
-            if (this->itineraries().at(id)->path()->getRow(srcId).empty()) {
+      }
+      if (nSources > 1) {
+        dstId = srcId;
+      }
+      while (dstId == srcId) {
+        dRand = dstUniformDist(this->m_generator);
+        sum = 0.;
+        for (const auto& [id, weight] : dst_weights) {
+          // if the node is at a minimum distance from the destination, skip it
+          if (this->itineraries().at(id)->path()->getRow(srcId).empty()) {
+            continue;
+          }
+          if (std::holds_alternative<size_t>(minNodeDistance)) {
+            auto const minDistance{std::get<size_t>(minNodeDistance)};
+            if (this->graph().shortestPath(srcId, id).value().path().size() <
+                minDistance) {
               continue;
             }
-            if (std::holds_alternative<size_t>(minNodeDistance)) {
-              auto const minDistance{std::get<size_t>(minNodeDistance)};
-              if (this->graph().shortestPath(srcId, id).value().path().size() <
-                  minDistance) {
-                continue;
-              }
-            } else if (std::holds_alternative<double>(minNodeDistance)) {
-              auto const minDistance{std::get<double>(minNodeDistance)};
-              if (this->graph()
-                      .shortestPath(srcId, id, weight_functions::streetLength)
-                      .value()
-                      .distance() < minDistance) {
-                Logger::debug(
-                    std::format("Skipping node {} because the distance from the source "
-                                "is less than {}",
-                                id,
-                                minDistance));
-                continue;
-              }
+          } else if (std::holds_alternative<double>(minNodeDistance)) {
+            auto const minDistance{std::get<double>(minNodeDistance)};
+            if (this->graph()
+                    .shortestPath(srcId, id, weight_functions::streetLength)
+                    .value()
+                    .distance() < minDistance) {
+              Logger::debug(
+                  std::format("Skipping node {} because the distance from the source "
+                              "is less than {}",
+                              id,
+                              minDistance));
+              continue;
             }
-            dstId = id;
-            sum += weight;
-            if (dRand < sum) {
-              break;
-            }
+          }
+          dstId = id;
+          sum += weight;
+          if (dRand < sum) {
+            break;
           }
         }
       }
@@ -1659,6 +1657,7 @@ namespace dsm {
       file << time.mean << separator << time.std << separator;
       file << speed.mean << separator << speed.std << std::endl;
     }
+    m_travelDTs.clear();
     file.close();
   }
 };  // namespace dsm
