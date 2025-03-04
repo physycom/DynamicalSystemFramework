@@ -386,7 +386,6 @@ namespace dsm {
         return;
       }
     }
-    Logger::info(std::format("Threshold {}", m_weightTreshold));
     auto const destinationID = pItinerary->destination();
     std::vector<DijkstraResult> shortestPaths(this->graph().nNodes());
     tbb::parallel_for_each(
