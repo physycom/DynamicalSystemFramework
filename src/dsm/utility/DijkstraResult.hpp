@@ -18,6 +18,7 @@ namespace dsm {
     double m_distance;
 
   public:
+    DijkstraResult() : m_path{}, m_distance{-1.} {}
     /// @brief Construct a new DijkstraResult object
     /// @param path, A vector of the ids of the nodes in the path
     /// @param distance, The distance of the path

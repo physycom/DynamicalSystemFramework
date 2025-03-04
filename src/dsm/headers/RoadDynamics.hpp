@@ -386,25 +386,24 @@ namespace dsm {
         return;
       }
     }
-
     auto const destinationID = pItinerary->destination();
-    std::vector<double> shortestDistances(this->graph().nNodes());
+    std::vector<DijkstraResult> shortestPaths(this->graph().nNodes());
     tbb::parallel_for_each(
         this->graph().nodes().cbegin(),
         this->graph().nodes().cend(),
-        [this, &shortestDistances, &destinationID](auto const& it) -> void {
+        [this, &shortestPaths, &destinationID](auto const& it) -> void {
           auto const nodeId{it.first};
           if (nodeId == destinationID) {
-            shortestDistances[nodeId] = -1.;
+            shortestPaths[nodeId] = DijkstraResult{};
           } else {
             auto result =
                 this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
             if (result.has_value()) {
-              shortestDistances[nodeId] = result.value().distance();
+              shortestPaths[nodeId] = *result;
             } else {
               Logger::warning(std::format(
                   "No path found from node {} to node {}", nodeId, destinationID));
-              shortestDistances[nodeId] = -1.;
+              shortestPaths[nodeId] = DijkstraResult{};
             }
           }
         });
@@ -415,7 +414,7 @@ namespace dsm {
         continue;
       }
       // save the minimum distance between i and the destination
-      const auto minDistance{shortestDistances[nodeId]};
+      const auto minDistance{shortestPaths[nodeId].distance()};
       if (minDistance < 0.) {
         continue;
       }
@@ -437,8 +436,11 @@ namespace dsm {
           }
           continue;
         }
-        auto const distance{shortestDistances[nextNodeId]};
+        auto const distance{shortestPaths[nextNodeId].distance()};
         if (distance < 0.) {
+          continue;
+        }
+        if (shortestPaths[nextNodeId].path()[1] == nodeId && !node->isRoundabout()) {
           continue;
         }
         bool const bIsMinDistance{
