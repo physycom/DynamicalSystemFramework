@@ -418,7 +418,7 @@ namespace dsm {
             } else {
               Logger::warning(std::format(
                   "No path found from node {} to node {}", nodeId, destinationID));
-                  shortestPaths[nodeId] = DijkstraResult{};
+              shortestPaths[nodeId] = DijkstraResult{};
             }
           }
         });
@@ -455,7 +455,7 @@ namespace dsm {
         if (distance < 0.) {
           continue;
         }
-        if (std::find(shortestPaths[nextNodeId].path().cbegin(), shortestPaths[nextNodeId].path().cend(), nodeId) != shortestPaths[nextNodeId].path().cend()) {
+        if (shortestPaths[nextNodeId].path()[1] == nodeId && !node->isRoundabout()) {
           continue;
         }
         bool const bIsMinDistance{
