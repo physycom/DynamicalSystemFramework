@@ -15,7 +15,7 @@ namespace dsm {
       const auto length{(*street)->length()};
       const auto speed{(*street)->maxSpeed() *
                        (1. - (*street)->nAgents() / (*street)->capacity())};
-      return length / speed;
+      return std::ceil(length / speed);
     }
   }  // namespace weight_functions
 
