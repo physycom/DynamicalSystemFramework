@@ -862,7 +862,10 @@ namespace dsm {
             }
           } else if (std::holds_alternative<double>(minNodeDistance)) {
             auto const minDistance{std::get<double>(minNodeDistance)};
-            if (this->graph().shortestPath(srcId, id).value().distance() < minDistance) {
+            if (this->graph()
+                    .shortestPath(srcId, id, weight_functions::streetLength, 1.)
+                    .value()
+                    .distance() < minDistance) {
               continue;
             }
           }
