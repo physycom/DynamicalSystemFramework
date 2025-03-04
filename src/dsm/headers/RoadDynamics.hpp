@@ -23,6 +23,7 @@
 #include <exception>
 #include <fstream>
 #include <iomanip>
+#include <variant>
 
 #include <tbb/tbb.h>
 
@@ -147,6 +148,7 @@ namespace dsm {
     /// @param nAgents The number of agents to add
     /// @param src_weights The weights of the source nodes
     /// @param dst_weights The weights of the destination nodes
+    /// @param minNodeDistance The minimum distance between the source and destination nodes
     /// @throw std::invalid_argument If the source and destination nodes are the same
     template <typename TContainer>
       requires(std::is_same_v<TContainer, std::unordered_map<Id, double>> ||
@@ -154,9 +156,12 @@ namespace dsm {
     void addAgentsRandomly(Size nAgents,
                            const TContainer& src_weights,
                            const TContainer& dst_weights,
-                           const size_t minNodeDistance = 0);
+                           const std::variant<std::monostate, size_t, double>
+                               minNodeDistance = std::monostate{});
 
-    void addAgentsRandomly(Size nAgents, const size_t minNodeDistance = 0);
+    void addAgentsRandomly(Size nAgents,
+                           const std::variant<std::monostate, size_t, double>
+                               minNodeDistance = std::monostate{});
 
     /// @brief Add an agent to the simulation
     /// @param agent std::unique_ptr to the agent
@@ -777,19 +782,18 @@ namespace dsm {
   template <typename TContainer>
     requires(std::is_same_v<TContainer, std::unordered_map<Id, double>> ||
              std::is_same_v<TContainer, std::map<Id, double>>)
-  void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
-                                                const TContainer& src_weights,
-                                                const TContainer& dst_weights,
-                                                const size_t minNodeDistance) {
+  void RoadDynamics<delay_t>::addAgentsRandomly(
+      Size nAgents,
+      const TContainer& src_weights,
+      const TContainer& dst_weights,
+      const std::variant<std::monostate, size_t, double> minNodeDistance) {
     auto const& nSources{src_weights.size()};
     auto const& nDestinations{dst_weights.size()};
     Logger::debug(
-        std::format("Init addAgentsRandomly for {} agents from {} nodes to {} nodes with "
-                    "minNodeDistance {}",
+        std::format("Init addAgentsRandomly for {} agents from {} nodes to {} nodes.",
                     nAgents,
                     nSources,
-                    dst_weights.size(),
-                    minNodeDistance));
+                    dst_weights.size()));
     if (nSources == 1 && nDestinations == 1 &&
         src_weights.begin()->first == dst_weights.begin()->first) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
@@ -850,10 +854,15 @@ namespace dsm {
           if (this->itineraries().at(id)->path()->getRow(srcId).empty()) {
             continue;
           }
-          if (nDestinations > 1 && minNodeDistance > 0) {
-            // NOTE: Result must have a value in this case, so we can use value() as sort-of assertion
+          if (std::holds_alternative<size_t>(minNodeDistance)) {
+            auto const minDistance{std::get<size_t>(minNodeDistance)};
             if (this->graph().shortestPath(srcId, id).value().path().size() <
-                minNodeDistance) {
+                minDistance) {
+              continue;
+            }
+          } else if (std::holds_alternative<double>(minNodeDistance)) {
+            auto const minDistance{std::get<double>(minNodeDistance)};
+            if (this->graph().shortestPath(srcId, id).value().distance() < minDistance) {
               continue;
             }
           }
@@ -880,8 +889,8 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
-                                                const size_t minNodeDistance) {
+  void RoadDynamics<delay_t>::addAgentsRandomly(
+      Size nAgents, const std::variant<std::monostate, size_t, double> minNodeDistance) {
     std::unordered_map<Id, double> src_weights, dst_weights;
     for (auto const& id : this->graph().inputNodes()) {
       src_weights[id] = 1.;
