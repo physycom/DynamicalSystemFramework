@@ -866,6 +866,10 @@ namespace dsm {
                     .shortestPath(srcId, id, weight_functions::streetLength)
                     .value()
                     .distance() < minDistance) {
+              Logger::debug(std::format(
+                  "Skipping node {} because the distance from the source is less than {}",
+                  id,
+                  minDistance));
               continue;
             }
           }
