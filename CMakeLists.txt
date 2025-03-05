@@ -9,7 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Ensure optimization flags are applied only in Release mode
 if (CMAKE_BUILD_TYPE MATCHES "Release")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto=auto")
 endif()
 
 find_package(TBB REQUIRED CONFIG)
