@@ -454,7 +454,9 @@ namespace dsm {
         if (distance < 0.) {
           continue;
         }
-        if (shortestPaths[nextNodeId].path()[1] == nodeId && !node->isRoundabout()) {
+        if (std::find(shortestPaths[nextNodeId].path().cbegin(),
+                      shortestPaths[nextNodeId].path().cend(),
+                      nodeId) != shortestPaths[nextNodeId].path().cend()) {
           continue;
         }
         bool const bIsMinDistance{
