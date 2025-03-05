@@ -309,7 +309,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addEdge(5, std::make_pair(4, 5), 10.);
       graph2.addEdge(6, std::make_pair(5, 4), 10.);
       graph2.buildAdj();
-      Dynamics dynamics{graph2, false, 69, 0.};
+      FirstOrderDynamics dynamics{graph2, false, 69, 0.};
       WHEN("We add an iitinerary to node 3 and update paths") {
         dynamics.addItinerary(3, 3);
         dynamics.updatePaths();
