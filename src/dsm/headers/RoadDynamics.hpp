@@ -1646,9 +1646,10 @@ namespace dsm {
       auto distance{Measurement<double>(distances)};
       auto time{Measurement<double>(times)};
       auto speed{Measurement<double>(speeds)};
-      file << distance.mean << separator << distance.std << separator;
       file << time.mean << separator << time.std << separator;
+      file << distance.mean << separator << distance.std << separator;
       file << speed.mean << separator << speed.std << std::endl;
+      m_travelDTs.clear();
     }
     file.close();
   }
