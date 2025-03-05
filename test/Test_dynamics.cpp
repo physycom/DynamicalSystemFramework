@@ -299,6 +299,34 @@ TEST_CASE("FirstOrderDynamics") {
         }
       }
     }
+    GIVEN("A Dynamics object with a graph with 6 nodes and 7 streets") {
+      RoadNetwork graph2{};
+      graph2.addEdge(0, std::make_pair(0, 1), 10.);
+      graph2.addEdge(1, std::make_pair(1, 2), 10.);
+      graph2.addEdge(2, std::make_pair(2, 3), 10.);
+      graph2.addEdge(3, std::make_pair(1, 4), 10.);
+      graph2.addEdge(4, std::make_pair(4, 1), 10.);
+      graph2.addEdge(5, std::make_pair(4, 5), 10.);
+      graph2.addEdge(6, std::make_pair(5, 4), 10.);
+      graph2.buildAdj();
+      Dynamics dynamics{graph2, false, 69, 0.};
+      WHEN("We add an iitinerary to node 3 and update paths") {
+        dynamics.addItinerary(3, 3);
+        dynamics.updatePaths();
+        THEN("The itinerary is correct, excluding paths passing in the same node twice") {
+          auto const& path = dynamics.itineraries().at(3)->path();
+          CHECK_EQ(path->size(), 5);
+          CHECK_EQ(path->n(), 6);
+          CHECK(path->operator()(0, 1));
+          CHECK(path->operator()(1, 2));
+          CHECK(path->operator()(2, 3));
+          CHECK_FALSE(path->operator()(1, 4));
+          CHECK(path->operator()(4, 1));
+          CHECK_FALSE(path->operator()(4, 5));
+          CHECK(path->operator()(5, 4));
+        }
+      }
+    }
     GIVEN(
         "A dynamics objects, many streets and many itinearies with same "
         "destination") {
