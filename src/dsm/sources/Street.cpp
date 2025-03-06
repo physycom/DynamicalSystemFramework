@@ -13,7 +13,7 @@ namespace dsm {
                  std::string name,
                  std::vector<std::pair<double, double>> geometry,
                  std::optional<int> capacity,
-                 int transportCapacity)
+                 double transportCapacity)
       : Road(id,
              std::move(nodePair),
              length,
@@ -107,7 +107,7 @@ namespace dsm {
                                      std::vector<std::pair<double, double>> geometry,
                                      double flowRate,
                                      std::optional<int> capacity,
-                                     int transportCapacity)
+                                     double transportCapacity)
       : Street(id,
                std::move(nodePair),
                length,

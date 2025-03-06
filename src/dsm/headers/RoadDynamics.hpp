@@ -537,79 +537,89 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_evolveStreet(const std::unique_ptr<Street>& pStreet,
                                              bool reinsert_agents) {
+    auto const& transportCapacity{pStreet->transportCapacity()};
     auto const nLanes = pStreet->nLanes();
     std::uniform_real_distribution<double> uniformDist{0., 1.};
-    bool bCanPass{true};
-    if (pStreet->isStochastic() &&
-        (uniformDist(this->m_generator) >
-         dynamic_cast<StochasticStreet&>(*pStreet).flowRate())) {
-      bCanPass = false;
-    }
-    for (auto queueIndex = 0; queueIndex < nLanes; ++queueIndex) {
-      if (pStreet->queue(queueIndex).empty()) {
-        continue;
+    for (auto i = 0; i < std::ceil(transportCapacity); ++i) {
+      bool bCanPass{true};
+      if (pStreet->isStochastic() &&
+          (uniformDist(this->m_generator) >
+           dynamic_cast<StochasticStreet&>(*pStreet).flowRate())) {
+        bCanPass = false;
       }
-      Logger::debug("Taking temp agent");
-      auto const& pAgentTemp{pStreet->queue(queueIndex).front()};
-      if (pAgentTemp->freeTime() > this->time()) {
-        Logger::debug("Skipping due to time");
-        continue;
+      if (i == std::ceil(transportCapacity) - 1) {
+        double integral;
+        double fractional = std::modf(transportCapacity, &integral);
+        if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
+          bCanPass = false;
+        }
       }
-      pAgentTemp->setSpeed(0.);
-      const auto& destinationNode{this->graph().node(pStreet->target())};
-      if (destinationNode->isFull()) {
-        Logger::debug("Skipping due to space");
-        continue;
-      }
-      if (destinationNode->isTrafficLight()) {
-        auto& tl = dynamic_cast<TrafficLight&>(*destinationNode);
-        auto const direction{pStreet->laneMapping().at(queueIndex)};
-        if (!tl.isGreen(pStreet->id(), direction)) {
+      for (auto queueIndex = 0; queueIndex < nLanes; ++queueIndex) {
+        if (pStreet->queue(queueIndex).empty()) {
           continue;
         }
-      }
-      bCanPass = bCanPass &&
-                 (uniformDist(this->m_generator) < m_passageProbability.value_or(1.1));
-      bool bArrived{false};
-      if (!bCanPass) {
-        if (pAgentTemp->isRandom()) {
-          bArrived = true;
-        } else {
+        Logger::debug("Taking temp agent");
+        auto const& pAgentTemp{pStreet->queue(queueIndex).front()};
+        if (pAgentTemp->freeTime() > this->time()) {
+          Logger::debug("Skipping due to time");
           continue;
         }
-      }
-      if (!pAgentTemp->isRandom()) {
-        if (destinationNode->id() ==
-            this->itineraries().at(pAgentTemp->itineraryId())->destination()) {
-          bArrived = true;
+        pAgentTemp->setSpeed(0.);
+        const auto& destinationNode{this->graph().node(pStreet->target())};
+        if (destinationNode->isFull()) {
+          Logger::debug("Skipping due to space");
+          continue;
         }
-      }
-      if (bArrived) {
-        Logger::debug("Arrivatooooooooooo");
+        if (destinationNode->isTrafficLight()) {
+          auto& tl = dynamic_cast<TrafficLight&>(*destinationNode);
+          auto const direction{pStreet->laneMapping().at(queueIndex)};
+          if (!tl.isGreen(pStreet->id(), direction)) {
+            continue;
+          }
+        }
+        bCanPass = bCanPass &&
+                   (uniformDist(this->m_generator) < m_passageProbability.value_or(1.1));
+        bool bArrived{false};
+        if (!bCanPass) {
+          if (pAgentTemp->isRandom()) {
+            bArrived = true;
+          } else {
+            continue;
+          }
+        }
+        if (!pAgentTemp->isRandom()) {
+          if (destinationNode->id() ==
+              this->itineraries().at(pAgentTemp->itineraryId())->destination()) {
+            bArrived = true;
+          }
+        }
+        if (bArrived) {
+          auto pAgent{pStreet->dequeue(queueIndex)};
+          m_travelDTs.push_back(
+              {pAgent->distance(),
+               static_cast<double>(this->time() - pAgent->spawnTime())});
+          if (reinsert_agents) {
+            // reset Agent's values
+            pAgent->reset(this->time());
+            this->addAgent(std::move(pAgent));
+          }
+          continue;
+        }
+        auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
+        if (nextStreet->isFull()) {
+          continue;
+        }
         auto pAgent{pStreet->dequeue(queueIndex)};
-        m_travelDTs.push_back({pAgent->distance(),
-                               static_cast<double>(this->time() - pAgent->spawnTime())});
-        if (reinsert_agents) {
-          // reset Agent's values
-          pAgent->reset(this->time());
-          this->addAgent(std::move(pAgent));
+        assert(destinationNode->id() == nextStreet->source());
+        if (destinationNode->isIntersection()) {
+          auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
+          auto const delta{nextStreet->deltaAngle(pStreet->angle())};
+          // m_increaseTurnCounts(pStreet->id(), delta);
+          intersection.addAgent(delta, std::move(pAgent));
+        } else if (destinationNode->isRoundabout()) {
+          auto& roundabout = dynamic_cast<Roundabout&>(*destinationNode);
+          roundabout.enqueue(std::move(pAgent));
         }
-        continue;
-      }
-      auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
-      if (nextStreet->isFull()) {
-        continue;
-      }
-      auto pAgent{pStreet->dequeue(queueIndex)};
-      assert(destinationNode->id() == nextStreet->source());
-      if (destinationNode->isIntersection()) {
-        auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
-        auto const delta{nextStreet->deltaAngle(pStreet->angle())};
-        // m_increaseTurnCounts(pStreet->id(), delta);
-        intersection.addAgent(delta, std::move(pAgent));
-      } else if (destinationNode->isRoundabout()) {
-        auto& roundabout = dynamic_cast<Roundabout&>(*destinationNode);
-        roundabout.enqueue(std::move(pAgent));
       }
     }
   }
@@ -984,9 +994,7 @@ namespace dsm {
                 if (bUpdateData) {
                   m_streetTails[streetId] += pStreet->nExitingAgents();
                 }
-                for (auto i = 0; i < pStreet->transportCapacity(); ++i) {
-                  m_evolveStreet(pStreet, reinsert_agents);
-                }
+                m_evolveStreet(pStreet, reinsert_agents);
 
                 while (!pStreet->movingAgents().empty()) {
                   auto const& pAgent{pStreet->movingAgents().top()};

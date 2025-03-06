@@ -16,7 +16,7 @@ namespace dsm {
              std::string name,
              std::vector<std::pair<double, double>> geometry,
              std::optional<int> capacity,
-             int transportCapacity)
+             double transportCapacity)
       : Edge(id,
              std::move(nodePair),
              capacity.value_or(std::ceil((length * nLanes) / m_meanVehicleLength)),
