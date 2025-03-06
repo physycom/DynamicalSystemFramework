@@ -11,7 +11,7 @@ namespace dsm {
     Id m_id;
     std::pair<Id, Id> m_nodePair;
     int m_capacity;
-    int m_transportCapacity;
+    double m_transportCapacity;
     double m_angle;
 
     void m_setAngle(std::pair<double, double> srcNodeCoordinates,
@@ -29,7 +29,7 @@ namespace dsm {
     Edge(Id id,
          std::pair<Id, Id> nodePair,
          int capacity = 1,
-         int transportCapacity = 1,
+         double transportCapacity = 1.,
          std::vector<std::pair<double, double>> geometry = {});
     Edge(Edge&&) = default;
     Edge(const Edge&) = delete;
@@ -37,7 +37,7 @@ namespace dsm {
 
     void resetId(Id newId);
     void setCapacity(int capacity);
-    void setTransportCapacity(int capacity);
+    void setTransportCapacity(double capacity);
     void setGeometry(std::vector<std::pair<double, double>> geometry);
 
     /// @brief Get the edge's id
@@ -60,7 +60,7 @@ namespace dsm {
     int capacity() const;
     /// @brief Get the edge's transport capacity, in number of agents
     /// @return int The edge's transport capacity, in number of agents
-    int transportCapacity() const;
+    double transportCapacity() const;
     /// @brief Get the edge's angle, in radians, between the source and target nodes
     /// @return double The edge's angle, in radians
     double angle() const;
