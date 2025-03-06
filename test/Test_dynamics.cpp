@@ -260,10 +260,10 @@ TEST_CASE("Dynamics") {
         dynamics.addAgents(n);
         THEN("The number of agents is correct") { CHECK_EQ(dynamics.nAgents(), 100); }
         THEN("If we evolve the dynamics agent disappear gradually") {
-          // for (auto i{0}; i < 40; ++i) {
-          //   dynamics.evolve(false);
-          // }
-          // CHECK(dynamics.nAgents() < n);
+          for (auto i{0}; i < 40; ++i) {
+            dynamics.evolve(false);
+          }
+          CHECK(dynamics.nAgents() < n);
         }
       }
     }
@@ -520,6 +520,35 @@ TEST_CASE("Dynamics") {
         }
         dynamics.evolve(false);
         THEN("The agent reaches the destination") { CHECK(dynamics.agents().empty()); }
+      }
+    }
+    GIVEN("A dynamics object, an itinerary and an agent") {
+      Street s1{0, std::make_pair(0, 1), 13.8888888889};
+      Street s2{1, std::make_pair(1, 0), 13.8888888889};
+      s1.setTransportCapacity(0.3);
+      RoadNetwork graph2;
+      graph2.addStreets(s1, s2);
+      graph2.buildAdj();
+      Dynamics dynamics{graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 1)));
+      dynamics.updatePaths();
+      dynamics.addAgent(0, 0, 0);
+      WHEN("We evolve the dynamics") {
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        THEN("The agent evolves") {
+          CHECK_EQ(dynamics.time() - dynamics.agents().at(0)->spawnTime(), 2);
+          CHECK_EQ(dynamics.agents().at(0)->freeTime(), dynamics.time());
+          CHECK_EQ(dynamics.agents().at(0)->streetId().value(), 1);
+          CHECK_EQ(dynamics.agents().at(0)->speed(), 13.8888888889);
+          CHECK_EQ(dynamics.agents().at(0)->distance(), 13.8888888889);
+        }
+        auto i{0};
+        while (dynamics.nAgents() > 0) {
+          dynamics.evolve(false);
+          ++i;
+        }
+        THEN("The agent reaches the destination") { CHECK(i > 0); }
       }
     }
     GIVEN("A dynamics object, an itinerary and an agent") {

@@ -38,7 +38,7 @@ namespace dsm {
          std::string name = std::string(),
          std::vector<std::pair<double, double>> geometry = {},
          std::optional<int> capacity = std::nullopt,
-         int transportCapacity = 1);
+         double transportCapacity = 1.);
     /// @brief Set the mean vehicle length, in meters (default is 5)
     /// @param meanVehicleLength The mean vehicle length
     /// @throws std::invalid_argument If the mean vehicle length is less or equal to 0
