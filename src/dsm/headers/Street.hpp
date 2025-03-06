@@ -61,7 +61,7 @@ namespace dsm {
            std::string name = std::string(),
            std::vector<std::pair<double, double>> geometry = {},
            std::optional<int> capacity = std::nullopt,
-           int transportCapacity = 1);
+           double transportCapacity = 1.);
     virtual ~Street() = default;
 
     /// @brief Set the street's queue
@@ -135,7 +135,7 @@ namespace dsm {
                      std::vector<std::pair<double, double>> geometry = {},
                      double flowRate = 1.,
                      std::optional<int> capacity = std::nullopt,
-                     int transportCapacity = 1);
+                     double transportCapacity = 1.);
 
     void setFlowRate(double const flowRate);
     double flowRate() const;

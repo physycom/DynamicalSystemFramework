@@ -11,7 +11,7 @@ namespace dsm {
   Edge::Edge(Id id,
              std::pair<Id, Id> nodePair,
              int capacity,
-             int transportCapacity,
+             double transportCapacity,
              std::vector<std::pair<double, double>> geometry)
       : m_geometry{std::move(geometry)},
         m_id(id),
@@ -21,10 +21,7 @@ namespace dsm {
     if (capacity < 1) {
       Logger::error(std::format("Edge capacity ({}) must be greater than 0.", capacity));
     }
-    if (transportCapacity < 1) {
-      Logger::error(std::format("Edge transport capacity ({}) must be greater than 0.",
-                                transportCapacity));
-    }
+    assert(transportCapacity > 0.);
     if (m_geometry.size() > 1) {
       m_setAngle(m_geometry[m_geometry.size() - 2], m_geometry.back());
     } else {
@@ -50,11 +47,8 @@ namespace dsm {
     }
     m_capacity = capacity;
   }
-  void Edge::setTransportCapacity(int capacity) {
-    if (capacity < 1) {
-      Logger::error(
-          std::format("Edge transport capacity ({}) must be greater than 0.", capacity));
-    }
+  void Edge::setTransportCapacity(double capacity) {
+    assert(capacity > 0.);
     m_transportCapacity = capacity;
   }
 
@@ -72,7 +66,7 @@ namespace dsm {
   Id Edge::target() const { return m_nodePair.second; }
   std::pair<Id, Id> const& Edge::nodePair() const { return m_nodePair; }
   int Edge::capacity() const { return m_capacity; }
-  int Edge::transportCapacity() const { return m_transportCapacity; }
+  double Edge::transportCapacity() const { return m_transportCapacity; }
   double Edge::angle() const { return m_angle; }
   std::vector<std::pair<double, double>> const& Edge::geometry() const {
     return m_geometry;
