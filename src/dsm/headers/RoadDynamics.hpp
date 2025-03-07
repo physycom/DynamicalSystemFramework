@@ -85,7 +85,7 @@ namespace dsm {
     void m_evolveStreet(std::unique_ptr<Street> const& pStreet, bool reinsert_agents);
     /// @brief If possible, removes one agent from the node, putting it on the next street.
     /// @param pNode A std::unique_ptr to the node
-    void m_evolveNode(const std::unique_ptr<Node>& pNode);
+    void m_evolveNode(const std::unique_ptr<RoadJunction>& pNode);
     /// @brief Evolve the agents.
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
@@ -621,8 +621,17 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_evolveNode(const std::unique_ptr<Node>& pNode) {
-    for (auto i{0}; i < pNode->transportCapacity(); ++i) {
+  void RoadDynamics<delay_t>::m_evolveNode(const std::unique_ptr<RoadJunction>& pNode) {
+    auto const transportCapacity{pNode->transportCapacity()};
+    for (auto i{0}; i < std::ceil(transportCapacity); ++i) {
+      if (i == std::ceil(transportCapacity) - 1) {
+        std::uniform_real_distribution<double> uniformDist{0., 1.};
+        double integral;
+        double fractional = std::modf(transportCapacity, &integral);
+        if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
+          return;
+        }
+      }
       if (pNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*pNode);
         if (intersection.agents().empty()) {

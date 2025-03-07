@@ -65,7 +65,7 @@ namespace dsm {
     TrafficLight(Id id, Delay cycleTime, std::pair<double, double> coords)
         : Intersection{id, std::move(coords)}, m_cycleTime{cycleTime}, m_counter{0} {}
 
-    TrafficLight(Node const& node, Delay const cycleTime, Delay const counter = 0)
+    TrafficLight(RoadJunction const& node, Delay const cycleTime, Delay const counter = 0)
         : Intersection{node}, m_cycleTime{cycleTime}, m_counter{counter} {}
 
     ~TrafficLight() = default;
