@@ -19,8 +19,6 @@ TEST_CASE("Intersection") {
       constexpr dsm::Id id = 1;
       constexpr double lat = 2.5;
       constexpr double lon = 3.5;
-      constexpr dsm::Size capacity = 2;
-      constexpr dsm::Size transportCapacity = 3;
       const std::string name = "MyName";
       WHEN("An Intersection is created using only an Id") {
         Intersection intersection{id};
@@ -45,20 +43,20 @@ TEST_CASE("Intersection") {
         }
       }
       WHEN("An intersection is created using copy constructor") {
-        Intersection base{id, std::make_pair(lat, lon)};
-        base.setCapacity(capacity);
-        base.setTransportCapacity(transportCapacity);
-        base.setName(name);
-        auto copy = base;
-        THEN("Parameters are set correctly") {
-          CHECK_EQ(copy.id(), id);
-          CHECK(copy.coords().has_value());
-          CHECK_EQ(copy.coords().value().first, lat);
-          CHECK_EQ(copy.coords().value().second, lon);
-          CHECK_EQ(copy.capacity(), capacity);
-          CHECK_EQ(copy.transportCapacity(), transportCapacity);
-          CHECK_EQ(copy.name(), name);
-        }
+        // Intersection base{id, std::make_pair(lat, lon)};
+        // base.setCapacity(capacity);
+        // base.setTransportCapacity(transportCapacity);
+        // base.setName(name);
+        // auto copy = base;
+        // THEN("Parameters are set correctly") {
+        //   CHECK_EQ(copy.id(), id);
+        //   CHECK(copy.coords().has_value());
+        //   CHECK_EQ(copy.coords().value().first, lat);
+        //   CHECK_EQ(copy.coords().value().second, lon);
+        //   CHECK_EQ(copy.capacity(), capacity);
+        //   CHECK_EQ(copy.transportCapacity(), transportCapacity);
+        //   CHECK_EQ(copy.name(), name);
+        // }
       }
     }
   }

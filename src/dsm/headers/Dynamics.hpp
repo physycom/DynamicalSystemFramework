@@ -26,8 +26,6 @@
 #include <functional>
 
 #include "Network.hpp"
-#include "../utility/TypeTraits/is_agent.hpp"
-#include "../utility/TypeTraits/is_itinerary.hpp"
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 

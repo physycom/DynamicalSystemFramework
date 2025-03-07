@@ -2,6 +2,7 @@
 
 #include "Edge.hpp"
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -15,12 +16,6 @@ namespace dsm {
     std::string m_name;
 
   public:
-    /// @brief Construct a new Road object starting from an existing road
-    /// @details The new road has different id but same capacity, length, speed limit, and node pair as the
-    ///          existing road.
-    /// @param Road The existing road
-    /// @param id The new road's id
-    Road(Id id, const Road&);
     /// @brief Construct a new Road object
     /// @param id The road's id
     /// @param nodePair The road's node pair
@@ -64,8 +59,6 @@ namespace dsm {
     /// @brief Get the name
     /// @return std::string The name
     std::string name() const;
-
-    virtual void addAgent(Id agentId) = 0;
 
     virtual int nAgents() const = 0;
     virtual int nMovingAgents() const = 0;

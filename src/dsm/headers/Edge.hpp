@@ -31,7 +31,11 @@ namespace dsm {
          int capacity = 1,
          double transportCapacity = 1.,
          std::vector<std::pair<double, double>> geometry = {});
+    Edge(Edge&&) = default;
+    Edge(const Edge&) = delete;
+    virtual ~Edge() = default;
 
+    void resetId(Id newId);
     void setCapacity(int capacity);
     void setTransportCapacity(double capacity);
     void setGeometry(std::vector<std::pair<double, double>> geometry);

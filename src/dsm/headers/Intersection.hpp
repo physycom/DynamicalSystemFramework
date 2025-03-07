@@ -8,17 +8,19 @@
 
 #pragma once
 
-#include "Node.hpp"
+#include "Agent.hpp"
+#include "RoadJunction.hpp"
 
 #include <map>
+#include <memory>
 #include <set>
 
 namespace dsm {
   /// @brief The Intersection class represents a node in the network.
   /// @tparam Id The type of the node's id. It must be an unsigned integral type.
-  class Intersection : public Node {
+  class Intersection : public RoadJunction {
   protected:
-    std::multimap<int16_t, Id> m_agents;
+    std::multimap<int16_t, std::unique_ptr<Agent>> m_agents;
     std::set<Id>
         m_streetPriorities;  // A set containing the street ids that have priority - like main roads
     Size m_agentCounter;
@@ -26,13 +28,15 @@ namespace dsm {
   public:
     /// @brief Construct a new Intersection object
     /// @param id The node's id
-    explicit Intersection(Id id) : Node{id} {};
+    explicit Intersection(Id id) : RoadJunction{id} {};
     /// @brief Construct a new Intersection object
     /// @param id The node's id
     /// @param coords A std::pair containing the node's coordinates
-    Intersection(Id id, std::pair<double, double> coords) : Node{id, coords} {};
+    Intersection(Id id, std::pair<double, double> coords) : RoadJunction{id, coords} {};
 
-    Intersection(Node const& node) : Node{node} {};
+    Intersection(RoadJunction const& node) : RoadJunction{node} {};
+
+    Intersection(Intersection const&) = delete;
 
     virtual ~Intersection() = default;
 
@@ -47,17 +51,17 @@ namespace dsm {
     ///          The agent with the smallest angle difference is the first one to be
     ///          removed from the node.
     /// @throws std::runtime_error if the node is full
-    void addAgent(double angle, Id agentId);
+    void addAgent(double angle, std::unique_ptr<Agent> pAgent);
     /// @brief Put an agent in the node
     /// @param agentId The agent's id
     /// @details The agent's angle difference is used to order the agents in the node.
     ///          The agent with the smallest angle difference is the first one to be
     ///          removed from the node.
     /// @throws std::runtime_error if the node is full
-    void addAgent(Id agentId);
-    /// @brief Removes an agent from the node
-    /// @param agentId The agent's id
-    void removeAgent(Id agentId);
+    void addAgent(std::unique_ptr<Agent> pAgent);
+    // /// @brief Removes an agent from the node
+    // /// @param agentId The agent's id
+    // void removeAgent(Id agentId);
     /// @brief Set the node streets with priority
     /// @param streetPriorities A std::set containing the node's street priorities
     void setStreetPriorities(std::set<Id> streetPriorities) {
@@ -69,11 +73,11 @@ namespace dsm {
     /// @brief Returns the node's density
     /// @return double The node's density
     double density() const override {
-      return static_cast<double>(m_agents.size()) / m_capacity;
+      return static_cast<double>(m_agents.size()) / this->capacity();
     }
     /// @brief Returns true if the node is full
     /// @return bool True if the node is full
-    bool isFull() const override { return m_agents.size() == this->m_capacity; }
+    bool isFull() const override { return m_agents.size() == this->capacity(); }
 
     /// @brief Get the node's street priorities
     /// @details This function returns a std::set containing the node's street priorities.
@@ -83,7 +87,7 @@ namespace dsm {
     virtual const std::set<Id>& streetPriorities() const { return m_streetPriorities; };
     /// @brief Get the node's agent ids
     /// @return std::set<Id> A std::set containing the node's agent ids
-    const std::multimap<int16_t, Id>& agents() { return m_agents; };
+    std::multimap<int16_t, std::unique_ptr<Agent>>& agents() { return m_agents; };
     /// @brief Returns the number of agents that have passed through the node
     /// @return Size The number of agents that have passed through the node
     /// @details This function returns the number of agents that have passed through the node
