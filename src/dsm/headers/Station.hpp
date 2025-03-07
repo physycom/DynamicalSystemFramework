@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "Node.hpp"
+#include "RoadJunction.hpp"
 
 #include <map>
 
 namespace dsm {
-  class Station : public Node {
+  class Station : public RoadJunction {
   private:
     Delay m_managementTime;
     std::multimap<train_t, Id, std::greater<train_t>> m_trains;
@@ -29,7 +29,7 @@ namespace dsm {
     /// @brief Construct a new Station object
     /// @param node A Node object representing the station
     /// @param managementTime The time it takes between two train departures/arrivals
-    Station(Node const& node, Delay managementTime);
+    Station(RoadJunction const& node, Delay managementTime);
     /// @brief Construct a new Station object by copying another Station object
     /// @param other The Station object to copy
     Station(Station const& other);

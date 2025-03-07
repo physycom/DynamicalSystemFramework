@@ -12,7 +12,7 @@ namespace dsm {
           capacity,
           m_agents.size())));
     }
-    Node::setCapacity(capacity);
+    RoadJunction::setCapacity(capacity);
   }
 
   void Intersection::addAgent(double angle, Id agentId) {

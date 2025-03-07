@@ -28,7 +28,7 @@ namespace dsm {
     Roundabout(Id id, std::pair<double, double> coords) : RoadJunction{id, coords} {};
     /// @brief Construct a new Roundabout object
     /// @param node An Intersection object
-    Roundabout(const Node& node);
+    Roundabout(const RoadJunction& node);
 
     ~Roundabout() = default;
 

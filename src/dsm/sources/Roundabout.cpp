@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 namespace dsm {
-  Roundabout::Roundabout(const Node& node) : Node{node.id()} {
+  Roundabout::Roundabout(const RoadJunction& node) : RoadJunction{node.id()} {
     if (node.coords().has_value()) {
       this->setCoords(node.coords().value());
     }

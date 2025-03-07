@@ -138,8 +138,6 @@ namespace dsm {
         auto const& pStreet{m_edges.at(streetId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
-      Logger::info(
-          std::format("Setting transport capacity to {}", value == 0. ? 1. : value));
       pNode->setTransportCapacity(value == 0. ? 1. : value);
       if (pNode->capacity() == 0) {
         pNode->setCapacity(value);
