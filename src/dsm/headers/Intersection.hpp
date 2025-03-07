@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "Node.hpp"
+#include "RoadJunction.hpp"
 
 #include <map>
 #include <set>
@@ -16,7 +16,7 @@
 namespace dsm {
   /// @brief The Intersection class represents a node in the network.
   /// @tparam Id The type of the node's id. It must be an unsigned integral type.
-  class Intersection : public Node {
+  class Intersection : public RoadJunction {
   protected:
     std::multimap<int16_t, Id> m_agents;
     std::set<Id>
@@ -26,13 +26,13 @@ namespace dsm {
   public:
     /// @brief Construct a new Intersection object
     /// @param id The node's id
-    explicit Intersection(Id id) : Node{id} {};
+    explicit Intersection(Id id) : RoadJunction{id} {};
     /// @brief Construct a new Intersection object
     /// @param id The node's id
     /// @param coords A std::pair containing the node's coordinates
-    Intersection(Id id, std::pair<double, double> coords) : Node{id, coords} {};
+    Intersection(Id id, std::pair<double, double> coords) : RoadJunction{id, coords} {};
 
-    Intersection(Node const& node) : Node{node} {};
+    Intersection(RoadJunction const& node) : RoadJunction{node} {};
 
     virtual ~Intersection() = default;
 
@@ -69,11 +69,11 @@ namespace dsm {
     /// @brief Returns the node's density
     /// @return double The node's density
     double density() const override {
-      return static_cast<double>(m_agents.size()) / m_capacity;
+      return static_cast<double>(m_agents.size()) / this->capacity();
     }
     /// @brief Returns true if the node is full
     /// @return bool True if the node is full
-    bool isFull() const override { return m_agents.size() == this->m_capacity; }
+    bool isFull() const override { return m_agents.size() == this->capacity(); }
 
     /// @brief Get the node's street priorities
     /// @details This function returns a std::set containing the node's street priorities.
