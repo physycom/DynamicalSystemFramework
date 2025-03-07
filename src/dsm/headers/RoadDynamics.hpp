@@ -88,8 +88,7 @@ namespace dsm {
     void m_evolveStreet(const std::unique_ptr<Street>& pStreet, bool reinsert_agents);
     /// @brief If possible, removes one agent from the node, putting it on the next street.
     /// @param pNode A std::unique_ptr to the node
-    /// @return bool True if the agent has been moved, false otherwise
-    bool m_evolveNode(const std::unique_ptr<Node>& pNode);
+    void m_evolveNode(std::unique_ptr<RoadJunction> const& pNode);
     /// @brief Evolve the agents.
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
@@ -643,7 +642,7 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  bool RoadDynamics<delay_t>::m_evolveNode(const std::unique_ptr<Node>& pNode) {
+  void RoadDynamics<delay_t>::m_evolveNode(std::unique_ptr<RoadJunction> const& pNode) {
     if (pNode->isIntersection()) {
       auto& intersection = dynamic_cast<Intersection&>(*pNode);
       if (intersection.agents().empty()) {

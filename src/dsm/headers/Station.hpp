@@ -45,10 +45,10 @@ namespace dsm {
     Delay managementTime() const;
     /// @brief Get the train density of the station
     /// @return The train density of the station
-    double density() const final;
+    double density() const;
     /// @brief Check if the station is full
     /// @return True if the station is full, false otherwise
-    bool isFull() const final;
+    bool isFull() const;
     /// @brief Check if the node is a station
     /// @return True
     bool isStation() const noexcept final;

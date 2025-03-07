@@ -121,9 +121,9 @@ namespace dsm {
   }
 
   void RoadNetwork::adjustNodeCapacities() {
-    int16_t value;
+    double value;
     for (Id nodeId = 0; nodeId < m_nodes.size(); ++nodeId) {
-      value = 0;
+      value = 0.;
       auto const N{nNodes()};
       for (const auto& sourceId : m_adjacencyMatrix.getCol(nodeId)) {
         auto const streetId{sourceId * N + nodeId};
@@ -132,13 +132,15 @@ namespace dsm {
       }
       auto const& pNode{m_nodes.at(nodeId)};
       pNode->setCapacity(value);
-      value = 0;
+      value = 0.;
       for (const auto& targetId : m_adjacencyMatrix.getRow(nodeId)) {
         auto const streetId{nodeId * N + targetId};
         auto const& pStreet{m_edges.at(streetId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
-      pNode->setTransportCapacity(value == 0 ? 1 : value);
+      Logger::info(
+          std::format("Setting transport capacity to {}", value == 0. ? 1. : value));
+      pNode->setTransportCapacity(value == 0. ? 1. : value);
       if (pNode->capacity() == 0) {
         pNode->setCapacity(value);
       }
