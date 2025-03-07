@@ -29,6 +29,7 @@
 #include "AdjacencyMatrix.hpp"
 #include "DijkstraWeights.hpp"
 #include "Network.hpp"
+#include "RoadJunction.hpp"
 #include "Intersection.hpp"
 #include "TrafficLight.hpp"
 #include "Roundabout.hpp"
@@ -45,7 +46,7 @@ namespace dsm {
   /// @brief The RoadNetwork class represents a graph in the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
-  class RoadNetwork : public Network<Node, Street> {
+  class RoadNetwork : public Network<RoadJunction, Street> {
   private:
     std::unordered_map<std::string, Id> m_nodeMapping;
     std::vector<Id> m_inputNodes;

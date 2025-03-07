@@ -8,7 +8,7 @@
 #pragma once
 
 #include "Agent.hpp"
-#include "Node.hpp"
+#include "RoadJunction.hpp"
 #include "../utility/queue.hpp"
 
 #include <memory>
@@ -17,21 +17,21 @@ namespace dsm {
   /// @brief The Roundabout class represents a roundabout node in the network.
   /// @tparam Id The type of the node's id
   /// @tparam Size The type of the node's capacity
-  class Roundabout : public Node {
+  class Roundabout : public RoadJunction {
   protected:
     dsm::queue<std::unique_ptr<Agent>> m_agents;
 
   public:
     /// @brief Construct a new Roundabout object
     /// @param id The node's id
-    explicit Roundabout(Id id) : Node{id} {};
+    explicit Roundabout(Id id) : RoadJunction{id} {};
     /// @brief Construct a new Roundabout object
     /// @param id The node's id
     /// @param coords A std::pair containing the node's coordinates
-    Roundabout(Id id, std::pair<double, double> coords) : Node{id, coords} {};
+    Roundabout(Id id, std::pair<double, double> coords) : RoadJunction{id, coords} {};
     /// @brief Construct a new Roundabout object
     /// @param node An Intersection object
-    Roundabout(const Node& node);
+    Roundabout(const RoadJunction& node);
 
     ~Roundabout() = default;
 
@@ -48,11 +48,11 @@ namespace dsm {
     /// @brief Returns the node's density
     /// @return double The node's density
     double density() const override {
-      return static_cast<double>(m_agents.size()) / m_capacity;
+      return static_cast<double>(m_agents.size()) / this->capacity();
     }
     /// @brief Returns true if the node is full
     /// @return bool True if the node is full
-    bool isFull() const override { return m_agents.size() == this->m_capacity; }
+    bool isFull() const override { return m_agents.size() == this->capacity(); }
     /// @brief Returns true if the node is a roundabout
     /// @return bool True if the node is a roundabout
     bool isRoundabout() const noexcept override { return true; }
