@@ -1551,8 +1551,12 @@ namespace dsm {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& [streetId, _] : this->graph().edges()) {
-        file << separator << streetId;
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
+        if (!pStreet->isSpire()) {
+          continue;
+        }
+        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
+        file << separator << spire.code();
       }
       file << std::endl;
     }
@@ -1565,8 +1569,8 @@ namespace dsm {
         } else {
           value = dynamic_cast<SpireStreet&>(*pStreet).outputCounts(reset);
         }
+        file << separator << value;
       }
-      file << separator << value;
     }
     file << std::endl;
     file.close();
