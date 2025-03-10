@@ -8,17 +8,6 @@
 namespace dsm {
   double Road::m_meanVehicleLength = 5.;
 
-  Road::Road(Id id, const Road& road)
-      : Edge(id,
-             road.nodePair(),
-             road.capacity(),
-             road.transportCapacity(),
-             road.geometry()),
-        m_length{road.length()},
-        m_maxSpeed{road.maxSpeed()},
-        m_nLanes{road.nLanes()},
-        m_name{road.name()} {}
-
   Road::Road(Id id,
              std::pair<Id, Id> nodePair,
              double length,

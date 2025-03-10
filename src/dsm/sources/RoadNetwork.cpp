@@ -49,31 +49,20 @@ namespace dsm {
     auto const oldStreetSet{std::move(m_edges)};
     auto const N{nNodes()};
     std::unordered_map<Id, Id> newStreetIds;
-    for (const auto& [streetId, street] : oldStreetSet) {
+    for (auto& [streetId, street] : oldStreetSet) {
       const auto srcId{street->source()};
       const auto dstId{street->target()};
       const auto newStreetId{static_cast<Id>(srcId * N + dstId)};
-      if (m_edges.contains(newStreetId)) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(
-            std::format("Street with same id ({}) from {} to {} already exists.",
-                        newStreetId,
-                        srcId,
-                        dstId)));
-      }
+      assert(!m_edges.contains(newStreetId));
+      street->resetId(newStreetId);
       if (street->isSpire() && street->isStochastic()) {
-        addEdge<StochasticSpireStreet>(
-            newStreetId,
-            *street,
-            dynamic_cast<StochasticSpireStreet&>(*street).flowRate());
+        addEdge(std::move(dynamic_cast<StochasticSpireStreet&>(*street)));
       } else if (street->isStochastic()) {
-        addEdge<StochasticStreet>(
-            newStreetId, *street, dynamic_cast<StochasticStreet&>(*street).flowRate());
+        addEdge(std::move(dynamic_cast<StochasticStreet&>(*street)));
       } else if (street->isSpire()) {
-        addEdge<SpireStreet>(newStreetId, *street);
-        dynamic_cast<SpireStreet&>(*m_edges.at(newStreetId))
-            .setCode(dynamic_cast<SpireStreet&>(*street).code());
+        addEdge(std::move(dynamic_cast<SpireStreet&>(*street)));
       } else {
-        addEdge<Street>(newStreetId, *street);
+        addEdge(std::move(*street));
       }
       newStreetIds.emplace(streetId, newStreetId);
     }
@@ -121,9 +110,9 @@ namespace dsm {
   }
 
   void RoadNetwork::adjustNodeCapacities() {
-    int16_t value;
+    double value;
     for (Id nodeId = 0; nodeId < m_nodes.size(); ++nodeId) {
-      value = 0;
+      value = 0.;
       auto const N{nNodes()};
       for (const auto& sourceId : m_adjacencyMatrix.getCol(nodeId)) {
         auto const streetId{sourceId * N + nodeId};
@@ -132,13 +121,13 @@ namespace dsm {
       }
       auto const& pNode{m_nodes.at(nodeId)};
       pNode->setCapacity(value);
-      value = 0;
+      value = 0.;
       for (const auto& targetId : m_adjacencyMatrix.getRow(nodeId)) {
         auto const streetId{nodeId * N + targetId};
         auto const& pStreet{m_edges.at(streetId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
-      pNode->setTransportCapacity(value == 0 ? 1 : value);
+      pNode->setTransportCapacity(value == 0. ? 1. : value);
       if (pNode->capacity() == 0) {
         pNode->setCapacity(value);
       }
@@ -577,43 +566,22 @@ namespace dsm {
     pNode = std::make_unique<Station>(*pNode, managementTime);
     return node<Station>(nodeId);
   }
-  StochasticStreet& RoadNetwork::makeStochasticStreet(Id streetId,
-                                                      double const flowRate) {
+  void RoadNetwork::makeStochasticStreet(Id streetId, double const flowRate) {
     auto& pStreet = m_edges.at(streetId);
-    pStreet = std::make_unique<StochasticStreet>(pStreet->id(), *pStreet, flowRate);
-    return edge<StochasticStreet>(streetId);
+    pStreet = std::unique_ptr<StochasticStreet>(
+        new StochasticStreet(std::move(*pStreet), flowRate));
   }
   void RoadNetwork::makeSpireStreet(Id streetId) {
     auto& pStreet = m_edges.at(streetId);
     if (pStreet->isStochastic()) {
-      pStreet = std::make_unique<StochasticSpireStreet>(
-          pStreet->id(), *pStreet, edge<StochasticStreet>(streetId).flowRate());
+      pStreet = std::unique_ptr<StochasticSpireStreet>(new StochasticSpireStreet(
+          std::move(*pStreet), dynamic_cast<StochasticStreet&>(*pStreet).flowRate()));
       return;
     }
-    pStreet = std::make_unique<SpireStreet>(pStreet->id(), *pStreet);
+    pStreet = std::unique_ptr<SpireStreet>(new SpireStreet(std::move(*pStreet)));
   }
 
-  void RoadNetwork::addStreet(const Street& street) {
-    if (m_edges.contains(street.id())) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Street with id {} from {} to {} already exists.",
-                      street.id(),
-                      street.source(),
-                      street.target())));
-    }
-    // emplace nodes
-    const auto srcId{street.source()};
-    const auto dstId{street.target()};
-    if (!m_nodes.contains(srcId)) {
-      m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
-    }
-    if (!m_nodes.contains(dstId)) {
-      m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
-    }
-    // emplace street
-    m_edges.emplace(std::make_pair(street.id(), std::make_unique<Street>(street)));
-    m_adjacencyMatrix.insert(srcId, dstId);
-  }
+  void RoadNetwork::addStreet(Street&& street) { addEdge<Street>(std::move(street)); }
 
   const std::unique_ptr<Street>* RoadNetwork::street(Id source, Id destination) const {
     auto streetIt = std::find_if(m_edges.begin(),

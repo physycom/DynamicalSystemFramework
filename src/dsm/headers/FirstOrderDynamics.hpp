@@ -23,7 +23,7 @@ namespace dsm {
     /// @brief Set the speed of an agent
     /// @param agentId The id of the agent
     /// @throw std::invalid_argument, If the agent is not found
-    void setAgentSpeed(Size agentId) override;
+    void setAgentSpeed(std::unique_ptr<Agent> const& pAgent) override;
     /// @brief Set the standard deviation of the speed fluctuation
     /// @param speedFluctuationSTD The standard deviation of the speed fluctuation
     /// @throw std::invalid_argument, If the standard deviation is negative

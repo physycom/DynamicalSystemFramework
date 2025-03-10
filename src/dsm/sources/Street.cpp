@@ -5,22 +5,6 @@
 #include <cassert>
 
 namespace dsm {
-  Street::Street(Id id, const Street& street)
-      : Road(id,
-             street.nodePair(),
-             street.length(),
-             street.maxSpeed(),
-             street.nLanes(),
-             street.name(),
-             street.geometry(),
-             street.capacity(),
-             street.transportCapacity()) {
-    for (auto i{0}; i < street.nLanes(); ++i) {
-      m_exitQueues.push_back(dsm::queue<Size>());
-    }
-    m_laneMapping = street.laneMapping();
-  }
-
   Street::Street(Id id,
                  std::pair<Id, Id> nodePair,
                  double length,
@@ -38,11 +22,11 @@ namespace dsm {
              std::move(name),
              std::move(geometry),
              capacity,
-             transportCapacity) {
-    m_exitQueues.resize(nLanes);
-    for (auto i{0}; i < nLanes; ++i) {
-      m_exitQueues.push_back(dsm::queue<Size>());
-    }
+             transportCapacity),
+        m_exitQueues{std::vector<dsm::queue<std::unique_ptr<Agent>>>(nLanes)},
+        m_movingAgents{dsm::priority_queue<std::unique_ptr<Agent>,
+                                           std::vector<std::unique_ptr<Agent>>,
+                                           AgentComparator>()} {
     switch (nLanes) {
       case 1:
         m_laneMapping.emplace_back(Direction::ANY);
@@ -66,51 +50,34 @@ namespace dsm {
     }
   }
 
-  std::vector<Id> const& Street::movingAgents() const { return m_movingAgents; }
-
-  void Street::addAgent(Id agentId) {
-    assert((void("Agent is already on the street."),
-            std::find(m_movingAgents.cbegin(), m_movingAgents.cend(), agentId) ==
-                m_movingAgents.cend()));
-    for (auto const& queue : m_exitQueues) {
-      for (auto const& id : queue) {
-        assert((void("Agent is already in queue."), id != agentId));
-      }
-    }
-    m_movingAgents.push_back(agentId);
-    ;
+  void Street::addAgent(std::unique_ptr<Agent> pAgent) {
+    assert(!isFull());
+    m_movingAgents.push(std::move(pAgent));
   }
-  void Street::enqueue(Id agentId, size_t index) {
-    assert((void("Agent is not on the street."),
-            std::find(m_movingAgents.cbegin(), m_movingAgents.cend(), agentId) !=
-                m_movingAgents.cend()));
-    for (auto const& queue : m_exitQueues) {
-      for (auto const& id : queue) {
-        assert((void("Agent is already in queue."), id != agentId));
-      }
-    }
-    m_movingAgents.erase(
-        std::remove(m_movingAgents.begin(), m_movingAgents.end(), agentId),
-        m_movingAgents.end());
-    m_exitQueues[index].push(agentId);
+  void Street::enqueue(size_t const& queueId) {
+    assert(!m_movingAgents.empty());
+    m_movingAgents.top()->incrementDistance(m_length);
+    Logger::debug("Pusing into queue");
+    m_exitQueues[queueId].push(
+        std::move(const_cast<std::unique_ptr<Agent>&>(m_movingAgents.top())));
+    m_movingAgents.pop();
+    Logger::debug("Popped from moving queue");
   }
-  Id Street::dequeue(size_t index) {
-    if (m_exitQueues[index].empty()) {
-      Logger::error(std::format(
-          "Trying to remove an agent from queue {} of street {} which is empty.",
-          index,
-          this->id()));
-    }
-    Id id = m_exitQueues[index].front();
+  std::unique_ptr<Agent> Street::dequeue(size_t index) {
+    assert(!m_exitQueues[index].empty());
+    Logger::debug("Dequeueing from queue");
+    auto pAgent{std::move(m_exitQueues[index].front())};
     m_exitQueues[index].pop();
-    return id;
+    return pAgent;
   }
 
   int Street::nAgents() const {
     auto nAgents{static_cast<int>(m_movingAgents.size())};
+    Logger::debug(std::format("Number of moving agents street {}: {}", id(), nAgents));
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }
+    Logger::debug(std::format("Number of agents street {}: {}", id(), nAgents));
     return nAgents;
   }
 
@@ -127,8 +94,8 @@ namespace dsm {
     return nAgents;
   }
 
-  StochasticStreet::StochasticStreet(Id id, const Street& street, double flowRate)
-      : Street(id, street) {
+  StochasticStreet::StochasticStreet(Street&& street, double flowRate)
+      : Street(std::move(street)) {
     setFlowRate(flowRate);
   }
   StochasticStreet::StochasticStreet(Id id,
@@ -161,26 +128,25 @@ namespace dsm {
   double StochasticStreet::flowRate() const { return m_flowRate; }
   bool StochasticStreet::isStochastic() const { return true; }
 
-  void SpireStreet::addAgent(Id agentId) {
-    Street::addAgent(agentId);
+  void SpireStreet::addAgent(std::unique_ptr<Agent> pAgent) {
+    Street::addAgent(std::move(pAgent));
     increaseInputCounter();
   }
 
   int SpireStreet::meanFlow() { return inputCounts() - outputCounts(); }
 
-  Id SpireStreet::dequeue(size_t index) {
+  std::unique_ptr<Agent> SpireStreet::dequeue(size_t index) {
     increaseOutputCounter();
     return Street::dequeue(index);
   }
-  void StochasticSpireStreet::addAgent(Id agentId) {
-    Street::addAgent(agentId);
-    Logger::info(std::format("Adding agent {} to spire street {}", agentId, this->id()));
+  void StochasticSpireStreet::addAgent(std::unique_ptr<Agent> pAgent) {
+    Street::addAgent(std::move(pAgent));
     increaseInputCounter();
   }
 
   int StochasticSpireStreet::meanFlow() { return inputCounts() - outputCounts(); }
 
-  Id StochasticSpireStreet::dequeue(size_t index) {
+  std::unique_ptr<Agent> StochasticSpireStreet::dequeue(size_t index) {
     increaseOutputCounter();
     return Street::dequeue(index);
   }
