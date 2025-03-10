@@ -1493,7 +1493,7 @@ namespace dsm {
     file << this->time();
     for (auto const& [_, pStreet] : this->graph().edges()) {
       // keep 2 decimal digits;
-      file << separator << std::fixed << std::setprecision(2)
+      file << separator << std::scientific << std::setprecision(2)
            << pStreet->density(normalized);
     }
     file << std::endl;
