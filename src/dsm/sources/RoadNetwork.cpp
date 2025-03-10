@@ -91,7 +91,7 @@ namespace dsm {
   void RoadNetwork::buildAdj() {
     // find max values in streets node pairs
     m_maxAgentCapacity = 0;
-    for (const auto& [streetId, pStreet] : m_edges) {
+    for (auto const& [streetId, pStreet] : m_edges) {
       m_maxAgentCapacity += pStreet->capacity();
       if (pStreet->geometry().empty()) {
         std::vector<std::pair<double, double>> coords;
@@ -104,6 +104,92 @@ namespace dsm {
           coords.emplace_back(pair.value().second, pair.value().first);
         }
         pStreet->setGeometry(coords);
+      }
+    }
+    for (auto const& [id, pNode] : m_nodes) {
+      if (!pNode->isTrafficLight()) {
+        continue;
+      }
+      auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+      if (!tl.streetPriorities().empty()) {
+        continue;
+      }
+      auto const& inNeighbours = m_adjacencyMatrix.getCol(id);
+      {
+        std::map<Id, int, std::greater<int>> capacities;
+        std::unordered_map<Id, double> streetAngles;
+        std::unordered_map<Id, double> maxSpeeds;
+        std::unordered_map<Id, int> nLanes;
+        double higherSpeed{0.}, lowerSpeed{std::numeric_limits<double>::max()};
+        int higherNLanes{0}, lowerNLanes{std::numeric_limits<int>::max()};
+        if (inNeighbours.size() < 3) {
+          Logger::warning(std::format("Not enough in neighbours {} for Traffic Light {}",inNeighbours.size(), id));
+          // Replace with a normal intersection
+          m_nodes.at(id) = std::make_unique<Intersection>(id);
+          continue;
+        }
+        for (auto const& inId : inNeighbours) {
+          auto const streetId{inId * nNodes() + id};
+          auto const& pStreet{m_edges.at(streetId)};
+
+          double const speed{pStreet->maxSpeed()};
+          int const nLan{pStreet->nLanes()};
+          auto const cap{pStreet->capacity()};
+
+          capacities.emplace(streetId, cap);
+          streetAngles.emplace(streetId, pStreet->angle());
+
+          maxSpeeds.emplace(streetId, speed);
+          nLanes.emplace(streetId, nLan);
+
+          higherSpeed = std::max(higherSpeed, speed);
+          lowerSpeed = std::min(lowerSpeed, speed);
+
+          higherNLanes = std::max(higherNLanes, nLan);
+          lowerNLanes = std::min(lowerNLanes, nLan);
+        }
+        if (higherSpeed != lowerSpeed) {
+          // Assign streets with higher speed to priority
+          for (auto const& [sid, speed] : maxSpeeds) {
+            if (speed == higherSpeed) {
+              tl.addStreetPriority(sid);
+            }
+          }
+          continue;
+        } 
+        if (higherNLanes != lowerNLanes) {
+          for (auto const& [sid, nLan] : nLanes) {
+            if (nLan == higherNLanes) {
+              tl.addStreetPriority(sid);
+            }
+          }
+          continue;
+        }
+        // Set first two elements of capacities to street priorities
+        auto it{capacities.begin()};
+        tl.addStreetPriority(it->first);
+        ++it;
+        if (it != capacities.end()) {
+          tl.addStreetPriority(it->first);
+          continue;
+        }
+        // Id firstStreetId{streetAngles.begin()->first};
+        // tl.addStreetPriority(firstStreetId);
+        // for (auto const& [streetId, angle] : streetAngles) {
+        //   if (streetId == firstStreetId) {
+        //     continue;
+        //   }
+        //   if (angle == streetAngles.begin()->second) {
+        //     tl.addStreetPriority(streetId);
+        //   }
+        // }
+        // if (tl.streetPriorities().size() > 1) {
+        //   continue;
+        // }
+
+
+        Logger::warning(std::format("Failed to auto-assign priorities for Traffic Light {}", id));
+        // Check there are at least two different values of speed
       }
     }
     this->m_reassignIds();
