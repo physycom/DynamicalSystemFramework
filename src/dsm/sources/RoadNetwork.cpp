@@ -254,7 +254,7 @@ namespace dsm {
       // Check if the first line is nodeId;lat;lon
       std::string line;
       std::getline(ifs, line);
-      if (line != "id;lon;lat;type") {
+      if (line != "id;lat;lon;type") {
         throw std::invalid_argument(
             Logger::buildExceptionMessage("Invalid file format."));
       }
@@ -267,14 +267,14 @@ namespace dsm {
         std::istringstream iss{line};
         std::string nodeId, lat, lon, type;
         std::getline(iss, nodeId, ';');
-        std::getline(iss, lon, ';');
         std::getline(iss, lat, ';');
+        std::getline(iss, lon, ';');
         std::getline(iss, type, '\n');
         dLon = lon == "Nan" ? 0. : std::stod(lon);
         dLat = lat == "Nan" ? 0. : std::stod(lat);
         auto const& it{m_nodes.find(std::stoul(nodeId))};
         if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(dLon, dLat));
+          it->second->setCoords(std::make_pair(dLat, dLon));
           if (type == "traffic_light" && !it->second->isTrafficLight()) {
             makeTrafficLight(it->first, 60);
           } else if (type == "roundabout" && !it->second->isRoundabout()) {
@@ -478,7 +478,7 @@ namespace dsm {
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;lon;lat;type\n";
+    file << "id;lat;lon;type\n";
     for (auto const& [nodeId, pNode] : m_nodes) {
       file << nodeId << ';';
       if (pNode->coords().has_value()) {
