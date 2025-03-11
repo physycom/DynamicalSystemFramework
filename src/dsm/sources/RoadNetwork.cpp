@@ -471,7 +471,7 @@ namespace dsm {
         std::getline(iss, highway, ';');
         if (highway.find("traffic_signals") != std::string::npos) {
           addNode<TrafficLight>(
-              nodeIndex, 60, std::make_pair(std::stod(lat), std::stod(lon)));
+              nodeIndex, 120, std::make_pair(std::stod(lat), std::stod(lon)));
         } else if (highway.find("roundabout") != std::string::npos) {
           addNode<Roundabout>(nodeIndex, std::make_pair(std::stod(lat), std::stod(lon)));
         } else {
