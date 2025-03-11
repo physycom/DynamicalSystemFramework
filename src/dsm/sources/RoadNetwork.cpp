@@ -88,10 +88,162 @@ namespace dsm {
     }
   }
 
+  void RoadNetwork::initTrafficLights() {
+    for (auto const& [id, pNode] : m_nodes) {
+      if (!pNode->isTrafficLight()) {
+        continue;
+      }
+      auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+      if (!tl.streetPriorities().empty() || !tl.cycles().empty()) {
+        continue;
+      }
+      auto const& inNeighbours = m_adjacencyMatrix.getCol(id);
+      std::map<Id, int, std::greater<int>> capacities;
+      std::unordered_map<Id, double> streetAngles;
+      std::unordered_map<Id, double> maxSpeeds;
+      std::unordered_map<Id, int> nLanes;
+      double higherSpeed{0.}, lowerSpeed{std::numeric_limits<double>::max()};
+      int higherNLanes{0}, lowerNLanes{std::numeric_limits<int>::max()};
+      if (inNeighbours.size() < 3) {
+        Logger::warning(std::format(
+            "Not enough in neighbours {} for Traffic Light {}", inNeighbours.size(), id));
+        // Replace with a normal intersection
+        auto const& coordinates{pNode->coords()};
+        if (coordinates.has_value()) {
+          m_nodes[id] = std::make_unique<Intersection>(id, *coordinates);
+        } else {
+          m_nodes[id] = std::make_unique<Intersection>(id);
+        }
+        continue;
+      }
+      for (auto const& inId : inNeighbours) {
+        auto const streetId{inId * nNodes() + id};
+        auto const& pStreet{m_edges.at(streetId)};
+
+        double const speed{pStreet->maxSpeed()};
+        int const nLan{pStreet->nLanes()};
+        auto const cap{pStreet->capacity()};
+        Logger::debug(std::format("Street {} with capacity {}", streetId, cap));
+        capacities.emplace(streetId, cap);
+        streetAngles.emplace(streetId, pStreet->angle());
+
+        maxSpeeds.emplace(streetId, speed);
+        nLanes.emplace(streetId, nLan);
+
+        higherSpeed = std::max(higherSpeed, speed);
+        lowerSpeed = std::min(lowerSpeed, speed);
+
+        higherNLanes = std::max(higherNLanes, nLan);
+        lowerNLanes = std::min(lowerNLanes, nLan);
+      }
+      if (higherSpeed != lowerSpeed) {
+        // Assign streets with higher speed to priority
+        for (auto const& [sid, speed] : maxSpeeds) {
+          if (speed == higherSpeed) {
+            tl.addStreetPriority(sid);
+          }
+        }
+        // continue;
+      } else if (higherNLanes != lowerNLanes) {
+        for (auto const& [sid, nLan] : nLanes) {
+          if (nLan == higherNLanes) {
+            tl.addStreetPriority(sid);
+          }
+        }
+        // continue;
+      }
+      // Set first two elements of capacities to street priorities
+      // auto it{capacities.begin()};
+      // tl.addStreetPriority(it->first);
+      // ++it;
+      // if (it != capacities.end()) {
+      //   tl.addStreetPriority(it->first);
+      //   continue;
+      // }
+      // Id firstStreetId{streetAngles.begin()->first};
+      // tl.addStreetPriority(firstStreetId);
+      // for (auto const& [streetId, angle] : streetAngles) {
+      //   if (streetId == firstStreetId) {
+      //     continue;
+      //   }
+      //   if (angle == streetAngles.begin()->second) {
+      //     tl.addStreetPriority(streetId);
+      //   }
+      // }
+      // if (tl.streetPriorities().size() > 1) {
+      //   continue;
+      // }
+      if (tl.streetPriorities().empty()) {
+        Logger::warning(std::format("Failed to auto-init Traffic Light {}", id));
+        continue;
+      }
+
+      // Assign cycles
+      std::pair<Delay, Delay> greenTimes;
+      {
+        auto capPriority{0.}, capNoPriority{0.};
+        std::unordered_map<Id, double> normCapacities;
+        auto sum{0.};
+        for (auto const& [streetId, cap] : capacities) {
+          sum += cap;
+        }
+        for (auto const& [streetId, cap] : capacities) {
+          normCapacities.emplace(streetId, cap / sum);
+        }
+        for (auto const& [streetId, normCap] : normCapacities) {
+          if (tl.streetPriorities().contains(streetId)) {
+            capPriority += normCap;
+          } else {
+            capNoPriority += normCap;
+          }
+        }
+        Logger::debug(
+            std::format("Capacities for Traffic Light {}: priority {} no priority {}",
+                        id,
+                        capPriority,
+                        capNoPriority));
+        greenTimes = std::make_pair(static_cast<Delay>(capPriority * tl.cycleTime()),
+                                    static_cast<Delay>(capNoPriority * tl.cycleTime()));
+      }
+      std::for_each(inNeighbours.begin(), inNeighbours.end(), [&](Id const inId) {
+        auto const streetId{inId * nNodes() + id};
+        auto const nLane{nLanes.at(streetId)};
+        Delay greenTime{greenTimes.first};
+        Delay phase{0};
+        if (!tl.streetPriorities().contains(streetId)) {
+          phase = greenTime;
+          greenTime = greenTimes.second;
+        }
+        Logger::debug(
+            std::format("Setting cycle for street {} with green time {} and phase {}",
+                        streetId,
+                        greenTime,
+                        phase));
+        switch (nLane) {
+          case 3:
+            tl.setCycle(streetId,
+                        dsm::Direction::RIGHTANDSTRAIGHT,
+                        TrafficLightCycle{static_cast<Delay>(greenTime * 2. / 3), phase});
+            tl.setCycle(
+                streetId,
+                dsm::Direction::LEFT,
+                TrafficLightCycle{
+                    static_cast<Delay>(greenTime / 3.),
+                    static_cast<Delay>(phase + static_cast<Delay>(greenTime * 2. / 3))});
+            break;
+          default:
+            tl.setCycle(
+                streetId, dsm::Direction::ANY, TrafficLightCycle{greenTime, phase});
+            break;
+        }
+      });
+    }
+  }
+
   void RoadNetwork::buildAdj() {
     // find max values in streets node pairs
     m_maxAgentCapacity = 0;
-    for (const auto& [streetId, pStreet] : m_edges) {
+    for (auto const& [streetId, pStreet] : m_edges) {
       m_maxAgentCapacity += pStreet->capacity();
       if (pStreet->geometry().empty()) {
         std::vector<std::pair<double, double>> coords;
@@ -319,7 +471,7 @@ namespace dsm {
         std::getline(iss, highway, ';');
         if (highway.find("traffic_signals") != std::string::npos) {
           addNode<TrafficLight>(
-              nodeIndex, 60, std::make_pair(std::stod(lat), std::stod(lon)));
+              nodeIndex, 120, std::make_pair(std::stod(lat), std::stod(lon)));
         } else if (highway.find("roundabout") != std::string::npos) {
           addNode<Roundabout>(nodeIndex, std::make_pair(std::stod(lat), std::stod(lon)));
         } else {
