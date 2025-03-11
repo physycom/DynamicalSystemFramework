@@ -88,7 +88,7 @@ namespace dsm {
     }
   }
 
-  void RoadNetwork::m_initTrafficLights() {
+  void RoadNetwork::initTrafficLights() {
     for (auto const& [id, pNode] : m_nodes) {
       if (!pNode->isTrafficLight()) {
         continue;
@@ -123,7 +123,7 @@ namespace dsm {
         double const speed{pStreet->maxSpeed()};
         int const nLan{pStreet->nLanes()};
         auto const cap{pStreet->capacity()};
-
+        Logger::debug(std::format("Street {} with capacity {}", streetId, cap));
         capacities.emplace(streetId, cap);
         streetAngles.emplace(streetId, pStreet->angle());
 
@@ -143,15 +143,14 @@ namespace dsm {
             tl.addStreetPriority(sid);
           }
         }
-        continue;
-      }
-      if (higherNLanes != lowerNLanes) {
+        // continue;
+      } else if (higherNLanes != lowerNLanes) {
         for (auto const& [sid, nLan] : nLanes) {
           if (nLan == higherNLanes) {
             tl.addStreetPriority(sid);
           }
         }
-        continue;
+        // continue;
       }
       // Set first two elements of capacities to street priorities
       // auto it{capacities.begin()};
@@ -174,9 +173,70 @@ namespace dsm {
       // if (tl.streetPriorities().size() > 1) {
       //   continue;
       // }
+      if (tl.streetPriorities().empty()) {
+        Logger::warning(std::format("Failed to auto-init Traffic Light {}", id));
+        continue;
+      }
 
-      Logger::warning(
-          std::format("Failed to auto-assign priorities for Traffic Light {}", id));
+      // Assign cycles
+      std::pair<Delay, Delay> greenTimes;
+      {
+        auto capPriority{0.}, capNoPriority{0.};
+        std::unordered_map<Id, double> normCapacities;
+        auto sum{0.};
+        for (auto const& [streetId, cap] : capacities) {
+          sum += cap;
+        }
+        for (auto const& [streetId, cap] : capacities) {
+          normCapacities.emplace(streetId, cap / sum);
+        }
+        for (auto const& [streetId, normCap] : normCapacities) {
+          if (tl.streetPriorities().contains(streetId)) {
+            capPriority += normCap;
+          } else {
+            capNoPriority += normCap;
+          }
+        }
+        Logger::debug(
+            std::format("Capacities for Traffic Light {}: priority {} no priority {}",
+                        id,
+                        capPriority,
+                        capNoPriority));
+        greenTimes = std::make_pair(static_cast<Delay>(capPriority * tl.cycleTime()),
+                                    static_cast<Delay>(capNoPriority * tl.cycleTime()));
+      }
+      std::for_each(inNeighbours.begin(), inNeighbours.end(), [&](Id const inId) {
+        auto const streetId{inId * nNodes() + id};
+        auto const nLane{nLanes.at(streetId)};
+        Delay greenTime{greenTimes.first};
+        Delay phase{0};
+        if (!tl.streetPriorities().contains(streetId)) {
+          phase = greenTime;
+          greenTime = greenTimes.second;
+        }
+        Logger::debug(
+            std::format("Setting cycle for street {} with green time {} and phase {}",
+                        streetId,
+                        greenTime,
+                        phase));
+        switch (nLane) {
+          case 3:
+            tl.setCycle(streetId,
+                        dsm::Direction::RIGHTANDSTRAIGHT,
+                        TrafficLightCycle{static_cast<Delay>(greenTime * 2. / 3), phase});
+            tl.setCycle(
+                streetId,
+                dsm::Direction::LEFT,
+                TrafficLightCycle{
+                    static_cast<Delay>(greenTime / 3.),
+                    static_cast<Delay>(phase + static_cast<Delay>(greenTime * 2. / 3))});
+            break;
+          default:
+            tl.setCycle(
+                streetId, dsm::Direction::ANY, TrafficLightCycle{greenTime, phase});
+            break;
+        }
+      });
     }
   }
 
@@ -198,7 +258,6 @@ namespace dsm {
         pStreet->setGeometry(coords);
       }
     }
-    this->m_initTrafficLights();
     this->m_reassignIds();
   }
 

@@ -268,6 +268,52 @@ TEST_CASE("RoadNetwork") {
     CHECK_FALSE(graph.street(1, 0));
   }
   SUBCASE("make trafficlight") {
+    GIVEN("A graph with a traffic light with no parameters") {
+      Street s1{1, std::make_pair(0, 1), 30., 15., 3};
+      Street s2{11, std::make_pair(2, 1), 30., 15., 3};
+      Street s3{16, std::make_pair(3, 1), 30., 15., 1};
+      Street s4{21, std::make_pair(4, 1), 30., 15., 2};
+      RoadNetwork graph2;
+      graph2.addNode<dsm::TrafficLight>(1, 120);
+      graph2.addStreets(s1, s2, s3, s4);
+      for (auto const& pair : graph2.edges()) {
+        pair.second->setCapacity(2 * pair.second->nLanes());
+      }
+      graph2.buildAdj();
+      WHEN("We auto-init Traffic Lights") {
+        graph2.initTrafficLights();
+        THEN("Parameters are correctly set") {
+          auto& tl{graph2.node<dsm::TrafficLight>(1)};
+          CHECK_EQ(tl.cycleTime(), 120);
+          auto const& cycles{tl.cycles()};
+          CHECK_EQ(cycles.size(), 4);
+          CHECK_EQ(cycles.at(1)[0].greenTime(), 53);
+          CHECK_EQ(cycles.at(1)[1].greenTime(), 53);
+          CHECK_EQ(cycles.at(1)[2].greenTime(), 26);
+          CHECK_EQ(cycles.at(1)[0].phase(), 0);
+          CHECK_EQ(cycles.at(1)[1].phase(), 0);
+          CHECK_EQ(cycles.at(1)[2].phase(), 53);
+          CHECK_EQ(cycles.at(11)[0].greenTime(), 53);
+          CHECK_EQ(cycles.at(11)[1].greenTime(), 53);
+          CHECK_EQ(cycles.at(11)[2].greenTime(), 26);
+          CHECK_EQ(cycles.at(11)[0].phase(), 0);
+          CHECK_EQ(cycles.at(11)[1].phase(), 0);
+          CHECK_EQ(cycles.at(11)[2].phase(), 53);
+          CHECK_EQ(cycles.at(16)[0].greenTime(), 40);
+          CHECK_EQ(cycles.at(16)[1].greenTime(), 40);
+          CHECK_EQ(cycles.at(16)[2].greenTime(), 40);
+          CHECK_EQ(cycles.at(16)[0].phase(), 80);
+          CHECK_EQ(cycles.at(16)[1].phase(), 80);
+          CHECK_EQ(cycles.at(16)[2].phase(), 80);
+          CHECK_EQ(cycles.at(21)[0].greenTime(), 40);
+          CHECK_EQ(cycles.at(21)[1].greenTime(), 40);
+          CHECK_EQ(cycles.at(21)[2].greenTime(), 40);
+          CHECK_EQ(cycles.at(21)[0].phase(), 80);
+          CHECK_EQ(cycles.at(21)[1].phase(), 80);
+          CHECK_EQ(cycles.at(21)[2].phase(), 80);
+        }
+      }
+    }
     GIVEN("A graph object with two nodes and one street") {
       RoadNetwork graph{};
       graph.addStreet(Street{1, std::make_pair(0, 1)});
