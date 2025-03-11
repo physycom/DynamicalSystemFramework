@@ -62,6 +62,11 @@ namespace dsm {
     void m_setStreetAngles();
 
     void m_addMissingNodes(Id const nodeId) final;
+    /// @brief Initialize the traffic lights with random parameters
+    /// @details Traffic Lights with no parameters set are initialized with random parameters.
+    /// Street priorities are assigned considering the number of lanes and the speed limit.
+    /// Traffic Lights with an input degree lower than 3 are converted to standard intersections.
+    void m_initTrafficLights();
 
   public:
     RoadNetwork();
