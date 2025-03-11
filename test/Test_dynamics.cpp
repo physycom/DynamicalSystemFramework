@@ -604,12 +604,10 @@ TEST_CASE("FirstOrderDynamics") {
       RoadNetwork graph2;
       graph2.addNode<TrafficLight>(1, 4);
       graph2.addStreets(s1, s2, s3, s4);
-      graph2.buildAdj();
       auto& tl = graph2.node<TrafficLight>(1);
       tl.setCycle(1, dsm::Direction::RIGHT, {2, 0});
-      tl.setCycle(7, dsm::Direction::RIGHT, {2, 0});
       tl.setCycle(16, dsm::Direction::RIGHT, {2, 2});
-      tl.setCycle(9, dsm::Direction::RIGHT, {2, 2});
+      graph2.buildAdj();
       FirstOrderDynamics dynamics{
           graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
