@@ -20,7 +20,7 @@ from matplotlib import pyplot as plt
 import osmnx as ox
 from tqdm import tqdm
 
-__version__ = "2025.2.13"
+__version__ = "2025.3.14"
 
 RGBA_RED = (1, 0, 0, 0.3)
 RGBA_WHITE = (1, 1, 1, 1)
@@ -245,6 +245,7 @@ if __name__ == "__main__":
                     "highway",
                     "maxspeed",
                     "name",
+                    "geometry",
                 ]
             ]
 
