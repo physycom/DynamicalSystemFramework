@@ -50,7 +50,7 @@ namespace dsm {
   protected:
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
-    std::unordered_map<Id, double> m_streetTails;
+    std::unordered_map<Id, std::array<double, 2>> m_streetTails;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     Time m_previousOptimizationTime, m_previousSpireTime;
 
@@ -351,7 +351,7 @@ namespace dsm {
         this->graph().edges().cbegin(),
         this->graph().edges().cend(),
         [this](auto const& pair) {
-          m_streetTails.emplace(pair.first, 0);
+          m_streetTails.emplace(pair.first, std::array<double, 2>{0., 0.});
           m_turnCounts.emplace(pair.first, std::array<unsigned long long, 4>{0, 0, 0, 0});
           // fill turn mapping as [pair.first, [left street Id, straight street Id, right street Id, U self street Id]]
           m_turnMapping.emplace(pair.first, std::array<long, 4>{-1, -1, -1, -1});
@@ -1000,8 +1000,22 @@ namespace dsm {
                    this->graph().adjacencyMatrix().getCol(pNode->id())) {
                 auto const streetId = sourceId * N + pNode->id();
                 auto const& pStreet{this->graph().edge(streetId)};
-                if (bUpdateData) {
-                  m_streetTails[streetId] += pStreet->nExitingAgents();
+                if (bUpdateData &&
+                    (this->graph().node(pStreet->source())->isTrafficLight() ||
+                     this->graph().node(pStreet->target())->isTrafficLight())) {
+                  for (auto i{0}; i < pStreet->nLanes(); ++i) {
+                    auto const direction{pStreet->laneMapping().at(i)};
+                    switch (direction) {
+                      case dsm::Direction::RIGHT:
+                      case dsm::Direction::STRAIGHT:
+                      case dsm::Direction::RIGHTANDSTRAIGHT:
+                        m_streetTails[streetId][0] += pStreet->queue(i).size();
+                        break;
+                      default: {
+                        m_streetTails[streetId][1] += pStreet->queue(i).size();
+                      }
+                    }
+                  }
                 }
                 m_evolveStreet(pStreet, reinsert_agents);
 
@@ -1154,10 +1168,12 @@ namespace dsm {
       for (const auto& sourceId : column) {
         auto const streetId = sourceId * N + nodeId;
         auto const& pStreet{this->graph().edge(streetId)};
+        auto const& sum = std::reduce(
+            m_streetTails[streetId].begin(), m_streetTails[streetId].end(), 0.);
         if (streetPriorities.contains(streetId)) {
-          inputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
+          inputGreenSum += sum / pStreet->nLanes();
         } else {
-          inputRedSum += m_streetTails.at(streetId) / pStreet->nLanes();
+          inputRedSum += sum / pStreet->nLanes();
         }
       }
       inputGreenSum /= meanGreenFraction;
@@ -1198,10 +1214,12 @@ namespace dsm {
         for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
           auto const streetId = nodeId * N + targetId;
           auto const& pStreet{this->graph().edge(streetId)};
+          auto const& sum = std::reduce(
+              m_streetTails[streetId].begin(), m_streetTails[streetId].end(), 0.);
           if (streetPriorities.contains(streetId)) {
-            outputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
+            outputGreenSum += sum / pStreet->nLanes();
           } else {
-            outputRedSum += m_streetTails.at(streetId) / pStreet->nLanes();
+            outputRedSum += sum / pStreet->nLanes();
           }
         }
         auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
@@ -1228,7 +1246,7 @@ namespace dsm {
     }
     // Cleaning variables
     for (auto& [id, element] : m_streetTails) {
-      element = 0.;
+      element = {0., 0.};
     }
     m_previousOptimizationTime = this->time();
   }
