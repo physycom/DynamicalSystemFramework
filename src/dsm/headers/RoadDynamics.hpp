@@ -1003,19 +1003,31 @@ namespace dsm {
                 if (bUpdateData &&
                     (this->graph().node(pStreet->source())->isTrafficLight() ||
                      this->graph().node(pStreet->target())->isTrafficLight())) {
+                      std::array<double, 2> tails{0., 0.};
+                      std::array<int, 2> nl{0, 0};
                   for (auto i{0}; i < pStreet->nLanes(); ++i) {
                     auto const direction{pStreet->laneMapping().at(i)};
                     switch (direction) {
                       case dsm::Direction::RIGHT:
                       case dsm::Direction::STRAIGHT:
                       case dsm::Direction::RIGHTANDSTRAIGHT:
-                        m_streetTails[streetId][0] += pStreet->queue(i).size();
+                        tails[0] += pStreet->queue(i).size();
+                        ++nl[0];
+                        break;
+                      case dsm::Direction::ANY:
+                        tails[0] += pStreet->queue(i).size();
+                        ++nl[0];
+                        tails[1] += pStreet->queue(i).size();
+                        ++nl[1];
                         break;
                       default: {
-                        m_streetTails[streetId][1] += pStreet->queue(i).size();
+                        tails[1] += pStreet->queue(i).size();
+                        ++nl[1];
                       }
                     }
                   }
+                  m_streetTails[streetId][0] += nl[0] > 0 ? tails[0] / nl[0] : 0.;
+                      m_streetTails[streetId][1] += nl[1] > 0 ? tails[1] / nl[1] : 0.;
                 }
                 m_evolveStreet(pStreet, reinsert_agents);
 
@@ -1163,19 +1175,30 @@ namespace dsm {
       auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
 
       double inputGreenSum{0.}, inputRedSum{0.};
+      std::array<double, 2> prioritySum{0., 0.}, nonPrioritySum{0., 0.};
       auto const N{this->graph().nNodes()};
       auto column = this->graph().adjacencyMatrix().getCol(nodeId);
       for (const auto& sourceId : column) {
         auto const streetId = sourceId * N + nodeId;
         auto const& pStreet{this->graph().edge(streetId)};
         auto const& sum = std::reduce(
-            m_streetTails[streetId].begin(), m_streetTails[streetId].end(), 0.);
+            m_streetTails.at(streetId).begin(), m_streetTails.at(streetId).end(), 0.);
+        std::array<int, 2> nl{0, 0};
         if (streetPriorities.contains(streetId)) {
           inputGreenSum += sum / pStreet->nLanes();
+          prioritySum[0] += m_streetTails.at(streetId)[0];
+          prioritySum[1] += m_streetTails.at(streetId)[1];
         } else {
           inputRedSum += sum / pStreet->nLanes();
+          nonPrioritySum[0] += m_streetTails.at(streetId)[0];
+          nonPrioritySum[1] += m_streetTails.at(streetId)[1];
         }
+        // std::clog << "NL:" << nl[0] << " " << nl[1] << std::endl;
       }
+      std::clog << "Traffic Light: " << nodeId << std::endl;
+      std::clog << "Priority: " << prioritySum[0] << " " << prioritySum[1] << std::endl;
+      std::clog << "Non-priority: " << nonPrioritySum[0] << " " << nonPrioritySum[1] << std::endl;
+      
       inputGreenSum /= meanGreenFraction;
       inputRedSum /= meanRedFraction;
       // std::clog << std::format("Traffic Light: {} - Green: {} - Red: {}\n",
@@ -1192,19 +1215,48 @@ namespace dsm {
       auto const greenTime = tl.minGreenTime(true);
       auto const redTime = tl.minGreenTime(false);
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-        if (delta == 0 || std::abs(inputDifference) < threshold) {
-          tl.resetCycles();
+        Logger::info(std::format("Traffic Light {} - Cycle time: {}", nodeId, tl.cycleTime()));
+        // if (delta == 0 || std::abs(inputDifference) < threshold) {
+        //   tl.resetCycles();
+        //   continue;
+        // }
+        // if ((inputDifference > 0) && (redTime > delta)) {
+        //   tl.increaseGreenTimes(delta);
+        // } else if ((inputDifference < 0) && (greenTime > delta)) {
+        //   tl.decreaseGreenTimes(delta);
+        // }
+        auto totSum = prioritySum[0] + prioritySum[1] + nonPrioritySum[0] +
+                            nonPrioritySum[1];
+        if (totSum < 4) {
           continue;
         }
-        // std::clog << std::format("TL: {}, difference: {}, red time: {}",
-        //                          nodeId,
-        //                          inputDifference,
-        //                          redTime)
-        //           << std::endl;
-        if ((inputDifference > 0) && (redTime > delta)) {
-          tl.increaseGreenTimes(delta);
-        } else if ((inputDifference < 0) && (greenTime > delta)) {
-          tl.decreaseGreenTimes(delta);
+        // Normalize all
+        prioritySum[0] *= tl.cycleTime() / totSum;
+        prioritySum[1] *= tl.cycleTime() / totSum;
+        nonPrioritySum[0] *= tl.cycleTime() / totSum;
+        nonPrioritySum[1] *= tl.cycleTime() / totSum;
+        // print previous phases
+        // std::clog << "Traffic Light " << nodeId << std::endl;
+        // std::clog << "Priority: " << prioritySum[0] << " " << prioritySum[1] << std::endl;
+        // std::clog << "Non-priority: " << nonPrioritySum[0] << " " << nonPrioritySum[1] << std::endl;
+        for (auto const& id : column) {
+          auto const streetId{id * N + nodeId};
+          if (streetPriorities.contains(streetId)) {
+            auto phase1 = static_cast<Delay>(std::round(prioritySum[0]));
+            TrafficLightCycle cycleRight{prioritySum[0], 0};
+            TrafficLightCycle cycleLeft{prioritySum[1], phase1};
+            
+            tl.setCycle(streetId, Direction::RIGHTANDSTRAIGHT, cycleRight);
+            tl.setCycle(streetId, Direction::LEFT, cycleLeft);
+          } else {
+            auto const phase0 = static_cast<Delay>(std::round(prioritySum[0] + prioritySum[1]));
+            auto const phase1 = static_cast<Delay>(std::round(prioritySum[0] + prioritySum[1] + nonPrioritySum[0]));
+
+            TrafficLightCycle cycleRight{nonPrioritySum[0], phase0};
+            TrafficLightCycle cycleLeft{nonPrioritySum[1], phase1};
+            tl.setCycle(streetId, Direction::RIGHTANDSTRAIGHT, cycleRight);
+            tl.setCycle(streetId, Direction::LEFT, cycleLeft);
+          }
         }
       } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
         // If the difference is not less than the threshold
@@ -1574,7 +1626,7 @@ namespace dsm {
           continue;
         }
         auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
-        file << separator << spire.code();
+        file << separator << streetId;
       }
       file << std::endl;
     }

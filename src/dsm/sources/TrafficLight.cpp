@@ -21,11 +21,16 @@ namespace dsm {
                                 cycle.greenTime(),
                                 m_cycleTime));
     }
-    if (!(cycle.phase() < m_cycleTime)) {
-      Logger::error(std::format("Phase ({}) must be less than the cycle time ({}).",
-                                cycle.phase(),
-                                m_cycleTime));
-    }
+    // if (!(cycle.phase() < m_cycleTime)) {
+    //   Logger::error(std::format("Phase ({}) must be less than the cycle time ({}).",
+    //                             cycle.phase(),
+    //                             m_cycleTime));
+    // }
+    Logger::info(std::format("Setting cycle for street {} - Direction {} - Green time {} - Phase {}",
+                             streetId,
+                             static_cast<uint8_t>(direction),
+                             cycle.greenTime(),
+                             cycle.phase()));
     if (direction == Direction::UTURN) {
       direction = Direction::LEFT;
     }
@@ -199,9 +204,9 @@ namespace dsm {
         return m_cycles.at(streetId)[Direction::LEFT].isGreen(m_cycleTime, m_counter) &&
                m_cycles.at(streetId)[Direction::STRAIGHT].isGreen(m_cycleTime, m_counter);
       case Direction::ANY:
-        return m_cycles.at(streetId)[Direction::RIGHT].isGreen(m_cycleTime, m_counter) &&
+        return m_cycles.at(streetId)[Direction::RIGHT].isGreen(m_cycleTime, m_counter) ||
                m_cycles.at(streetId)[Direction::STRAIGHT].isGreen(m_cycleTime,
-                                                                  m_counter) &&
+                                                                  m_counter) ||
                m_cycles.at(streetId)[Direction::LEFT].isGreen(m_cycleTime, m_counter);
       default:
         break;
