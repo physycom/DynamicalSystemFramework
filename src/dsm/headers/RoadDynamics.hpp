@@ -1176,6 +1176,7 @@ namespace dsm {
 
       double inputGreenSum{0.}, inputRedSum{0.};
       std::array<double, 2> prioritySum{0., 0.}, nonPrioritySum{0., 0.};
+      constexpr double alpha{0.5};
       auto const N{this->graph().nNodes()};
       auto column = this->graph().adjacencyMatrix().getCol(nodeId);
       for (const auto& sourceId : column) {
@@ -1183,7 +1184,6 @@ namespace dsm {
         auto const& pStreet{this->graph().edge(streetId)};
         auto const& sum = std::reduce(
             m_streetTails.at(streetId).begin(), m_streetTails.at(streetId).end(), 0.);
-        std::array<int, 2> nl{0, 0};
         if (streetPriorities.contains(streetId)) {
           inputGreenSum += sum / pStreet->nLanes();
           prioritySum[0] += m_streetTails.at(streetId)[0];
@@ -1216,6 +1216,53 @@ namespace dsm {
       auto const redTime = tl.minGreenTime(false);
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
         Logger::info(std::format("Traffic Light {} - Cycle time: {}", nodeId, tl.cycleTime()));
+        std::array<double, 2> priorityNL{0., 0.}, nonPriorityNL{0., 0.};
+        for (auto const& id : column) {
+          auto const streetId{id * N + nodeId};
+          auto const& pStreet{this->graph().edge(streetId)};
+          for (auto i{0}; i < pStreet->nLanes(); ++i) {
+            auto const direction{pStreet->laneMapping().at(i)};
+            switch (direction) {
+              case dsm::Direction::RIGHT:
+              case dsm::Direction::STRAIGHT:
+              case dsm::Direction::RIGHTANDSTRAIGHT:
+                if (streetPriorities.contains(streetId)) {
+                  ++priorityNL[0];
+                } else {
+                  ++nonPriorityNL[0];
+                }
+                break;
+              case dsm::Direction::ANY:
+                if (streetPriorities.contains(streetId)) {
+                  ++priorityNL[0];
+                  ++priorityNL[1];
+                } else {
+                  ++nonPriorityNL[0];
+                  ++nonPriorityNL[1];
+                }
+                break;
+              default: {
+                if (streetPriorities.contains(streetId)) {
+                  ++priorityNL[1];
+                } else {
+                  ++nonPriorityNL[1];
+                }
+              }
+            }
+          }
+        }
+        // Normalize priorityNL and nonPriorityNL
+        {
+          // priorityNL[0] /= 2;
+          // priorityNL[1] /= 2;
+          // nonPriorityNL[0] /= 2;
+          // nonPriorityNL[1] /= 2;
+          auto sum = std::exp(priorityNL[0]) + std::exp(priorityNL[1]) + std::exp(nonPriorityNL[0]) + std::exp(nonPriorityNL[1]);
+          priorityNL[0] = std::exp(priorityNL[0]) * alpha / sum;
+          priorityNL[1] = std::exp(priorityNL[1]) * alpha / sum;
+          nonPriorityNL[0] = std::exp(nonPriorityNL[0]) * alpha / sum;
+          nonPriorityNL[1] = std::exp(nonPriorityNL[1]) * alpha / sum;
+        }
         // if (delta == 0 || std::abs(inputDifference) < threshold) {
         //   tl.resetCycles();
         //   continue;
@@ -1227,14 +1274,24 @@ namespace dsm {
         // }
         auto totSum = prioritySum[0] + prioritySum[1] + nonPrioritySum[0] +
                             nonPrioritySum[1];
-        if (totSum < 4) {
-          continue;
+        if (totSum == 0) {
+          totSum = 1;
         }
         // Normalize all
-        prioritySum[0] *= tl.cycleTime() / totSum;
-        prioritySum[1] *= tl.cycleTime() / totSum;
-        nonPrioritySum[0] *= tl.cycleTime() / totSum;
-        nonPrioritySum[1] *= tl.cycleTime() / totSum;
+        prioritySum[0] *= (1. - alpha) / totSum;
+        prioritySum[1] *= (1. - alpha) / totSum;
+        nonPrioritySum[0] *= (1. - alpha) / totSum;
+        nonPrioritySum[1] *= (1. - alpha) / totSum;
+
+        prioritySum[0] += priorityNL[0];
+        prioritySum[1] += priorityNL[1];
+        nonPrioritySum[0] += nonPriorityNL[0];
+        nonPrioritySum[1] += nonPriorityNL[1];
+
+        prioritySum[0] *= tl.cycleTime();
+        prioritySum[1] *= tl.cycleTime();
+        nonPrioritySum[0] *= tl.cycleTime();
+        nonPrioritySum[1] *= tl.cycleTime();
         // print previous phases
         // std::clog << "Traffic Light " << nodeId << std::endl;
         // std::clog << "Priority: " << prioritySum[0] << " " << prioritySum[1] << std::endl;
