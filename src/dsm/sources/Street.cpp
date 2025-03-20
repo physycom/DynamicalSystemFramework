@@ -50,6 +50,11 @@ namespace dsm {
     }
   }
 
+  void Street::setLaneMapping(std::vector<Direction> const& laneMapping) {
+    assert(laneMapping.size() == m_nLanes);
+    m_laneMapping = laneMapping;
+  }
+
   void Street::addAgent(std::unique_ptr<Agent> pAgent) {
     assert(!isFull());
     m_movingAgents.push(std::move(pAgent));

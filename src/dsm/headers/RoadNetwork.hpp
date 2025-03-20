@@ -80,6 +80,8 @@ namespace dsm {
     /// @brief Adjust the nodes' transport capacity
     /// @details The nodes' capacity is adjusted using the graph's streets transport capacity, which may vary basing on the number of lanes. The node capacity will be set to the sum of the incoming streets' transport capacity.
     void adjustNodeCapacities();
+
+    void mapStreetLanes();
     /// @brief Initialize the traffic lights with random parameters
     /// @details Traffic Lights with no parameters set are initialized with random parameters.
     /// Street priorities are assigned considering the number of lanes and the speed limit.

@@ -72,6 +72,10 @@ namespace dsm {
     Street(Street&&) = default;
     Street(Street const&) = delete;
 
+    /// @brief Set the street's lane mapping
+    /// @param laneMapping The street's lane mapping
+    /// @details The lane mapping is a vector of dsm::Direction, where the i-th element represents the direction of the i-th lane
+    void setLaneMapping(std::vector<Direction> const& laneMapping);
     /// @brief Set the street's queue
     /// @param queue The street's queue
     inline void setQueue(dsm::queue<std::unique_ptr<Agent>> queue, size_t index) {
