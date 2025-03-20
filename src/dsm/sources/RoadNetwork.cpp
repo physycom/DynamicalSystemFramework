@@ -285,6 +285,49 @@ namespace dsm {
       }
     }
   }
+  void RoadNetwork::mapStreetLanes() {
+    std::for_each(m_edges.cbegin(), m_edges.cend(), [this](auto const& pair) {
+      auto const& pStreet{pair.second};
+      auto const N{m_adjacencyMatrix.n()};
+      auto const& outNodes{m_adjacencyMatrix.getRow(pStreet->target())};
+      auto laneMapping{pStreet->laneMapping()};
+      std::set<Direction> allowedDirections;
+      std::for_each(outNodes.cbegin(),
+                    outNodes.cend(),
+                    [this, &pStreet, N, &allowedDirections](auto const& targetId) {
+                      auto const streetId{pStreet->target() * N + targetId};
+                      auto const& pNextStreet{m_edges.at(streetId)};
+                      auto const& deltaAngle{pNextStreet->deltaAngle(pStreet->angle())};
+                      if (std::abs(deltaAngle) > std::numbers::pi) {
+                        return;
+                      }
+                      if (deltaAngle < 0.) {
+                        allowedDirections.emplace(Direction::RIGHT);
+                      } else if (deltaAngle > 0.) {
+                        allowedDirections.emplace(Direction::LEFT);
+                      } else {
+                        allowedDirections.emplace(Direction::STRAIGHT);
+                      }
+                    });
+      for (auto& direction : laneMapping) {
+        switch (direction) {
+          case Direction::RIGHT:
+            if (!allowedDirections.contains(Direction::RIGHT)) {
+              direction = Direction::STRAIGHT;
+            }
+            break;
+          case Direction::LEFT:
+            if (!allowedDirections.contains(Direction::LEFT)) {
+              direction = Direction::STRAIGHT;
+            }
+            break;
+          default:
+            break;
+        }
+      }
+      pStreet->setLaneMapping(laneMapping);
+    });
+  }
 
   void RoadNetwork::importMatrix(const std::string& fileName,
                                  bool isAdj,
