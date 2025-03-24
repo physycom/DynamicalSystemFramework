@@ -79,9 +79,8 @@ TEST_CASE("Street") {
       CHECK_EQ(street.laneMapping()[1], dsm::Direction::STRAIGHT);
       CHECK_EQ(street.laneMapping()[2], dsm::Direction::LEFT);
       WHEN("We change the lane mapping") {
-        street.setLaneMapping(std::vector<dsm::Direction>{dsm::Direction::RIGHT,
-                                                          dsm::Direction::STRAIGHT,
-                                                          dsm::Direction::STRAIGHT});
+        street.setLaneMapping(std::vector<dsm::Direction>{
+            dsm::Direction::RIGHT, dsm::Direction::STRAIGHT, dsm::Direction::STRAIGHT});
         THEN("The lane mapping is updated") {
           CHECK_EQ(street.laneMapping().size(), 3);
           CHECK_EQ(street.laneMapping()[0], dsm::Direction::RIGHT);
