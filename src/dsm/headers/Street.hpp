@@ -72,11 +72,12 @@ namespace dsm {
     Street(Street&&) = default;
     Street(Street const&) = delete;
 
+    /// @brief Set the street's lane mapping
+    /// @param laneMapping The street's lane mapping
+    void setLaneMapping(std::vector<Direction> const& laneMapping);
     /// @brief Set the street's queue
     /// @param queue The street's queue
-    inline void setQueue(dsm::queue<std::unique_ptr<Agent>> queue, size_t index) {
-      m_exitQueues[index] = std::move(queue);
-    }
+    void setQueue(dsm::queue<std::unique_ptr<Agent>> queue, size_t index);
     /// @brief Set the mean vehicle length
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
@@ -109,7 +110,9 @@ namespace dsm {
     movingAgents() {
       return m_movingAgents;
     }
-    int nMovingAgents() const override { return m_movingAgents.size(); }
+    /// @brief Get the number of of moving agents, i.e. agents not yet enqueued
+    /// @return int The number of moving agents
+    int nMovingAgents() const override;
     /// @brief Get the number of agents on all queues
     /// @return Size The number of agents on all queues
     int nExitingAgents() const final;
