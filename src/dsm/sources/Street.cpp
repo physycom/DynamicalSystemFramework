@@ -53,6 +53,13 @@ namespace dsm {
   void Street::setLaneMapping(std::vector<Direction> const& laneMapping) {
     assert(laneMapping.size() == static_cast<size_t>(m_nLanes));
     m_laneMapping = laneMapping;
+    std::string strLaneMapping;
+    std::for_each(
+        laneMapping.cbegin(), laneMapping.cend(), [&strLaneMapping](auto const item) {
+          strLaneMapping += std::format("{} - ", static_cast<int>(item));
+        });
+    Logger::debug(
+        std::format("New lane mapping for street {} is: {}", m_id, strLaneMapping));
   }
   void Street::setQueue(dsm::queue<std::unique_ptr<Agent>> queue, size_t index) {
     assert(index < m_exitQueues.size());
