@@ -36,7 +36,7 @@ namespace dsm {
         m_laneMapping.emplace_back(Direction::LEFT);
         break;
       case 3:
-        m_laneMapping.emplace_back(Direction::RIGHT);
+        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
         m_laneMapping.emplace_back(Direction::STRAIGHT);
         m_laneMapping.emplace_back(Direction::LEFT);
         break;
@@ -48,6 +48,15 @@ namespace dsm {
         m_laneMapping.emplace_back(Direction::LEFT);
         break;
     }
+  }
+
+  void Street::setLaneMapping(std::vector<Direction> const& laneMapping) {
+    assert(laneMapping.size() == static_cast<size_t>(m_nLanes));
+    m_laneMapping = laneMapping;
+  }
+  void Street::setQueue(dsm::queue<std::unique_ptr<Agent>> queue, size_t index) {
+    assert(index < m_exitQueues.size());
+    m_exitQueues[index] = std::move(queue);
   }
 
   void Street::addAgent(std::unique_ptr<Agent> pAgent) {
@@ -86,6 +95,7 @@ namespace dsm {
                       : nAgents() / (m_length * m_nLanes);
   }
 
+  int Street::nMovingAgents() const { return m_movingAgents.size(); }
   int Street::nExitingAgents() const {
     int nAgents{0};
     for (const auto& queue : m_exitQueues) {
