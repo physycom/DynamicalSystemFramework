@@ -1556,7 +1556,7 @@ namespace dsm {
           continue;
         }
         auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
-        file << separator << spire.code();
+        file << separator << streetId;
       }
       file << std::endl;
     }

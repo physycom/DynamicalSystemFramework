@@ -95,7 +95,49 @@ TEST_CASE("RoadNetwork") {
     CHECK(graph.adjacencyMatrix().contains(0, 2));
     CHECK_FALSE(graph.adjacencyMatrix().contains(1, 3));
   }
-
+  SUBCASE("autoMapStreetLanes") {
+    GIVEN("A Graph object") {
+      RoadNetwork graph{};
+      graph.addNode(0, std::make_pair(0., 0.));
+      graph.addNode(1, std::make_pair(0., -1.));
+      graph.addNode(2, std::make_pair(-1., 0.));
+      graph.addNode(3, std::make_pair(1., 1.));
+      graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 1., 3);
+      graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 1., 3);
+      graph.addEdge<Street>(2, std::make_pair(0, 2), 1.);
+      graph.addEdge<Street>(8, std::make_pair(2, 0), 1.);
+      graph.addEdge<Street>(3, std::make_pair(0, 3), 1., 1., 2);
+      graph.addEdge<Street>(12, std::make_pair(3, 0), 1., 1., 2);
+      graph.buildAdj();
+      CHECK_EQ(graph.nEdges(), 6);
+      CHECK_EQ(graph.nNodes(), 4);
+      WHEN("We automatically map street lanes") {
+        // dsm::Logger::setLogLevel(dsm::log_level_t::DEBUG);
+        graph.autoMapStreetLanes();
+        // dsm::Logger::setLogLevel(dsm::log_level_t::INFO);
+        THEN("The lanes are correctly mapped") {
+          CHECK_EQ(graph.edge(1)->laneMapping().size(), 3);
+          CHECK_EQ(graph.edge(1)->laneMapping()[0], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(1)->laneMapping()[1], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(1)->laneMapping()[2], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(4)->laneMapping().size(), 3);
+          CHECK_EQ(graph.edge(4)->laneMapping()[0], dsm::Direction::RIGHT);
+          CHECK_EQ(graph.edge(4)->laneMapping()[1], dsm::Direction::RIGHT);
+          CHECK_EQ(graph.edge(4)->laneMapping()[2], dsm::Direction::LEFT);
+          CHECK_EQ(graph.edge(2)->laneMapping().size(), 1);
+          CHECK_EQ(graph.edge(2)->laneMapping()[0], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(8)->laneMapping().size(), 1);
+          CHECK_EQ(graph.edge(8)->laneMapping()[0], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(3)->laneMapping().size(), 2);
+          CHECK_EQ(graph.edge(3)->laneMapping()[0], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(3)->laneMapping()[1], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(12)->laneMapping().size(), 2);
+          CHECK_EQ(graph.edge(12)->laneMapping()[0], dsm::Direction::RIGHT);
+          CHECK_EQ(graph.edge(12)->laneMapping()[1], dsm::Direction::LEFT);
+        }
+      }
+    }
+  }
   SUBCASE("importMatrix - dsm") {
     // This tests the importMatrix function over .dsm files
     // GIVEN: a graph

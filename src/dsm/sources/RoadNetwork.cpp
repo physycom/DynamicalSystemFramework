@@ -239,6 +239,77 @@ namespace dsm {
       });
     }
   }
+  void RoadNetwork::autoMapStreetLanes() {
+    std::for_each(m_nodes.cbegin(), m_nodes.cend(), [this](auto const& pair) {
+      auto const& inNeighbours{m_adjacencyMatrix.getCol(pair.first)};
+      auto const& outNeighbours{m_adjacencyMatrix.getRow(pair.first)};
+      std::for_each(
+          inNeighbours.cbegin(),
+          inNeighbours.cend(),
+          [this, &pair, &outNeighbours](auto const& inNodeId) {
+            auto const& pInStreet{m_edges.at(inNodeId * m_nodes.size() + pair.first)};
+            // auto const& laneMapping{pInStreet->laneMapping()};
+            std::multiset<Direction> allowedTurns;
+            std::for_each(
+                outNeighbours.cbegin(),
+                outNeighbours.cend(),
+                [this, &pair, &pInStreet, &allowedTurns](auto const& outNodeId) {
+                  auto const& pOutStreet{
+                      m_edges.at(pair.first * m_nodes.size() + outNodeId)};
+                  auto const deltaAngle{pOutStreet->deltaAngle(pInStreet->angle())};
+                  // Logger::debug(std::format("Angle in {} - angle out {}", pInStreet->angle(), pOutStreet->angle()));
+                  // Logger::debug(std::format("Delta: {}", deltaAngle));
+                  if (std::abs(deltaAngle) < 5 * std::numbers::pi / 6) {
+                    if (deltaAngle < -std::numbers::pi / 6.) {
+                      Logger::debug(
+                          std::format("Street {} can turn RIGHT", pInStreet->id()));
+                      allowedTurns.emplace(Direction::RIGHT);
+                    } else if (deltaAngle > std::numbers::pi / 6.) {
+                      Logger::debug(
+                          std::format("Street {} can turn LEFT", pInStreet->id()));
+                      allowedTurns.emplace(Direction::LEFT);
+                    } else {
+                      Logger::debug(
+                          std::format("Street {} can go STRAIGHT", pInStreet->id()));
+                      allowedTurns.emplace(Direction::STRAIGHT);
+                    }
+                  }
+                });
+            auto const nLanes{pInStreet->nLanes()};
+            while (allowedTurns.size() < static_cast<size_t>(nLanes)) {
+              if (allowedTurns.contains(Direction::STRAIGHT)) {
+                allowedTurns.emplace(Direction::STRAIGHT);
+              } else if (allowedTurns.contains(Direction::RIGHT)) {
+                allowedTurns.emplace(Direction::RIGHT);
+              } else if (allowedTurns.contains(Direction::LEFT)) {
+                allowedTurns.emplace(Direction::LEFT);
+              } else {
+                allowedTurns.emplace(Direction::ANY);
+              }
+            }
+            switch (nLanes) {
+              case 1:
+                // Leaving Direction::ANY for one lane streets is the less painful option
+                break;
+              case 2:
+                if (allowedTurns.contains(Direction::STRAIGHT) &&
+                    allowedTurns.contains(Direction::RIGHT) &&
+                    allowedTurns.contains(Direction::LEFT)) {
+                  break;
+                }
+                [[fallthrough]];
+              default:
+                assert(allowedTurns.size() == static_cast<size_t>(nLanes));
+                std::vector<Direction> newMapping(nLanes);
+                auto it{allowedTurns.cbegin()};
+                for (size_t i{0}; i < allowedTurns.size(); ++i, ++it) {
+                  newMapping[i] = *it;
+                }
+                pInStreet->setLaneMapping(newMapping);
+            }
+          });
+    });
+  }
 
   void RoadNetwork::buildAdj() {
     // find max values in streets node pairs
