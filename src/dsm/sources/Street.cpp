@@ -103,10 +103,20 @@ namespace dsm {
   }
 
   int Street::nMovingAgents() const { return m_movingAgents.size(); }
-  int Street::nExitingAgents() const {
+  int Street::nExitingAgents(Direction direction) const {
     int nAgents{0};
-    for (const auto& queue : m_exitQueues) {
-      nAgents += queue.size();
+    for (auto i{0}; i < m_nLanes; ++i) {
+      if (direction == Direction::ANY) {
+        nAgents += m_exitQueues[i].size();
+      } else if (m_laneMapping[i] == direction) {
+        nAgents += m_exitQueues[i].size();
+      } else if (m_laneMapping[i] == Direction::RIGHTANDSTRAIGHT &&
+                 (direction == Direction::RIGHT || direction == Direction::STRAIGHT)) {
+        nAgents += m_exitQueues[i].size();
+      } else if (m_laneMapping[i] == Direction::LEFTANDSTRAIGHT &&
+                 (direction == Direction::LEFT || direction == Direction::STRAIGHT)) {
+        nAgents += m_exitQueues[i].size();
+      }
     }
     return nAgents;
   }

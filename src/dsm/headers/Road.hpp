@@ -62,7 +62,7 @@ namespace dsm {
 
     virtual int nAgents() const = 0;
     virtual int nMovingAgents() const = 0;
-    virtual int nExitingAgents() const = 0;
+    virtual int nExitingAgents(Direction direction) const = 0;
     virtual double density(bool normalized = false) const = 0;
   };
 }  // namespace dsm

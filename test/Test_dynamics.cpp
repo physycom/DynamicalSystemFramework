@@ -731,6 +731,7 @@ TEST_CASE("FirstOrderDynamics") {
       nodes.at(4)->setCoords({1., 0.});
       graph2.buildAdj();
       graph2.adjustNodeCapacities();
+      graph2.autoMapStreetLanes();
 
       FirstOrderDynamics dynamics{
           graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
@@ -748,6 +749,9 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);  // Counter 3
         THEN("The agents are still") {
           CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(), 2);
+          CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::RIGHT), 0);
+          CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::STRAIGHT), 1);
+          CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::LEFT), 1);
         }
         dynamics.evolve(false);  // Counter 4
         dynamics.evolve(false);  // Counter 5
