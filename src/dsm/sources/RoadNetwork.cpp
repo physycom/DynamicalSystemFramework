@@ -310,6 +310,84 @@ namespace dsm {
           });
     });
   }
+  void RoadNetwork::autoSetStreetPriorities() {
+    std::for_each(m_nodes.cbegin(), m_nodes.cend(), [this](auto const& pair) {
+      auto const& inNeighbours = m_adjacencyMatrix.getCol(pair.first);
+      // if any of neighbours are main, return
+      if (std::any_of(
+              inNeighbours.cbegin(), inNeighbours.cend(), [this, &pair](auto const id) {
+                auto const streetId = id * nNodes() + pair.first;
+                return m_edges.at(streetId)->hasPriority();
+              })) {
+        return;
+      }
+      if (inNeighbours.size() < 3) {
+        Logger::warning(
+            std::format("Node {} has less than 3 input roads. Are you sure the network "
+                        "is correctly built?",
+                        pair.first));
+        std::for_each(
+            inNeighbours.cbegin(), inNeighbours.cend(), [this, &pair](auto const id) {
+              auto const streetId = id * nNodes() + pair.first;
+              m_edges.at(streetId)->setPriority();
+            });
+        return;
+      }
+
+      // Try to automatically set main roads
+      std::map<Id, int, std::greater<int>> capacities;
+      std::unordered_map<Id, double> angles;
+      std::unordered_map<Id, double> maxSpeeds;
+      std::unordered_map<Id, int> nLanes;
+      double higherSpeed{0.}, lowerSpeed{std::numeric_limits<double>::max()};
+      int higherNLanes{0}, lowerNLanes{std::numeric_limits<int>::max()};
+      std::for_each(inNeighbours.cbegin(),
+                    inNeighbours.cend(),
+                    [this,
+                     &pair,
+                     &capacities,
+                     &angles,
+                     &maxSpeeds,
+                     &nLanes,
+                     &higherSpeed,
+                     &lowerSpeed,
+                     &higherNLanes,
+                     &lowerNLanes](auto const id) {
+                      auto const streetId = id * nNodes() + pair.first;
+                      auto const& pStreet{this->m_edges.at(streetId)};
+
+                      auto const speed{pStreet->maxSpeed()};
+                      auto const nLan{pStreet->nLanes()};
+                      auto const cap{pStreet->capacity()};
+
+                      capacities.emplace(streetId, cap);
+                      angles.emplace(streetId, pStreet->angle());
+                      maxSpeeds.emplace(streetId, speed);
+                      nLanes.emplace(streetId, nLan);
+
+                      higherSpeed = std::max(higherSpeed, speed);
+                      lowerSpeed = std::min(lowerSpeed, speed);
+
+                      higherNLanes = std::max(higherNLanes, nLan);
+                      lowerNLanes = std::min(lowerNLanes, nLan);
+                    });
+      if (higherSpeed != lowerSpeed) {
+        for (auto const [id, speed] : maxSpeeds) {
+          if (speed == higherSpeed) {
+            this->m_edges.at(id)->setPriority();
+          }
+        }
+        return;
+      } else if (higherNLanes != lowerNLanes) {
+        for (auto const [id, nLan] : nLanes) {
+          this->m_edges.at(id)->setPriority();
+        }
+        return;
+      }
+      Logger::warning(std::format(
+          "Failed to automatically set street priorities in junction {}.", pair.first));
+    });
+  }
 
   void RoadNetwork::buildAdj() {
     // find max values in streets node pairs

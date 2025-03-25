@@ -95,19 +95,19 @@ TEST_CASE("RoadNetwork") {
     CHECK(graph.adjacencyMatrix().contains(0, 2));
     CHECK_FALSE(graph.adjacencyMatrix().contains(1, 3));
   }
-  SUBCASE("autoMapStreetLanes") {
+  SUBCASE("automatically do things") {
     GIVEN("A Graph object") {
       RoadNetwork graph{};
       graph.addNode(0, std::make_pair(0., 0.));
       graph.addNode(1, std::make_pair(0., -1.));
       graph.addNode(2, std::make_pair(-1., 0.));
       graph.addNode(3, std::make_pair(1., 1.));
-      graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 1., 3);
-      graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 1., 3);
-      graph.addEdge<Street>(2, std::make_pair(0, 2), 1.);
-      graph.addEdge<Street>(8, std::make_pair(2, 0), 1.);
-      graph.addEdge<Street>(3, std::make_pair(0, 3), 1., 1., 2);
-      graph.addEdge<Street>(12, std::make_pair(3, 0), 1., 1., 2);
+      graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 50 / 3.6, 3);
+      graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 50 / 3.6, 3);
+      graph.addEdge<Street>(2, std::make_pair(0, 2), 1., 30 / 3.6);
+      graph.addEdge<Street>(8, std::make_pair(2, 0), 1., 30 / 3.6);
+      graph.addEdge<Street>(3, std::make_pair(0, 3), 1., 30 / 3.6, 2);
+      graph.addEdge<Street>(12, std::make_pair(3, 0), 1., 30 / 3.6, 2);
       graph.buildAdj();
       CHECK_EQ(graph.nEdges(), 6);
       CHECK_EQ(graph.nNodes(), 4);
@@ -134,6 +134,17 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.edge(12)->laneMapping().size(), 2);
           CHECK_EQ(graph.edge(12)->laneMapping()[0], dsm::Direction::RIGHT);
           CHECK_EQ(graph.edge(12)->laneMapping()[1], dsm::Direction::LEFT);
+        }
+      }
+      WHEN("We automatically set street priorities") {
+        graph.autoSetStreetPriorities();
+        THEN("The priorities are correctly set") {
+          CHECK(graph.edge(1)->hasPriority());
+          CHECK(graph.edge(2)->hasPriority());
+          CHECK(graph.edge(3)->hasPriority());
+          CHECK(graph.edge(4)->hasPriority());
+          CHECK_FALSE(graph.edge(8)->hasPriority());
+          CHECK_FALSE(graph.edge(12)->hasPriority());
         }
       }
     }

@@ -88,6 +88,10 @@ namespace dsm {
     /// @brief Automatically re-maps street lanes basing on network's topology
     /// @details For example, if one street has the right turn forbidden, then the right lane becomes a straight one
     void autoMapStreetLanes();
+    /// @brief Automatically sets the street priorities basing on network's topology
+    /// @details The street priorities are set considering the number of lanes and the speed limit.
+    /// NOTE: Street priorities are set for input streets for each node.
+    void autoSetStreetPriorities();
 
     /// @brief Import the graph's adjacency matrix from a file.
     /// If the file is not of a supported format, it will read the file as a matrix with the first two elements being
