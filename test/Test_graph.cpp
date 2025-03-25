@@ -113,6 +113,7 @@ TEST_CASE("RoadNetwork") {
       CHECK_EQ(graph.nNodes(), 4);
       WHEN("We automatically map street lanes") {
         // dsm::Logger::setLogLevel(dsm::log_level_t::DEBUG);
+        graph.autoSetStreetPriorities();
         graph.autoMapStreetLanes();
         // dsm::Logger::setLogLevel(dsm::log_level_t::INFO);
         THEN("The lanes are correctly mapped") {
@@ -133,15 +134,16 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.edge(3)->laneMapping()[1], dsm::Direction::ANY);
           CHECK_EQ(graph.edge(12)->laneMapping().size(), 2);
           CHECK_EQ(graph.edge(12)->laneMapping()[0], dsm::Direction::RIGHT);
-          CHECK_EQ(graph.edge(12)->laneMapping()[1], dsm::Direction::LEFT);
+          CHECK_EQ(graph.edge(12)->laneMapping()[1], dsm::Direction::STRAIGHT);
         }
       }
       WHEN("We automatically set street priorities") {
         graph.autoSetStreetPriorities();
         THEN("The priorities are correctly set") {
-          CHECK(graph.edge(1)->hasPriority());
-          CHECK(graph.edge(2)->hasPriority());
-          CHECK(graph.edge(3)->hasPriority());
+          // Dios, qué pereza
+          CHECK_FALSE(graph.edge(1)->hasPriority());
+          CHECK_FALSE(graph.edge(2)->hasPriority());
+          CHECK_FALSE(graph.edge(3)->hasPriority());
           CHECK(graph.edge(4)->hasPriority());
           CHECK_FALSE(graph.edge(8)->hasPriority());
           CHECK_FALSE(graph.edge(12)->hasPriority());

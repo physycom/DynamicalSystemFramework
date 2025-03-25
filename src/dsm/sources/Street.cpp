@@ -58,8 +58,10 @@ namespace dsm {
         laneMapping.cbegin(), laneMapping.cend(), [&strLaneMapping](auto const item) {
           strLaneMapping += std::format("{} - ", static_cast<int>(item));
         });
-    Logger::debug(
-        std::format("New lane mapping for street {} is: {}", m_id, strLaneMapping));
+    Logger::debug(std::format("New lane mapping for street {} -> {} is: {}",
+                              m_nodePair.first,
+                              m_nodePair.second,
+                              strLaneMapping));
   }
   void Street::setQueue(dsm::queue<std::unique_ptr<Agent>> queue, size_t index) {
     assert(index < m_exitQueues.size());
