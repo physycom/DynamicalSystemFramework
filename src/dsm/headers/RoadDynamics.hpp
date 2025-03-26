@@ -1001,8 +1001,10 @@ namespace dsm {
                 auto const streetId = sourceId * N + pNode->id();
                 auto const& pStreet{this->graph().edge(streetId)};
                 if (bUpdateData) {
-                  m_streetTails[streetId][0] += pStreet->nExitingAgents(Direction::RIGHTANDSTRAIGHT, true);
-                  m_streetTails[streetId][1] += pStreet->nExitingAgents(Direction::LEFT, true);
+                  m_streetTails[streetId][0] +=
+                      pStreet->nExitingAgents(Direction::RIGHTANDSTRAIGHT, true);
+                  m_streetTails[streetId][1] +=
+                      pStreet->nExitingAgents(Direction::LEFT, true);
                 }
                 m_evolveStreet(pStreet, reinsert_agents);
 
@@ -1197,9 +1199,9 @@ namespace dsm {
         double outputGreenSum{0.}, outputRedSum{0.};
         for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
           auto const streetId = nodeId * N + targetId;
-          auto const& pStreet{this->graph().edge(streetId)};
           if (streetPriorities.contains(streetId)) {
-            outputGreenSum += m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1];
+            outputGreenSum +=
+                m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1];
           } else {
             outputRedSum += m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1];
           }
