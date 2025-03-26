@@ -103,15 +103,11 @@ TEST_CASE("RoadNetwork") {
       graph.addNode(2, std::make_pair(-1., 0.));
       graph.addNode(3, std::make_pair(1., 1.));
       graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 50 / 3.6, 3);
-      // graph.edge(1)->setPriority(0);
       graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 50 / 3.6, 3);
-      // graph.edge(4)->setPriority(0);
       graph.addEdge<Street>(2, std::make_pair(0, 2), 1., 30 / 3.6);
       graph.addEdge<Street>(8, std::make_pair(2, 0), 1., 30 / 3.6);
       graph.addEdge<Street>(3, std::make_pair(0, 3), 1., 30 / 3.6, 2);
-      // graph.edge(3)->setPriority(2);
       graph.addEdge<Street>(12, std::make_pair(3, 0), 1., 30 / 3.6, 2);
-      // graph.edge(12)->setPriority(2);
       graph.buildAdj();
       CHECK_EQ(graph.nEdges(), 6);
       CHECK_EQ(graph.nNodes(), 4);
