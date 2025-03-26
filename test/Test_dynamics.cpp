@@ -731,7 +731,6 @@ TEST_CASE("FirstOrderDynamics") {
       nodes.at(4)->setCoords({1., 0.});
       graph2.buildAdj();
       graph2.adjustNodeCapacities();
-      graph2.autoSetStreetPriorities();
       graph2.autoMapStreetLanes();
 
       FirstOrderDynamics dynamics{

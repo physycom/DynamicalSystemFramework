@@ -103,17 +103,20 @@ TEST_CASE("RoadNetwork") {
       graph.addNode(2, std::make_pair(-1., 0.));
       graph.addNode(3, std::make_pair(1., 1.));
       graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 50 / 3.6, 3);
+      // graph.edge(1)->setPriority(0);
       graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 50 / 3.6, 3);
+      // graph.edge(4)->setPriority(0);
       graph.addEdge<Street>(2, std::make_pair(0, 2), 1., 30 / 3.6);
       graph.addEdge<Street>(8, std::make_pair(2, 0), 1., 30 / 3.6);
       graph.addEdge<Street>(3, std::make_pair(0, 3), 1., 30 / 3.6, 2);
+      // graph.edge(3)->setPriority(2);
       graph.addEdge<Street>(12, std::make_pair(3, 0), 1., 30 / 3.6, 2);
+      // graph.edge(12)->setPriority(2);
       graph.buildAdj();
       CHECK_EQ(graph.nEdges(), 6);
       CHECK_EQ(graph.nNodes(), 4);
       WHEN("We automatically map street lanes") {
         // dsm::Logger::setLogLevel(dsm::log_level_t::DEBUG);
-        graph.autoSetStreetPriorities();
         graph.autoMapStreetLanes();
         // dsm::Logger::setLogLevel(dsm::log_level_t::INFO);
         THEN("The lanes are correctly mapped") {
@@ -135,18 +138,6 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.edge(12)->laneMapping().size(), 2);
           CHECK_EQ(graph.edge(12)->laneMapping()[0], dsm::Direction::RIGHT);
           CHECK_EQ(graph.edge(12)->laneMapping()[1], dsm::Direction::STRAIGHT);
-        }
-      }
-      WHEN("We automatically set street priorities") {
-        graph.autoSetStreetPriorities();
-        THEN("The priorities are correctly set") {
-          // Dios, qué pereza
-          CHECK_FALSE(graph.edge(1)->hasPriority());
-          CHECK_FALSE(graph.edge(2)->hasPriority());
-          CHECK_FALSE(graph.edge(3)->hasPriority());
-          CHECK(graph.edge(4)->hasPriority());
-          CHECK_FALSE(graph.edge(8)->hasPriority());
-          CHECK_FALSE(graph.edge(12)->hasPriority());
         }
       }
     }

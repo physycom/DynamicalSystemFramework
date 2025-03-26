@@ -1,6 +1,7 @@
 #include "../headers/Road.hpp"
 #include "../headers/../utility/Logger.hpp"
 
+#include <cassert>
 #include <cmath>
 #include <format>
 #include <stdexcept>
@@ -26,7 +27,7 @@ namespace dsm {
         m_maxSpeed{maxSpeed},
         m_nLanes{nLanes},
         m_name{std::move(name)},
-        m_hasPriority{false} {
+        m_priority{nLanes * 100} {
     if (!(length > 0.)) {
       Logger::error(std::format("The road length ({}) must be greater than 0.", length));
     }
@@ -55,11 +56,14 @@ namespace dsm {
     }
     m_maxSpeed = speed;
   }
-  void Road::setPriority(bool hasPriority) { m_hasPriority = hasPriority; }
+  void Road::setPriority(int priority) {
+    assert(priority >= 0);
+    m_priority = priority;
+  }
 
   double Road::length() const { return m_length; }
   double Road::maxSpeed() const { return m_maxSpeed; }
   int Road::nLanes() const { return m_nLanes; }
   std::string Road::name() const { return m_name; }
-  bool Road::hasPriority() const { return m_hasPriority; }
+  int Road::priority() const { return m_priority; }
 };  // namespace dsm

@@ -243,10 +243,25 @@ namespace dsm {
     std::for_each(m_nodes.cbegin(), m_nodes.cend(), [this](auto const& pair) {
       auto const& inNeighbours{m_adjacencyMatrix.getCol(pair.first)};
       auto const& outNeighbours{m_adjacencyMatrix.getRow(pair.first)};
+      int maxPriority{0};
       std::for_each(
           inNeighbours.cbegin(),
           inNeighbours.cend(),
-          [this, &pair, &outNeighbours](auto const& inNodeId) {
+          [this, &pair, &maxPriority](auto const& inNodeId) {
+            auto const& pStreet{m_edges.at(inNodeId * m_nodes.size() + pair.first)};
+            maxPriority = std::max(maxPriority, pStreet->priority());
+          });
+      std::for_each(
+          outNeighbours.cbegin(),
+          outNeighbours.cend(),
+          [this, &pair, &maxPriority](auto const& outNodeId) {
+            auto const& pStreet{m_edges.at(pair.first * m_nodes.size() + outNodeId)};
+            maxPriority = std::max(maxPriority, pStreet->priority());
+          });
+      std::for_each(
+          inNeighbours.cbegin(),
+          inNeighbours.cend(),
+          [this, &pair, &outNeighbours, &maxPriority](auto const& inNodeId) {
             auto const& pInStreet{m_edges.at(inNodeId * m_nodes.size() + pair.first)};
             auto const nLanes{pInStreet->nLanes()};
             if (nLanes == 1) {
@@ -257,7 +272,8 @@ namespace dsm {
             std::for_each(
                 outNeighbours.cbegin(),
                 outNeighbours.cend(),
-                [this, &pair, &pInStreet, &allowedTurns](auto const& outNodeId) {
+                [this, &pair, &pInStreet, &allowedTurns, &maxPriority](
+                    auto const& outNodeId) {
                   auto const& pOutStreet{
                       m_edges.at(pair.first * m_nodes.size() + outNodeId)};
                   if (pOutStreet->target() == pInStreet->source()) {
@@ -267,11 +283,11 @@ namespace dsm {
                   auto const& outOppositeStreet{this->street(pair.first, outNodeId)};
                   // Actually going straight means remain on the same road, thus...
                   if (outOppositeStreet &&
-                      (pInStreet->hasPriority() ==
-                       outOppositeStreet->get()->hasPriority()) &&
+                      ((pInStreet->priority() == maxPriority) ==
+                       (outOppositeStreet->get()->priority() == maxPriority)) &&
                       !allowedTurns.contains(Direction::STRAIGHT)) {
                     Logger::debug(
-                        std::format("Street {} can go STRAIGHT", pInStreet->id()));
+                        std::format("Street {} prioritized STRAIGHT", pInStreet->id()));
                     if (allowedTurns.contains(Direction::STRAIGHT) &&
                         !allowedTurns.contains(Direction::RIGHT)) {
                       allowedTurns.emplace(Direction::RIGHT);
@@ -283,10 +299,10 @@ namespace dsm {
                     // return;
                     // }
                   } else if (std::abs(deltaAngle) < 5 * std::numbers::pi / 6) {
-                    Logger::debug(std::format("Angle in {} - angle out {}",
-                                              pInStreet->angle(),
-                                              pOutStreet->angle()));
-                    Logger::debug(std::format("Delta: {}", deltaAngle));
+                    // Logger::debug(std::format("Angle in {} - angle out {}",
+                    //                           pInStreet->angle(),
+                    //                           pOutStreet->angle()));
+                    // Logger::debug(std::format("Delta: {}", deltaAngle));
                     if (deltaAngle < -std::numbers::pi / 6.) {
                       Logger::debug(
                           std::format("Street {} can turn RIGHT", pInStreet->id()));
@@ -308,17 +324,17 @@ namespace dsm {
                     }
                   }
                 });
-            if (!allowedTurns.contains(Direction::RIGHT)) {
-              std::multiset<Direction> updatedTurns;
-              for (auto turn : allowedTurns) {
-                if (turn > Direction::RIGHT && turn <= Direction::UTURN) {
-                  updatedTurns.insert(static_cast<Direction>(turn - 1));
-                } else {
-                  updatedTurns.insert(turn);
-                }
-              }
-              allowedTurns = std::move(updatedTurns);  // Replace with the updated set
-            }
+            // if (!allowedTurns.contains(Direction::RIGHT)) {
+            //   std::multiset<Direction> updatedTurns;
+            //   for (auto turn : allowedTurns) {
+            //     if (turn > Direction::RIGHT && turn <= Direction::UTURN) {
+            //       updatedTurns.insert(static_cast<Direction>(turn - 1));
+            //     } else {
+            //       updatedTurns.insert(turn);
+            //     }
+            //   }
+            //   allowedTurns = std::move(updatedTurns);  // Replace with the updated set
+            // }
             while (allowedTurns.size() < static_cast<size_t>(nLanes)) {
               if (allowedTurns.contains(Direction::STRAIGHT)) {
                 allowedTurns.emplace(Direction::STRAIGHT);
@@ -329,6 +345,13 @@ namespace dsm {
               } else {
                 allowedTurns.emplace(Direction::ANY);
               }
+            }
+            // If allowedTurns contains all RIGHT, STRAIGHT and LEFT, transform RIGHT into RIGHTANDSTRAIGHT
+            if (allowedTurns.contains(Direction::STRAIGHT) &&
+                allowedTurns.contains(Direction::RIGHT) &&
+                allowedTurns.contains(Direction::LEFT)) {
+              allowedTurns.erase(Direction::RIGHT);
+              allowedTurns.emplace(Direction::RIGHTANDSTRAIGHT);
             }
             switch (nLanes) {
               case 1:
@@ -348,87 +371,14 @@ namespace dsm {
                 for (size_t i{0}; i < allowedTurns.size(); ++i, ++it) {
                   newMapping[i] = *it;
                 }
+                // If the last one is RIGHTANDSTRAIGHT, move it in front
+                if (newMapping.back() == Direction::RIGHTANDSTRAIGHT) {
+                  std::rotate(
+                      newMapping.rbegin(), newMapping.rbegin() + 1, newMapping.rend());
+                }
                 pInStreet->setLaneMapping(newMapping);
             }
           });
-    });
-  }
-  void RoadNetwork::autoSetStreetPriorities() {
-    std::for_each(m_nodes.cbegin(), m_nodes.cend(), [this](auto const& pair) {
-      auto const& inNeighbours = m_adjacencyMatrix.getCol(pair.first);
-      // if any of neighbours are main, return
-      if (std::any_of(
-              inNeighbours.cbegin(), inNeighbours.cend(), [this, &pair](auto const id) {
-                auto const streetId = id * nNodes() + pair.first;
-                return m_edges.at(streetId)->hasPriority();
-              })) {
-        return;
-      }
-      if (inNeighbours.size() < 3) {
-        Logger::warning(
-            std::format("Node {} has less than 3 input roads. Are you sure the network "
-                        "is correctly built?",
-                        pair.first));
-        // std::for_each(
-        //     inNeighbours.cbegin(), inNeighbours.cend(), [this, &pair](auto const id) {
-        //       auto const streetId = id * nNodes() + pair.first;
-        //       m_edges.at(streetId)->setPriority();
-        //     });
-        return;
-      }
-
-      // Try to automatically set main roads
-      std::map<Id, int, std::greater<int>> capacities;
-      std::unordered_map<Id, double> angles;
-      std::unordered_map<Id, double> maxSpeeds;
-      std::unordered_map<Id, int> nLanes;
-      double higherSpeed{0.}, lowerSpeed{std::numeric_limits<double>::max()};
-      int higherNLanes{0}, lowerNLanes{std::numeric_limits<int>::max()};
-      std::for_each(inNeighbours.cbegin(),
-                    inNeighbours.cend(),
-                    [this,
-                     &pair,
-                     &capacities,
-                     &angles,
-                     &maxSpeeds,
-                     &nLanes,
-                     &higherSpeed,
-                     &lowerSpeed,
-                     &higherNLanes,
-                     &lowerNLanes](auto const id) {
-                      auto const streetId = id * nNodes() + pair.first;
-                      auto const& pStreet{this->m_edges.at(streetId)};
-
-                      auto const speed{pStreet->maxSpeed()};
-                      auto const nLan{pStreet->nLanes()};
-                      auto const cap{pStreet->capacity()};
-
-                      capacities.emplace(streetId, cap);
-                      angles.emplace(streetId, pStreet->angle());
-                      maxSpeeds.emplace(streetId, speed);
-                      nLanes.emplace(streetId, nLan);
-
-                      higherSpeed = std::max(higherSpeed, speed);
-                      lowerSpeed = std::min(lowerSpeed, speed);
-
-                      higherNLanes = std::max(higherNLanes, nLan);
-                      lowerNLanes = std::min(lowerNLanes, nLan);
-                    });
-      if (higherSpeed != lowerSpeed) {
-        for (auto const [id, speed] : maxSpeeds) {
-          if (speed == higherSpeed) {
-            this->m_edges.at(id)->setPriority();
-          }
-        }
-        return;
-      } else if (higherNLanes != lowerNLanes) {
-        for (auto const [id, nLan] : nLanes) {
-          this->m_edges.at(id)->setPriority();
-        }
-        return;
-      }
-      Logger::warning(std::format(
-          "Failed to automatically set street priorities in junction {}.", pair.first));
     });
   }
 

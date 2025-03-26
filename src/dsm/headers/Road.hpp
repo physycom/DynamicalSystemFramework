@@ -14,7 +14,7 @@ namespace dsm {
     double m_maxSpeed;
     int m_nLanes;
     std::string m_name;
-    bool m_hasPriority;
+    int m_priority;
 
   public:
     /// @brief Construct a new Road object
@@ -47,9 +47,9 @@ namespace dsm {
     /// @param speed The maximum speed
     /// @throws std::invalid_argument If the speed is less or equal to 0
     void setMaxSpeed(double speed);
-    /// @brief Set if the road has priority
-    /// @param hasPriority True if the road has priority, false otherwise (default is true)
-    void setPriority(bool hasPriority = true);
+    /// @brief Set the road's priority
+    /// @param priority The road's priority
+    void setPriority(int priority);
 
     /// @brief Get the length, in meters
     /// @return double The length, in meters
@@ -63,9 +63,9 @@ namespace dsm {
     /// @brief Get the name
     /// @return std::string The name
     std::string name() const;
-    /// @brief Check if the road has priority
-    /// @return bool True if the road has priority, false otherwise
-    bool hasPriority() const;
+    /// @brief Get the priority
+    /// @return int The priority
+    int priority() const;
 
     virtual int nAgents() const = 0;
     virtual int nMovingAgents() const = 0;
