@@ -749,6 +749,8 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);  // Counter 3
         THEN("The agents are still") {
           CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(), 2);
+          CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::ANY, true),
+                   doctest::Approx(0.666667));
           CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::RIGHT), 0);
           CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::STRAIGHT), 1);
           CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::LEFT), 1);

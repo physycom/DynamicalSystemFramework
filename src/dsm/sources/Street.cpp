@@ -105,20 +105,37 @@ namespace dsm {
   }
 
   int Street::nMovingAgents() const { return m_movingAgents.size(); }
-  int Street::nExitingAgents(Direction direction) const {
-    int nAgents{0};
+  double Street::nExitingAgents(Direction direction, bool normalizeOnNLanes) const {
+    double nAgents{0.};
+    int n{0};
     for (auto i{0}; i < m_nLanes; ++i) {
       if (direction == Direction::ANY) {
         nAgents += m_exitQueues[i].size();
+        ++n;
       } else if (m_laneMapping[i] == direction) {
         nAgents += m_exitQueues[i].size();
       } else if (m_laneMapping[i] == Direction::RIGHTANDSTRAIGHT &&
                  (direction == Direction::RIGHT || direction == Direction::STRAIGHT)) {
         nAgents += m_exitQueues[i].size();
+        ++n;
       } else if (m_laneMapping[i] == Direction::LEFTANDSTRAIGHT &&
                  (direction == Direction::LEFT || direction == Direction::STRAIGHT)) {
         nAgents += m_exitQueues[i].size();
+        ++n;
+      } else if (direction == Direction::RIGHTANDSTRAIGHT &&
+                 (m_laneMapping[i] == Direction::RIGHT ||
+                  m_laneMapping[i] == Direction::STRAIGHT)) {
+        nAgents += m_exitQueues[i].size();
+        ++n;
+      } else if (direction == Direction::LEFTANDSTRAIGHT &&
+                 (m_laneMapping[i] == Direction::LEFT ||
+                  m_laneMapping[i] == Direction::STRAIGHT)) {
+        nAgents += m_exitQueues[i].size();
+        ++n;
       }
+    }
+    if (normalizeOnNLanes) {
+      n > 1 ? nAgents /= n : nAgents;
     }
     return nAgents;
   }

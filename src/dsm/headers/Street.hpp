@@ -115,8 +115,10 @@ namespace dsm {
     int nMovingAgents() const override;
     /// @brief Get the number of agents on all queues for a given direction
     /// @param direction The direction of the agents (default is ANY)
-    /// @return int The number of agents on all queues for a given direction
-    int nExitingAgents(Direction direction = Direction::ANY) const;
+    /// @param normalizeOnNLanes If true, the number of agents is normalized by the number of lanes
+    /// @return double The number of agents on all queues for a given direction
+    double nExitingAgents(Direction direction = Direction::ANY,
+                          bool normalizeOnNLanes = false) const;
 
     inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
 
