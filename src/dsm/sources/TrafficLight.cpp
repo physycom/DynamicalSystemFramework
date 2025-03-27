@@ -184,6 +184,7 @@ namespace dsm {
     if (m_cycles.empty()) {
       return true;
     }
+    assert(m_cycles.at(streetId).size() == 3);
     if (!m_cycles.contains(streetId)) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street id {} is not valid for node {}.", streetId, id())));
@@ -224,10 +225,10 @@ namespace dsm {
   }
 
   void TrafficLight::resetCycles() {
-    for (auto& [streetId, cycles] : m_cycles) {
-      for (auto& cycle : cycles) {
-        cycle.reset();
-      }
+    if (m_defaultCycles.empty()) {
+      m_defaultCycles = m_cycles;
+    } else {
+      m_cycles = m_defaultCycles;
     }
   }
 }  // namespace dsm

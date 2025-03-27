@@ -282,8 +282,10 @@ namespace dsm {
                   auto const deltaAngle{pOutStreet->deltaAngle(pInStreet->angle())};
                   auto const& outOppositeStreet{this->street(pair.first, outNodeId)};
                   // Actually going straight means remain on the same road, thus...
-                  if (outOppositeStreet &&
-                      ((pInStreet->priority() == maxPriority) ==
+                  if (!outOppositeStreet) {
+                    return;
+                  }
+                  if (((pInStreet->priority() == maxPriority) ==
                        (outOppositeStreet->get()->priority() == maxPriority)) &&
                       !allowedTurns.contains(Direction::STRAIGHT)) {
                     Logger::debug(
@@ -324,17 +326,6 @@ namespace dsm {
                     }
                   }
                 });
-            // if (!allowedTurns.contains(Direction::RIGHT)) {
-            //   std::multiset<Direction> updatedTurns;
-            //   for (auto turn : allowedTurns) {
-            //     if (turn > Direction::RIGHT && turn <= Direction::UTURN) {
-            //       updatedTurns.insert(static_cast<Direction>(turn - 1));
-            //     } else {
-            //       updatedTurns.insert(turn);
-            //     }
-            //   }
-            //   allowedTurns = std::move(updatedTurns);  // Replace with the updated set
-            // }
             while (allowedTurns.size() < static_cast<size_t>(nLanes)) {
               if (allowedTurns.contains(Direction::STRAIGHT)) {
                 allowedTurns.emplace(Direction::STRAIGHT);
@@ -345,13 +336,6 @@ namespace dsm {
               } else {
                 allowedTurns.emplace(Direction::ANY);
               }
-            }
-            // If allowedTurns contains all RIGHT, STRAIGHT and LEFT, transform RIGHT into RIGHTANDSTRAIGHT
-            if (allowedTurns.contains(Direction::STRAIGHT) &&
-                allowedTurns.contains(Direction::RIGHT) &&
-                allowedTurns.contains(Direction::LEFT)) {
-              allowedTurns.erase(Direction::RIGHT);
-              allowedTurns.emplace(Direction::RIGHTANDSTRAIGHT);
             }
             switch (nLanes) {
               case 1:
@@ -364,6 +348,13 @@ namespace dsm {
                   break;
                 }
                 [[fallthrough]];
+              case 3:
+              if (allowedTurns.contains(Direction::STRAIGHT) &&
+                  allowedTurns.contains(Direction::RIGHT) &&
+                  allowedTurns.contains(Direction::LEFT)) {
+                break;
+              }
+              [[fallthrough]];
               default:
                 assert(allowedTurns.size() == static_cast<size_t>(nLanes));
                 std::vector<Direction> newMapping(nLanes);
