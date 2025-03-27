@@ -31,7 +31,7 @@ namespace dsm {
     }
     if (!m_cycles.contains(streetId)) {
       TrafficLightCycle defaultCycle(m_cycleTime, 0);
-      std::vector<TrafficLightCycle> cycles{defaultCycle, defaultCycle, defaultCycle};
+      std::array<TrafficLightCycle, 3> cycles{defaultCycle, defaultCycle, defaultCycle};
       m_cycles.emplace(streetId, cycles);
     }
     switch (direction) {

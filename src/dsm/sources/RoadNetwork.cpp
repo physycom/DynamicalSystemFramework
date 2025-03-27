@@ -79,7 +79,7 @@ namespace dsm {
       }
       if (node->isTrafficLight()) {
         auto& trafficLight = dynamic_cast<TrafficLight&>(*node);
-        std::unordered_map<Id, std::vector<TrafficLightCycle>> newCycles;
+        std::unordered_map<Id, std::array<TrafficLightCycle, 3>> newCycles;
         for (auto const& [streetId, cycles] : trafficLight.cycles()) {
           newCycles.emplace(newStreetIds.at(streetId), std::move(cycles));
         }
