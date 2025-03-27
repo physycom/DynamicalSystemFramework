@@ -109,7 +109,8 @@ namespace dsm {
     double nAgents{0.};
     int n{0};
     for (auto i{0}; i < m_nLanes; ++i) {
-      if (direction == Direction::ANY) {
+      assert(i < m_exitQueues.size());
+      if (direction == Direction::ANY || m_laneMapping[i] == Direction::ANY) {
         nAgents += m_exitQueues[i].size();
         ++n;
       } else if (m_laneMapping[i] == direction) {
@@ -134,8 +135,8 @@ namespace dsm {
         ++n;
       }
     }
-    if (normalizeOnNLanes) {
-      n > 1 ? nAgents /= n : nAgents;
+    if (normalizeOnNLanes && n > 1) {
+      nAgents /= static_cast<double>(n);
     }
     return nAgents;
   }

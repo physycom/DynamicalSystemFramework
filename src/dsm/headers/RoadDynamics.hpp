@@ -1152,13 +1152,13 @@ namespace dsm {
       auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
 
       std::multiset<int> priorities;
-      std::for_each(
-        inNeighbours.cbegin(),
-        inNeighbours.cend(),
-        [this, &tl, &priorities](auto const& inNodeId) {
-          auto const& pStreet{this->graph().edge(inNodeId * this->graph().nNodes() + tl.id())};
-          priorities.insert(pStreet->priority());
-        });
+      std::for_each(inNeighbours.cbegin(),
+                    inNeighbours.cend(),
+                    [this, &tl, &priorities](auto const& inNodeId) {
+                      auto const& pStreet{this->graph().edge(
+                          inNodeId * this->graph().nNodes() + tl.id())};
+                      priorities.insert(pStreet->priority());
+                    });
       std::set<int> maxPriorities;
       auto it = priorities.end();
       --it;
@@ -1169,7 +1169,7 @@ namespace dsm {
           maxPriorities.insert(*it);
         }
       }
-      
+
       double alpha = threshold;
 
       std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
@@ -1177,6 +1177,12 @@ namespace dsm {
       auto column = this->graph().adjacencyMatrix().getCol(nodeId);
       for (const auto& sourceId : column) {
         auto const streetId = sourceId * N + nodeId;
+        if (streetId == 427) {
+          Logger::info(
+              std::format("StreetId: {} - Tail {}",
+                          streetId,
+                          m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1]));
+        }
         auto const& pStreet{this->graph().edge(streetId)};
         if (maxPriorities.contains(pStreet->priority())) {
           inputPrioritySum[0] += m_streetTails.at(streetId)[0];
@@ -1188,8 +1194,8 @@ namespace dsm {
       }
       {
         // Sum normalization
-        auto const sum{inputPrioritySum[0] + inputPrioritySum[1] + inputNonPrioritySum[0] +
-                       inputNonPrioritySum[1]};
+        auto const sum{inputPrioritySum[0] + inputPrioritySum[1] +
+                       inputNonPrioritySum[0] + inputNonPrioritySum[1]};
         if (sum == 0.) {
           continue;
         }
@@ -1206,35 +1212,46 @@ namespace dsm {
         inputNonPrioritySum[1] *= (1. - alpha);
       }
 
+      // Logger::info(std::format("Input cycle queue ratios for TL {}: {} {} - {} {}",
+      //                  tl.id(),
+      //                  inputPrioritySum[0],
+      //                  inputPrioritySum[1],
+      //                  inputNonPrioritySum[0],
+      //                  inputNonPrioritySum[1]));
+
       tl.resetCycles();
       auto cycles{tl.cycles()};
       std::array<int, 2> n{0, 0};
       std::array<double, 4> greenTimes{0., 0., 0., 0.};
 
-      for (auto const& [streetId, cycle] :  cycles) {
+      for (auto const& [streetId, cycle] : cycles) {
         assert(cycle.size() == 3);
         auto const& pStreet{this->graph().edge(streetId)};
         if (maxPriorities.contains(pStreet->priority())) {
           greenTimes[0] += (cycle[0].greenTime() + cycle[1].greenTime()) / 2.;
           greenTimes[1] += cycle[2].greenTime();
-          n[0] += pStreet->nLanes();
+          // n[0] += pStreet->nLanes();
         } else {
           greenTimes[2] += (cycle[0].greenTime() + cycle[1].greenTime()) / 2.;
           greenTimes[3] += cycle[2].greenTime();
-          n[1] += pStreet->nLanes();
+          // n[1] += pStreet->nLanes();
         }
       }
 
-      if (n[0] > 1) {
-        greenTimes[0] /= n[0];
-        greenTimes[1] /= n[0];
-      }
-      if (n[1] > 1) {
-        greenTimes[2] /= n[1];
-        greenTimes[3] /= n[1];
-      }
+      // if (n[0] > 1) {
+      //   greenTimes[0] /= n[0];
+      //   greenTimes[1] /= n[0];
+      // }
+      // if (n[1] > 1) {
+      //   greenTimes[2] /= n[1];
+      //   greenTimes[3] /= n[1];
+      // }
 
-      Logger::info(std::format("Green times: {} {} {} {}", greenTimes[0], greenTimes[1], greenTimes[2], greenTimes[3]));
+      // Logger::info(std::format("Green times: {} {} {} {}",
+      //                          greenTimes[0],
+      //                          greenTimes[1],
+      //                          greenTimes[2],
+      //                          greenTimes[3]));
 
       {
         auto sum{0.};
@@ -1252,36 +1269,41 @@ namespace dsm {
         el *= alpha;
       }
 
-      int inputPriorityRS{std::floor((inputPrioritySum[0] + greenTimes[0]) * tl.cycleTime())};
-      int inputPriorityL{std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime())};
-      int inputNonPriorityRS{std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime())};
-      int inputNonPriorityL{std::floor((inputNonPrioritySum[1]+ greenTimes[3]) * tl.cycleTime())};
+      int inputPriorityRS{
+          std::floor((inputPrioritySum[0] + greenTimes[0]) * tl.cycleTime())};
+      int inputPriorityL{
+          std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime())};
+      int inputNonPriorityRS{
+          std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime())};
+      int inputNonPriorityL{
+          std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime())};
 
       Logger::info(std::format("New cycle times for Traffic Light {}: {} {} - {} {}",
-                                tl.id(),
-                                inputPriorityRS,
-                                inputPriorityL,
-                                inputNonPriorityRS,
-                                inputNonPriorityL));
-      Logger::info(std::format("Cycle time: {} - Current sum: {}",
-                                tl.cycleTime(),
-                                inputPriorityRS + inputPriorityL + inputNonPriorityRS + inputNonPriorityL));
+                               tl.id(),
+                               inputPriorityRS,
+                               inputPriorityL,
+                               inputNonPriorityRS,
+                               inputNonPriorityL));
+      // Logger::info(std::format(
+      //     "Cycle time: {} - Current sum: {}",
+      //     tl.cycleTime(),
+      //     inputPriorityRS + inputPriorityL + inputNonPriorityRS + inputNonPriorityL));
       assert(inputPriorityRS + inputPriorityL + inputNonPriorityRS + inputNonPriorityL <=
              tl.cycleTime());
 
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
         // Wanna put green/red phases proportional to the incoming traffic
-        std::vector<TrafficLightCycle> priorityCycles, nonPriorityCycles;
-        {
-          TrafficLightCycle priorityRightStraight{inputPriorityRS, 0};
-          TrafficLightCycle priorityLeft{inputPriorityL, inputPriorityRS};
-          priorityCycles = {priorityRightStraight, priorityRightStraight, priorityLeft};
-        }
-        {
-          TrafficLightCycle nonPriorityRightStraight{inputNonPriorityRS, inputPriorityRS + inputPriorityL};
-          TrafficLightCycle nonPriorityLeft{inputNonPriorityL, inputPriorityRS + inputPriorityL + inputNonPriorityRS};
-          nonPriorityCycles = {nonPriorityRightStraight, nonPriorityRightStraight, nonPriorityLeft};
-        }
+        TrafficLightCycle priorityRightStraight{inputPriorityRS, 0};
+        TrafficLightCycle priorityLeft{inputPriorityL, inputPriorityRS};
+        std::array<TrafficLightCycle, 3> priorityCycles{
+            priorityRightStraight, priorityRightStraight, priorityLeft};
+
+        TrafficLightCycle nonPriorityRightStraight{inputNonPriorityRS,
+                                                   inputPriorityRS + inputPriorityL};
+        TrafficLightCycle nonPriorityLeft{
+            inputNonPriorityL, inputPriorityRS + inputPriorityL + inputNonPriorityRS};
+        std::array<TrafficLightCycle, 3> nonPriorityCycles{
+            nonPriorityRightStraight, nonPriorityRightStraight, nonPriorityLeft};
 
         std::vector<Id> streetIds;
 
@@ -1291,9 +1313,9 @@ namespace dsm {
         for (auto const streetId : streetIds) {
           auto const& pStreet{this->graph().edge(streetId)};
           if (maxPriorities.contains(pStreet->priority())) {
-            cycles[streetId] = priorityCycles;
+            cycles.insert_or_assign(streetId, priorityCycles);
           } else {
-            cycles[streetId] = nonPriorityCycles;
+            cycles.insert_or_assign(streetId, nonPriorityCycles);
           }
         }
         tl.setCycles(cycles);
@@ -1301,36 +1323,36 @@ namespace dsm {
         // If the difference is not less than the threshold
         //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
         //    - If the previous check fails, do nothing
-      //   double outputGreenSum{0.}, outputRedSum{0.};
-      //   for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
-      //     auto const streetId = nodeId * N + targetId;
-      //     if (streetPriorities.contains(streetId)) {
-      //       outputGreenSum +=
-      //           m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1];
-      //     } else {
-      //       outputRedSum += m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1];
-      //     }
-      //   }
-      //   auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
-      //   if ((inputDifference * outputDifference > 0) ||
-      //       std::max(std::abs(inputDifference), std::abs(outputDifference)) < threshold ||
-      //       delta == 0) {
-      //     tl.resetCycles();
-      //     continue;
-      //   }
-      //   if (std::abs(inputDifference) > std::abs(outputDifference)) {
-      //     if ((inputDifference > 0) && (redTime > delta)) {
-      //       tl.increaseGreenTimes(delta);
-      //     } else if ((inputDifference < 0) && (greenTime > delta)) {
-      //       tl.decreaseGreenTimes(delta);
-      //     }
-      //   } else {
-      //     if ((outputDifference < 0) && (redTime > delta)) {
-      //       tl.increaseGreenTimes(delta);
-      //     } else if ((outputDifference > 0) && (greenTime > delta)) {
-      //       tl.decreaseGreenTimes(delta);
-      //     }
-      //   }
+        //   double outputGreenSum{0.}, outputRedSum{0.};
+        //   for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
+        //     auto const streetId = nodeId * N + targetId;
+        //     if (streetPriorities.contains(streetId)) {
+        //       outputGreenSum +=
+        //           m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1];
+        //     } else {
+        //       outputRedSum += m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1];
+        //     }
+        //   }
+        //   auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
+        //   if ((inputDifference * outputDifference > 0) ||
+        //       std::max(std::abs(inputDifference), std::abs(outputDifference)) < threshold ||
+        //       delta == 0) {
+        //     tl.resetCycles();
+        //     continue;
+        //   }
+        //   if (std::abs(inputDifference) > std::abs(outputDifference)) {
+        //     if ((inputDifference > 0) && (redTime > delta)) {
+        //       tl.increaseGreenTimes(delta);
+        //     } else if ((inputDifference < 0) && (greenTime > delta)) {
+        //       tl.decreaseGreenTimes(delta);
+        //     }
+        //   } else {
+        //     if ((outputDifference < 0) && (redTime > delta)) {
+        //       tl.increaseGreenTimes(delta);
+        //     } else if ((outputDifference > 0) && (greenTime > delta)) {
+        //       tl.decreaseGreenTimes(delta);
+        //     }
+        //   }
       }
     }
     // Cleaning variables

@@ -31,7 +31,7 @@ namespace dsm {
     }
     if (!m_cycles.contains(streetId)) {
       TrafficLightCycle defaultCycle(m_cycleTime, 0);
-      std::vector<TrafficLightCycle> cycles{defaultCycle, defaultCycle, defaultCycle};
+      std::array<TrafficLightCycle, 3> cycles{defaultCycle, defaultCycle, defaultCycle};
       m_cycles.emplace(streetId, cycles);
     }
     switch (direction) {
@@ -194,15 +194,15 @@ namespace dsm {
         direction = Direction::LEFT;
         break;
       case Direction::RIGHTANDSTRAIGHT:
-        return m_cycles.at(streetId)[Direction::RIGHT].isGreen(m_cycleTime, m_counter) &&
+        return m_cycles.at(streetId)[Direction::RIGHT].isGreen(m_cycleTime, m_counter) ||
                m_cycles.at(streetId)[Direction::STRAIGHT].isGreen(m_cycleTime, m_counter);
       case Direction::LEFTANDSTRAIGHT:
-        return m_cycles.at(streetId)[Direction::LEFT].isGreen(m_cycleTime, m_counter) &&
+        return m_cycles.at(streetId)[Direction::LEFT].isGreen(m_cycleTime, m_counter) ||
                m_cycles.at(streetId)[Direction::STRAIGHT].isGreen(m_cycleTime, m_counter);
       case Direction::ANY:
-        return m_cycles.at(streetId)[Direction::RIGHT].isGreen(m_cycleTime, m_counter) &&
+        return m_cycles.at(streetId)[Direction::RIGHT].isGreen(m_cycleTime, m_counter) ||
                m_cycles.at(streetId)[Direction::STRAIGHT].isGreen(m_cycleTime,
-                                                                  m_counter) &&
+                                                                  m_counter) ||
                m_cycles.at(streetId)[Direction::LEFT].isGreen(m_cycleTime, m_counter);
       default:
         break;
