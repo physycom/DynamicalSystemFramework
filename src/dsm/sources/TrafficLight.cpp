@@ -26,27 +26,28 @@ namespace dsm {
                                 cycle.phase(),
                                 m_cycleTime));
     }
-    if (direction == Direction::UTURN) {
-      direction = Direction::LEFT;
-    }
-    switch (direction) {
-      case Direction::RIGHTANDSTRAIGHT:
-        m_cycles[streetId].emplace(Direction::RIGHT, cycle);
-        m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
-        break;
-      case Direction::LEFTANDSTRAIGHT:
-        m_cycles[streetId].emplace(Direction::LEFT, cycle);
-        m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
-        break;
-      case Direction::ANY:
-        m_cycles[streetId].emplace(Direction::RIGHT, cycle);
-        m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
-        m_cycles[streetId].emplace(Direction::LEFT, cycle);
-        break;
-      default:
-        m_cycles[streetId].emplace(direction, cycle);
-        break;
-    }
+    m_cycles[streetId].emplace(direction, cycle);
+    // if (direction == Direction::UTURN) {
+    //   direction = Direction::LEFT;
+    // }
+    // switch (direction) {
+    //   case Direction::RIGHTANDSTRAIGHT:
+    //     m_cycles[streetId].emplace(Direction::RIGHT, cycle);
+    //     m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
+    //     break;
+    //   case Direction::LEFTANDSTRAIGHT:
+    //     m_cycles[streetId].emplace(Direction::LEFT, cycle);
+    //     m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
+    //     break;
+    //   case Direction::ANY:
+    //     m_cycles[streetId].emplace(Direction::RIGHT, cycle);
+    //     m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
+    //     m_cycles[streetId].emplace(Direction::LEFT, cycle);
+    //     break;
+    //   default:
+    //     m_cycles[streetId].emplace(direction, cycle);
+    //     break;
+    // }
   }
 
   void TrafficLightCycle::reset() {
@@ -188,67 +189,70 @@ namespace dsm {
           std::format("Street id {} is not valid for node {}.", streetId, id())));
     }
     auto const& cycles{m_cycles.at(streetId)};
-
-    switch (direction) {
-      case Direction::UTURN:
-        if (cycles.contains(Direction::LEFT)) {
-          bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
-        break;
-      case Direction::RIGHTANDSTRAIGHT:
-        if (cycles.contains(Direction::RIGHT)) {
-          bgreen == bgreen || cycles.at(Direction::RIGHT).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
-        if (cycles.contains(Direction::STRAIGHT)) {
-          bgreen == bgreen ||
-              cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
-        break;
-      case Direction::LEFTANDSTRAIGHT:
-        if (cycles.contains(Direction::STRAIGHT)) {
-          bgreen == bgreen ||
-              cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
-        if (cycles.contains(Direction::LEFT)) {
-          bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
-        break;
-      case Direction::ANY:
-        if (cycles.contains(Direction::RIGHT)) {
-          bgreen == bgreen || cycles.at(Direction::RIGHT).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
-        if (cycles.contains(Direction::STRAIGHT)) {
-          bgreen == bgreen ||
-              cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
-        if (cycles.contains(Direction::LEFT)) {
-          bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
-        break;
-      default:
-        if (cycles.contains(direction)) {
-          bgreen = cycles.at(direction).isGreen(m_cycleTime, m_counter);
-        } else {
-          bgreen = true;
-        }
+    if (!cycles.contains(direction)) {
+      return true;
     }
-    return bgreen;
+    return cycles.at(direction).isGreen(m_cycleTime, m_counter);
+    // switch (direction) {
+    //   case Direction::UTURN:
+    //     if (cycles.contains(Direction::LEFT)) {
+    //       bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    //     break;
+    //   case Direction::RIGHTANDSTRAIGHT:
+    //     if (cycles.contains(Direction::RIGHT)) {
+    //       bgreen == bgreen || cycles.at(Direction::RIGHT).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    //     if (cycles.contains(Direction::STRAIGHT)) {
+    //       bgreen == bgreen ||
+    //           cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    //     break;
+    //   case Direction::LEFTANDSTRAIGHT:
+    //     if (cycles.contains(Direction::STRAIGHT)) {
+    //       bgreen == bgreen ||
+    //           cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    //     if (cycles.contains(Direction::LEFT)) {
+    //       bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    //     break;
+    //   case Direction::ANY:
+    //     if (cycles.contains(Direction::RIGHT)) {
+    //       bgreen == bgreen || cycles.at(Direction::RIGHT).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    //     if (cycles.contains(Direction::STRAIGHT)) {
+    //       bgreen == bgreen ||
+    //           cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    //     if (cycles.contains(Direction::LEFT)) {
+    //       bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    //     break;
+    //   default:
+    //     if (cycles.contains(direction)) {
+    //       bgreen = cycles.at(direction).isGreen(m_cycleTime, m_counter);
+    //     } else {
+    //       bgreen = true;
+    //     }
+    // }
+    // return bgreen;
   }
 
   bool TrafficLight::isFavouringDirection(bool const priority) const {

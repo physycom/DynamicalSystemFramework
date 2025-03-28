@@ -50,7 +50,7 @@ namespace dsm {
   protected:
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
-    std::unordered_map<Id, std::array<double, 2>> m_streetTails;
+    std::unordered_map<Id, std::unordered_map<Direction, double>> m_streetTails;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     Time m_previousOptimizationTime, m_previousSpireTime;
 
@@ -347,11 +347,23 @@ namespace dsm {
       this->addItinerary(nodeId, nodeId);
     }
     updatePaths();
+    std::for_each(this->graph().nodes().cbegin(),
+                  this->graph().nodes().cend(),
+                  [this](auto const& pair) {
+                    if (!pair.second->isTrafficLight()) {
+                      return;
+                    }
+                    auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
+                    for (auto const& [streetId, cycles] : tl.cycles()) {
+                      for (auto const& cyclePair : cycles) {
+                        m_streetTails[streetId].emplace(cyclePair.first, 0);
+                      }
+                    }
+                  });
     std::for_each(
         this->graph().edges().cbegin(),
         this->graph().edges().cend(),
         [this](auto const& pair) {
-          m_streetTails[pair.first] = {0., 0.};
           m_turnCounts.emplace(pair.first, std::array<unsigned long long, 4>{0, 0, 0, 0});
           // fill turn mapping as [pair.first, [left street Id, straight street Id, right street Id, U self street Id]]
           m_turnMapping.emplace(pair.first, std::array<long, 4>{-1, -1, -1, -1});
@@ -1000,11 +1012,14 @@ namespace dsm {
                    this->graph().adjacencyMatrix().getCol(pNode->id())) {
                 auto const streetId = sourceId * N + pNode->id();
                 auto const& pStreet{this->graph().edge(streetId)};
-                if (bUpdateData) {
-                  m_streetTails[streetId][0] +=
-                      pStreet->nExitingAgents(Direction::RIGHTANDSTRAIGHT, true);
-                  m_streetTails[streetId][1] +=
-                      pStreet->nExitingAgents(Direction::LEFT, true);
+                if (bUpdateData && pNode->isTrafficLight()) {
+                  auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+                  for (auto const& [streetId, cycles] : tl.cycles()) {
+                    for (auto const& pair : cycles) {
+                      m_streetTails.at(streetId).at(pair.first) +=
+                          pStreet->nExitingAgents(pair.first);
+                    }
+                  }
                 }
                 m_evolveStreet(pStreet, reinsert_agents);
 
@@ -1173,19 +1188,21 @@ namespace dsm {
       auto column = this->graph().adjacencyMatrix().getCol(nodeId);
       for (const auto& sourceId : column) {
         auto const streetId = sourceId * N + nodeId;
-        if (streetId == 427) {
-          Logger::info(
-              std::format("StreetId: {} - Tail {}",
-                          streetId,
-                          m_streetTails.at(streetId)[0] + m_streetTails.at(streetId)[1]));
-        }
         auto const& pStreet{this->graph().edge(streetId)};
-        if (maxPriorities.contains(pStreet->priority())) {
-          inputPrioritySum[0] += m_streetTails.at(streetId)[0];
-          inputPrioritySum[1] += m_streetTails.at(streetId)[1];
-        } else {
-          inputNonPrioritySum[0] += m_streetTails.at(streetId)[0];
-          inputNonPrioritySum[1] += m_streetTails.at(streetId)[1];
+        for (auto const& [direction, tail] : m_streetTails.at(streetId)) {
+          if (maxPriorities.contains(pStreet->priority())) {
+            if (direction == Direction::LEFT || direction == Direction::ANY) {
+              inputPrioritySum[1] += tail;
+            } else {
+              inputPrioritySum[0] += tail;
+            }
+          } else {
+            if (direction == Direction::LEFT || direction == Direction::ANY) {
+              inputNonPrioritySum[1] += tail;
+            } else {
+              inputNonPrioritySum[0] += tail;
+            }
+          }
         }
       }
       {
@@ -1217,25 +1234,45 @@ namespace dsm {
 
       tl.resetCycles();
       auto cycles{tl.cycles()};
-      std::array<int, 2> n{0, 0};
+      std::array<int, 4> n{0, 0, 0, 0};
       std::array<double, 4> greenTimes{0., 0., 0., 0.};
 
       for (auto const& [streetId, pair] : cycles) {
         auto const& pStreet{this->graph().edge(streetId)};
         for (auto const& [direction, cycle] : pair) {
           if (maxPriorities.contains(pStreet->priority())) {
-            if (direction == Direction::LEFT) {
+            if (direction == Direction::ANY) {
+              greenTimes[0] += cycle.greenTime();
+              ++n[0];
               greenTimes[1] += cycle.greenTime();
+              ++n[1];
+            } else if (direction == Direction::LEFT) {
+              greenTimes[1] += cycle.greenTime();
+              ++n[1];
             } else {
               greenTimes[0] += cycle.greenTime();
+              ++n[0];
             }
           } else {
-            if (direction == Direction::LEFT) {
+            if (direction == Direction::ANY) {
+              greenTimes[2] += cycle.greenTime();
+              ++n[2];
               greenTimes[3] += cycle.greenTime();
+              ++n[3];
+            } else if (direction == Direction::LEFT) {
+              greenTimes[3] += cycle.greenTime();
+              ++n[3];
             } else {
               greenTimes[2] += cycle.greenTime();
+              ++n[2];
             }
           }
+        }
+      }
+
+      for (auto i{0}; i < 4; ++i) {
+        if (n[i] > 1) {
+          greenTimes[i] /= n[i];
         }
       }
 
@@ -1283,8 +1320,9 @@ namespace dsm {
           std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime()))};
 
       Logger::info(
-          std::format("New cycle times for Traffic Light {}: {} {} {} - {} {} {}",
+          std::format("New cycle times for Traffic Light {} ({}): {} {} {} - {} {} {}",
                       tl.id(),
+                      tl.cycleTime(),
                       inputPriorityR,
                       inputPriorityS,
                       inputPriorityL,
@@ -1302,6 +1340,10 @@ namespace dsm {
         std::unordered_map<Direction, TrafficLightCycle> priorityCycles;
         priorityCycles.emplace(Direction::RIGHT, TrafficLightCycle{inputPriorityR, 0});
         priorityCycles.emplace(Direction::STRAIGHT, TrafficLightCycle{inputPriorityS, 0});
+        priorityCycles.emplace(Direction::RIGHTANDSTRAIGHT,
+                               TrafficLightCycle{inputPriorityS, 0});
+        priorityCycles.emplace(Direction::ANY,
+                               TrafficLightCycle{inputPriorityS + inputPriorityL, 0});
         priorityCycles.emplace(Direction::LEFT,
                                TrafficLightCycle{inputPriorityL, inputPriorityS});
 
@@ -1312,6 +1354,12 @@ namespace dsm {
         nonPriorityCycles.emplace(
             Direction::STRAIGHT,
             TrafficLightCycle{inputNonPriorityS, inputPriorityS + inputPriorityL});
+        nonPriorityCycles.emplace(
+            Direction::RIGHTANDSTRAIGHT,
+            TrafficLightCycle{inputNonPriorityS, inputPriorityS + inputPriorityL});
+        nonPriorityCycles.emplace(Direction::ANY,
+                                  TrafficLightCycle{inputNonPriorityS + inputNonPriorityL,
+                                                    inputPriorityS + inputPriorityL});
         nonPriorityCycles.emplace(
             Direction::LEFT,
             TrafficLightCycle{inputNonPriorityL,
@@ -1361,7 +1409,11 @@ namespace dsm {
                                        pStreet->target(),
                                        freecycle.greenTime(),
                                        freecycle.phase()));
-              tl.setCycle(streetId, Direction::RIGHTANDSTRAIGHT, freecycle);
+              for (auto& [direction, cycle] : cycles.at(streetId)) {
+                if (direction == Direction::RIGHT || Direction::RIGHTANDSTRAIGHT) {
+                  cycle = freecycle;
+                }
+              }
             } else if (!maxPriorities.contains(pStreet->priority()) &&
                        !maxPriorities.contains(pForbiddenStreet->priority())) {
               TrafficLightCycle freecycle{inputNonPriorityS + inputNonPriorityL,
@@ -1371,7 +1423,11 @@ namespace dsm {
                                        pStreet->target(),
                                        freecycle.greenTime(),
                                        freecycle.phase()));
-              tl.setCycle(streetId, Direction::RIGHTANDSTRAIGHT, freecycle);
+              for (auto& [direction, cycle] : cycles.at(streetId)) {
+                if (direction == Direction::RIGHT || Direction::RIGHTANDSTRAIGHT) {
+                  cycle = freecycle;
+                }
+              }
             }
           }
         }
@@ -1414,8 +1470,10 @@ namespace dsm {
       }
     }
     // Cleaning variables
-    for (auto& [id, element] : m_streetTails) {
-      element = {0., 0.};
+    for (auto& [id, pair] : m_streetTails) {
+      for (auto& [direction, tail] : pair) {
+        tail = 0.;
+      }
     }
     Logger::info("END optimizeTrafficLights");
     m_previousOptimizationTime = this->time();
