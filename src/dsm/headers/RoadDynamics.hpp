@@ -1218,10 +1218,10 @@ namespace dsm {
 
         // int const cycleTime{(1. - alpha) * tl.cycleTime()};
 
-        inputPrioritySum[0] *= (1. - threshold);
-        inputPrioritySum[1] *= (1. - threshold);
-        inputNonPrioritySum[0] *= (1. - threshold);
-        inputNonPrioritySum[1] *= (1. - threshold);
+        inputPrioritySum[0] *= threshold;
+        inputPrioritySum[1] *= threshold;
+        inputNonPrioritySum[0] *= threshold;
+        inputNonPrioritySum[1] *= threshold;
       }
 
       // Logger::info(std::format("Input cycle queue ratios for TL {}: {} {} - {} {}",
@@ -1303,7 +1303,7 @@ namespace dsm {
         }
       }
       for (auto& el : greenTimes) {
-        el *= threshold;
+        el *= (1. - threshold);
       }
 
       int inputPriorityR{static_cast<int>(
@@ -1318,16 +1318,6 @@ namespace dsm {
       int inputNonPriorityL{static_cast<int>(
           std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime()))};
 
-      Logger::info(
-          std::format("New cycle times for Traffic Light {} ({}): {} {} {} - {} {} {}",
-                      tl.id(),
-                      tl.cycleTime(),
-                      inputPriorityR,
-                      inputPriorityS,
-                      inputPriorityL,
-                      inputNonPriorityR,
-                      inputNonPriorityS,
-                      inputNonPriorityL));
       // Logger::info(std::format(
       //     "Cycle time: {} - Current sum: {}",
       //     tl.cycleTime(),
@@ -1403,13 +1393,15 @@ namespace dsm {
             if (maxPriorities.contains(pStreet->priority()) &&
                 maxPriorities.contains(pForbiddenStreet->priority())) {
               TrafficLightCycle freecycle{inputPriorityS + inputPriorityL, 0};
-              Logger::info(std::format("Free cycle for {} -> {}: {} {}",
-                                       pStreet->source(),
-                                       pStreet->target(),
-                                       freecycle.greenTime(),
-                                       freecycle.phase()));
               for (auto& [direction, cycle] : cycles.at(streetId)) {
-                if (direction == Direction::RIGHT || Direction::RIGHTANDSTRAIGHT) {
+                if (direction == Direction::RIGHT ||
+                    direction == Direction::RIGHTANDSTRAIGHT) {
+                  Logger::info(std::format("Free cycle ({}) for {} -> {}: {} {}",
+                                           static_cast<int>(direction),
+                                           pStreet->source(),
+                                           pStreet->target(),
+                                           freecycle.greenTime(),
+                                           freecycle.phase()));
                   cycle = freecycle;
                 }
               }
@@ -1417,13 +1409,15 @@ namespace dsm {
                        !maxPriorities.contains(pForbiddenStreet->priority())) {
               TrafficLightCycle freecycle{inputNonPriorityS + inputNonPriorityL,
                                           inputPriorityS + inputPriorityL};
-              Logger::info(std::format("Free cycle for {} -> {}: {} {}",
-                                       pStreet->source(),
-                                       pStreet->target(),
-                                       freecycle.greenTime(),
-                                       freecycle.phase()));
               for (auto& [direction, cycle] : cycles.at(streetId)) {
-                if (direction == Direction::RIGHT || Direction::RIGHTANDSTRAIGHT) {
+                if (direction == Direction::RIGHT ||
+                    direction == Direction::RIGHTANDSTRAIGHT) {
+                  Logger::info(std::format("Free cycle ({}) for {} -> {}: {} {}",
+                                           static_cast<int>(direction),
+                                           pStreet->source(),
+                                           pStreet->target(),
+                                           freecycle.greenTime(),
+                                           freecycle.phase()));
                   cycle = freecycle;
                 }
               }
@@ -1432,6 +1426,21 @@ namespace dsm {
         }
 
         tl.setCycles(cycles);
+        std::string logMsg =
+            std::format("New cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
+        for (auto const& [streetId, pair] : tl.cycles()) {
+          auto const& pStreet{this->graph().edge(streetId)};
+          logMsg +=
+              std::format("\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
+          for (auto const& [direction, cycle] : pair) {
+            logMsg += std::format("{}= ({} {}) ",
+                                  static_cast<int>(direction),
+                                  cycle.greenTime(),
+                                  cycle.phase());
+          }
+          logMsg += "\n";
+        }
+        Logger::info(logMsg);
       } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
         // If the difference is not less than the threshold
         //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
