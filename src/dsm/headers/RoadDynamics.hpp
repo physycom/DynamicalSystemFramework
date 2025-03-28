@@ -1190,14 +1190,24 @@ namespace dsm {
         auto const& pStreet{this->graph().edge(streetId)};
         for (auto const& [direction, tail] : m_streetTails.at(streetId)) {
           if (maxPriorities.contains(pStreet->priority())) {
-            if (direction == Direction::LEFT || direction == Direction::ANY) {
+            if (direction == Direction::ANY) {
+              inputPrioritySum[0] += tail * 2 / 3.;
+              inputPrioritySum[1] += tail / 3.;
+            } else if (direction == Direction::LEFT) {
               inputPrioritySum[1] += tail;
+            } else if (direction == Direction::RIGHTANDSTRAIGHT) {
+              inputPrioritySum[0] += tail / 2.;
             } else {
               inputPrioritySum[0] += tail;
             }
           } else {
-            if (direction == Direction::LEFT || direction == Direction::ANY) {
+            if (direction == Direction::ANY) {
+              inputNonPrioritySum[0] += tail * 2 / 3.;
+              inputNonPrioritySum[1] += tail / 3.;
+            } else if (direction == Direction::LEFT) {
               inputNonPrioritySum[1] += tail;
+            } else if (direction == Direction::RIGHTANDSTRAIGHT) {
+              inputNonPrioritySum[0] += tail / 2.;
             } else {
               inputNonPrioritySum[0] += tail;
             }
@@ -1241,9 +1251,9 @@ namespace dsm {
         for (auto const& [direction, cycle] : pair) {
           if (maxPriorities.contains(pStreet->priority())) {
             if (direction == Direction::ANY) {
-              greenTimes[0] += cycle.greenTime();
+              greenTimes[0] += cycle.greenTime() * 2. / 3.;
+              greenTimes[1] += cycle.greenTime() / 3.;
               ++n[0];
-              greenTimes[1] += cycle.greenTime();
               ++n[1];
             } else if (direction == Direction::LEFT) {
               greenTimes[1] += cycle.greenTime();
@@ -1254,9 +1264,9 @@ namespace dsm {
             }
           } else {
             if (direction == Direction::ANY) {
-              greenTimes[2] += cycle.greenTime();
+              greenTimes[2] += cycle.greenTime() * 2. / 3.;
+              greenTimes[3] += cycle.greenTime() / 3.;
               ++n[2];
-              greenTimes[3] += cycle.greenTime();
               ++n[3];
             } else if (direction == Direction::LEFT) {
               greenTimes[3] += cycle.greenTime();
@@ -1366,9 +1376,30 @@ namespace dsm {
             for (auto& [dir, cycle] : cycles.at(streetId)) {
               cycle = priorityCycles.at(dir);
             }
+            if (cycles.at(streetId).contains(Direction::RIGHT) &&
+                cycles.at(streetId).contains(Direction::STRAIGHT)) {
+              TrafficLightCycle freecycle{inputPriorityS + inputPriorityL, 0};
+              Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
+                                       pStreet->source(),
+                                       pStreet->target(),
+                                       freecycle.greenTime(),
+                                       freecycle.phase()));
+              cycles.at(streetId).at(Direction::RIGHT) = freecycle;
+            }
           } else {
             for (auto& [dir, cycle] : cycles.at(streetId)) {
               cycle = nonPriorityCycles.at(dir);
+            }
+            if (cycles.at(streetId).contains(Direction::RIGHT) &&
+                cycles.at(streetId).contains(Direction::STRAIGHT)) {
+              TrafficLightCycle freecycle{inputNonPriorityS + inputNonPriorityL,
+                                          inputPriorityS + inputPriorityL};
+              Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
+                                       pStreet->source(),
+                                       pStreet->target(),
+                                       freecycle.greenTime(),
+                                       freecycle.phase()));
+              cycles.at(streetId).at(Direction::RIGHT) = freecycle;
             }
           }
           bool found{false};
