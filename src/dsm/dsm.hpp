@@ -6,10 +6,15 @@
 
 static constexpr uint8_t DSM_VERSION_MAJOR = 2;
 static constexpr uint8_t DSM_VERSION_MINOR = 6;
-static constexpr uint8_t DSM_VERSION_PATCH = 9;
+static constexpr uint8_t DSM_VERSION_PATCH = 10;
 
+#ifdef NDEBUG
 static auto const DSM_VERSION =
     std::format("{}.{}.{}", DSM_VERSION_MAJOR, DSM_VERSION_MINOR, DSM_VERSION_PATCH);
+#else
+static auto const DSM_VERSION =
+    std::format("{}.{}.{}-dev", DSM_VERSION_MAJOR, DSM_VERSION_MINOR, DSM_VERSION_PATCH);
+#endif
 
 namespace dsm {
   /// @brief Returns the version of the DSM library

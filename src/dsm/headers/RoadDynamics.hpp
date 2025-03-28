@@ -1136,10 +1136,8 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::optimizeTrafficLights(
       double const threshold, TrafficLightOptimization const optimizationType) {
-    if (threshold < 0) {
-      Logger::error(
-          std::format("The threshold parameter ({}) must be greater than 0.", threshold));
-    }
+    assert(threshold >= 0. && threshold <= 1.);
+
     auto const nCycles{static_cast<double>(this->time() - m_previousOptimizationTime) /
                        m_dataUpdatePeriod.value()};
     for (const auto& [nodeId, pNode] : this->graph().nodes()) {
@@ -1169,8 +1167,6 @@ namespace dsm {
           maxPriorities.insert(*it);
         }
       }
-
-      double alpha = threshold;
 
       std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
       auto const N{this->graph().nNodes()};
@@ -1206,10 +1202,10 @@ namespace dsm {
 
         // int const cycleTime{(1. - alpha) * tl.cycleTime()};
 
-        inputPrioritySum[0] *= (1. - alpha);
-        inputPrioritySum[1] *= (1. - alpha);
-        inputNonPrioritySum[0] *= (1. - alpha);
-        inputNonPrioritySum[1] *= (1. - alpha);
+        inputPrioritySum[0] *= (1. - threshold);
+        inputPrioritySum[1] *= (1. - threshold);
+        inputNonPrioritySum[0] *= (1. - threshold);
+        inputNonPrioritySum[1] *= (1. - threshold);
       }
 
       // Logger::info(std::format("Input cycle queue ratios for TL {}: {} {} - {} {}",
@@ -1266,46 +1262,55 @@ namespace dsm {
         }
       }
       for (auto& el : greenTimes) {
-        el *= alpha;
+        el *= threshold;
       }
 
-      int inputPriorityRS{
+      int inputPriorityR{
           std::floor((inputPrioritySum[0] + greenTimes[0]) * tl.cycleTime())};
+      int inputPriorityS{inputPriorityR};
       int inputPriorityL{
           std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime())};
-      int inputNonPriorityRS{
+
+      int inputNonPriorityR{
           std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime())};
+      int inputNonPriorityS{inputNonPriorityR};
       int inputNonPriorityL{
           std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime())};
 
-      Logger::info(std::format("New cycle times for Traffic Light {}: {} {} - {} {}",
-                               tl.id(),
-                               inputPriorityRS,
-                               inputPriorityL,
-                               inputNonPriorityRS,
-                               inputNonPriorityL));
+      Logger::info(
+          std::format("New cycle times for Traffic Light {}: {} {} {} - {} {} {}",
+                      tl.id(),
+                      inputPriorityR,
+                      inputPriorityS,
+                      inputPriorityL,
+                      inputNonPriorityR,
+                      inputNonPriorityS,
+                      inputNonPriorityL));
       // Logger::info(std::format(
       //     "Cycle time: {} - Current sum: {}",
       //     tl.cycleTime(),
       //     inputPriorityRS + inputPriorityL + inputNonPriorityRS + inputNonPriorityL));
-      assert(inputPriorityRS + inputPriorityL + inputNonPriorityRS + inputNonPriorityL <=
+      assert(inputPriorityS + inputPriorityL + inputNonPriorityS + inputNonPriorityL <=
              tl.cycleTime());
 
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-        // Wanna put green/red phases proportional to the incoming traffic
-        TrafficLightCycle priorityRightStraight{inputPriorityRS, 0};
-        TrafficLightCycle priorityLeft{inputPriorityL, inputPriorityRS};
+        TrafficLightCycle priorityRight{inputPriorityR, 0};
+        TrafficLightCycle priorityStraight{inputPriorityS, 0};
+        TrafficLightCycle priorityLeft{inputPriorityL, inputPriorityS};
         std::array<TrafficLightCycle, 3> priorityCycles{
-            priorityRightStraight, priorityRightStraight, priorityLeft};
+            priorityRight, priorityStraight, priorityLeft};
 
-        TrafficLightCycle nonPriorityRightStraight{inputNonPriorityRS,
-                                                   inputPriorityRS + inputPriorityL};
+        TrafficLightCycle nonPriorityRight{inputNonPriorityR,
+                                           inputPriorityS + inputPriorityL};
+        TrafficLightCycle nonPriorityStraight{inputNonPriorityS,
+                                              inputPriorityS + inputPriorityL};
         TrafficLightCycle nonPriorityLeft{
-            inputNonPriorityL, inputPriorityRS + inputPriorityL + inputNonPriorityRS};
+            inputNonPriorityL, inputPriorityS + inputPriorityL + inputNonPriorityS};
         std::array<TrafficLightCycle, 3> nonPriorityCycles{
-            nonPriorityRightStraight, nonPriorityRightStraight, nonPriorityLeft};
+            nonPriorityRight, nonPriorityStraight, nonPriorityLeft};
 
         std::vector<Id> streetIds;
+        std::set<Id> forbiddenLeft;
 
         for (auto const& pair : cycles) {
           streetIds.push_back(pair.first);
@@ -1317,7 +1322,48 @@ namespace dsm {
           } else {
             cycles.insert_or_assign(streetId, nonPriorityCycles);
           }
+          bool found{false};
+          for (auto const dir : pStreet->laneMapping()) {
+            if (dir == Direction::LEFT || dir == Direction::LEFTANDSTRAIGHT ||
+                dir == Direction::ANY) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            forbiddenLeft.insert(streetId);
+          }
         }
+        for (auto const forbiddenLeftStreetId : forbiddenLeft) {
+          auto const& pForbiddenStreet{this->graph().edge(forbiddenLeftStreetId)};
+          for (auto const streetId : streetIds) {
+            if (streetId == forbiddenLeftStreetId) {
+              continue;
+            }
+            auto const& pStreet{this->graph().edge(streetId)};
+            if (maxPriorities.contains(pStreet->priority()) &&
+                maxPriorities.contains(pForbiddenStreet->priority())) {
+              TrafficLightCycle freecycle{inputPriorityS + inputPriorityL, 0};
+              Logger::info(std::format("Free cycle for {} -> {}: {} {}",
+                                       pStreet->source(),
+                                       pStreet->target(),
+                                       freecycle.greenTime(),
+                                       freecycle.phase()));
+              tl.setCycle(streetId, Direction::RIGHTANDSTRAIGHT, freecycle);
+            } else if (!maxPriorities.contains(pStreet->priority()) &&
+                       !maxPriorities.contains(pForbiddenStreet->priority())) {
+              TrafficLightCycle freecycle{inputNonPriorityS + inputNonPriorityL,
+                                          inputPriorityS + inputPriorityL};
+              Logger::info(std::format("Free cycle for {} -> {}: {} {}",
+                                       pStreet->source(),
+                                       pStreet->target(),
+                                       freecycle.greenTime(),
+                                       freecycle.phase()));
+              tl.setCycle(streetId, Direction::RIGHTANDSTRAIGHT, freecycle);
+            }
+          }
+        }
+
         tl.setCycles(cycles);
       } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
         // If the difference is not less than the threshold
