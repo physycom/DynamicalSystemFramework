@@ -51,8 +51,9 @@ namespace dsm {
 
   class TrafficLight : public Intersection {
   private:
-    std::unordered_map<Id, std::array<TrafficLightCycle, 3>> m_cycles;
-    std::unordered_map<Id, std::array<TrafficLightCycle, 3>> m_defaultCycles;
+    std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> m_cycles;
+    std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>>
+        m_defaultCycles;
     Delay m_cycleTime;  // The total time of a red-green cycle
     Delay m_counter;
 
@@ -105,9 +106,9 @@ namespace dsm {
     /// @param cycle The traffic light cycle
     void setCycle(Id const streetId, Direction direction, TrafficLightCycle const& cycle);
     /// @brief Set the traffic light's cycles
-    /// @param cycles std::unordered_map<Id, std::array<TrafficLightCycle, 3>> The traffic light's cycles
+    /// @param cycles std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> The traffic light's cycles
     inline void setCycles(
-        std::unordered_map<Id, std::array<TrafficLightCycle, 3>> cycles) {
+        std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> cycles) {
       m_cycles = std::move(cycles);
     }
     /// @brief Set the complementary cycle for a street
@@ -130,8 +131,9 @@ namespace dsm {
     /// @param delta Delay, the time to increase or decrease the green times
     void decreaseGreenTimes(Delay const delta);
     /// @brief Get the traffic light's cycles
-    /// @return std::unordered_map<Id, std::array<TrafficLightCycle, 3>>& The traffic light's cycles
-    inline std::unordered_map<Id, std::array<TrafficLightCycle, 3>> const& cycles() const {
+    /// @return std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>>& The traffic light's cycles
+    inline std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> const&
+    cycles() const {
       return m_cycles;
     }
     /// @brief Returns true if all the cycles are set to their default values

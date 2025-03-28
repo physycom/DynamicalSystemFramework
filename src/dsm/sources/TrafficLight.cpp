@@ -29,27 +29,22 @@ namespace dsm {
     if (direction == Direction::UTURN) {
       direction = Direction::LEFT;
     }
-    if (!m_cycles.contains(streetId)) {
-      TrafficLightCycle defaultCycle(m_cycleTime, 0);
-      std::array<TrafficLightCycle, 3> cycles{defaultCycle, defaultCycle, defaultCycle};
-      m_cycles.emplace(streetId, cycles);
-    }
     switch (direction) {
       case Direction::RIGHTANDSTRAIGHT:
-        m_cycles.at(streetId)[Direction::RIGHT] = cycle;
-        m_cycles.at(streetId)[Direction::STRAIGHT] = cycle;
+        m_cycles[streetId].emplace(Direction::RIGHT, cycle);
+        m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
         break;
       case Direction::LEFTANDSTRAIGHT:
-        m_cycles.at(streetId)[Direction::LEFT] = cycle;
-        m_cycles.at(streetId)[Direction::STRAIGHT] = cycle;
+        m_cycles[streetId].emplace(Direction::LEFT, cycle);
+        m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
         break;
       case Direction::ANY:
-        m_cycles.at(streetId)[Direction::RIGHT] = cycle;
-        m_cycles.at(streetId)[Direction::STRAIGHT] = cycle;
-        m_cycles.at(streetId)[Direction::LEFT] = cycle;
+        m_cycles[streetId].emplace(Direction::RIGHT, cycle);
+        m_cycles[streetId].emplace(Direction::STRAIGHT, cycle);
+        m_cycles[streetId].emplace(Direction::LEFT, cycle);
         break;
       default:
-        m_cycles.at(streetId)[direction] = cycle;
+        m_cycles[streetId].emplace(direction, cycle);
         break;
     }
   }
@@ -68,9 +63,10 @@ namespace dsm {
       throw std::invalid_argument(Logger::buildExceptionMessage("Cycle does not exist."));
     }
     m_cycles.emplace(streetId, m_cycles.at(existingCycle));
-    for (auto& cycle : m_cycles.at(streetId)) {
-      cycle = TrafficLightCycle(m_cycleTime - cycle.greenTime(),
-                                cycle.phase() + m_cycleTime - cycle.greenTime());
+    for (auto& pair : m_cycles.at(streetId)) {
+      pair.second =
+          TrafficLightCycle(m_cycleTime - pair.second.greenTime(),
+                            pair.second.phase() + m_cycleTime - pair.second.greenTime());
     }
   }
 
@@ -93,12 +89,12 @@ namespace dsm {
     Delay maxTime{0};
     for (auto const& [streetId, cycles] : m_cycles) {
       if (priorityStreets && m_streetPriorities.contains(streetId)) {
-        for (auto const& cycle : cycles) {
-          maxTime = std::max(maxTime, cycle.greenTime());
+        for (auto const& pair : cycles) {
+          maxTime = std::max(maxTime, pair.second.greenTime());
         }
       } else {
-        for (auto const& cycle : cycles) {
-          maxTime = std::max(maxTime, cycle.greenTime());
+        for (auto const& pair : cycles) {
+          maxTime = std::max(maxTime, pair.second.greenTime());
         }
       }
     }
@@ -109,12 +105,12 @@ namespace dsm {
     Delay minTime{std::numeric_limits<Delay>::max()};
     for (auto const& [streetId, cycles] : m_cycles) {
       if (priorityStreets && m_streetPriorities.contains(streetId)) {
-        for (auto const& cycle : cycles) {
-          minTime = std::min(minTime, cycle.greenTime());
+        for (auto const& pair : cycles) {
+          minTime = std::min(minTime, pair.second.greenTime());
         }
       } else {
-        for (auto const& cycle : cycles) {
-          minTime = std::min(minTime, cycle.greenTime());
+        for (auto const& pair : cycles) {
+          minTime = std::min(minTime, pair.second.greenTime());
         }
       }
     }
@@ -124,55 +120,57 @@ namespace dsm {
   double TrafficLight::meanGreenTime(bool priorityStreets) const {
     double meanTime{0.};
     size_t nCycles{0};
-    for (auto const& [streetId, cycles] : m_cycles) {
-      if ((priorityStreets && m_streetPriorities.contains(streetId)) ||
-          (!priorityStreets && !m_streetPriorities.contains(streetId))) {
-        meanTime +=
-            std::transform_reduce(cycles.begin(),
-                                  cycles.end(),
-                                  0.0,                  // Initial value (double)
-                                  std::plus<double>(),  // Reduction function (addition)
-                                  [](const TrafficLightCycle& cycle) -> double {
-                                    return static_cast<double>(cycle.greenTime());
-                                  });
-        nCycles += cycles.size();
-      }
-    }
+    // for (auto const& [streetId, cycles] : m_cycles) {
+    //   if ((priorityStreets && m_streetPriorities.contains(streetId)) ||
+    //       (!priorityStreets && !m_streetPriorities.contains(streetId))) {
+    //     meanTime +=
+    //         std::transform_reduce(cycles.begin(),
+    //                               cycles.end(),
+    //                               0.0,                  // Initial value (double)
+    //                               std::plus<double>(),  // Reduction function (addition)
+    //                               [](const TrafficLightCycle& cycle) -> double {
+    //                                 return static_cast<double>(cycle.greenTime());
+    //                               });
+    //     nCycles += cycles.size();
+    //   }
+    // }
     return meanTime / nCycles;
   }
 
   void TrafficLight::increaseGreenTimes(Delay const delta) {
     for (auto& [streetId, cycles] : m_cycles) {
       if (m_streetPriorities.contains(streetId)) {
-        for (auto& cycle : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() + delta, cycle.phase());
+        for (auto& pair : cycles) {
+          pair.second =
+              TrafficLightCycle(pair.second.greenTime() + delta, pair.second.phase());
         }
       } else {
-        for (auto& cycle : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() - delta, cycle.phase() + delta);
+        for (auto& pair : cycles) {
+          pair.second = TrafficLightCycle(pair.second.greenTime() - delta,
+                                          pair.second.phase() + delta);
         }
       }
     }
   }
 
   void TrafficLight::decreaseGreenTimes(Delay const delta) {
-    for (auto& [streetId, cycles] : m_cycles) {
-      if (!m_streetPriorities.contains(streetId)) {
-        for (auto& cycle : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() + delta, cycle.phase());
-        }
-      } else {
-        for (auto& cycle : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() - delta, cycle.phase() + delta);
-        }
-      }
-    }
+    // for (auto& [streetId, cycles] : m_cycles) {
+    //   if (!m_streetPriorities.contains(streetId)) {
+    //     for (auto& cycle : cycles) {
+    //       cycle = TrafficLightCycle(cycle.greenTime() + delta, cycle.phase());
+    //     }
+    //   } else {
+    //     for (auto& cycle : cycles) {
+    //       cycle = TrafficLightCycle(cycle.greenTime() - delta, cycle.phase() + delta);
+    //     }
+    //   }
+    // }
   }
 
   bool TrafficLight::isDefault() const {
     for (auto const& [streetId, cycles] : m_cycles) {
-      for (auto const& cycle : cycles) {
-        if (!cycle.isDefault()) {
+      for (auto const& pair : cycles) {
+        if (!pair.second.isDefault()) {
           return false;
         }
       }
@@ -181,41 +179,84 @@ namespace dsm {
   }
 
   bool TrafficLight::isGreen(Id const streetId, Direction direction) const {
-    if (m_cycles.empty()) {
-      return true;
-    }
-    assert(m_cycles.at(streetId).size() == 3);
+    bool bgreen{true};
+    // if (m_cycles.empty()) {
+    //   return bgreen;
+    // }
     if (!m_cycles.contains(streetId)) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Street id {} is not valid for node {}.", streetId, id())));
     }
+    auto const& cycles{m_cycles.at(streetId)};
+
     switch (direction) {
       case Direction::UTURN:
-        direction = Direction::LEFT;
+        if (cycles.contains(Direction::LEFT)) {
+          bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
         break;
       case Direction::RIGHTANDSTRAIGHT:
-        return m_cycles.at(streetId)[Direction::RIGHT].isGreen(m_cycleTime, m_counter) ||
-               m_cycles.at(streetId)[Direction::STRAIGHT].isGreen(m_cycleTime, m_counter);
-      case Direction::LEFTANDSTRAIGHT:
-        return m_cycles.at(streetId)[Direction::LEFT].isGreen(m_cycleTime, m_counter) ||
-               m_cycles.at(streetId)[Direction::STRAIGHT].isGreen(m_cycleTime, m_counter);
-      case Direction::ANY:
-        return m_cycles.at(streetId)[Direction::RIGHT].isGreen(m_cycleTime, m_counter) ||
-               m_cycles.at(streetId)[Direction::STRAIGHT].isGreen(m_cycleTime,
-                                                                  m_counter) ||
-               m_cycles.at(streetId)[Direction::LEFT].isGreen(m_cycleTime, m_counter);
-      default:
+        if (cycles.contains(Direction::RIGHT)) {
+          bgreen == bgreen || cycles.at(Direction::RIGHT).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
+        if (cycles.contains(Direction::STRAIGHT)) {
+          bgreen == bgreen ||
+              cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
         break;
+      case Direction::LEFTANDSTRAIGHT:
+        if (cycles.contains(Direction::STRAIGHT)) {
+          bgreen == bgreen ||
+              cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
+        if (cycles.contains(Direction::LEFT)) {
+          bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
+        break;
+      case Direction::ANY:
+        if (cycles.contains(Direction::RIGHT)) {
+          bgreen == bgreen || cycles.at(Direction::RIGHT).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
+        if (cycles.contains(Direction::STRAIGHT)) {
+          bgreen == bgreen ||
+              cycles.at(Direction::STRAIGHT).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
+        if (cycles.contains(Direction::LEFT)) {
+          bgreen == bgreen || cycles.at(Direction::LEFT).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
+        break;
+      default:
+        if (cycles.contains(direction)) {
+          bgreen = cycles.at(direction).isGreen(m_cycleTime, m_counter);
+        } else {
+          bgreen = true;
+        }
     }
-    return m_cycles.at(streetId)[direction].isGreen(m_cycleTime, m_counter);
+    return bgreen;
   }
 
   bool TrafficLight::isFavouringDirection(bool const priority) const {
     for (auto const& [streetId, cycles] : m_cycles) {
       if ((priority && m_streetPriorities.contains(streetId)) ||
           (!priority && !m_streetPriorities.contains(streetId))) {
-        for (auto const& cycle : cycles) {
-          if (!cycle.isGreenTimeIncreased()) {
+        for (auto const& pair : cycles) {
+          if (!pair.second.isGreenTimeIncreased()) {
             return false;
           }
         }

@@ -1220,17 +1220,22 @@ namespace dsm {
       std::array<int, 2> n{0, 0};
       std::array<double, 4> greenTimes{0., 0., 0., 0.};
 
-      for (auto const& [streetId, cycle] : cycles) {
-        assert(cycle.size() == 3);
+      for (auto const& [streetId, pair] : cycles) {
         auto const& pStreet{this->graph().edge(streetId)};
-        if (maxPriorities.contains(pStreet->priority())) {
-          greenTimes[0] += (cycle[0].greenTime() + cycle[1].greenTime()) / 2.;
-          greenTimes[1] += cycle[2].greenTime();
-          // n[0] += pStreet->nLanes();
-        } else {
-          greenTimes[2] += (cycle[0].greenTime() + cycle[1].greenTime()) / 2.;
-          greenTimes[3] += cycle[2].greenTime();
-          // n[1] += pStreet->nLanes();
+        for (auto const& [direction, cycle] : pair) {
+          if (maxPriorities.contains(pStreet->priority())) {
+            if (direction == Direction::LEFT) {
+              greenTimes[1] += cycle.greenTime();
+            } else {
+              greenTimes[0] += cycle.greenTime();
+            }
+          } else {
+            if (direction == Direction::LEFT) {
+              greenTimes[3] += cycle.greenTime();
+            } else {
+              greenTimes[2] += cycle.greenTime();
+            }
+          }
         }
       }
 
@@ -1265,17 +1270,17 @@ namespace dsm {
         el *= threshold;
       }
 
-      int inputPriorityR{
-          std::floor((inputPrioritySum[0] + greenTimes[0]) * tl.cycleTime())};
+      int inputPriorityR{static_cast<int>(
+          std::floor((inputPrioritySum[0] + greenTimes[0]) * tl.cycleTime()))};
       int inputPriorityS{inputPriorityR};
-      int inputPriorityL{
-          std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime())};
+      int inputPriorityL{static_cast<int>(
+          std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime()))};
 
-      int inputNonPriorityR{
-          std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime())};
+      int inputNonPriorityR{static_cast<int>(
+          std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime()))};
       int inputNonPriorityS{inputNonPriorityR};
-      int inputNonPriorityL{
-          std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime())};
+      int inputNonPriorityL{static_cast<int>(
+          std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime()))};
 
       Logger::info(
           std::format("New cycle times for Traffic Light {}: {} {} {} - {} {} {}",
@@ -1294,20 +1299,23 @@ namespace dsm {
              tl.cycleTime());
 
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-        TrafficLightCycle priorityRight{inputPriorityR, 0};
-        TrafficLightCycle priorityStraight{inputPriorityS, 0};
-        TrafficLightCycle priorityLeft{inputPriorityL, inputPriorityS};
-        std::array<TrafficLightCycle, 3> priorityCycles{
-            priorityRight, priorityStraight, priorityLeft};
+        std::unordered_map<Direction, TrafficLightCycle> priorityCycles;
+        priorityCycles.emplace(Direction::RIGHT, TrafficLightCycle{inputPriorityR, 0});
+        priorityCycles.emplace(Direction::STRAIGHT, TrafficLightCycle{inputPriorityS, 0});
+        priorityCycles.emplace(Direction::LEFT,
+                               TrafficLightCycle{inputPriorityL, inputPriorityS});
 
-        TrafficLightCycle nonPriorityRight{inputNonPriorityR,
-                                           inputPriorityS + inputPriorityL};
-        TrafficLightCycle nonPriorityStraight{inputNonPriorityS,
-                                              inputPriorityS + inputPriorityL};
-        TrafficLightCycle nonPriorityLeft{
-            inputNonPriorityL, inputPriorityS + inputPriorityL + inputNonPriorityS};
-        std::array<TrafficLightCycle, 3> nonPriorityCycles{
-            nonPriorityRight, nonPriorityStraight, nonPriorityLeft};
+        std::unordered_map<Direction, TrafficLightCycle> nonPriorityCycles;
+        nonPriorityCycles.emplace(
+            Direction::RIGHT,
+            TrafficLightCycle{inputNonPriorityR, inputPriorityS + inputPriorityL});
+        nonPriorityCycles.emplace(
+            Direction::STRAIGHT,
+            TrafficLightCycle{inputNonPriorityS, inputPriorityS + inputPriorityL});
+        nonPriorityCycles.emplace(
+            Direction::LEFT,
+            TrafficLightCycle{inputNonPriorityL,
+                              inputPriorityS + inputPriorityL + inputNonPriorityS});
 
         std::vector<Id> streetIds;
         std::set<Id> forbiddenLeft;
@@ -1318,9 +1326,13 @@ namespace dsm {
         for (auto const streetId : streetIds) {
           auto const& pStreet{this->graph().edge(streetId)};
           if (maxPriorities.contains(pStreet->priority())) {
-            cycles.insert_or_assign(streetId, priorityCycles);
+            for (auto& [dir, cycle] : cycles.at(streetId)) {
+              cycle = priorityCycles.at(dir);
+            }
           } else {
-            cycles.insert_or_assign(streetId, nonPriorityCycles);
+            for (auto& [dir, cycle] : cycles.at(streetId)) {
+              cycle = nonPriorityCycles.at(dir);
+            }
           }
           bool found{false};
           for (auto const dir : pStreet->laneMapping()) {
