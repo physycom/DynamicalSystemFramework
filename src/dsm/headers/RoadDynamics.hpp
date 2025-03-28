@@ -198,7 +198,7 @@ namespace dsm {
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
     void evolve(bool reinsert_agents = false);
     /// @brief Optimize the traffic lights by changing the green and red times
-    /// @param threshold double, The minimum difference between green and red queues to trigger the optimization (n agents - default is 0)
+    /// @param threshold double, Currently the percentage of the total cycle time which can be manipulated by the algorithm
     /// @param optimizationType TrafficLightOptimization, The type of optimization. Default is DOUBLE_TAIL
     /// @details The function cycles over the traffic lights and, if the difference between the two tails is greater than
     ///   the threshold multiplied by the mean capacity of the streets, it changes the green and red times of the traffic light, keeping the total cycle time constant.
@@ -1185,8 +1185,7 @@ namespace dsm {
 
       std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
       auto const N{this->graph().nNodes()};
-      auto column = this->graph().adjacencyMatrix().getCol(nodeId);
-      for (const auto& sourceId : column) {
+      for (const auto& sourceId : inNeighbours) {
         auto const streetId = sourceId * N + nodeId;
         auto const& pStreet{this->graph().edge(streetId)};
         for (auto const& [direction, tail] : m_streetTails.at(streetId)) {
