@@ -333,30 +333,18 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(tl.cycleTime(), 120);
           auto const& cycles{tl.cycles()};
           CHECK_EQ(cycles.size(), 4);
-          CHECK_EQ(cycles.at(1)[0].greenTime(), 53);
-          CHECK_EQ(cycles.at(1)[1].greenTime(), 53);
-          CHECK_EQ(cycles.at(1)[2].greenTime(), 26);
-          CHECK_EQ(cycles.at(1)[0].phase(), 0);
-          CHECK_EQ(cycles.at(1)[1].phase(), 0);
-          CHECK_EQ(cycles.at(1)[2].phase(), 53);
-          CHECK_EQ(cycles.at(11)[0].greenTime(), 53);
-          CHECK_EQ(cycles.at(11)[1].greenTime(), 53);
-          CHECK_EQ(cycles.at(11)[2].greenTime(), 26);
-          CHECK_EQ(cycles.at(11)[0].phase(), 0);
-          CHECK_EQ(cycles.at(11)[1].phase(), 0);
-          CHECK_EQ(cycles.at(11)[2].phase(), 53);
-          CHECK_EQ(cycles.at(16)[0].greenTime(), 40);
-          CHECK_EQ(cycles.at(16)[1].greenTime(), 40);
-          CHECK_EQ(cycles.at(16)[2].greenTime(), 40);
-          CHECK_EQ(cycles.at(16)[0].phase(), 80);
-          CHECK_EQ(cycles.at(16)[1].phase(), 80);
-          CHECK_EQ(cycles.at(16)[2].phase(), 80);
-          CHECK_EQ(cycles.at(21)[0].greenTime(), 40);
-          CHECK_EQ(cycles.at(21)[1].greenTime(), 40);
-          CHECK_EQ(cycles.at(21)[2].greenTime(), 40);
-          CHECK_EQ(cycles.at(21)[0].phase(), 80);
-          CHECK_EQ(cycles.at(21)[1].phase(), 80);
-          CHECK_EQ(cycles.at(21)[2].phase(), 80);
+          CHECK_EQ(cycles.at(1).at(dsm::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
+          CHECK_EQ(cycles.at(1).at(dsm::Direction::LEFT).greenTime(), 26);
+          CHECK_EQ(cycles.at(1).at(dsm::Direction::RIGHTANDSTRAIGHT).phase(), 0);
+          CHECK_EQ(cycles.at(1).at(dsm::Direction::LEFT).phase(), 53);
+          CHECK_EQ(cycles.at(11).at(dsm::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
+          CHECK_EQ(cycles.at(11).at(dsm::Direction::LEFT).greenTime(), 26);
+          CHECK_EQ(cycles.at(11).at(dsm::Direction::RIGHTANDSTRAIGHT).phase(), 0);
+          CHECK_EQ(cycles.at(11).at(dsm::Direction::LEFT).phase(), 53);
+          CHECK_EQ(cycles.at(16).at(dsm::Direction::ANY).greenTime(), 40);
+          CHECK_EQ(cycles.at(16).at(dsm::Direction::ANY).phase(), 80);
+          CHECK_EQ(cycles.at(21).at(dsm::Direction::ANY).greenTime(), 40);
+          CHECK_EQ(cycles.at(21).at(dsm::Direction::ANY).phase(), 80);
         }
       }
     }
