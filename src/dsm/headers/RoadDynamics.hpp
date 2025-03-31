@@ -50,7 +50,7 @@ namespace dsm {
   protected:
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
-    std::unordered_map<Id, double> m_streetTails;
+    std::unordered_map<Id, std::unordered_map<Direction, double>> m_queuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     Time m_previousOptimizationTime, m_previousSpireTime;
 
@@ -351,7 +351,6 @@ namespace dsm {
         this->graph().edges().cbegin(),
         this->graph().edges().cend(),
         [this](auto const& pair) {
-          m_streetTails.emplace(pair.first, 0);
           m_turnCounts.emplace(pair.first, std::array<unsigned long long, 4>{0, 0, 0, 0});
           // fill turn mapping as [pair.first, [left street Id, straight street Id, right street Id, U self street Id]]
           m_turnMapping.emplace(pair.first, std::array<long, 4>{-1, -1, -1, -1});
@@ -1000,8 +999,18 @@ namespace dsm {
                    this->graph().adjacencyMatrix().getCol(pNode->id())) {
                 auto const streetId = sourceId * N + pNode->id();
                 auto const& pStreet{this->graph().edge(streetId)};
-                if (bUpdateData) {
-                  m_streetTails[streetId] += pStreet->nExitingAgents();
+                if (bUpdateData && pNode->isTrafficLight()) {
+                  if (!m_queuesAtTrafficLights.contains(streetId)) {
+                    auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+                    for (auto const& [streetId, pair] : tl.cycles()) {
+                      for (auto const& [direction, cycle] : pair) {
+                        m_queuesAtTrafficLights[streetId].emplace(direction, 0.);
+                      }
+                    }
+                  }
+                  for (auto& [direction, value] : m_queuesAtTrafficLights.at(streetId)) {
+                    value += pStreet->nExitingAgents(direction, true);
+                  }
                 }
                 m_evolveStreet(pStreet, reinsert_agents);
 
@@ -1155,9 +1164,13 @@ namespace dsm {
         auto const streetId = sourceId * N + nodeId;
         auto const& pStreet{this->graph().edge(streetId)};
         if (streetPriorities.contains(streetId)) {
-          inputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
+          for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
+            inputGreenSum += pair.second / pStreet->nLanes();
+          }
         } else {
-          inputRedSum += m_streetTails.at(streetId) / pStreet->nLanes();
+          for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
+            inputRedSum += pair.second / pStreet->nLanes();
+          }
         }
       }
       inputGreenSum /= meanGreenFraction;
@@ -1197,11 +1210,18 @@ namespace dsm {
         double outputGreenSum{0.}, outputRedSum{0.};
         for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
           auto const streetId = nodeId * N + targetId;
+          if (!m_queuesAtTrafficLights.contains(streetId)) {
+            continue;
+          }
           auto const& pStreet{this->graph().edge(streetId)};
           if (streetPriorities.contains(streetId)) {
-            outputGreenSum += m_streetTails.at(streetId) / pStreet->nLanes();
+            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
+              outputGreenSum += pair.second / pStreet->nLanes();
+            }
           } else {
-            outputRedSum += m_streetTails.at(streetId) / pStreet->nLanes();
+            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
+              outputGreenSum += pair.second / pStreet->nLanes();
+            }
           }
         }
         auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
@@ -1227,8 +1247,10 @@ namespace dsm {
       }
     }
     // Cleaning variables
-    for (auto& [id, element] : m_streetTails) {
-      element = 0.;
+    for (auto& [streetId, pair] : m_queuesAtTrafficLights) {
+      for (auto& [direction, value] : pair) {
+        value = 0.;
+      }
     }
     m_previousOptimizationTime = this->time();
   }
