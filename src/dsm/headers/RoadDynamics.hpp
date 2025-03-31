@@ -362,8 +362,8 @@ namespace dsm {
                 pair.second->deltaAngle(this->graph().edge(previousStreetId)->angle())};
             if (std::abs(delta) < std::numbers::pi) {
               if (delta < 0.) {
-                m_turnMapping[pair.first][dsm::Direction::RIGHT] = previousStreetId;
-                ;  // right
+                m_turnMapping[pair.first][dsm::Direction::RIGHT] =
+                    previousStreetId;  // right
               } else if (delta > 0.) {
                 m_turnMapping[pair.first][dsm::Direction::LEFT] =
                     previousStreetId;  // left
