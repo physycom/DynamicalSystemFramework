@@ -305,7 +305,11 @@ namespace dsm {
                     //                           pInStreet->angle(),
                     //                           pOutStreet->angle()));
                     // Logger::debug(std::format("Delta: {}", deltaAngle));
-                    if (deltaAngle < 0.) {
+                    if (std::abs(deltaAngle) < std::numbers::pi / 4) {
+                      Logger::debug(
+                          std::format("Street {} can go STRAIGHT", pInStreet->id()));
+                      allowedTurns.emplace(Direction::STRAIGHT);
+                    } else if (deltaAngle < 0.) {
                       Logger::debug(
                           std::format("Street {} can turn RIGHT", pInStreet->id()));
                       allowedTurns.emplace(Direction::RIGHT);
@@ -313,10 +317,6 @@ namespace dsm {
                       Logger::debug(
                           std::format("Street {} can turn LEFT", pInStreet->id()));
                       allowedTurns.emplace(Direction::LEFT);
-                    } else {
-                      Logger::debug(
-                          std::format("Street {} can go STRAIGHT", pInStreet->id()));
-                      allowedTurns.emplace(Direction::STRAIGHT);
                     }
                   }
                 });
