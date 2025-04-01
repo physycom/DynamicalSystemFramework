@@ -200,12 +200,14 @@ namespace dsm {
     /// @brief Optimize the traffic lights by changing the green and red times
     /// @param threshold double, The minimum difference between green and red queues to trigger the optimization (n agents - default is 0)
     /// @param optimizationType TrafficLightOptimization, The type of optimization. Default is DOUBLE_TAIL
+    /// @param logFile The file into which write the logs (default is empty, meaning no logging)
     /// @details The function cycles over the traffic lights and, if the difference between the two tails is greater than
     ///   the threshold multiplied by the mean capacity of the streets, it changes the green and red times of the traffic light, keeping the total cycle time constant.
     ///   The optimizationType parameter can be set to SINGLE_TAIL to use an algorith which looks only at the incoming street tails or to DOUBLE_TAIL to consider both incoming and outgoing street tails.
-    void optimizeTrafficLights(double const threshold = 0.,
-                               TrafficLightOptimization optimizationType =
-                                   TrafficLightOptimization::DOUBLE_TAIL);
+    void optimizeTrafficLights(
+        double const threshold = 0.,
+        TrafficLightOptimization optimizationType = TrafficLightOptimization::DOUBLE_TAIL,
+        const std::string& logFile = std::string());
 
     /// @brief Get the itineraries
     /// @return const std::unordered_map<Id, Itinerary>&, The itineraries
@@ -1141,16 +1143,33 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::optimizeTrafficLights(
-      double const threshold, TrafficLightOptimization const optimizationType) {
+      double const threshold,
+      TrafficLightOptimization const optimizationType,
+      const std::string& logFile) {
+    std::optional<std::ofstream> logStream;
+    if (!logFile.empty()) {
+      logStream.emplace(logFile, std::ios::app);
+      if (!logStream->is_open()) {
+        Logger::error(std::format("Could not open log file: {}", logFile));
+      }
+    }
     if (threshold < 0) {
       Logger::error(
           std::format("The threshold parameter ({}) must be greater than 0.", threshold));
     }
     auto const nCycles{static_cast<double>(this->time() - m_previousOptimizationTime) /
                        m_dataUpdatePeriod.value()};
+    if (logStream.has_value()) {
+      *logStream << std::format("Init Traffic Lights optimization - Time {} - Alpha {}\n",
+                                this->time(),
+                                threshold);
+    }
     for (const auto& [nodeId, pNode] : this->graph().nodes()) {
       if (!pNode->isTrafficLight()) {
         continue;
+      }
+      if (logStream.has_value()) {
+        *logStream << std::format("\tTraffic Light {}\n", nodeId);
       }
       auto& tl = dynamic_cast<TrafficLight&>(*pNode);
       auto const& streetPriorities = tl.streetPriorities();
@@ -1175,17 +1194,8 @@ namespace dsm {
       }
       inputGreenSum /= meanGreenFraction;
       inputRedSum /= meanRedFraction;
-      // std::clog << std::format("Traffic Light: {} - Green: {} - Red: {}\n",
-      //                          nodeId,
-      //                          inputGreenSum,
-      //                          inputRedSum);
       auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
       delay_t const delta = std::round(std::abs(inputDifference) / column.size());
-      // std::clog << std::format("TL: {}, current delta {}, difference: {}",
-      //                          nodeId,
-      //                          delta,
-      //                          inputDifference)
-      //           << std::endl;
       auto const greenTime = tl.minGreenTime(true);
       auto const redTime = tl.minGreenTime(false);
       if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
@@ -1202,13 +1212,11 @@ namespace dsm {
                                                      : isNonPrioritySinglePhase = true;
           }
         }
-        if (isPrioritySinglePhase) {
-          Logger::info(std::format(
-              "Traffic light {} has a single phase for priority streets.", tl.id()));
+        if (isPrioritySinglePhase && logStream.has_value()) {
+          *logStream << std::format("\tFound a single phase for priority streets.\n");
         }
-        if (isNonPrioritySinglePhase) {
-          Logger::info(std::format(
-              "Traffic light {} has a single phase for non-priority streets.", tl.id()));
+        if (isNonPrioritySinglePhase && logStream.has_value()) {
+          *logStream << std::format("\tFound a single phase for non-priority streets.\n");
         }
 
         for (const auto& sourceId : inNeighbours) {
@@ -1259,12 +1267,14 @@ namespace dsm {
           inputNonPrioritySum[1] *= threshold;
         }
 
-        // Logger::info(std::format("Input cycle queue ratios for TL {}: {} {} - {} {}",
-        //                  tl.id(),
-        //                  inputPrioritySum[0],
-        //                  inputPrioritySum[1],
-        //                  inputNonPrioritySum[0],
-        //                  inputNonPrioritySum[1]));
+        if (logStream.has_value()) {
+          *logStream << std::format(
+              "\tInput cycle queue ratios are {:.2f} {:.2f} - {:.2f} {:.2f}\n",
+              inputPrioritySum[0],
+              inputPrioritySum[1],
+              inputNonPrioritySum[0],
+              inputNonPrioritySum[1]);
+        }
 
         tl.resetCycles();
         auto cycles{tl.cycles()};
@@ -1273,12 +1283,6 @@ namespace dsm {
 
         for (auto const& [streetId, pair] : cycles) {
           for (auto const& [direction, cycle] : pair) {
-            Logger::info(
-                std::format("Traffic Light {} - Street {} - Direction {} - Green time {}",
-                            tl.id(),
-                            streetId,
-                            static_cast<int>(direction),
-                            cycle.greenTime()));
             if (tl.streetPriorities().contains(streetId)) {
               if (isPrioritySinglePhase) {
                 greenTimes[0] += cycle.greenTime();
@@ -1311,12 +1315,13 @@ namespace dsm {
           }
         }
 
-        Logger::info(std::format("Traffic light {} - Green times: {} {} - {} {}",
-                                 tl.id(),
-                                 greenTimes[0],
-                                 greenTimes[1],
-                                 greenTimes[2],
-                                 greenTimes[3]));
+        if (logStream.has_value()) {
+          *logStream << std::format("\tGreen times are {} {} - {} {}\n",
+                                    greenTimes[0],
+                                    greenTimes[1],
+                                    greenTimes[2],
+                                    greenTimes[3]);
+        }
 
         for (auto i{0}; i < 4; ++i) {
           if (n[i] > 1) {
@@ -1419,11 +1424,11 @@ namespace dsm {
             if (cycles.at(streetId).contains(Direction::RIGHT) &&
                 cycles.at(streetId).contains(Direction::STRAIGHT)) {
               TrafficLightCycle freecycle{inputPriorityS + inputPriorityL, 0};
-              Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
-                                       pStreet->source(),
-                                       pStreet->target(),
-                                       freecycle.greenTime(),
-                                       freecycle.phase()));
+              // Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
+              //                          pStreet->source(),
+              //                          pStreet->target(),
+              //                          freecycle.greenTime(),
+              //                          freecycle.phase()));
               cycles.at(streetId).at(Direction::RIGHT) = freecycle;
             }
           } else {
@@ -1438,11 +1443,11 @@ namespace dsm {
                 cycles.at(streetId).contains(Direction::STRAIGHT)) {
               TrafficLightCycle freecycle{inputNonPriorityS + inputNonPriorityL,
                                           inputPriorityS + inputPriorityL};
-              Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
-                                       pStreet->source(),
-                                       pStreet->target(),
-                                       freecycle.greenTime(),
-                                       freecycle.phase()));
+              // Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
+              //                          pStreet->source(),
+              //                          pStreet->target(),
+              //                          freecycle.greenTime(),
+              //                          freecycle.phase()));
               cycles.at(streetId).at(Direction::RIGHT) = freecycle;
             }
           }
@@ -1451,20 +1456,14 @@ namespace dsm {
             if (dir == Direction::LEFT || dir == Direction::LEFTANDSTRAIGHT ||
                 dir == Direction::ANY) {
               found = true;
-              if (streetId == 45) {
-                Logger::info(std::format("Street {} -> {} has left turn {}.",
-                                         pStreet->source(),
-                                         pStreet->target(),
-                                         static_cast<int>(dir)));
-              }
               break;
             }
           }
           if (!found) {
             forbiddenLeft.insert(streetId);
-            Logger::info(std::format("Street {} -> {} has forbidden left turn.",
-                                     pStreet->source(),
-                                     pStreet->target()));
+            // Logger::info(std::format("Street {} -> {} has forbidden left turn.",
+            //                          pStreet->source(),
+            //                          pStreet->target()));
           }
         }
         for (auto const forbiddenLeftStreetId : forbiddenLeft) {
@@ -1479,12 +1478,14 @@ namespace dsm {
                 if (direction == Direction::RIGHT || direction == Direction::STRAIGHT ||
                     direction == Direction::RIGHTANDSTRAIGHT) {
                   auto const& pStreet{this->graph().edge(streetId)};
-                  Logger::info(std::format("Free cycle ({}) for {} -> {}: {} {}",
-                                           static_cast<int>(direction),
-                                           pStreet->source(),
-                                           pStreet->target(),
-                                           freecycle.greenTime(),
-                                           freecycle.phase()));
+                  if (logStream.has_value()) {
+                    *logStream << std::format("\tFree cycle ({}) for {} -> {}: {} {}\n",
+                                              directionToString[direction],
+                                              pStreet->source(),
+                                              pStreet->target(),
+                                              freecycle.greenTime(),
+                                              freecycle.phase());
+                  }
                   cycle = freecycle;
                 }
               }
@@ -1496,12 +1497,14 @@ namespace dsm {
                 if (direction == Direction::RIGHT || direction == Direction::STRAIGHT ||
                     direction == Direction::RIGHTANDSTRAIGHT) {
                   auto const& pStreet{this->graph().edge(streetId)};
-                  Logger::info(std::format("Free cycle ({}) for {} -> {}: {} {}",
-                                           static_cast<int>(direction),
-                                           pStreet->source(),
-                                           pStreet->target(),
-                                           freecycle.greenTime(),
-                                           freecycle.phase()));
+                  if (logStream.has_value()) {
+                    *logStream << std::format("Free cycle ({}) for {} -> {}: {} {}\n",
+                                              directionToString[direction],
+                                              pStreet->source(),
+                                              pStreet->target(),
+                                              freecycle.greenTime(),
+                                              freecycle.phase());
+                  }
                   cycle = freecycle;
                 }
               }
@@ -1510,21 +1513,23 @@ namespace dsm {
         }
 
         tl.setCycles(cycles);
-        std::string logMsg =
-            std::format("New cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
-        for (auto const& [streetId, pair] : tl.cycles()) {
-          auto const& pStreet{this->graph().edge(streetId)};
-          logMsg +=
-              std::format("\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
-          for (auto const& [direction, cycle] : pair) {
-            logMsg += std::format("{}= ({} {}) ",
-                                  static_cast<int>(direction),
-                                  cycle.greenTime(),
-                                  cycle.phase());
+        if (logStream.has_value()) {
+          std::string logMsg =
+              std::format("\tNew cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
+          for (auto const& [streetId, pair] : tl.cycles()) {
+            auto const& pStreet{this->graph().edge(streetId)};
+            logMsg += std::format(
+                "\t\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
+            for (auto const& [direction, cycle] : pair) {
+              logMsg += std::format("{}= ({} {}) ",
+                                    directionToString[direction],
+                                    cycle.greenTime(),
+                                    cycle.phase());
+            }
+            logMsg += '\n';
           }
-          logMsg += "\n";
+          *logStream << logMsg << '\n';
         }
-        Logger::info(logMsg);
 
       } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
         // If the difference is not less than the threshold
@@ -1568,6 +1573,10 @@ namespace dsm {
           }
         }
       }
+    }
+    if (logStream.has_value()) {
+      *logStream << std::format("End Traffic Lights optimization - Time {}\n",
+                                this->time());
     }
     // Cleaning variables
     for (auto& [streetId, pair] : m_queuesAtTrafficLights) {

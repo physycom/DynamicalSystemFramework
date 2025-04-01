@@ -1,7 +1,9 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <string_view>
 
 namespace dsm {
 
@@ -19,6 +21,8 @@ namespace dsm {
     LEFTANDSTRAIGHT = 5,
     ANY = 6
   };
+  constexpr std::array<std::string_view, 7> directionToString{
+      "RIGHT", "STRAIGHT", "LEFT", "UTURN", "RIGHT&STRAIGHT", "LEFT&STRAIGHT", "ANY"};
   enum class TrafficLightOptimization : uint8_t { SINGLE_TAIL = 0, DOUBLE_TAIL = 1 };
   enum train_t : uint8_t {
     BUS = 0,           // Autobus
