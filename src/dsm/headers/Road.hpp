@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 
 namespace dsm {
@@ -15,6 +16,7 @@ namespace dsm {
     int m_nLanes;
     std::string m_name;
     int m_priority;
+    std::set<Id> m_forbiddenTurns;  // Stores the forbidden turns (road ids)
 
   public:
     /// @brief Construct a new Road object
@@ -50,6 +52,12 @@ namespace dsm {
     /// @brief Set the road's priority
     /// @param priority The road's priority
     void setPriority(int priority);
+    /// @brief Add a road id to the forbidden turns
+    /// @param roadId The road id to add
+    void addForbiddenTurn(Id roadId);
+    /// @brief Replace the road's forbidden turns with the given set
+    /// @param forbiddenTurns The set of forbidden turns
+    void setForbiddenTurns(std::set<Id> const& forbiddenTurns);
 
     /// @brief Get the length, in meters
     /// @return double The length, in meters
@@ -66,6 +74,11 @@ namespace dsm {
     /// @brief Get the priority
     /// @return int The priority
     int priority() const;
+    /// @brief Get the road's forbidden turns
+    /// @return std::set<Id> The road's forbidden turns
+    /// @details The forbidden turns are the road ids that are not allowed to be used by the agents
+    ///          when they are on the road.
+    std::set<Id> const& forbiddenTurns() const;
 
     virtual int nAgents() const = 0;
     virtual int nMovingAgents() const = 0;

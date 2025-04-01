@@ -67,10 +67,6 @@ namespace dsm {
     assert(index < m_exitQueues.size());
     m_exitQueues[index] = std::move(queue);
   }
-  void Street::addForbiddenTurn(Id streetId) { m_forbiddenTurns.insert(streetId); }
-  void Street::setForbiddenTurns(std::set<Id> const& forbiddenTurns) {
-    m_forbiddenTurns = forbiddenTurns;
-  }
 
   void Street::addAgent(std::unique_ptr<Agent> pAgent) {
     assert(!isFull());
