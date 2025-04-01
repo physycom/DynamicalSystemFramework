@@ -288,7 +288,8 @@ namespace dsm {
                     auto const& outNodeId) {
                   auto const& pOutStreet{
                       m_edges.at(pair.first * m_nodes.size() + outNodeId)};
-                  if (pOutStreet->target() == pInStreet->source()) {
+                  if (pOutStreet->target() == pInStreet->source() ||
+                      pInStreet->forbiddenTurns().contains(pOutStreet->id())) {
                     return;
                   }
                   auto const deltaAngle{pOutStreet->deltaAngle(pInStreet->angle())};
