@@ -338,25 +338,32 @@ namespace dsm {
               if (pair.second->isTrafficLight()) {
                 auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
                 auto const& cycles{tl.cycles()};
-                if (cycles.size() == static_cast<size_t>(nLanes) &&
-                    cycles.contains(pInStreet->id())) {
-                  Logger::debug(
-                      std::format("Using traffic light {} cycles for street {} -> {}",
-                                  tl.id(),
-                                  pInStreet->source(),
-                                  pInStreet->target()));
-                  auto const& cycle{cycles.at(pInStreet->id())};
-                  allowedTurns.clear();
-                  for (auto const& [direction, cycle] : cycle) {
-                    allowedTurns.emplace(direction);
+                if (cycles.contains(pInStreet->id())) {
+                  if (cycles.size() == static_cast<size_t>(nLanes)) {
+                    // Replace with the traffic light cycles
+                    Logger::debug(
+                        std::format("Using traffic light {} cycles for street {} -> {}",
+                                    tl.id(),
+                                    pInStreet->source(),
+                                    pInStreet->target()));
+                    auto const& cycle{cycles.at(pInStreet->id())};
+                    allowedTurns.clear();
+                    for (auto const& [direction, cycle] : cycle) {
+                      allowedTurns.emplace(direction);
+                    }
+                  } else if (cycles.at(pInStreet->id())
+                                 .contains(Direction::LEFTANDSTRAIGHT)) {
+                    allowedTurns.erase(Direction::LEFT);
+                    allowedTurns.erase(Direction::STRAIGHT);
+                    allowedTurns.emplace(Direction::LEFTANDSTRAIGHT);
+                  } else if (cycles.at(pInStreet->id())
+                                 .contains(Direction::RIGHTANDSTRAIGHT)) {
+                    allowedTurns.erase(Direction::RIGHT);
+                    allowedTurns.erase(Direction::STRAIGHT);
+                    allowedTurns.emplace(Direction::RIGHTANDSTRAIGHT);
                   }
                 }
               }
-            }
-            if (allowedTurns.size() > static_cast<size_t>(nLanes)) {
-              allowedTurns.erase(Direction::RIGHT);
-              allowedTurns.erase(Direction::LEFT);
-              allowedTurns.emplace(Direction::RIGHTANDSTRAIGHT);
             }
             switch (nLanes) {
               case 1:
