@@ -49,6 +49,7 @@ namespace dsm {
                         AgentComparator>
         m_movingAgents;
     std::vector<Direction> m_laneMapping;
+    std::set<Id> m_forbiddenTurns;  // Stores the forbidden turns (street ids)
 
   public:
     /// @brief Construct a new Street object
@@ -82,6 +83,12 @@ namespace dsm {
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
     static void setMeanVehicleLength(double meanVehicleLength);
+    /// @brief Add a street id to the forbidden turns
+    /// @param streetId The street id to add
+    void addForbiddenTurn(Id streetId);
+    /// @brief Replace the street's forbidden turns with the given set
+    /// @param forbiddenTurns The set of forbidden turns
+    void setForbiddenTurns(std::set<Id> const& forbiddenTurns);
 
     /// @brief Get the street's queue
     /// @return dsm::queue<Size>, The street's queue
@@ -110,6 +117,11 @@ namespace dsm {
     movingAgents() {
       return m_movingAgents;
     }
+    /// @brief Get the street's forbidden turns
+    /// @return std::set<Id> The street's forbidden turns
+    /// @details The forbidden turns are the street ids that are not allowed to be used by the agents
+    ///          when they are on the street.
+    std::set<Id> const& forbiddenTurns() const { return m_forbiddenTurns; }
     /// @brief Get the number of of moving agents, i.e. agents not yet enqueued
     /// @return int The number of moving agents
     int nMovingAgents() const override;
@@ -169,7 +181,6 @@ namespace dsm {
   /// @tparam Id The type of the street's id
   /// @tparam Size The type of the street's capacity
   class SpireStreet : public Street, public Counter {
-  private:
   public:
     using Street::Street;
     SpireStreet(Street&& street) : Street(std::move(street)) {}

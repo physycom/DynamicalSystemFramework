@@ -66,6 +66,19 @@ namespace dsm {
       }
       newStreetIds.emplace(streetId, newStreetId);
     }
+    std::for_each(
+        m_edges.cbegin(), m_edges.cend(), [this, &newStreetIds](auto const& pair) {
+          auto const& pStreet{pair.second};
+          auto const& forbiddenTurns{pStreet->forbiddenTurns()};
+          if (forbiddenTurns.empty()) {
+            return;
+          }
+          std::set<Id> newForbiddenTurns;
+          for (auto const& streetId : forbiddenTurns) {
+            newForbiddenTurns.insert(newStreetIds.at(streetId));
+          }
+          pStreet->setForbiddenTurns(newForbiddenTurns);
+        });
     for (const auto& [nodeId, node] : m_nodes) {
       // This is probably not the best way to do this
       if (node->isIntersection()) {
