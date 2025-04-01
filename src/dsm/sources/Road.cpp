@@ -49,6 +49,11 @@ namespace dsm {
   }
   double Road::meanVehicleLength() { return m_meanVehicleLength; }
 
+  void Road::addForbiddenTurn(Id roadId) { m_forbiddenTurns.insert(roadId); }
+  void Road::setForbiddenTurns(std::set<Id> const& forbiddenTurns) {
+    m_forbiddenTurns = forbiddenTurns;
+  }
+
   void Road::setMaxSpeed(double speed) {
     if (speed < 0.) {
       Logger::error(
@@ -66,4 +71,5 @@ namespace dsm {
   int Road::nLanes() const { return m_nLanes; }
   std::string Road::name() const { return m_name; }
   int Road::priority() const { return m_priority; }
+  std::set<Id> const& Road::forbiddenTurns() const { return m_forbiddenTurns; }
 };  // namespace dsm
