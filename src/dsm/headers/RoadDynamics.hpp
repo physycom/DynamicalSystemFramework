@@ -504,6 +504,18 @@ namespace dsm {
       }
     }
     assert(!possibleMoves.empty());
+    if (streetId.has_value()) {
+      auto const& pStreet{this->graph().edge(*streetId)};
+      for (auto const& foirbiddenStreetId : pStreet->forbiddenTurns()) {
+        auto const& pForbiddenStreet{this->graph().edge(foirbiddenStreetId)};
+        // if possible moves contains the forbidden street, remove it
+        auto it = std::find(
+            possibleMoves.begin(), possibleMoves.end(), pForbiddenStreet->target());
+        if (it != possibleMoves.end()) {
+          possibleMoves.erase(it);
+        }
+      }
+    }
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleMoves.size() - 1)};
     // while loop to avoid U turns in non-roundabout junctions
