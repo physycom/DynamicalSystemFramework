@@ -169,7 +169,6 @@ namespace dsm {
   /// @tparam Id The type of the street's id
   /// @tparam Size The type of the street's capacity
   class SpireStreet : public Street, public Counter {
-  private:
   public:
     using Street::Street;
     SpireStreet(Street&& street) : Street(std::move(street)) {}

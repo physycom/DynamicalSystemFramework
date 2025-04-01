@@ -362,8 +362,8 @@ namespace dsm {
                 pair.second->deltaAngle(this->graph().edge(previousStreetId)->angle())};
             if (std::abs(delta) < std::numbers::pi) {
               if (delta < 0.) {
-                m_turnMapping[pair.first][dsm::Direction::RIGHT] = previousStreetId;
-                ;  // right
+                m_turnMapping[pair.first][dsm::Direction::RIGHT] =
+                    previousStreetId;  // right
               } else if (delta > 0.) {
                 m_turnMapping[pair.first][dsm::Direction::LEFT] =
                     previousStreetId;  // left
@@ -502,6 +502,18 @@ namespace dsm {
       }
     }
     assert(!possibleMoves.empty());
+    if (streetId.has_value()) {
+      auto const& pStreet{this->graph().edge(*streetId)};
+      for (auto const& foirbiddenStreetId : pStreet->forbiddenTurns()) {
+        auto const& pForbiddenStreet{this->graph().edge(foirbiddenStreetId)};
+        // if possible moves contains the forbidden street, remove it
+        auto it = std::find(
+            possibleMoves.begin(), possibleMoves.end(), pForbiddenStreet->target());
+        if (it != possibleMoves.end()) {
+          possibleMoves.erase(it);
+        }
+      }
+    }
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleMoves.size() - 1)};
     // while loop to avoid U turns in non-roundabout junctions
@@ -1049,7 +1061,7 @@ namespace dsm {
                   auto const deltaAngle{pNextStreet->deltaAngle(pStreet->angle())};
                   if (std::abs(deltaAngle) < std::numbers::pi) {
                     // Lanes are counted as 0 is the far right lane
-                    if (std::abs(deltaAngle) < std::numbers::pi / 4) {
+                    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
                       std::vector<double> weights;
                       for (auto const& queue : pStreet->exitQueues()) {
                         weights.push_back(1. / (queue.size() + 1));
