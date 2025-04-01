@@ -267,7 +267,6 @@ namespace dsm {
             if (nLanes == 1) {
               return;
             }
-            // auto const& laneMapping{pInStreet->laneMapping()};
             std::multiset<Direction> allowedTurns;
             std::for_each(
                 outNeighbours.cbegin(),
@@ -305,17 +304,20 @@ namespace dsm {
                     //                           pInStreet->angle(),
                     //                           pOutStreet->angle()));
                     // Logger::debug(std::format("Delta: {}", deltaAngle));
-                    if (std::abs(deltaAngle) < std::numbers::pi / 4) {
-                      Logger::debug(
-                          std::format("Street {} can go STRAIGHT", pInStreet->id()));
+                    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
+                      Logger::debug(std::format("Street {} -> {} can turn STRAIGHT",
+                                                pInStreet->source(),
+                                                pInStreet->target()));
                       allowedTurns.emplace(Direction::STRAIGHT);
                     } else if (deltaAngle < 0.) {
-                      Logger::debug(
-                          std::format("Street {} can turn RIGHT", pInStreet->id()));
+                      Logger::debug(std::format("Street {} -> {} can turn RIGHT",
+                                                pInStreet->source(),
+                                                pInStreet->target()));
                       allowedTurns.emplace(Direction::RIGHT);
                     } else if (deltaAngle > 0.) {
-                      Logger::debug(
-                          std::format("Street {} can turn LEFT", pInStreet->id()));
+                      Logger::debug(std::format("Street {} -> {} can turn LEFT",
+                                                pInStreet->source(),
+                                                pInStreet->target()));
                       allowedTurns.emplace(Direction::LEFT);
                     }
                   }
@@ -332,13 +334,28 @@ namespace dsm {
               }
             }
             // If allowedTurns contains all RIGHT, STRAIGHT and LEFT, transform RIGHT into RIGHTANDSTRAIGHT
-            if (allowedTurns.contains(Direction::STRAIGHT) &&
-                allowedTurns.contains(Direction::RIGHT) &&
-                allowedTurns.contains(Direction::LEFT)) {
-              allowedTurns.erase(Direction::RIGHT);
-              if (allowedTurns.size() >= nLanes) {
-                allowedTurns.erase(Direction::STRAIGHT);
+            if (allowedTurns.size() > static_cast<size_t>(nLanes)) {
+              if (pair.second->isTrafficLight()) {
+                auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
+                auto const& cycles{tl.cycles()};
+                if (cycles.size() == static_cast<size_t>(nLanes) &&
+                    cycles.contains(pInStreet->id())) {
+                  Logger::debug(
+                      std::format("Using traffic light {} cycles for street {} -> {}",
+                                  tl.id(),
+                                  pInStreet->source(),
+                                  pInStreet->target()));
+                  auto const& cycle{cycles.at(pInStreet->id())};
+                  allowedTurns.clear();
+                  for (auto const& [direction, cycle] : cycle) {
+                    allowedTurns.emplace(direction);
+                  }
+                }
               }
+            }
+            if (allowedTurns.size() > static_cast<size_t>(nLanes)) {
+              allowedTurns.erase(Direction::RIGHT);
+              allowedTurns.erase(Direction::LEFT);
               allowedTurns.emplace(Direction::RIGHTANDSTRAIGHT);
             }
             switch (nLanes) {

@@ -1049,7 +1049,7 @@ namespace dsm {
                   auto const deltaAngle{pNextStreet->deltaAngle(pStreet->angle())};
                   if (std::abs(deltaAngle) < std::numbers::pi) {
                     // Lanes are counted as 0 is the far right lane
-                    if (std::abs(deltaAngle) < std::numbers::pi / 4) {
+                    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
                       std::vector<double> weights;
                       for (auto const& queue : pStreet->exitQueues()) {
                         weights.push_back(1. / (queue.size() + 1));
