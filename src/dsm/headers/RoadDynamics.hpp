@@ -1921,7 +1921,6 @@ namespace dsm {
         if (!pStreet->isSpire()) {
           continue;
         }
-        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
         file << separator << streetId;
       }
       file << std::endl;
