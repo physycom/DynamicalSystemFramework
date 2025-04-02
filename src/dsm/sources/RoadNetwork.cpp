@@ -725,8 +725,8 @@ namespace dsm {
       std::getline(iss, highway, ';');
       std::getline(iss, maxspeed, ';');
       std::getline(iss, name, ';');
-      std::getline(iss, forbiddenTurns, ';');
       std::getline(iss, geometry, ';');
+      std::getline(iss, forbiddenTurns, ';');
       std::getline(iss, coilcode, '\n');
       if (maxspeed.empty()) {
         maxspeed = "30";  // Default to 30 km/h if no maxspeed is provided
