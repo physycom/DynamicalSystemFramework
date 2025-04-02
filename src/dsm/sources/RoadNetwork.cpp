@@ -701,127 +701,148 @@ namespace dsm {
   void RoadNetwork::importOSMEdges(const std::string& fileName) {
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
     auto const nNodes{m_nodes.size()};
-    if (fileExt == "csv") {
-      std::ifstream file{fileName};
-      if (!file.is_open()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(
-            std::format("File \'{}\' not found", fileName)));
-      }
-      std::string line;
-      std::getline(file, line);  // skip first line
-      while (!file.eof()) {
-        std::getline(file, line);
-        if (line.empty()) {
-          continue;
-        }
-        std::istringstream iss{line};
-        std::string sourceId, targetId, length, lanes, highway, maxspeed, name, geometry,
-            coilcode;
-        // u;v;length;highway;maxspeed;name;geometry;coilcode
-        std::getline(iss, sourceId, ';');
-        std::getline(iss, targetId, ';');
-        std::getline(iss, length, ';');
-        std::getline(iss, lanes, ';');
-        std::getline(iss, highway, ';');
-        std::getline(iss, maxspeed, ';');
-        std::getline(iss, name, ';');
-        std::getline(iss, geometry, ';');
-        std::getline(iss, coilcode, '\n');
-        if (maxspeed.empty()) {
-          maxspeed = "30";  // Default to 30 km/h if no maxspeed is provided
-        } else {
-          try {
-            std::stod(maxspeed);
-          } catch (const std::invalid_argument& e) {
-            maxspeed = "30";  // Default to 30 km/h if maxspeed is invalid
-          }
-        }
-
-        if (lanes.empty()) {
-          lanes = "1";  // Default to 1 lane if no value is provided
-        } else {
-          try {
-            std::stoul(lanes);
-          } catch (const std::invalid_argument& e) {
-            lanes = "1";  // Default to 1 lane if lanes is invalid
-          }
-        }
-        if (!m_nodeMapping.contains(sourceId)) {
-          Logger::error(std::format("Node with id {} not found.", sourceId));
-        }
-        if (!m_nodeMapping.contains(targetId)) {
-          Logger::error(std::format("Node with id {} not found.", targetId));
-        }
-        if (sourceId == targetId) {
-          Logger::warning(
-              std::format("Self loop detected: {}->{}. Skipping.", sourceId, targetId));
-          continue;
-        }
-
-        auto const srcId{m_nodeMapping.at(sourceId)};
-        auto const dstId{m_nodeMapping.at(targetId)};
-
-        // Parse the geometry
-        std::vector<std::pair<double, double>> coords;
-        if (!geometry.empty()) {
-          // Gemetri is LINESTRING(lon,lat lon,lat ...)
-          std::istringstream geom{geometry};
-          // Read until (
-          std::string pair;
-          std::getline(geom, pair, '(');
-          while (std::getline(geom, pair, ',')) {
-            pair.erase(pair.begin(),
-                       std::find_if(pair.begin(), pair.end(), [](unsigned char ch) {
-                         return !std::isspace(ch);
-                       }));
-
-            // Trim trailing spaces
-            pair.erase(std::find_if(pair.rbegin(),
-                                    pair.rend(),
-                                    [](unsigned char ch) { return !std::isspace(ch); })
-                           .base(),
-                       pair.end());
-            // Create a stream for each coordinate pair to split by comma
-            std::istringstream pairStream(pair);
-            std::string lon, lat;
-            std::getline(pairStream, lon, ' ');
-            std::getline(pairStream, lat);  // read the rest for latitude
-            // Remove ')' from lat if present
-            if (lat.back() == ')') {
-              lat.pop_back();
-            }
-            // Note: The original code stored as (lat, lon) based on your comment.
-            coords.emplace_back(std::stod(lon), std::stod(lat));
-          }
-        } else {
-          coords.emplace_back(m_nodes.at(srcId)->coords().value());
-          coords.emplace_back(m_nodes.at(dstId)->coords().value());
-        }
-        if (static_cast<unsigned long long>(srcId * nNodes + dstId) >
-            std::numeric_limits<Id>::max()) {
-          throw std::invalid_argument(Logger::buildExceptionMessage(
-              std::format("Street id {}->{} would too large for the current type of Id.",
-                          srcId,
-                          dstId)));
-        }
-        Id streetId = srcId * nNodes + dstId;
-        addEdge<Street>(streetId,
-                        std::make_pair(srcId, dstId),
-                        std::stod(length),
-                        std::stod(maxspeed) / 3.6,
-                        std::stoul(lanes),
-                        name,
-                        coords);
-        if (!coilcode.empty()) {
-          makeSpireStreet(streetId);
-          auto& coil = edge<SpireStreet>(streetId);
-          coil.setCode(static_cast<Id>(std::stoul(coilcode)));
-        }
-      }
-    } else {
+    std::ifstream file{fileName};
+    if (!file.is_open()) {
       throw std::invalid_argument(
-          Logger::buildExceptionMessage("File extension not supported"));
+          Logger::buildExceptionMessage(std::format("File \'{}\' not found", fileName)));
     }
+    std::unordered_map<Id, std::string> mapForbiddenTurns;
+    std::string line;
+    std::getline(file, line);  // skip first line
+    while (!file.eof()) {
+      std::getline(file, line);
+      if (line.empty()) {
+        continue;
+      }
+      std::istringstream iss{line};
+      std::string sourceId, targetId, length, lanes, highway, maxspeed, name, geometry,
+          forbiddenTurns, coilcode;
+      // sourceId;targetId;length;highway;maxspeed;name;geometry;forbiddenTurns;coilcode
+      std::getline(iss, sourceId, ';');
+      std::getline(iss, targetId, ';');
+      std::getline(iss, length, ';');
+      std::getline(iss, lanes, ';');
+      std::getline(iss, highway, ';');
+      std::getline(iss, maxspeed, ';');
+      std::getline(iss, name, ';');
+      std::getline(iss, forbiddenTurns, ';');
+      std::getline(iss, geometry, ';');
+      std::getline(iss, coilcode, '\n');
+      if (maxspeed.empty()) {
+        maxspeed = "30";  // Default to 30 km/h if no maxspeed is provided
+      } else {
+        try {
+          std::stod(maxspeed);
+        } catch (const std::invalid_argument& e) {
+          maxspeed = "30";  // Default to 30 km/h if maxspeed is invalid
+        }
+      }
+
+      if (lanes.empty()) {
+        lanes = "1";  // Default to 1 lane if no value is provided
+      } else {
+        try {
+          std::stoul(lanes);
+        } catch (const std::invalid_argument& e) {
+          lanes = "1";  // Default to 1 lane if lanes is invalid
+        }
+      }
+      if (!m_nodeMapping.contains(sourceId)) {
+        Logger::error(std::format("Node with id {} not found.", sourceId));
+      }
+      if (!m_nodeMapping.contains(targetId)) {
+        Logger::error(std::format("Node with id {} not found.", targetId));
+      }
+      if (sourceId == targetId) {
+        Logger::warning(
+            std::format("Self loop detected: {}->{}. Skipping.", sourceId, targetId));
+        continue;
+      }
+
+      auto const srcId{m_nodeMapping.at(sourceId)};
+      auto const dstId{m_nodeMapping.at(targetId)};
+
+      // Parse the geometry
+      std::vector<std::pair<double, double>> coords;
+      if (!geometry.empty()) {
+        // Gemetri is LINESTRING(lon,lat lon,lat ...)
+        std::istringstream geom{geometry};
+        // Read until (
+        std::string pair;
+        std::getline(geom, pair, '(');
+        while (std::getline(geom, pair, ',')) {
+          pair.erase(pair.begin(),
+                     std::find_if(pair.begin(), pair.end(), [](unsigned char ch) {
+                       return !std::isspace(ch);
+                     }));
+
+          // Trim trailing spaces
+          pair.erase(std::find_if(pair.rbegin(),
+                                  pair.rend(),
+                                  [](unsigned char ch) { return !std::isspace(ch); })
+                         .base(),
+                     pair.end());
+          // Create a stream for each coordinate pair to split by comma
+          std::istringstream pairStream(pair);
+          std::string lon, lat;
+          std::getline(pairStream, lon, ' ');
+          std::getline(pairStream, lat);  // read the rest for latitude
+          // Remove ')' from lat if present
+          if (lat.back() == ')') {
+            lat.pop_back();
+          }
+          // Note: The original code stored as (lat, lon) based on your comment.
+          coords.emplace_back(std::stod(lon), std::stod(lat));
+        }
+      } else {
+        coords.emplace_back(m_nodes.at(srcId)->coords().value());
+        coords.emplace_back(m_nodes.at(dstId)->coords().value());
+      }
+      if (static_cast<unsigned long long>(srcId * nNodes + dstId) >
+          std::numeric_limits<Id>::max()) {
+        throw std::invalid_argument(Logger::buildExceptionMessage(
+            std::format("Street id {}->{} would too large for the current type of Id.",
+                        srcId,
+                        dstId)));
+      }
+      Id streetId = srcId * nNodes + dstId;
+      addEdge<Street>(streetId,
+                      std::make_pair(srcId, dstId),
+                      std::stod(length),
+                      std::stod(maxspeed) / 3.6,
+                      std::stoul(lanes),
+                      name,
+                      coords);
+      if (!coilcode.empty()) {
+        makeSpireStreet(streetId);
+        auto& coil = edge<SpireStreet>(streetId);
+        coil.setCode(static_cast<Id>(std::stoul(coilcode)));
+      }
+      if (!forbiddenTurns.empty()) {
+        mapForbiddenTurns.emplace(streetId, forbiddenTurns);
+      }
+    }
+    // Parse forbidden turns
+    for (auto const& [streetId, forbiddenTurns] : mapForbiddenTurns) {
+      auto const& pStreet{m_edges.at(streetId)};
+      std::istringstream iss{forbiddenTurns};
+      std::string pair;
+      while (std::getline(iss, pair, ',')) {
+        // Decompose pair = sourceId-targetId
+        std::istringstream pairStream(pair);
+        std::string strSourceId, strTargetId;
+        std::getline(pairStream, strSourceId, '-');
+        // targetId is the remaining part
+        std::getline(pairStream, strTargetId);
+
+        auto const sourceId{std::stoul(strSourceId)};
+        auto const targetId{std::stoul(strTargetId)};
+
+        auto const forbiddenStreetId{sourceId * nNodes + targetId};
+        pStreet->addForbiddenTurn(forbiddenStreetId);
+      }
+    }
+
     Logger::info(std::format("Successfully imported {} edges", nEdges()));
   }
 

@@ -113,7 +113,20 @@ namespace dsm {
     void importOSMNodes(const std::string& fileName);
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
-    /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
+    /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// - sourceId: The id of the source node
+    /// - targetId: The id of the target node
+    /// - length: The length of the street, in meters
+    /// - highway: The type of the street (e.g. residential, primary, secondary, etc.)
+    /// - lanes: The number of lanes of the street
+    /// - maxspeed: The street's speed limit, in km/h
+    /// - name: The name of the street
+    /// - geometry: The geometry of the street, as a LINESTRING
+    ///
+    ///   Next columns are optional (meaning that their absence will not -hopefully- cause any pain):
+    ///
+    /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
+    /// - coilcode: An integer code to identify the coil located on the street
     void importOSMEdges(const std::string& fileName);
 
     /// @brief Export the graph's nodes to a csv-like file separated with ';'
