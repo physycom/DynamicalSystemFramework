@@ -13,6 +13,8 @@ namespace dsm {
     return (counter >= m_phase) && (counter < m_phase + m_greenTime);
   }
 
+  bool TrafficLight::m_allowFreeTurns{true};
+  void TrafficLight::setAllowFreeTurns(bool allow) { m_allowFreeTurns = allow; }
   void TrafficLight::setCycle(Id const streetId,
                               Direction direction,
                               TrafficLightCycle const& cycle) {
@@ -161,16 +163,52 @@ namespace dsm {
           std::format("Street id {} is not valid for node {}.", streetId, id())));
     }
     if (!m_cycles.at(streetId).contains(direction)) {
-      if (direction != Direction::UTURN) {
-        return true;
+      switch (direction) {
+        case Direction::RIGHT:
+          if (m_cycles.at(streetId).contains(Direction::RIGHTANDSTRAIGHT)) {
+            direction = Direction::RIGHTANDSTRAIGHT;
+          } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
+            direction = Direction::ANY;
+          }
+          break;
+        case Direction::LEFT:
+          if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
+            direction = Direction::LEFTANDSTRAIGHT;
+          } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
+            direction = Direction::ANY;
+          }
+          break;
+        case Direction::STRAIGHT:
+          if (m_cycles.at(streetId).contains(Direction::RIGHTANDSTRAIGHT)) {
+            direction = Direction::RIGHTANDSTRAIGHT;
+          } else if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
+            direction = Direction::LEFTANDSTRAIGHT;
+          } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
+            direction = Direction::ANY;
+          }
+          break;
+        case Direction::UTURN:
+          if (m_cycles.at(streetId).contains(Direction::LEFT)) {
+            direction = Direction::LEFT;
+          } else if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
+            direction = Direction::LEFTANDSTRAIGHT;
+          } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
+            direction = Direction::ANY;
+          }
+          break;
+        default:
+          if (m_cycles.at(streetId).contains(Direction::ANY)) {
+            direction = Direction::ANY;
+          } else {
+            Logger::warning(std::format(
+                "Street {} has ...ANDSTRAIGHT phase but Traffic Light {} doesn't.",
+                streetId,
+                m_id));
+          }
       }
-      if (m_cycles.at(streetId).contains(Direction::LEFT)) {
-        direction = Direction::LEFT;
-      } else if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
-        direction = Direction::LEFTANDSTRAIGHT;
-      } else {
-        return true;
-      }
+    }
+    if (!m_cycles.at(streetId).contains(direction)) {
+      return m_allowFreeTurns;
     }
     return m_cycles.at(streetId).at(direction).isGreen(m_cycleTime, m_counter);
   }

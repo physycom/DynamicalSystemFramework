@@ -86,6 +86,7 @@ TEST_CASE("TrafficLight") {
     }
   }
   SUBCASE("Light cycle") {
+    TrafficLight::setAllowFreeTurns(true);
     GIVEN("A traffic light object with a cycle set") {
       TrafficLight tl{0, 2};
       tl.setCycle(0, dsm::Direction::LEFT, {1, 0});
