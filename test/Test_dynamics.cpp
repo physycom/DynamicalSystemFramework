@@ -799,7 +799,7 @@ TEST_CASE("FirstOrderDynamics") {
           for (int i = 0; i < 9; ++i) {
             dynamics.evolve(false);
           }
-          dynamics.optimizeTrafficLights(0, dsm::TrafficLightOptimization::SINGLE_TAIL);
+          dynamics.optimizeTrafficLights(1, dsm::TrafficLightOptimization::SINGLE_TAIL);
           THEN("Green and red time are different") {
             CHECK(tl.meanGreenTime(true) > tl.meanGreenTime(false));
           }
@@ -816,7 +816,7 @@ TEST_CASE("FirstOrderDynamics") {
           for (int i = 0; i < 15; ++i) {
             dynamics.evolve(false);
           }
-          dynamics.optimizeTrafficLights(0, dsm::TrafficLightOptimization::SINGLE_TAIL);
+          dynamics.optimizeTrafficLights(1, dsm::TrafficLightOptimization::SINGLE_TAIL);
           THEN("Green and red time are equal") {
             CHECK_EQ(tl.meanGreenTime(true), tl.meanGreenTime(false));
           }
