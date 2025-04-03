@@ -543,9 +543,9 @@ namespace dsm {
 
     assert(!possibleMoves.empty());
 
-    // if (possibleMoves.size() == 1) {
-    //   return nodeId * this->graph().nNodes() + possibleMoves[0];
-    // }
+    if (possibleMoves.size() == 1) {
+      return nodeId * this->graph().nNodes() + possibleMoves[0];
+    }
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleMoves.size() - 1)};
     return nodeId * this->graph().nNodes() + possibleMoves[moveDist(this->m_generator)];
