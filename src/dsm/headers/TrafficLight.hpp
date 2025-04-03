@@ -54,6 +54,7 @@ namespace dsm {
     std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> m_cycles;
     Delay m_cycleTime;  // The total time of a red-green cycle
     Delay m_counter;
+    static bool m_allowFreeTurns;
 
   public:
     /// @brief Construct a new TrafficLight object
@@ -78,6 +79,9 @@ namespace dsm {
     /// @details The maximum green time is the maximum green time of all the cycles for
     ///          the priority streets if priorityStreets is true, or for the non-priority
     ///          streets if priorityStreets is false.
+
+    static void setAllowFreeTurns(bool allow);
+
     Delay maxGreenTime(bool priorityStreets) const;
     /// @brief Get the minimum green time over every cycle
     /// @param priorityStreets bool, if true, only the priority streets are considered;
