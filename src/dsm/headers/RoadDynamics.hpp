@@ -504,8 +504,8 @@ namespace dsm {
       }
     }
     // Exclude FORBIDDEN turns
-    for (auto const& foirbiddenStreetId : forbiddenStreetIds) {
-      auto const& pForbiddenStreet{this->graph().edge(foirbiddenStreetId)};
+    for (auto const& forbiddenStreetId : forbiddenStreetIds) {
+      auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
       // if possible moves contains the forbidden street, remove it
       auto it = std::find(
           possibleMoves.begin(), possibleMoves.end(), pForbiddenStreet->target());
@@ -525,8 +525,8 @@ namespace dsm {
             newPossibleMoves = it->path()->getRow(nodeId);
           }
         }
-        for (auto const& foirbiddenStreetId : forbiddenStreetIds) {
-          auto const& pForbiddenStreet{this->graph().edge(foirbiddenStreetId)};
+        for (auto const& forbiddenStreetId : forbiddenStreetIds) {
+          auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
           // if possible moves contains the forbidden street, remove it
           auto it = std::find(newPossibleMoves.begin(),
                               newPossibleMoves.end(),
