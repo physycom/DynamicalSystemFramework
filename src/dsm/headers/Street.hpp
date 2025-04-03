@@ -118,7 +118,7 @@ namespace dsm {
     /// @param normalizeOnNLanes If true, the number of agents is normalized by the number of lanes
     /// @return double The number of agents on all queues for a given direction
     double nExitingAgents(Direction direction = Direction::ANY,
-                          bool normalizeOnNLanes = false) const;
+                          bool normalizeOnNLanes = false) const final;
 
     inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
 
