@@ -925,9 +925,9 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
         dynamics.evolve(false);
-        dynamics.evolve(false);
-        dynamics.evolve(false);
 #ifndef __APPLE__
+        dynamics.evolve(false);
+        dynamics.evolve(false);
         THEN("The agent has travelled the correct distance") {
           auto const& pAgent{dynamics.graph().edge(5)->queue(0).front()};
           CHECK_EQ(dynamics.time() - pAgent->spawnTime(), 9);
@@ -937,8 +937,6 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(pAgent->distance(), 4.);
         }
 #else
-        dynamics.evolve(false);
-        dynamics.evolve(false);
         dynamics.evolve(false);
         dynamics.evolve(false);
         auto const& pAgent{dynamics.graph().edge(5)->queue(0).front()};
