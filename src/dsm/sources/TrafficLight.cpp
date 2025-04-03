@@ -228,10 +228,6 @@ namespace dsm {
   }
 
   void TrafficLight::resetCycles() {
-    for (auto& [streetId, cycles] : m_cycles) {
-      for (auto& [direction, cycle] : cycles) {
-        cycle.reset();
-      }
-    }
+    m_defaultCycles.empty() ? m_defaultCycles = m_cycles : m_cycles = m_defaultCycles;
   }
 }  // namespace dsm

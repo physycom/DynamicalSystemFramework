@@ -52,6 +52,8 @@ namespace dsm {
   class TrafficLight : public Intersection {
   private:
     std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> m_cycles;
+    std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>>
+        m_defaultCycles;
     Delay m_cycleTime;  // The total time of a red-green cycle
     Delay m_counter;
     static bool m_allowFreeTurns;
