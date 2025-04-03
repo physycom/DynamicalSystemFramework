@@ -608,8 +608,14 @@ namespace dsm {
           auto& tl = dynamic_cast<TrafficLight&>(*destinationNode);
           auto const direction{pStreet->laneMapping().at(queueIndex)};
           if (!tl.isGreen(pStreet->id(), direction)) {
+            Logger::debug(
+                std::format("Skipping due to red light on street {} and direction {}",
+                            pStreet->id(),
+                            static_cast<int>(direction)));
             continue;
           }
+          Logger::debug(
+              std::format("Green light on street {} and direction {}", pStreet->id(), static_cast<int>(direction)));
         }
         bCanPass = bCanPass &&
                    (uniformDist(this->m_generator) < m_passageProbability.value_or(1.1));
@@ -1013,7 +1019,7 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::evolve(bool reinsert_agents) {
-    Logger::debug("Init evolve");
+    Logger::debug(std::format("Init evolve at time {}", this->time()));
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->time() % m_dataUpdatePeriod.value() == 0;
