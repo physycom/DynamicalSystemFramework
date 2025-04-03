@@ -1362,10 +1362,6 @@ namespace dsm {
         int inputPriorityS{inputPriorityR};
         int inputPriorityL{static_cast<int>(
             std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime()))};
-        if (isPrioritySinglePhase) {
-          inputPriorityR = 0;
-          inputPriorityL = 0;
-        }
 
         int inputNonPriorityR{static_cast<int>(
             std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime()))};
@@ -1373,6 +1369,39 @@ namespace dsm {
         int inputNonPriorityL{static_cast<int>(
             std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime()))};
 
+        {
+          // Adjust phases to have the sum equal to the cycle time
+          // To do this, first add seconds to the priority streets, then to the
+          // non-priority streets
+          auto total{static_cast<Delay>(inputPriorityR + inputPriorityL +
+                                        inputNonPriorityR + inputNonPriorityL)};
+          size_t idx{0};
+          while (total < tl.cycleTime()) {
+            switch (idx % 4) {
+              case 0:
+                ++inputPriorityR;
+                ++inputPriorityS;
+                break;
+              case 1:
+                ++inputPriorityL;
+                break;
+              case 2:
+                ++inputNonPriorityR;
+                ++inputNonPriorityS;
+                break;
+              case 3:
+                ++inputNonPriorityL;
+                break;
+            }
+            ++idx;
+            ++total;
+          }
+        }
+
+        if (isPrioritySinglePhase) {
+          inputPriorityR = 0;
+          inputPriorityL = 0;
+        }
         if (isNonPrioritySinglePhase) {
           inputNonPriorityR = 0;
           inputNonPriorityL = 0;
