@@ -594,6 +594,7 @@ TEST_CASE("FirstOrderDynamics") {
     }
   }
   SUBCASE("TrafficLights") {
+    TrafficLight::setAllowFreeTurns(false);
     GIVEN(
         "A dynamics object, a network with traffic lights, an itinerary and "
         "an agent") {
@@ -738,9 +739,8 @@ TEST_CASE("FirstOrderDynamics") {
       dynamics.setDestinationNodes({0, 2, 3, 4});
 
       WHEN("We add agents and make the system evolve") {
-        dsm::Logger::setLogLevel(dsm::log_level_t::DEBUG);
         dynamics.addAgent(2, 0);
-        dynamics.addAgent(3, 0);
+        dynamics.addAgent(4, 0);
         dynamics.evolve(false);  // Counter 0
         dynamics.evolve(false);  // Counter 1
         THEN("The agents are correctly placed") {
@@ -756,17 +756,16 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::STRAIGHT), 1);
           CHECK_EQ(dynamics.graph().edge(1)->nExitingAgents(Direction::LEFT), 1);
         }
-        dsm::Logger::setLogLevel(dsm::log_level_t::INFO);
-    //     dynamics.evolve(false);  // Counter 4
-    //     dynamics.evolve(false);  // Counter 5
-    //     dynamics.evolve(false);  // Counter 0
-    //     THEN("The agent 0 passes and agent 1 waits") {
-    //       CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
-    //       CHECK_EQ(dynamics.graph().edge(7)->nAgents(), 1);
-    //     }
-    //     dynamics.evolve(false);  // Counter 1
-    //     dynamics.evolve(false);  // Counter 2
-    //     THEN("The agent 1 passes") { CHECK_EQ(dynamics.graph().edge(9)->nAgents(), 1); }
+        dynamics.evolve(false);  // Counter 4
+        dynamics.evolve(false);  // Counter 5
+        dynamics.evolve(false);  // Counter 0
+        THEN("The agent 0 passes and agent 1 waits") {
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(7)->nAgents(), 1);
+        }
+        dynamics.evolve(false);  // Counter 1
+        dynamics.evolve(false);  // Counter 2
+        THEN("The agent 1 passes") { CHECK_EQ(dynamics.graph().edge(9)->nAgents(), 1); }
       }
     }
     SUBCASE("Traffic Lights optimization algorithm") {

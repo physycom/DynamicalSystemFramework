@@ -614,8 +614,9 @@ namespace dsm {
                             static_cast<int>(direction)));
             continue;
           }
-          Logger::debug(
-              std::format("Green light on street {} and direction {}", pStreet->id(), static_cast<int>(direction)));
+          Logger::debug(std::format("Green light on street {} and direction {}",
+                                    pStreet->id(),
+                                    static_cast<int>(direction)));
         }
         bCanPass = bCanPass &&
                    (uniformDist(this->m_generator) < m_passageProbability.value_or(1.1));
