@@ -489,43 +489,66 @@ namespace dsm {
                                            Id nodeId,
                                            std::optional<Id> streetId) {
     auto possibleMoves = this->graph().adjacencyMatrix().getRow(nodeId);
+
+    std::set<Id> forbiddenStreetIds;
+    if (streetId.has_value()) {
+      auto const& pStreet{this->graph().edge(*streetId)};
+      forbiddenStreetIds = pStreet->forbiddenTurns();
+      // Avoid U-TURNS, if possible
+      if (!(this->graph().node(nodeId)->isRoundabout()) &&
+          (possibleMoves.size() > forbiddenStreetIds.size() + 1)) {
+        auto const& pOppositeStreet{this->graph().oppositeStreet(*streetId)};
+        if (pOppositeStreet) {
+          forbiddenStreetIds.insert(pOppositeStreet->get()->id());
+        }
+      }
+    }
+    // Exclude FORBIDDEN turns
+    for (auto const& forbiddenStreetId : forbiddenStreetIds) {
+      auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
+      // if possible moves contains the forbidden street, remove it
+      auto it = std::find(
+          possibleMoves.begin(), possibleMoves.end(), pForbiddenStreet->target());
+      if (it != possibleMoves.end()) {
+        possibleMoves.erase(it);
+      }
+    }
+
     if (!pAgent->isRandom()) {
+      std::vector<Id> newPossibleMoves;
       std::uniform_real_distribution<double> uniformDist{0., 1.};
       if (!(this->itineraries().empty())) {
         if (!(m_errorProbability.has_value() &&
               uniformDist(this->m_generator) < m_errorProbability)) {
           const auto& it = this->itineraries().at(pAgent->itineraryId());
           if (it->destination() != nodeId) {
-            possibleMoves = it->path()->getRow(nodeId);
+            newPossibleMoves = it->path()->getRow(nodeId);
           }
+        }
+        for (auto const& forbiddenStreetId : forbiddenStreetIds) {
+          auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
+          // if possible moves contains the forbidden street, remove it
+          auto it = std::find(newPossibleMoves.begin(),
+                              newPossibleMoves.end(),
+                              pForbiddenStreet->target());
+          if (it != newPossibleMoves.end()) {
+            newPossibleMoves.erase(it);
+          }
+        }
+        if (!newPossibleMoves.empty()) {
+          possibleMoves = newPossibleMoves;
         }
       }
     }
+
     assert(!possibleMoves.empty());
-    if (streetId.has_value()) {
-      auto const& pStreet{this->graph().edge(*streetId)};
-      for (auto const& foirbiddenStreetId : pStreet->forbiddenTurns()) {
-        auto const& pForbiddenStreet{this->graph().edge(foirbiddenStreetId)};
-        // if possible moves contains the forbidden street, remove it
-        auto it = std::find(
-            possibleMoves.begin(), possibleMoves.end(), pForbiddenStreet->target());
-        if (it != possibleMoves.end()) {
-          possibleMoves.erase(it);
-        }
-      }
+
+    if (possibleMoves.size() == 1) {
+      return nodeId * this->graph().nNodes() + possibleMoves[0];
     }
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleMoves.size() - 1)};
-    // while loop to avoid U turns in non-roundabout junctions
-    Id nextStreetId;
-    do {
-      nextStreetId =
-          nodeId * this->graph().nNodes() + possibleMoves[moveDist(this->m_generator)];
-    } while (!this->graph().node(nodeId)->isRoundabout() && streetId.has_value() &&
-             (this->graph().edge(nextStreetId)->target() ==
-              this->graph().edge(streetId.value())->source()) &&
-             (possibleMoves.size() > 1));
-    return nextStreetId;
+    return nodeId * this->graph().nNodes() + possibleMoves[moveDist(this->m_generator)];
   }
 
   template <typename delay_t>
