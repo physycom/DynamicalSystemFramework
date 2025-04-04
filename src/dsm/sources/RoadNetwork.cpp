@@ -835,8 +835,8 @@ namespace dsm {
         // targetId is the remaining part
         std::getline(pairStream, strTargetId);
 
-        auto const sourceId{std::stoul(strSourceId)};
-        auto const targetId{std::stoul(strTargetId)};
+        auto const sourceId{m_nodeMapping.at(strSourceId)};
+        auto const targetId{m_nodeMapping.at(strTargetId)};
 
         auto const forbiddenStreetId{sourceId * nNodes + targetId};
         pStreet->addForbiddenTurn(forbiddenStreetId);
