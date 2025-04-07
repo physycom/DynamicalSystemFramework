@@ -810,7 +810,7 @@ namespace dsm {
                 "Invalid coordinates ({}, {}) for edge {}->{}", lon, lat, srcId, dstId));
           }
           // Note: The original code stored as (lat, lon) based on your comment.
-          coords.emplace_back(std::stod(lon), std::stod(lat));
+          coords.emplace_back(dLon, dLat);
         }
       } else {
         coords.emplace_back(m_nodes.at(srcId)->coords().value());
@@ -853,8 +853,18 @@ namespace dsm {
         // targetId is the remaining part
         std::getline(pairStream, strTargetId);
 
-        auto const sourceId{m_nodeMapping.at(strSourceId)};
-        auto const targetId{m_nodeMapping.at(strTargetId)};
+        Id sourceId{0}, targetId{0};
+        try {
+          sourceId = m_nodeMapping.at(strSourceId);
+          targetId = m_nodeMapping.at(strTargetId);
+        } catch (const std::out_of_range& e) {
+          Logger::warning(
+              std::format("Invalid forbidden turn {}->{} for street {}. Skipping.",
+                          strSourceId,
+                          strTargetId,
+                          streetId));
+          continue;
+        }
 
         auto const forbiddenStreetId{sourceId * nNodes + targetId};
         pStreet->addForbiddenTurn(forbiddenStreetId);
