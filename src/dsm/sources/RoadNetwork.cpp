@@ -728,16 +728,6 @@ namespace dsm {
       std::getline(iss, geometry, ';');
       std::getline(iss, forbiddenTurns, ';');
       std::getline(iss, coilcode, '\n');
-      if (maxspeed.empty()) {
-        maxspeed = "30";  // Default to 30 km/h if no maxspeed is provided
-      } else {
-        try {
-          std::stod(maxspeed);
-        } catch (const std::invalid_argument& e) {
-          maxspeed = "30";  // Default to 30 km/h if maxspeed is invalid
-        }
-      }
-
       if (lanes.empty()) {
         lanes = "1";  // Default to 1 lane if no value is provided
       } else {
@@ -761,6 +751,26 @@ namespace dsm {
 
       auto const srcId{m_nodeMapping.at(sourceId)};
       auto const dstId{m_nodeMapping.at(targetId)};
+      auto dLength{0.};
+      try {
+        dLength = std::stod(length);
+      } catch (const std::invalid_argument& e) {
+        Logger::error(
+            std::format("Invalid length {} for edge {}->{}", length, srcId, dstId));
+        continue;
+      }
+      auto dMaxSpeed{0.};
+      try {
+        dMaxSpeed = std::stod(maxspeed);
+      } catch (const std::invalid_argument& e) {
+        dMaxSpeed = 30.;  // Default to 30 km/h if maxspeed is invalid
+      }
+      int iLanes{0};
+      try {
+        iLanes = std::stoi(lanes);
+      } catch (const std::invalid_argument& e) {
+        iLanes = 1;  // Default to 1 lane if lanes is invalid
+      }
 
       // Parse the geometry
       std::vector<std::pair<double, double>> coords;
@@ -791,6 +801,14 @@ namespace dsm {
           if (lat.back() == ')') {
             lat.pop_back();
           }
+          auto dLon{0.}, dLat{0.};
+          try {
+            dLon = std::stod(lon);
+            dLat = std::stod(lat);
+          } catch (const std::invalid_argument& e) {
+            Logger::error(std::format(
+                "Invalid coordinates ({}, {}) for edge {}->{}", lon, lat, srcId, dstId));
+          }
           // Note: The original code stored as (lat, lon) based on your comment.
           coords.emplace_back(std::stod(lon), std::stod(lat));
         }
@@ -808,9 +826,9 @@ namespace dsm {
       Id streetId = srcId * nNodes + dstId;
       addEdge<Street>(streetId,
                       std::make_pair(srcId, dstId),
-                      std::stod(length),
-                      std::stod(maxspeed) / 3.6,
-                      std::stoul(lanes),
+                      dLength,
+                      dMaxSpeed / 3.6,
+                      iLanes,
                       name,
                       coords);
       if (!coilcode.empty()) {
