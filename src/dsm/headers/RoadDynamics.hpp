@@ -580,27 +580,26 @@ namespace dsm {
     auto const nLanes = pStreet->nLanes();
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     for (auto i = 0; i < std::ceil(transportCapacity); ++i) {
-      bool bCanPass{true};
       if (pStreet->isStochastic() &&
           (uniformDist(this->m_generator) >
            dynamic_cast<StochasticStreet&>(*pStreet).flowRate())) {
-        bCanPass = false;
+        continue;
       }
       if (i == std::ceil(transportCapacity) - 1) {
         double integral;
         double fractional = std::modf(transportCapacity, &integral);
         if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
-          bCanPass = false;
+          continue;
         }
       }
       for (auto queueIndex = 0; queueIndex < nLanes; ++queueIndex) {
         if (pStreet->queue(queueIndex).empty()) {
           continue;
         }
-        Logger::debug("Taking temp agent");
+        // Logger::debug("Taking temp agent");
         auto const& pAgentTemp{pStreet->queue(queueIndex).front()};
         if (pAgentTemp->freeTime() > this->time()) {
-          Logger::debug("Skipping due to time");
+          // Logger::debug("Skipping due to time");
           continue;
         }
         {
@@ -633,17 +632,15 @@ namespace dsm {
             Logger::debug(
                 std::format("Skipping due to red light on street {} and direction {}",
                             pStreet->id(),
-                            static_cast<int>(direction)));
+                            directionToString.at(direction)));
             continue;
           }
           Logger::debug(std::format("Green light on street {} and direction {}",
                                     pStreet->id(),
-                                    static_cast<int>(direction)));
+                                    directionToString.at(direction)));
         }
-        bCanPass = bCanPass &&
-                   (uniformDist(this->m_generator) < m_passageProbability.value_or(1.1));
         bool bArrived{false};
-        if (!bCanPass) {
+        if (!(uniformDist(this->m_generator) < m_passageProbability.value_or(1.1))) {
           if (pAgentTemp->isRandom()) {
             bArrived = true;
           } else {
@@ -703,7 +700,7 @@ namespace dsm {
       if (pNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*pNode);
         if (intersection.agents().empty()) {
-          Logger::debug(std::format("No agents on node {}", pNode->id()));
+          // Logger::debug(std::format("No agents on node {}", pNode->id()));
           return;
         }
         for (auto it{intersection.agents().begin()}; it != intersection.agents().end();) {
