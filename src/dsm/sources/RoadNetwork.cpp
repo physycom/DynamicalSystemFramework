@@ -115,6 +115,7 @@ namespace dsm {
       std::unordered_map<Id, double> streetAngles;
       std::unordered_map<Id, double> maxSpeeds;
       std::unordered_map<Id, int> nLanes;
+      std::unordered_map<Id, std::string> streetNames;
       double higherSpeed{0.}, lowerSpeed{std::numeric_limits<double>::max()};
       int higherNLanes{0}, lowerNLanes{std::numeric_limits<int>::max()};
       if (inNeighbours.size() < 3) {
@@ -142,6 +143,7 @@ namespace dsm {
 
         maxSpeeds.emplace(streetId, speed);
         nLanes.emplace(streetId, nLan);
+        streetNames.emplace(streetId, pStreet->name());
 
         higherSpeed = std::max(higherSpeed, speed);
         lowerSpeed = std::min(lowerSpeed, speed);
@@ -149,43 +151,51 @@ namespace dsm {
         higherNLanes = std::max(higherNLanes, nLan);
         lowerNLanes = std::min(lowerNLanes, nLan);
       }
-      if (higherSpeed != lowerSpeed) {
-        // Assign streets with higher speed to priority
+      if (tl.streetPriorities().empty()) {
+        /*************************************************************
+         * 1. Check for street names with multiple occurrences
+         * ***********************************************************/
+        std::unordered_map<std::string, int> counts;
+        for (auto const& [streetId, name] : streetNames) {
+          if (name.empty()) {
+            // Ignore empty names
+            continue;
+          }
+          if (!counts.contains(name)) {
+            counts[name] = 1;
+          } else {
+            ++counts.at(name);
+          }
+        }
+        for (auto const& [name, count] : counts) {
+          Logger::debug(std::format("Street name {} has {} occurrences", name, count));
+        }
+        for (auto const& [streetId, name] : streetNames) {
+          if (!name.empty() && counts.at(name) > 1) {
+            tl.addStreetPriority(streetId);
+          }
+        }
+      }
+      if (tl.streetPriorities().empty() && higherSpeed != lowerSpeed) {
+        /*************************************************************
+         * 2. Check for street names with same max speed
+         * ***********************************************************/
         for (auto const& [sid, speed] : maxSpeeds) {
           if (speed == higherSpeed) {
             tl.addStreetPriority(sid);
           }
         }
-        // continue;
-      } else if (higherNLanes != lowerNLanes) {
+      }
+      if (tl.streetPriorities().empty() && higherNLanes != lowerNLanes) {
+        /*************************************************************
+         * 2. Check for street names with same number of lanes
+         * ***********************************************************/
         for (auto const& [sid, nLan] : nLanes) {
           if (nLan == higherNLanes) {
             tl.addStreetPriority(sid);
           }
         }
-        // continue;
       }
-      // Set first two elements of capacities to street priorities
-      // auto it{capacities.begin()};
-      // tl.addStreetPriority(it->first);
-      // ++it;
-      // if (it != capacities.end()) {
-      //   tl.addStreetPriority(it->first);
-      //   continue;
-      // }
-      // Id firstStreetId{streetAngles.begin()->first};
-      // tl.addStreetPriority(firstStreetId);
-      // for (auto const& [streetId, angle] : streetAngles) {
-      //   if (streetId == firstStreetId) {
-      //     continue;
-      //   }
-      //   if (angle == streetAngles.begin()->second) {
-      //     tl.addStreetPriority(streetId);
-      //   }
-      // }
-      // if (tl.streetPriorities().size() > 1) {
-      //   continue;
-      // }
       if (tl.streetPriorities().empty()) {
         Logger::warning(std::format("Failed to auto-init Traffic Light {}", id));
         continue;
