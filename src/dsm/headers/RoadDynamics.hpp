@@ -603,6 +603,23 @@ namespace dsm {
           Logger::debug("Skipping due to time");
           continue;
         }
+        {
+          auto const timeDiff{this->time() - pAgentTemp->freeTime()};
+          if (timeDiff > 120) {
+            Logger::warning(std::format(
+                "Time {} - Agent currently on {} ({} -> {}), targetting {} ({} turn - "
+                "Traffic "
+                "Light? {}), has been still for more than 120 seconds ({} seconds)",
+                this->time(),
+                pStreet->id(),
+                pStreet->source(),
+                pStreet->target(),
+                pAgentTemp->nextStreetId().value_or(-1),
+                directionToString.at(pStreet->laneMapping().at(queueIndex)),
+                this->graph().node(pStreet->target())->isTrafficLight(),
+                timeDiff));
+          }
+        }
         pAgentTemp->setSpeed(0.);
         const auto& destinationNode{this->graph().node(pStreet->target())};
         if (destinationNode->isFull()) {
