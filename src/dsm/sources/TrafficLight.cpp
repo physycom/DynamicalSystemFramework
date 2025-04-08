@@ -163,48 +163,48 @@ namespace dsm {
           std::format("Street id {} is not valid for node {}.", streetId, id())));
     }
     if (!m_cycles.at(streetId).contains(direction)) {
-      switch (direction) {
-        case Direction::RIGHT:
-          if (m_cycles.at(streetId).contains(Direction::RIGHTANDSTRAIGHT)) {
-            direction = Direction::RIGHTANDSTRAIGHT;
-          } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
-            direction = Direction::ANY;
-          }
-          break;
-        case Direction::LEFT:
-          if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
-            direction = Direction::LEFTANDSTRAIGHT;
-          } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
-            direction = Direction::ANY;
-          }
-          break;
-        case Direction::STRAIGHT:
-          if (m_cycles.at(streetId).contains(Direction::RIGHTANDSTRAIGHT)) {
-            direction = Direction::RIGHTANDSTRAIGHT;
-          } else if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
-            direction = Direction::LEFTANDSTRAIGHT;
-          } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
-            direction = Direction::ANY;
-          }
-          break;
-        case Direction::UTURN:
-          if (m_cycles.at(streetId).contains(Direction::LEFT)) {
-            direction = Direction::LEFT;
-          } else if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
-            direction = Direction::LEFTANDSTRAIGHT;
-          } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
-            direction = Direction::ANY;
-          }
-          break;
-        default:
-          if (m_cycles.at(streetId).contains(Direction::ANY)) {
-            direction = Direction::ANY;
-          } else {
+      if (m_cycles.at(streetId).contains(Direction::ANY)) {
+        direction = Direction::ANY;
+      } else {
+        switch (direction) {
+          case Direction::RIGHT:
+            if (m_cycles.at(streetId).contains(Direction::RIGHTANDSTRAIGHT)) {
+              direction = Direction::RIGHTANDSTRAIGHT;
+            } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
+              direction = Direction::ANY;
+            }
+            break;
+          case Direction::LEFT:
+            if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
+              direction = Direction::LEFTANDSTRAIGHT;
+            } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
+              direction = Direction::ANY;
+            }
+            break;
+          case Direction::STRAIGHT:
+            if (m_cycles.at(streetId).contains(Direction::RIGHTANDSTRAIGHT)) {
+              direction = Direction::RIGHTANDSTRAIGHT;
+            } else if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
+              direction = Direction::LEFTANDSTRAIGHT;
+            } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
+              direction = Direction::ANY;
+            }
+            break;
+          case Direction::UTURN:
+            if (m_cycles.at(streetId).contains(Direction::LEFT)) {
+              direction = Direction::LEFT;
+            } else if (m_cycles.at(streetId).contains(Direction::LEFTANDSTRAIGHT)) {
+              direction = Direction::LEFTANDSTRAIGHT;
+            } else if (m_cycles.at(streetId).contains(Direction::ANY)) {
+              direction = Direction::ANY;
+            }
+            break;
+          default:
             Logger::warning(std::format(
                 "Street {} has ...ANDSTRAIGHT phase but Traffic Light {} doesn't.",
                 streetId,
                 m_id));
-          }
+        }
       }
     }
     if (!m_cycles.at(streetId).contains(direction)) {

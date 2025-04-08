@@ -101,7 +101,7 @@ namespace dsm {
     }
   }
 
-  void RoadNetwork::initTrafficLights() {
+  void RoadNetwork::initTrafficLights(Delay const minGreenTime) {
     for (auto const& [id, pNode] : m_nodes) {
       if (!pNode->isTrafficLight()) {
         continue;
@@ -137,7 +137,7 @@ namespace dsm {
         double const speed{pStreet->maxSpeed()};
         int const nLan{pStreet->nLanes()};
         auto const cap{pStreet->capacity()};
-        Logger::debug(std::format("Street {} with capacity {}", streetId, cap));
+        // Logger::debug(std::format("Street {} with capacity {}", streetId, cap));
         capacities.emplace(streetId, cap);
         streetAngles.emplace(streetId, pStreet->angle());
 
@@ -227,6 +227,15 @@ namespace dsm {
                         capNoPriority));
         greenTimes = std::make_pair(static_cast<Delay>(capPriority * tl.cycleTime()),
                                     static_cast<Delay>(capNoPriority * tl.cycleTime()));
+      }
+      // if one of green times is less than 20, set it to 20 and refactor the other to have the sum to 120
+      if (greenTimes.first < minGreenTime) {
+        greenTimes.first = minGreenTime;
+        greenTimes.second = tl.cycleTime() - minGreenTime;
+      }
+      if (greenTimes.second < minGreenTime) {
+        greenTimes.second = minGreenTime;
+        greenTimes.first = tl.cycleTime() - minGreenTime;
       }
       std::for_each(inNeighbours.begin(), inNeighbours.end(), [&](Id const inId) {
         auto const streetId{inId * nNodes() + id};
@@ -389,6 +398,28 @@ namespace dsm {
                 }
               }
             }
+            if (allowedTurns.size() > static_cast<size_t>(nLanes)) {
+              // if one is duplicate, remove it
+              std::set<Direction> uniqueDirections;
+              std::copy(allowedTurns.begin(),
+                        allowedTurns.end(),
+                        std::inserter(uniqueDirections, uniqueDirections.begin()));
+              allowedTurns.clear();
+              std::copy(uniqueDirections.begin(),
+                        uniqueDirections.end(),
+                        std::inserter(allowedTurns, allowedTurns.begin()));
+            }
+            while (allowedTurns.size() < static_cast<size_t>(nLanes)) {
+              if (allowedTurns.contains(Direction::STRAIGHT)) {
+                allowedTurns.emplace(Direction::STRAIGHT);
+              } else if (allowedTurns.contains(Direction::RIGHT)) {
+                allowedTurns.emplace(Direction::RIGHT);
+              } else if (allowedTurns.contains(Direction::LEFT)) {
+                allowedTurns.emplace(Direction::LEFT);
+              } else {
+                allowedTurns.emplace(Direction::ANY);
+              }
+            }
             switch (nLanes) {
               case 1:
                 // Leaving Direction::ANY for one lane streets is the less painful option
@@ -428,6 +459,12 @@ namespace dsm {
                 }
                 [[fallthrough]];
               default:
+                // Logger::info(std::format(
+                //     "Street {}->{} with {} lanes and {} allowed turns",
+                //     pInStreet->source(),
+                //     pInStreet->target(),
+                //     nLanes,
+                //     allowedTurns.size()));
                 assert(allowedTurns.size() == static_cast<size_t>(nLanes));
                 // Logger::info(
                 //     std::format("Street {}->{} with {} lanes and {} allowed turns",

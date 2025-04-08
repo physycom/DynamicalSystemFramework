@@ -75,15 +75,15 @@ namespace dsm {
   void Street::enqueue(size_t const& queueId) {
     assert(!m_movingAgents.empty());
     m_movingAgents.top()->incrementDistance(m_length);
-    Logger::debug("Pusing into queue");
+    // Logger::debug("Pusing into queue");
     m_exitQueues[queueId].push(
         std::move(const_cast<std::unique_ptr<Agent>&>(m_movingAgents.top())));
     m_movingAgents.pop();
-    Logger::debug("Popped from moving queue");
+    // Logger::debug("Popped from moving queue");
   }
   std::unique_ptr<Agent> Street::dequeue(size_t index) {
     assert(!m_exitQueues[index].empty());
-    Logger::debug("Dequeueing from queue");
+    // Logger::debug("Dequeueing from queue");
     auto pAgent{std::move(m_exitQueues[index].front())};
     m_exitQueues[index].pop();
     return pAgent;
@@ -91,11 +91,11 @@ namespace dsm {
 
   int Street::nAgents() const {
     auto nAgents{static_cast<int>(m_movingAgents.size())};
-    Logger::debug(std::format("Number of moving agents street {}: {}", id(), nAgents));
+    // Logger::debug(std::format("Number of moving agents street {}: {}", id(), nAgents));
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }
-    Logger::debug(std::format("Number of agents street {}: {}", id(), nAgents));
+    // Logger::debug(std::format("Number of agents street {}: {}", id(), nAgents));
     return nAgents;
   }
 
