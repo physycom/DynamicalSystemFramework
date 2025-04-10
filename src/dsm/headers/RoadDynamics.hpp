@@ -93,9 +93,12 @@ namespace dsm {
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
     void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
-
-    void m_trafficlightSingleTailOptimizer(double const& beta,
-                                           std::optional<std::ofstream>& logStream);
+    /// @brief Local traffic lights optimization
+    /// @param beta The percentage of the traffic light cycle which is editable
+    /// @param logStream The log stream
+    /// @details The traffic light optimization is done by minimizing the variance of the green times over queue lengths
+    void m_trafficlightLocalOptimizer(double const& beta,
+                                      std::optional<std::ofstream>& logStream);
 
   public:
     /// @brief Construct a new RoadDynamics object
@@ -1203,7 +1206,7 @@ namespace dsm {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_trafficlightSingleTailOptimizer(
+  void RoadDynamics<delay_t>::m_trafficlightLocalOptimizer(
       double const& beta, std::optional<std::ofstream>& logStream) {
     assert(beta >= 0. && beta <= 1.);
     if (logStream.has_value()) {
@@ -1619,7 +1622,7 @@ namespace dsm {
       }
     }
     if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-      this->m_trafficlightSingleTailOptimizer(threshold, logStream);
+      this->m_trafficlightLocalOptimizer(threshold, logStream);
     } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
       if (threshold < 0) {
         Logger::error(std::format("The threshold parameter ({}) must be greater than 0.",
