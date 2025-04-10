@@ -66,6 +66,20 @@ namespace dsm {
     m_priority = priority;
   }
 
+  Direction Road::turnDirection(double const& previousStreetAngle) const {
+    auto const deltaAngle{this->deltaAngle(previousStreetAngle)};
+    if (std::abs(deltaAngle) >= std::numbers::pi) {
+      return Direction::UTURN;
+    }
+    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
+      return Direction::STRAIGHT;
+    }
+    if (deltaAngle < 0.) {
+      return Direction::RIGHT;
+    }
+    return Direction::LEFT;
+  }
+
   double Road::length() const { return m_length; }
   double Road::maxSpeed() const { return m_maxSpeed; }
   int Road::nLanes() const { return m_nLanes; }

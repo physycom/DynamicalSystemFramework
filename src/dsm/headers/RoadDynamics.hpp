@@ -51,6 +51,8 @@ namespace dsm {
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     std::unordered_map<Id, std::unordered_map<Direction, double>> m_queuesAtTrafficLights;
+    std::unordered_map<Id, std::unordered_map<Direction, double>>
+        m_previousQueuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     Time m_previousOptimizationTime, m_previousSpireTime;
 
@@ -1066,6 +1068,7 @@ namespace dsm {
                     for (auto const& [streetId, pair] : tl.cycles()) {
                       for (auto const& [direction, cycle] : pair) {
                         m_queuesAtTrafficLights[streetId].emplace(direction, 0.);
+                        m_previousQueuesAtTrafficLights[streetId].emplace(direction, 0.);
                       }
                     }
                   }
@@ -1107,10 +1110,16 @@ namespace dsm {
                     pStreet->enqueue(0);
                     continue;
                   }
-                  auto const deltaAngle{pNextStreet->deltaAngle(pStreet->angle())};
-                  if (std::abs(deltaAngle) < std::numbers::pi) {
-                    // Lanes are counted as 0 is the far right lane
-                    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
+                  auto const direction{pNextStreet->turnDirection(pStreet->angle())};
+                  switch (direction) {
+                    case Direction::UTURN:
+                    case Direction::LEFT:
+                      pStreet->enqueue(nLanes - 1);
+                      break;
+                    case Direction::RIGHT:
+                      pStreet->enqueue(0);
+                      break;
+                    default:
                       std::vector<double> weights;
                       for (auto const& queue : pStreet->exitQueues()) {
                         weights.push_back(1. / (queue.size() + 1));
@@ -1134,13 +1143,6 @@ namespace dsm {
                       std::discrete_distribution<size_t> laneDist{weights.begin(),
                                                                   weights.end()};
                       pStreet->enqueue(laneDist(this->m_generator));
-                    } else if (deltaAngle < 0.) {    // Right
-                      pStreet->enqueue(0);           // Always the first lane
-                    } else {                         // Left (deltaAngle > 0.)
-                      pStreet->enqueue(nLanes - 1);  // Always the last lane
-                    }
-                  } else {                         // U turn
-                    pStreet->enqueue(nLanes - 1);  // Always the last lane
                   }
                 }
               }
@@ -1209,6 +1211,12 @@ namespace dsm {
           "Init Traffic Lights optimization (SINGLE TAIL) - Time {} - Alpha {}\n",
           this->time(),
           beta);
+    }
+    auto dQueues{m_previousQueuesAtTrafficLights};
+    for (auto const& [streetId, pair] : m_queuesAtTrafficLights) {
+      for (auto const& [direction, tail] : pair) {
+        dQueues.at(streetId).at(direction) -= tail;
+      }
     }
     for (auto const& [nodeId, pNode] : this->graph().nodes()) {
       if (!pNode->isTrafficLight()) {
@@ -1695,6 +1703,7 @@ namespace dsm {
         }
       }
     }
+    m_previousQueuesAtTrafficLights = m_queuesAtTrafficLights;
     // Cleaning variables
     for (auto& [streetId, pair] : m_queuesAtTrafficLights) {
       for (auto& [direction, value] : pair) {
