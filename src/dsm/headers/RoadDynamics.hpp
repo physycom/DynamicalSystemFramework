@@ -1221,6 +1221,13 @@ namespace dsm {
         dQueues.at(streetId).at(direction) -= tail;
       }
     }
+    // Change the queue in +- basing on their sign
+    for (auto& [streetId, pair] : dQueues) {
+      for (auto& [direction, tail] : pair) {
+        tail = (tail > 0.) - (tail < 0.);
+        tail *= 0.75;
+      }
+    }
     for (auto const& [nodeId, pNode] : this->graph().nodes()) {
       if (!pNode->isTrafficLight()) {
         continue;
@@ -1228,6 +1235,7 @@ namespace dsm {
       auto& tl = dynamic_cast<TrafficLight&>(*pNode);
 
       auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
+      auto const& outNeighbours{this->graph().adjacencyMatrix().getRow(nodeId)};
 
       // Default is RIGHTANDSTRAIGHT - LEFT phases for both priority and non-priority
       std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
@@ -1274,6 +1282,86 @@ namespace dsm {
             }
           }
         }
+      }
+      for (auto const& targetId : outNeighbours) {
+        if (!this->graph().node(targetId)->isTrafficLight()) {
+          continue;
+        } 
+        auto const targetStreetId{nodeId * this->graph().nNodes() + targetId};
+        for (auto const& sourceId : inNeighbours) {
+          auto const sourceStreetId{sourceId * this->graph().nNodes() + nodeId};
+          auto const direction{this->graph().edge(targetStreetId)
+                                   ->turnDirection(
+                                       this->graph().edge(sourceStreetId)->angle())};
+          auto const& cycles{tl.cycles().at(sourceStreetId)};
+          for (auto const& pair : cycles) {
+            if (tl.streetPriorities().contains(sourceStreetId)) {
+              switch (pair.first) {
+                case Direction::RIGHTANDSTRAIGHT:
+                  if (direction == Direction::RIGHT) {
+                    inputPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first) * inputPrioritySum[0] / 2;
+                  }
+                  break;
+                case Direction::LEFTANDSTRAIGHT:
+                  if (direction == Direction::LEFT) {
+                    inputPrioritySum[1] -= dQueues.at(sourceStreetId).at(pair.first) * inputPrioritySum[1]/ 2;
+                  }
+                  break;
+                case Direction::LEFT:
+                  if (direction == Direction::LEFTANDSTRAIGHT) {
+                    inputPrioritySum[1] -= dQueues.at(sourceStreetId).at(pair.first)* inputPrioritySum[1];
+                  }
+                  break;
+                case Direction::RIGHT:
+                  if (direction == Direction::RIGHTANDSTRAIGHT) {
+                    inputPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first)* inputPrioritySum[0];
+                  }
+                  break;
+                default:
+                  // inputPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first);
+                  break;
+              }
+            } else {
+              switch (pair.first) {
+                case Direction::RIGHTANDSTRAIGHT:
+                  if (direction == Direction::RIGHT) {
+                    inputNonPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first) * inputNonPrioritySum[0] / 2;
+                  }
+                  break;
+                case Direction::LEFTANDSTRAIGHT:
+                  if (direction == Direction::LEFT) {
+                    inputNonPrioritySum[1] -= dQueues.at(sourceStreetId).at(pair.first)* inputNonPrioritySum[1] / 2;
+                  }
+                  break;
+                case Direction::LEFT:
+                  if (direction == Direction::LEFTANDSTRAIGHT) {
+                    inputNonPrioritySum[1] -= dQueues.at(sourceStreetId).at(pair.first) * inputNonPrioritySum[1];
+                  }
+                  break;
+                case Direction::RIGHT:
+                  if (direction == Direction::RIGHTANDSTRAIGHT) {
+                    inputNonPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first) * inputNonPrioritySum[0];
+                  }
+                  break;
+                default:
+                  // inputNonPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first);
+                  break;
+              } 
+            }
+          }
+        }
+      }
+      if (inputPrioritySum[0] < 0.) {
+        inputPrioritySum[0] = 0.;
+      }
+      if (inputPrioritySum[1] < 0.) {
+        inputPrioritySum[1] = 0.;
+      }
+      if (inputNonPrioritySum[0] < 0.) {
+        inputNonPrioritySum[0] = 0.;
+      }
+      if (inputNonPrioritySum[1] < 0.) {
+        inputNonPrioritySum[1] = 0.;
       }
       {
         // Sum normalization
