@@ -98,7 +98,8 @@ namespace dsm {
     /// @param logStream The log stream
     /// @details The traffic light optimization is done by minimizing the variance of the green times over queue lengths
     void m_trafficlightLocalOptimizer(double const& beta,
-                                      std::optional<std::ofstream>& logStream);
+                                      std::optional<std::ofstream>& logStream,
+                                      bool const bDoubleTail = false);
 
   public:
     /// @brief Construct a new RoadDynamics object
@@ -1207,7 +1208,9 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_trafficlightLocalOptimizer(
-      double const& beta, std::optional<std::ofstream>& logStream) {
+      double const& beta,
+      std::optional<std::ofstream>& logStream,
+      bool const bDoubleTail) {
     assert(beta >= 0. && beta <= 1.);
     if (logStream.has_value()) {
       *logStream << std::format(
@@ -1216,16 +1219,18 @@ namespace dsm {
           beta);
     }
     auto dQueues{m_previousQueuesAtTrafficLights};
-    for (auto const& [streetId, pair] : m_queuesAtTrafficLights) {
-      for (auto const& [direction, tail] : pair) {
-        dQueues.at(streetId).at(direction) -= tail;
+    if (bDoubleTail) {
+      for (auto const& [streetId, pair] : m_queuesAtTrafficLights) {
+        for (auto const& [direction, tail] : pair) {
+          dQueues.at(streetId).at(direction) -= tail;
+        }
       }
-    }
-    // Change the queue in +- basing on their sign
-    for (auto& [streetId, pair] : dQueues) {
-      for (auto& [direction, tail] : pair) {
-        tail = (tail > 0.) - (tail < 0.);
-        tail *= 0.75;
+      // Change the queue in +- basing on their sign
+      for (auto& [streetId, pair] : dQueues) {
+        for (auto& [direction, tail] : pair) {
+          tail = (tail > 0.) - (tail < 0.);
+          // tail *= 0.25;
+        }
       }
     }
     for (auto const& [nodeId, pNode] : this->graph().nodes()) {
@@ -1283,85 +1288,105 @@ namespace dsm {
           }
         }
       }
-      for (auto const& targetId : outNeighbours) {
-        if (!this->graph().node(targetId)->isTrafficLight()) {
-          continue;
-        } 
-        auto const targetStreetId{nodeId * this->graph().nNodes() + targetId};
-        for (auto const& sourceId : inNeighbours) {
-          auto const sourceStreetId{sourceId * this->graph().nNodes() + nodeId};
-          auto const direction{this->graph().edge(targetStreetId)
-                                   ->turnDirection(
-                                       this->graph().edge(sourceStreetId)->angle())};
-          auto const& cycles{tl.cycles().at(sourceStreetId)};
-          for (auto const& pair : cycles) {
-            if (tl.streetPriorities().contains(sourceStreetId)) {
-              switch (pair.first) {
-                case Direction::RIGHTANDSTRAIGHT:
-                  if (direction == Direction::RIGHT) {
-                    inputPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first) * inputPrioritySum[0] / 2;
-                  }
-                  break;
-                case Direction::LEFTANDSTRAIGHT:
-                  if (direction == Direction::LEFT) {
-                    inputPrioritySum[1] -= dQueues.at(sourceStreetId).at(pair.first) * inputPrioritySum[1]/ 2;
-                  }
-                  break;
-                case Direction::LEFT:
-                  if (direction == Direction::LEFTANDSTRAIGHT) {
-                    inputPrioritySum[1] -= dQueues.at(sourceStreetId).at(pair.first)* inputPrioritySum[1];
-                  }
-                  break;
-                case Direction::RIGHT:
-                  if (direction == Direction::RIGHTANDSTRAIGHT) {
-                    inputPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first)* inputPrioritySum[0];
-                  }
-                  break;
-                default:
-                  // inputPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first);
-                  break;
+      if (bDoubleTail) {
+        for (auto const& targetId : outNeighbours) {
+          if (!this->graph().node(targetId)->isTrafficLight()) {
+            continue;
+          }
+          auto const targetStreetId{nodeId * this->graph().nNodes() + targetId};
+          double targetTailGlob{0.};
+          for (auto const& [direction, tail] :
+               m_queuesAtTrafficLights.at(targetStreetId)) {
+            targetTailGlob += tail;
+          }
+          targetTailGlob /= m_queuesAtTrafficLights.at(targetStreetId).size();
+          for (auto const& sourceId : inNeighbours) {
+            auto const sourceStreetId{sourceId * this->graph().nNodes() + nodeId};
+            auto const direction{
+                this->graph()
+                    .edge(targetStreetId)
+                    ->turnDirection(this->graph().edge(sourceStreetId)->angle())};
+            auto const targetTail = targetTailGlob *
+                                    this->graph().edge(sourceStreetId)->capacity() /
+                                    this->graph().edge(targetStreetId)->capacity();
+            auto const& cycles{tl.cycles().at(sourceStreetId)};
+            for (auto const& pair : cycles) {
+              if (tl.streetPriorities().contains(sourceStreetId)) {
+                switch (pair.first) {
+                  case Direction::RIGHTANDSTRAIGHT:
+                    if (direction == Direction::RIGHT) {
+                      inputPrioritySum[0] -=
+                          dQueues.at(sourceStreetId).at(pair.first) * targetTail / 2;
+                    }
+                    break;
+                  case Direction::LEFTANDSTRAIGHT:
+                    if (direction == Direction::LEFT) {
+                      inputPrioritySum[1] -=
+                          dQueues.at(sourceStreetId).at(pair.first) * targetTail / 2;
+                    }
+                    break;
+                  case Direction::LEFT:
+                    if (direction == Direction::LEFTANDSTRAIGHT) {
+                      inputPrioritySum[1] -=
+                          dQueues.at(sourceStreetId).at(pair.first) * targetTail;
+                    }
+                    break;
+                  case Direction::RIGHT:
+                    if (direction == Direction::RIGHTANDSTRAIGHT) {
+                      inputPrioritySum[0] -=
+                          dQueues.at(sourceStreetId).at(pair.first) * targetTail;
+                    }
+                    break;
+                  default:
+                    // inputPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first);
+                    break;
+                }
+              } else {
+                switch (pair.first) {
+                  case Direction::RIGHTANDSTRAIGHT:
+                    if (direction == Direction::RIGHT) {
+                      inputNonPrioritySum[0] -=
+                          dQueues.at(sourceStreetId).at(pair.first) * targetTail / 2;
+                    }
+                    break;
+                  case Direction::LEFTANDSTRAIGHT:
+                    if (direction == Direction::LEFT) {
+                      inputNonPrioritySum[1] -=
+                          dQueues.at(sourceStreetId).at(pair.first) * targetTail / 2;
+                    }
+                    break;
+                  case Direction::LEFT:
+                    if (direction == Direction::LEFTANDSTRAIGHT) {
+                      inputNonPrioritySum[1] -=
+                          dQueues.at(sourceStreetId).at(pair.first) * targetTail;
+                    }
+                    break;
+                  case Direction::RIGHT:
+                    if (direction == Direction::RIGHTANDSTRAIGHT) {
+                      inputNonPrioritySum[0] -=
+                          dQueues.at(sourceStreetId).at(pair.first) * targetTail;
+                    }
+                    break;
+                  default:
+                    // inputNonPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first);
+                    break;
+                }
               }
-            } else {
-              switch (pair.first) {
-                case Direction::RIGHTANDSTRAIGHT:
-                  if (direction == Direction::RIGHT) {
-                    inputNonPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first) * inputNonPrioritySum[0] / 2;
-                  }
-                  break;
-                case Direction::LEFTANDSTRAIGHT:
-                  if (direction == Direction::LEFT) {
-                    inputNonPrioritySum[1] -= dQueues.at(sourceStreetId).at(pair.first)* inputNonPrioritySum[1] / 2;
-                  }
-                  break;
-                case Direction::LEFT:
-                  if (direction == Direction::LEFTANDSTRAIGHT) {
-                    inputNonPrioritySum[1] -= dQueues.at(sourceStreetId).at(pair.first) * inputNonPrioritySum[1];
-                  }
-                  break;
-                case Direction::RIGHT:
-                  if (direction == Direction::RIGHTANDSTRAIGHT) {
-                    inputNonPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first) * inputNonPrioritySum[0];
-                  }
-                  break;
-                default:
-                  // inputNonPrioritySum[0] -= dQueues.at(sourceStreetId).at(pair.first);
-                  break;
-              } 
             }
           }
         }
-      }
-      if (inputPrioritySum[0] < 0.) {
-        inputPrioritySum[0] = 0.;
-      }
-      if (inputPrioritySum[1] < 0.) {
-        inputPrioritySum[1] = 0.;
-      }
-      if (inputNonPrioritySum[0] < 0.) {
-        inputNonPrioritySum[0] = 0.;
-      }
-      if (inputNonPrioritySum[1] < 0.) {
-        inputNonPrioritySum[1] = 0.;
+        if (inputPrioritySum[0] < 0.) {
+          inputPrioritySum[0] = 0.;
+        }
+        if (inputPrioritySum[1] < 0.) {
+          inputPrioritySum[1] = 0.;
+        }
+        if (inputNonPrioritySum[0] < 0.) {
+          inputNonPrioritySum[0] = 0.;
+        }
+        if (inputNonPrioritySum[1] < 0.) {
+          inputNonPrioritySum[1] = 0.;
+        }
       }
       {
         // Sum normalization
@@ -1712,87 +1737,88 @@ namespace dsm {
     if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
       this->m_trafficlightLocalOptimizer(threshold, logStream);
     } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
-      if (threshold < 0) {
-        Logger::error(std::format("The threshold parameter ({}) must be greater than 0.",
-                                  threshold));
-      }
-      auto const nCycles{static_cast<double>(this->time() - m_previousOptimizationTime) /
-                         m_dataUpdatePeriod.value()};
-      for (const auto& [nodeId, pNode] : this->graph().nodes()) {
-        if (!pNode->isTrafficLight()) {
-          continue;
-        }
-        if (logStream.has_value()) {
-          *logStream << std::format("\tTraffic Light {}\n", nodeId);
-        }
-        auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-        auto const& streetPriorities = tl.streetPriorities();
-        auto const meanGreenFraction{tl.meanGreenTime(true) / tl.cycleTime()};
-        auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
+      this->m_trafficlightLocalOptimizer(threshold, logStream, true);
+      // if (threshold < 0) {
+      //   Logger::error(std::format("The threshold parameter ({}) must be greater than 0.",
+      //                             threshold));
+      // }
+      // auto const nCycles{static_cast<double>(this->time() - m_previousOptimizationTime) /
+      //                    m_dataUpdatePeriod.value()};
+      // for (const auto& [nodeId, pNode] : this->graph().nodes()) {
+      //   if (!pNode->isTrafficLight()) {
+      //     continue;
+      //   }
+      //   if (logStream.has_value()) {
+      //     *logStream << std::format("\tTraffic Light {}\n", nodeId);
+      //   }
+      //   auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+      //   auto const& streetPriorities = tl.streetPriorities();
+      //   auto const meanGreenFraction{tl.meanGreenTime(true) / tl.cycleTime()};
+      //   auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
 
-        double inputGreenSum{0.}, inputRedSum{0.};
-        auto const N{this->graph().nNodes()};
-        auto column = this->graph().adjacencyMatrix().getCol(nodeId);
-        for (const auto& sourceId : column) {
-          auto const streetId = sourceId * N + nodeId;
-          auto const& pStreet{this->graph().edge(streetId)};
-          if (streetPriorities.contains(streetId)) {
-            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
-              inputGreenSum += pair.second / pStreet->nLanes();
-            }
-          } else {
-            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
-              inputRedSum += pair.second / pStreet->nLanes();
-            }
-          }
-        }
-        inputGreenSum /= meanGreenFraction;
-        inputRedSum /= meanRedFraction;
-        auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
-        delay_t const delta = std::round(std::abs(inputDifference) / column.size());
-        auto const greenTime = tl.minGreenTime(true);
-        auto const redTime = tl.minGreenTime(false);
-        // If the difference is not less than the threshold
-        //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
-        //    - If the previous check fails, do nothing
-        double outputGreenSum{0.}, outputRedSum{0.};
-        for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
-          auto const streetId = nodeId * N + targetId;
-          if (!m_queuesAtTrafficLights.contains(streetId)) {
-            continue;
-          }
-          auto const& pStreet{this->graph().edge(streetId)};
-          if (streetPriorities.contains(streetId)) {
-            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
-              outputGreenSum += pair.second / pStreet->nLanes();
-            }
-          } else {
-            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
-              outputGreenSum += pair.second / pStreet->nLanes();
-            }
-          }
-        }
-        auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
-        if ((inputDifference * outputDifference > 0) ||
-            std::max(std::abs(inputDifference), std::abs(outputDifference)) < threshold ||
-            delta == 0) {
-          tl.resetCycles();
-          continue;
-        }
-        if (std::abs(inputDifference) > std::abs(outputDifference)) {
-          if ((inputDifference > 0) && (redTime > delta)) {
-            tl.increaseGreenTimes(delta);
-          } else if ((inputDifference < 0) && (greenTime > delta)) {
-            tl.decreaseGreenTimes(delta);
-          }
-        } else {
-          if ((outputDifference < 0) && (redTime > delta)) {
-            tl.increaseGreenTimes(delta);
-          } else if ((outputDifference > 0) && (greenTime > delta)) {
-            tl.decreaseGreenTimes(delta);
-          }
-        }
-      }
+      //   double inputGreenSum{0.}, inputRedSum{0.};
+      //   auto const N{this->graph().nNodes()};
+      //   auto column = this->graph().adjacencyMatrix().getCol(nodeId);
+      //   for (const auto& sourceId : column) {
+      //     auto const streetId = sourceId * N + nodeId;
+      //     auto const& pStreet{this->graph().edge(streetId)};
+      //     if (streetPriorities.contains(streetId)) {
+      //       for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
+      //         inputGreenSum += pair.second / pStreet->nLanes();
+      //       }
+      //     } else {
+      //       for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
+      //         inputRedSum += pair.second / pStreet->nLanes();
+      //       }
+      //     }
+      //   }
+      //   inputGreenSum /= meanGreenFraction;
+      //   inputRedSum /= meanRedFraction;
+      //   auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
+      //   delay_t const delta = std::round(std::abs(inputDifference) / column.size());
+      //   auto const greenTime = tl.minGreenTime(true);
+      //   auto const redTime = tl.minGreenTime(false);
+      //   // If the difference is not less than the threshold
+      //   //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
+      //   //    - If the previous check fails, do nothing
+      //   double outputGreenSum{0.}, outputRedSum{0.};
+      //   for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
+      //     auto const streetId = nodeId * N + targetId;
+      //     if (!m_queuesAtTrafficLights.contains(streetId)) {
+      //       continue;
+      //     }
+      //     auto const& pStreet{this->graph().edge(streetId)};
+      //     if (streetPriorities.contains(streetId)) {
+      //       for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
+      //         outputGreenSum += pair.second / pStreet->nLanes();
+      //       }
+      //     } else {
+      //       for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
+      //         outputGreenSum += pair.second / pStreet->nLanes();
+      //       }
+      //     }
+      //   }
+      //   auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
+      //   if ((inputDifference * outputDifference > 0) ||
+      //       std::max(std::abs(inputDifference), std::abs(outputDifference)) < threshold ||
+      //       delta == 0) {
+      //     tl.resetCycles();
+      //     continue;
+      //   }
+      //   if (std::abs(inputDifference) > std::abs(outputDifference)) {
+      //     if ((inputDifference > 0) && (redTime > delta)) {
+      //       tl.increaseGreenTimes(delta);
+      //     } else if ((inputDifference < 0) && (greenTime > delta)) {
+      //       tl.decreaseGreenTimes(delta);
+      //     }
+      //   } else {
+      //     if ((outputDifference < 0) && (redTime > delta)) {
+      //       tl.increaseGreenTimes(delta);
+      //     } else if ((outputDifference > 0) && (greenTime > delta)) {
+      //       tl.decreaseGreenTimes(delta);
+      //     }
+      //   }
+      // }
     }
     m_previousQueuesAtTrafficLights = m_queuesAtTrafficLights;
     // Cleaning variables
