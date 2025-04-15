@@ -5,6 +5,23 @@
 #include <stdexcept>
 
 namespace dsm {
+  bool TrafficLightCycle::operator==(TrafficLightCycle const& other) const {
+    return m_greenTime == other.m_greenTime && m_phase == other.m_phase;
+  }
+
+  Delay TrafficLightCycle::greenTime() const { return m_greenTime; }
+  Delay TrafficLightCycle::phase() const { return m_phase; }
+
+  bool TrafficLightCycle::isDefault() const {
+    return m_greenTime == m_defaultValues.first && m_phase == m_defaultValues.second;
+  }
+  bool TrafficLightCycle::isGreenTimeIncreased() const {
+    return m_greenTime > m_defaultValues.first;
+  }
+  bool TrafficLightCycle::isRedTimeIncreased() const {
+    return m_greenTime < m_defaultValues.first;
+  }
+
   bool TrafficLightCycle::isGreen(Delay const cycleTime, Delay const counter) const {
     auto const rest{(m_phase + m_greenTime) / cycleTime};
     if (rest) {
@@ -66,90 +83,13 @@ namespace dsm {
     return *this;
   }
 
-  Delay TrafficLight::maxGreenTime(bool priorityStreets) const {
-    Delay maxTime{0};
-    for (auto const& [streetId, cycles] : m_cycles) {
-      if (priorityStreets && m_streetPriorities.contains(streetId)) {
-        for (auto const& [direction, cycle] : cycles) {
-          maxTime = std::max(maxTime, cycle.greenTime());
-        }
-      } else {
-        for (auto const& [direction, cycle] : cycles) {
-          maxTime = std::max(maxTime, cycle.greenTime());
-        }
-      }
-    }
-    return maxTime;
-  }
-
-  Delay TrafficLight::minGreenTime(bool priorityStreets) const {
-    Delay minTime{std::numeric_limits<Delay>::max()};
-    for (auto const& [streetId, cycles] : m_cycles) {
-      if (priorityStreets && m_streetPriorities.contains(streetId)) {
-        for (auto const& [direction, cycle] : cycles) {
-          minTime = std::min(minTime, cycle.greenTime());
-        }
-      } else {
-        for (auto const& [direction, cycle] : cycles) {
-          minTime = std::min(minTime, cycle.greenTime());
-        }
-      }
-    }
-    return minTime;
-  }
-
-  double TrafficLight::meanGreenTime(bool priorityStreets) const {
-    double meanTime{0.};
-    size_t nCycles{0};
-    for (auto const& [streetId, cycles] : m_cycles) {
-      if ((priorityStreets && m_streetPriorities.contains(streetId)) ||
-          (!priorityStreets && !m_streetPriorities.contains(streetId))) {
-        meanTime +=
-            std::transform_reduce(cycles.begin(),
-                                  cycles.end(),
-                                  0.0,                  // Initial value (double)
-                                  std::plus<double>(),  // Reduction function (addition)
-                                  [](const auto& pair) -> double {
-                                    return static_cast<double>(pair.second.greenTime());
-                                  });
-        nCycles += cycles.size();
-      }
-    }
-    return meanTime / nCycles;
-  }
-
-  void TrafficLight::increaseGreenTimes(Delay const delta) {
-    for (auto& [streetId, cycles] : m_cycles) {
-      if (m_streetPriorities.contains(streetId)) {
-        for (auto& [direction, cycle] : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() + delta, cycle.phase());
-        }
-      } else {
-        for (auto& [direction, cycle] : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() - delta, cycle.phase() + delta);
-        }
-      }
-    }
-  }
-
-  void TrafficLight::decreaseGreenTimes(Delay const delta) {
-    for (auto& [streetId, cycles] : m_cycles) {
-      if (!m_streetPriorities.contains(streetId)) {
-        for (auto& [direction, cycle] : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() + delta, cycle.phase());
-        }
-      } else {
-        for (auto& [direction, cycle] : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() - delta, cycle.phase() + delta);
-        }
-      }
-    }
-  }
-
   bool TrafficLight::isDefault() const {
-    for (auto const& [streetId, cycles] : m_cycles) {
+    if (m_defaultCycles.empty()) {
+      return true;
+    }
+    for (auto const& [streetId, cycles] : m_defaultCycles) {
       for (auto const& [direction, cycle] : cycles) {
-        if (!cycle.isDefault()) {
+        if (m_cycles.at(streetId).at(direction) != cycle) {
           return false;
         }
       }
