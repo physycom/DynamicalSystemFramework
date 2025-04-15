@@ -801,9 +801,12 @@ TEST_CASE("FirstOrderDynamics") {
           }
           dynamics.optimizeTrafficLights(1, dsm::TrafficLightOptimization::SINGLE_TAIL);
           THEN("Green and red time are different") {
-            CHECK(tl.cycles().at(1).at(dsm::Direction::ANY).greenTime() > tl.cycles().at(16).at(dsm::Direction::ANY).greenTime());
-            CHECK_EQ(tl.cycles().at(1).at(dsm::Direction::ANY).greenTime(), tl.cycles().at(11).at(dsm::Direction::ANY).greenTime());
-            CHECK_EQ(tl.cycles().at(16).at(dsm::Direction::ANY).greenTime(), tl.cycles().at(21).at(dsm::Direction::ANY).greenTime());
+            CHECK(tl.cycles().at(1).at(dsm::Direction::ANY).greenTime() >
+                  tl.cycles().at(16).at(dsm::Direction::ANY).greenTime());
+            CHECK_EQ(tl.cycles().at(1).at(dsm::Direction::ANY).greenTime(),
+                     tl.cycles().at(11).at(dsm::Direction::ANY).greenTime());
+            CHECK_EQ(tl.cycles().at(16).at(dsm::Direction::ANY).greenTime(),
+                     tl.cycles().at(21).at(dsm::Direction::ANY).greenTime());
           }
         }
         WHEN(
@@ -820,9 +823,12 @@ TEST_CASE("FirstOrderDynamics") {
           }
           dynamics.optimizeTrafficLights(1, dsm::TrafficLightOptimization::SINGLE_TAIL);
           THEN("Green and red time are equal") {
-            CHECK_EQ(tl.cycles().at(1).at(dsm::Direction::ANY).greenTime(), tl.cycles().at(16).at(dsm::Direction::ANY).greenTime());
-            CHECK_EQ(tl.cycles().at(1).at(dsm::Direction::ANY).greenTime(), tl.cycles().at(11).at(dsm::Direction::ANY).greenTime());
-            CHECK_EQ(tl.cycles().at(16).at(dsm::Direction::ANY).greenTime(), tl.cycles().at(21).at(dsm::Direction::ANY).greenTime());
+            CHECK_EQ(tl.cycles().at(1).at(dsm::Direction::ANY).greenTime(),
+                     tl.cycles().at(16).at(dsm::Direction::ANY).greenTime());
+            CHECK_EQ(tl.cycles().at(1).at(dsm::Direction::ANY).greenTime(),
+                     tl.cycles().at(11).at(dsm::Direction::ANY).greenTime());
+            CHECK_EQ(tl.cycles().at(16).at(dsm::Direction::ANY).greenTime(),
+                     tl.cycles().at(21).at(dsm::Direction::ANY).greenTime());
           }
         }
       }
