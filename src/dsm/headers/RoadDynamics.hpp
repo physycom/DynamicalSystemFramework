@@ -1055,10 +1055,40 @@ namespace dsm {
           tbb::blocked_range<size_t>(0, numNodes, grainSize),
           [&](const tbb::blocked_range<size_t>& range) {
             for (size_t i = range.begin(); i != range.end(); ++i) {
-              const auto& pNode = nodes.at(i);
-              for (auto const& sourceId :
-                   this->graph().adjacencyMatrix().getCol(pNode->id())) {
-                auto const streetId = sourceId * N + pNode->id();
+              auto const& pNode = nodes.at(i);
+              auto const& inNeighbours{
+                  this->graph().adjacencyMatrix().getCol(pNode->id())};
+
+              // Handling of priority streets
+              // Non-priority streets can emit an agent only if there are no
+              // priority streets with agents waiting to exit
+              std::vector<Id> incomingStreetIds;
+              if (!pNode->isTrafficLight() && pNode->isIntersection()) {
+                auto& intersection = dynamic_cast<Intersection&>(*pNode);
+                bool priority_only{false};
+                for (auto const& sourceId : inNeighbours) {
+                  auto const streetId{sourceId * N + pNode->id()};
+                  auto const& pStreet{this->graph().edge(streetId)};
+                  if (intersection.streetPriorities().contains(streetId)) {
+                    incomingStreetIds.push_back(streetId);
+                    if (pStreet->nExitingAgents() > 0) {
+                      priority_only = true;
+                    }
+                  }
+                }
+                if (!priority_only) {
+                  incomingStreetIds.clear();
+                  for (auto const& sourceId : inNeighbours) {
+                    incomingStreetIds.push_back(sourceId * N + pNode->id());
+                  }
+                }
+              } else {
+                for (auto const& sourceId : inNeighbours) {
+                  incomingStreetIds.push_back(sourceId * N + pNode->id());
+                }
+              }
+
+              for (auto const& streetId : incomingStreetIds) {
                 auto const& pStreet{this->graph().edge(streetId)};
                 if (bUpdateData && pNode->isTrafficLight()) {
                   if (!m_queuesAtTrafficLights.contains(streetId)) {
