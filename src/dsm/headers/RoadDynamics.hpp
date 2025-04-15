@@ -1136,10 +1136,16 @@ namespace dsm {
                     pStreet->enqueue(0);
                     continue;
                   }
-                  auto const deltaAngle{pNextStreet->deltaAngle(pStreet->angle())};
-                  if (std::abs(deltaAngle) < std::numbers::pi) {
-                    // Lanes are counted as 0 is the far right lane
-                    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
+                  auto const direction{pNextStreet->turnDirection(pStreet->angle())};
+                  switch (direction) {
+                    case Direction::UTURN:
+                    case Direction::LEFT:
+                      pStreet->enqueue(nLanes - 1);
+                      break;
+                    case Direction::RIGHT:
+                      pStreet->enqueue(0);
+                      break;
+                    default:
                       std::vector<double> weights;
                       for (auto const& queue : pStreet->exitQueues()) {
                         weights.push_back(1. / (queue.size() + 1));
@@ -1163,13 +1169,6 @@ namespace dsm {
                       std::discrete_distribution<size_t> laneDist{weights.begin(),
                                                                   weights.end()};
                       pStreet->enqueue(laneDist(this->m_generator));
-                    } else if (deltaAngle < 0.) {    // Right
-                      pStreet->enqueue(0);           // Always the first lane
-                    } else {                         // Left (deltaAngle > 0.)
-                      pStreet->enqueue(nLanes - 1);  // Always the last lane
-                    }
-                  } else {                         // U turn
-                    pStreet->enqueue(nLanes - 1);  // Always the last lane
                   }
                 }
               }
