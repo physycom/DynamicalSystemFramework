@@ -86,8 +86,8 @@ namespace dsm {
     ///          The possible values are:
     ///          - UTURN (abs of delta is greater than pi)
     ///          - STRAIGHT (abs of delta is less than pi /8)
-    ///          - RIGHT (abs of delta is less than 0)
-    ///          - LEFT (abs of delta is greater than 0)
+    ///          - RIGHT (delta is negative and not covered by the above conditions)
+    ///          - LEFT (delta is positive and not covered by the above conditions)
     Direction turnDirection(double const& previousStreetAngle) const;
 
     virtual int nAgents() const = 0;
