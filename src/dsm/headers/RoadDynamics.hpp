@@ -638,7 +638,8 @@ namespace dsm {
           Logger::debug(std::format("Green light on street {} and direction {}",
                                     pStreet->id(),
                                     directionToString.at(direction)));
-        } else if (destinationNode->isIntersection()) {
+        } else if (destinationNode->isIntersection() &&
+                   pAgentTemp->nextStreetId().has_value()) {
           auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
           bool bCanPass{true};
           auto const& thisDirection{this->graph()
