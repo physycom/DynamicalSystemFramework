@@ -641,6 +641,9 @@ namespace dsm {
         } else if (destinationNode->isIntersection()) {
           auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
           bool bCanPass{true};
+          auto const& thisDirection{this->graph()
+                                        .edge(pAgentTemp->nextStreetId().value())
+                                        ->turnDirection(pStreet->angle())};
           if (!intersection.streetPriorities().contains(pStreet->id())) {
             // I have to check if the agent has right of way
             auto const& inNeighbours{
@@ -652,10 +655,70 @@ namespace dsm {
                 continue;
               }
               auto const& pStreetTemp{this->graph().edge(streetId)};
+              if (pStreetTemp->nExitingAgents() == 0) {
+                continue;
+              }
               if (intersection.streetPriorities().contains(streetId)) {
-                if (pStreetTemp->nExitingAgents() > 0) {
+                Logger::debug(std::format(
+                    "Skipping agent emission from street {} -> {} due to right of way.",
+                    pStreet->source(),
+                    pStreet->target()));
+                bCanPass = false;
+                break;
+              } else if (thisDirection >= Direction::LEFT) {
+                // Check if the agent has right of way using direction
+                // The problem arises only when you have to turn left
+                for (auto i{0}; i < pStreetTemp->nLanes(); ++i) {
+                  // check queue is not empty and take the top agent
+                  if (pStreetTemp->queue(i).empty()) {
+                    continue;
+                  }
+                  auto const& pAgentTemp2{pStreetTemp->queue(i).front()};
+                  if (!pAgentTemp2->streetId().has_value()) {
+                    continue;
+                  }
+                  auto const& otherDirection{
+                      this->graph()
+                          .edge(pAgentTemp2->nextStreetId().value())
+                          ->turnDirection(this->graph()
+                                              .edge(pAgentTemp2->streetId().value())
+                                              ->angle())};
+                  if (otherDirection < Direction::LEFT) {
+                    Logger::debug(std::format(
+                        "Skipping agent emission from street {} -> {} due to right of "
+                        "way with other agents.",
+                        pStreet->source(),
+                        pStreet->target()));
+                    bCanPass = false;
+                    break;
+                  }
+                }
+              }
+            }
+          } else if (thisDirection >= Direction::LEFT) {
+            for (auto const& streetId : intersection.streetPriorities()) {
+              if (streetId == pStreet->id()) {
+                continue;
+              }
+              auto const& pStreetTemp{this->graph().edge(streetId)};
+              for (auto i{0}; i < pStreetTemp->nLanes(); ++i) {
+                // check queue is not empty and take the top agent
+                if (pStreetTemp->queue(i).empty()) {
+                  continue;
+                }
+                auto const& pAgentTemp2{pStreetTemp->queue(i).front()};
+                if (!pAgentTemp2->streetId().has_value()) {
+                  continue;
+                }
+                auto const& otherDirection{
+                    this->graph()
+                        .edge(pAgentTemp2->nextStreetId().value())
+                        ->turnDirection(
+                            this->graph().edge(pAgentTemp2->streetId().value())->angle())};
+                if (otherDirection < thisDirection) {
                   Logger::debug(std::format(
-                      "Skipping agent emission from street {} -> {} due to right of way.",
+                      "Skipping agent emission from street {} -> {} due to right of "
+                      "way with other agents.",
                       pStreet->source(),
                       pStreet->target()));
                   bCanPass = false;
@@ -663,9 +726,9 @@ namespace dsm {
                 }
               }
             }
-            if (!bCanPass) {
-              continue;
-            }
+          }
+          if (!bCanPass) {
+            continue;
           }
         }
         bool bArrived{false};

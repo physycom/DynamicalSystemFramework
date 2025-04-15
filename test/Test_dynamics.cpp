@@ -1025,7 +1025,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent in A passes first") {
           CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
-          CHECK_EQ(nodeO.agents().size(), 2);
+          CHECK_EQ(nodeO.agents().size(), 1);
           CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 20);
         }
         dynamics.evolve(false);
@@ -1050,7 +1050,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent in D passes first") {
           CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
-          CHECK_EQ(nodeO.agents().size(), 2);
+          CHECK_EQ(nodeO.agents().size(), 1);
           CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 15);
         }
         dynamics.evolve(false);
