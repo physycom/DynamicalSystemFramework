@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <format>
+#include <numbers>
 #include <stdexcept>
 
 namespace dsm {
