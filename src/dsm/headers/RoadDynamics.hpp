@@ -638,6 +638,35 @@ namespace dsm {
           Logger::debug(std::format("Green light on street {} and direction {}",
                                     pStreet->id(),
                                     directionToString.at(direction)));
+        } else if (destinationNode->isIntersection()) {
+          auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
+          bool bCanPass{true};
+          if (!intersection.streetPriorities().contains(pStreet->id())) {
+            // I have to check if the agent has right of way
+            auto const& inNeighbours{
+                this->graph().adjacencyMatrix().getCol(destinationNode->id())};
+            for (auto const& sourceId : inNeighbours) {
+              auto const& streetId{sourceId * this->graph().nNodes() +
+                                   destinationNode->id()};
+              if (streetId == pStreet->id()) {
+                continue;
+              }
+              auto const& pStreetTemp{this->graph().edge(streetId)};
+              if (intersection.streetPriorities().contains(streetId)) {
+                if (pStreetTemp->nExitingAgents() > 0) {
+                  Logger::debug(std::format(
+                      "Skipping agent emission from street {} -> {} due to right of way.",
+                      pStreet->source(),
+                      pStreet->target()));
+                  bCanPass = false;
+                  break;
+                }
+              }
+            }
+            if (!bCanPass) {
+              continue;
+            }
+          }
         }
         bool bArrived{false};
         if (!(uniformDist(this->m_generator) < m_passageProbability.value_or(1.1))) {
@@ -1056,39 +1085,9 @@ namespace dsm {
           [&](const tbb::blocked_range<size_t>& range) {
             for (size_t i = range.begin(); i != range.end(); ++i) {
               auto const& pNode = nodes.at(i);
-              auto const& inNeighbours{
-                  this->graph().adjacencyMatrix().getCol(pNode->id())};
-
-              // Handling of priority streets
-              // Non-priority streets can emit an agent only if there are no
-              // priority streets with agents waiting to exit
-              std::vector<Id> incomingStreetIds;
-              if (!pNode->isTrafficLight() && pNode->isIntersection()) {
-                auto& intersection = dynamic_cast<Intersection&>(*pNode);
-                bool priority_only{false};
-                for (auto const& sourceId : inNeighbours) {
-                  auto const streetId{sourceId * N + pNode->id()};
-                  auto const& pStreet{this->graph().edge(streetId)};
-                  if (intersection.streetPriorities().contains(streetId)) {
-                    incomingStreetIds.push_back(streetId);
-                    if (pStreet->nExitingAgents() > 0) {
-                      priority_only = true;
-                    }
-                  }
-                }
-                if (!priority_only) {
-                  incomingStreetIds.clear();
-                  for (auto const& sourceId : inNeighbours) {
-                    incomingStreetIds.push_back(sourceId * N + pNode->id());
-                  }
-                }
-              } else {
-                for (auto const& sourceId : inNeighbours) {
-                  incomingStreetIds.push_back(sourceId * N + pNode->id());
-                }
-              }
-
-              for (auto const& streetId : incomingStreetIds) {
+              for (auto const& sourceId :
+                   this->graph().adjacencyMatrix().getCol(pNode->id())) {
+                auto const streetId{sourceId * N + pNode->id()};
                 auto const& pStreet{this->graph().edge(streetId)};
                 if (bUpdateData && pNode->isTrafficLight()) {
                   if (!m_queuesAtTrafficLights.contains(streetId)) {
