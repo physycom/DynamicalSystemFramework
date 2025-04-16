@@ -311,7 +311,6 @@ namespace dsm {
                       pInStreet->forbiddenTurns().contains(pOutStreet->id())) {
                     return;
                   }
-                  auto const deltaAngle{pOutStreet->deltaAngle(pInStreet->angle())};
                   auto const& outOppositeStreet{this->street(pair.first, outNodeId)};
                   if (!outOppositeStreet) {
                     return;
@@ -332,26 +331,14 @@ namespace dsm {
                     // allowedTurns.emplace(Direction::STRAIGHT);
                     // return;
                     // }
-                  } else if (std::abs(deltaAngle) < std::numbers::pi) {
-                    // Logger::debug(std::format("Angle in {} - angle out {}",
-                    //                           pInStreet->angle(),
-                    //                           pOutStreet->angle()));
-                    // Logger::debug(std::format("Delta: {}", deltaAngle));
-                    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
-                      Logger::debug(std::format("Street {} -> {} can turn STRAIGHT",
+                  } else {
+                    auto const& direction{pOutStreet->turnDirection(pInStreet->angle())};
+                    if (direction != Direction::UTURN) {
+                      allowedTurns.emplace(direction);
+                      Logger::debug(std::format("Street {} -> {} can turn {}",
                                                 pInStreet->source(),
-                                                pInStreet->target()));
-                      allowedTurns.emplace(Direction::STRAIGHT);
-                    } else if (deltaAngle < 0.) {
-                      Logger::debug(std::format("Street {} -> {} can turn RIGHT",
-                                                pInStreet->source(),
-                                                pInStreet->target()));
-                      allowedTurns.emplace(Direction::RIGHT);
-                    } else if (deltaAngle > 0.) {
-                      Logger::debug(std::format("Street {} -> {} can turn LEFT",
-                                                pInStreet->source(),
-                                                pInStreet->target()));
-                      allowedTurns.emplace(Direction::LEFT);
+                                                pInStreet->target(),
+                                                directionToString[direction]));
                     }
                   }
                 });

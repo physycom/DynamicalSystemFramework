@@ -27,18 +27,23 @@ namespace dsm {
           m_phase{phase},
           m_defaultValues{std::make_pair(m_greenTime, m_phase)} {}
 
-    inline Delay greenTime() const { return m_greenTime; }
-    inline Delay phase() const { return m_phase; }
+    bool operator==(TrafficLightCycle const& other) const;
+
+    /// @brief Get the green time of the traffic light cycle
+    /// @return The green time of the traffic light cycle, in seconds
+    Delay greenTime() const;
+    /// @brief Get the phase of the traffic light cycle with respect to the TrafficLight counter's zero
+    /// @return The phase of the traffic light cycle, in seconds
+    Delay phase() const;
     /// @brief Returns true if the cycle has its default values
-    inline bool isDefault() const {
-      return m_greenTime == m_defaultValues.first && m_phase == m_defaultValues.second;
-    }
+    /// @return true if the cycle has its default values
+    bool isDefault() const;
     /// @brief Returns true if the current green time is greater than the default one
-    inline bool isGreenTimeIncreased() const {
-      return m_greenTime > m_defaultValues.first;
-    }
+    /// @return true if the current green time is greater than the default one
+    bool isGreenTimeIncreased() const;
     /// @brief Returns true if the current green time is smaller than the default one
-    inline bool isRedTimeIncreased() const { return m_greenTime < m_defaultValues.first; }
+    /// @return true if the current green time is smaller than the default one
+    bool isRedTimeIncreased() const;
     /// @brief Returns true if the traffic light is green
     /// @param cycleTime Delay, the total time of a red-green cycle
     /// @param counter Delay, the current counter
@@ -84,23 +89,6 @@ namespace dsm {
 
     static void setAllowFreeTurns(bool allow);
 
-    Delay maxGreenTime(bool priorityStreets) const;
-    /// @brief Get the minimum green time over every cycle
-    /// @param priorityStreets bool, if true, only the priority streets are considered;
-    ///        if false, only the non-priority streets are considered
-    /// @return Delay The minimum green time
-    /// @details The minimum green time is the minimum green time of all the cycles for
-    ///          the priority streets if priorityStreets is true, or for the non-priority
-    ///          streets if priorityStreets is false.
-    Delay minGreenTime(bool priorityStreets) const;
-    /// @brief Get the mean green time over every cycle
-    /// @param priorityStreets bool, if true, only the priority streets are considered;
-    ///        if false, only the non-priority streets are considered
-    /// @return double The mean green time
-    /// @details The mean green time is the mean green time of all the cycles for
-    ///          the priority streets if priorityStreets is true, or for the non-priority
-    ///          streets if priorityStreets is false.
-    double meanGreenTime(bool priorityStreets) const;
     /// @brief Get the traffic light's total cycle time
     /// @return Delay The traffic light's cycle time
     inline Delay cycleTime() const { return m_cycleTime; }
@@ -128,12 +116,6 @@ namespace dsm {
     /// @param oldStreetId Id, the old street id
     /// @param newStreetId Id, the new street id
     void moveCycle(Id const oldStreetId, Id const newStreetId);
-    /// @brief Increase the green times of the traffic light for priority streets and decrease the green times for non-priority streets
-    /// @param delta Delay, the time to increase or decrease the green times
-    void increaseGreenTimes(Delay const delta);
-    /// @brief Decrease the green times of the traffic light for priority streets and increase the green times for non-priority streets
-    /// @param delta Delay, the time to increase or decrease the green times
-    void decreaseGreenTimes(Delay const delta);
     /// @brief Get the traffic light's cycles
     /// @return std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> const& The traffic light's cycles
     inline std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> const&

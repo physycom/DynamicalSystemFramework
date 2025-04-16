@@ -66,6 +66,7 @@ namespace dsm {
     assert(priority >= 0);
     m_priority = priority;
   }
+
   Direction Road::turnDirection(double const& previousStreetAngle) const {
     auto const deltaAngle{this->deltaAngle(previousStreetAngle)};
     if (std::abs(deltaAngle) >= std::numbers::pi) {
