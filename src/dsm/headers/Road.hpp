@@ -79,6 +79,16 @@ namespace dsm {
     /// @details The forbidden turns are the road ids that are not allowed to be used by the agents
     ///          when they are on the road.
     std::set<Id> const& forbiddenTurns() const;
+    /// @brief Get the road's turn direction given the previous road angle
+    /// @param previousStreetAngle The angle of the previous road
+    /// @return Direction The turn direction
+    /// @details The turn direction is the direction that the agent must take when it is on the road.
+    ///          The possible values are:
+    ///          - UTURN (abs of delta is greater than pi)
+    ///          - STRAIGHT (abs of delta is less than pi /8)
+    ///          - RIGHT (delta is negative and not covered by the above conditions)
+    ///          - LEFT (delta is positive and not covered by the above conditions)
+    Direction turnDirection(double const& previousStreetAngle) const;
 
     virtual int nAgents() const = 0;
     virtual int nMovingAgents() const = 0;

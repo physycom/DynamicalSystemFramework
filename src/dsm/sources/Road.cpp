@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <format>
+#include <numbers>
 #include <stdexcept>
 
 namespace dsm {
@@ -64,6 +65,19 @@ namespace dsm {
   void Road::setPriority(int priority) {
     assert(priority >= 0);
     m_priority = priority;
+  }
+  Direction Road::turnDirection(double const& previousStreetAngle) const {
+    auto const deltaAngle{this->deltaAngle(previousStreetAngle)};
+    if (std::abs(deltaAngle) >= std::numbers::pi) {
+      return Direction::UTURN;
+    }
+    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
+      return Direction::STRAIGHT;
+    }
+    if (deltaAngle < 0.) {
+      return Direction::RIGHT;
+    }
+    return Direction::LEFT;
   }
 
   double Road::length() const { return m_length; }
