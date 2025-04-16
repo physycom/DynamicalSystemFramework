@@ -640,7 +640,7 @@ namespace dsm {
                                     directionToString.at(direction)));
         } else if (destinationNode->isIntersection() &&
                    pAgentTemp->nextStreetId().has_value()) {
-          auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
+          auto& intersection = static_cast<Intersection&>(*destinationNode);
           bool bCanPass{true};
           auto const& thisDirection{this->graph()
                                         .edge(pAgentTemp->nextStreetId().value())
