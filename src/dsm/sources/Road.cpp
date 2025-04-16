@@ -66,19 +66,6 @@ namespace dsm {
     assert(priority >= 0);
     m_priority = priority;
   }
-  Direction Road::turnDirection(double const& previousStreetAngle) const {
-    auto const deltaAngle{this->deltaAngle(previousStreetAngle)};
-    if (std::abs(deltaAngle) >= std::numbers::pi) {
-      return Direction::UTURN;
-    }
-    if (std::abs(deltaAngle) < std::numbers::pi / 8) {
-      return Direction::STRAIGHT;
-    }
-    if (deltaAngle < 0.) {
-      return Direction::RIGHT;
-    }
-    return Direction::LEFT;
-  }
 
   Direction Road::turnDirection(double const& previousStreetAngle) const {
     auto const deltaAngle{this->deltaAngle(previousStreetAngle)};
