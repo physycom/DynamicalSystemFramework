@@ -91,7 +91,7 @@ namespace dsm {
         intersection.setStreetPriorities(newStreetPriorities);
       }
       if (node->isTrafficLight()) {
-        auto& trafficLight = dynamic_cast<TrafficLight&>(*node);
+        auto& trafficLight = static_cast<TrafficLight&>(*node);
         std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> newCycles;
         for (auto const& [streetId, cycles] : trafficLight.cycles()) {
           newCycles.emplace(newStreetIds.at(streetId), std::move(cycles));
@@ -106,7 +106,7 @@ namespace dsm {
       if (!pNode->isTrafficLight()) {
         continue;
       }
-      auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+      auto& tl = static_cast<TrafficLight&>(*pNode);
       if (!tl.streetPriorities().empty() || !tl.cycles().empty()) {
         continue;
       }
@@ -356,7 +356,7 @@ namespace dsm {
             // If allowedTurns contains all RIGHT, STRAIGHT and LEFT, transform RIGHT into RIGHTANDSTRAIGHT
             if (allowedTurns.size() > static_cast<size_t>(nLanes)) {
               if (pair.second->isTrafficLight()) {
-                auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
+                auto& tl = static_cast<TrafficLight&>(*pair.second);
                 auto const& cycles{tl.cycles()};
                 if (cycles.contains(pInStreet->id())) {
                   if (cycles.size() == static_cast<size_t>(nLanes)) {
@@ -416,7 +416,7 @@ namespace dsm {
                     allowedTurns.contains(Direction::RIGHT) &&
                     allowedTurns.contains(Direction::LEFT)) {
                   if (pair.second->isTrafficLight()) {
-                    auto& tl = dynamic_cast<TrafficLight&>(*pair.second);
+                    auto& tl = static_cast<TrafficLight&>(*pair.second);
                     auto const& cycles{tl.cycles()};
                     if (cycles.contains(pInStreet->id())) {
                       auto const& cycle{cycles.at(pInStreet->id())};

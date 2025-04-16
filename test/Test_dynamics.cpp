@@ -999,7 +999,7 @@ TEST_CASE("FirstOrderDynamics") {
     CHECK_EQ(pStreet->queue(0).size(), 3);
     CHECK_EQ(dynamics.streetMeanSpeed(1), 0.);
   }
-  SUBCASE("Intersection priorities") {
+  SUBCASE("Intersection right of way") {
     GIVEN("A dynamics object with five nodes and eight streets") {
       RoadNetwork graph2;
       graph2.addNode<Intersection>(0, std::make_pair(0, 0));
@@ -1035,7 +1035,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent in A passes first") {
           CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
-          CHECK_EQ(nodeO.agents().size(), 2);
+          CHECK_EQ(nodeO.agents().size(), 1);
           CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 20);
         }
         dynamics.evolve(false);
@@ -1060,7 +1060,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent in D passes first") {
           CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
-          CHECK_EQ(nodeO.agents().size(), 2);
+          CHECK_EQ(nodeO.agents().size(), 1);
           CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 15);
         }
         dynamics.evolve(false);
@@ -1073,6 +1073,21 @@ TEST_CASE("FirstOrderDynamics") {
         THEN("The agent in C passes last") {
           CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 3);
           CHECK(nodeO.agents().empty());
+        }
+      }
+      WHEN("We set street priorities and add agents") {
+        nodeO.addStreetPriority(5);
+        nodeO.addStreetPriority(16);
+        dynamics.addAgent(2, 1);
+        dynamics.addAgent(2, 4);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        THEN("The agent in A passes first because it's on the main road") {
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
+          CHECK_EQ(nodeO.agents().size(), 1);
+          CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 20);
         }
       }
     }
