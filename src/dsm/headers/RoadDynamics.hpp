@@ -51,6 +51,7 @@ namespace dsm {
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     std::unordered_map<Id, std::unordered_map<Direction, double>> m_queuesAtTrafficLights;
+    std::unordered_map<Id, std::unordered_map<Direction, double>> m_outQueuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     Time m_previousOptimizationTime, m_previousSpireTime;
 
@@ -1149,6 +1150,7 @@ namespace dsm {
           [&](const tbb::blocked_range<size_t>& range) {
             for (size_t i = range.begin(); i != range.end(); ++i) {
               auto const& pNode = nodes.at(i);
+              auto const& outNeighbours{this->graph().adjacencyMatrix().getRow(pNode->id())};
               for (auto const& sourceId :
                    this->graph().adjacencyMatrix().getCol(pNode->id())) {
                 auto const streetId{sourceId * N + pNode->id()};
@@ -1159,11 +1161,26 @@ namespace dsm {
                     for (auto const& [streetId, pair] : tl.cycles()) {
                       for (auto const& [direction, cycle] : pair) {
                         m_queuesAtTrafficLights[streetId].emplace(direction, 0.);
+                        m_outQueuesAtTrafficLights[streetId].emplace(Direction::RIGHT, 0.);
+                        m_outQueuesAtTrafficLights[streetId].emplace(Direction::STRAIGHT, 0.);
+                        m_outQueuesAtTrafficLights[streetId].emplace(Direction::LEFT, 0.);
                       }
                     }
                   }
                   for (auto& [direction, value] : m_queuesAtTrafficLights.at(streetId)) {
                     value += pStreet->nExitingAgents(direction, true);
+                  }
+                  for (auto const& targetId : outNeighbours) {
+                    auto const outStreetId{pNode->id() * N + targetId};
+                    if (outStreetId == streetId) {
+                      continue;
+                    }
+                    auto const& pOutStreet{this->graph().edge(outStreetId)};
+                    auto direction{pOutStreet->turnDirection(pStreet->angle())};
+                    if (direction > Direction::LEFT) {
+                      direction = Direction::LEFT;
+                    }
+                    m_outQueuesAtTrafficLights.at(streetId).at(direction) += pOutStreet->nExitingAgents();
                   }
                 }
                 m_evolveStreet(pStreet, reinsert_agents);
@@ -1309,9 +1326,14 @@ namespace dsm {
       auto& tl = dynamic_cast<TrafficLight&>(*pNode);
 
       auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
+      auto const& outNeighbours{this->graph().adjacencyMatrix().getRow(nodeId)};
 
       // Default is RIGHTANDSTRAIGHT - LEFT phases for both priority and non-priority
       std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
+      std::array<double, 2> outputPrioritySum{0., 0.}, outputNonPrioritySum{0., 0.};
+
+      double inputSum{0.}, outputSum{0.};
+
       bool isPrioritySinglePhase{false}, isNonPrioritySinglePhase{false};
 
       for (const auto& sourceId : inNeighbours) {
@@ -1356,33 +1378,88 @@ namespace dsm {
           }
         }
       }
-      {
-        // Sum normalization
-        auto const sum{inputPrioritySum[0] + inputPrioritySum[1] +
-                       inputNonPrioritySum[0] + inputNonPrioritySum[1]};
-        if (sum == 0.) {
+      for (auto const& targetId : outNeighbours) {
+        auto const streetId{pNode->id() * this->graph().nNodes() + targetId};
+        if (!m_outQueuesAtTrafficLights.contains(streetId)) {
+          // Logger::warning("saknekflnwefk");
           continue;
         }
-        inputPrioritySum[0] /= sum;
-        inputPrioritySum[1] /= sum;
-        inputNonPrioritySum[0] /= sum;
-        inputNonPrioritySum[1] /= sum;
-
-        // int const cycleTime{(1. - alpha) * tl.cycleTime()};
+        for (auto const& [direction, tail] : m_outQueuesAtTrafficLights.at(streetId)) {
+          if (tl.streetPriorities().contains(streetId)) {
+            if (isPrioritySinglePhase) {
+              outputPrioritySum[0] += tail;
+            } else {
+              if (direction < Direction::LEFT) {
+                outputPrioritySum[1] += tail;
+              } else {
+                outputPrioritySum[0] += tail;
+              }
+            }
+          } else {
+            if (isNonPrioritySinglePhase) {
+              outputNonPrioritySum[0] += tail;
+            } else {
+              if (direction < Direction::LEFT) {
+                outputNonPrioritySum[1] += tail;
+              } else {
+                outputNonPrioritySum[0] += tail;
+              }
+            }
+          }
+        }
+      }
+      {
+        // Sums computation
+        inputSum = inputPrioritySum[0] + inputPrioritySum[1] +
+                       inputNonPrioritySum[0] + inputNonPrioritySum[1];
+        outputSum = outputPrioritySum[0] + outputPrioritySum[1] +
+                        outputNonPrioritySum[0] + outputNonPrioritySum[1];
+        if (inputSum == 0. && outputSum == 0.) {
+          continue;
+        }
+        inputPrioritySum[0] /= inputSum;
+        inputPrioritySum[1] /= inputSum;
+        inputNonPrioritySum[0] /= inputSum;
+        inputNonPrioritySum[1] /= inputSum;
 
         inputPrioritySum[0] *= beta;
         inputPrioritySum[1] *= beta;
         inputNonPrioritySum[0] *= beta;
         inputNonPrioritySum[1] *= beta;
+
+        outputPrioritySum[0] /= outputSum;
+        outputPrioritySum[1] /= outputSum;
+        outputNonPrioritySum[0] /= outputSum;
+        outputNonPrioritySum[1] /= outputSum;
+
+        outputPrioritySum[0] *= beta;
+        outputPrioritySum[1] *= beta;
+        outputNonPrioritySum[0] *= beta;
+        outputNonPrioritySum[1] *= beta;
+      }
+
+      std::array<double, 4> queueFractions{0., 0., 0., 0.};
+
+      if (inputSum >= outputSum) {
+        queueFractions[0] = inputPrioritySum[0];
+        queueFractions[1] = inputPrioritySum[1];
+        queueFractions[2] = inputNonPrioritySum[0];
+        queueFractions[3] = inputNonPrioritySum[1];
+      } else {
+        queueFractions[0] = beta - outputPrioritySum[0];
+        queueFractions[1] = beta - outputPrioritySum[1];
+        queueFractions[2] = beta - outputNonPrioritySum[0];
+        queueFractions[3] = beta - outputNonPrioritySum[1];
       }
 
       if (logStream.has_value()) {
+        *logStream << std::format("\tInput sum {} - Output sum {}\n", inputSum, outputSum);
         *logStream << std::format(
             "\tInput cycle queue ratios are {:.2f} {:.2f} - {:.2f} {:.2f}\n",
-            inputPrioritySum[0],
-            inputPrioritySum[1],
-            inputNonPrioritySum[0],
-            inputNonPrioritySum[1]);
+            queueFractions[0],
+            queueFractions[1],
+            queueFractions[2],
+            queueFractions[3]);
       }
 
       tl.resetCycles();
@@ -1455,16 +1532,16 @@ namespace dsm {
       }
 
       int inputPriorityR{static_cast<int>(
-          std::floor((inputPrioritySum[0] + greenTimes[0]) * tl.cycleTime()))};
+          std::floor((queueFractions[0] + greenTimes[0]) * tl.cycleTime()))};
       int inputPriorityS{inputPriorityR};
       int inputPriorityL{static_cast<int>(
-          std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime()))};
+          std::floor((queueFractions[1] + greenTimes[1]) * tl.cycleTime()))};
 
       int inputNonPriorityR{static_cast<int>(
-          std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime()))};
+          std::floor((queueFractions[2] + greenTimes[2]) * tl.cycleTime()))};
       int inputNonPriorityS{inputNonPriorityR};
       int inputNonPriorityL{static_cast<int>(
-          std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime()))};
+          std::floor((queueFractions[3] + greenTimes[3]) * tl.cycleTime()))};
 
       {
         // Adjust phases to have the sum equal to the cycle time
@@ -1791,6 +1868,11 @@ namespace dsm {
     for (auto& [streetId, pair] : m_queuesAtTrafficLights) {
       for (auto& [direction, value] : pair) {
         value = 0.;
+      }
+    }
+    for (auto& [streetId, pair] : m_outQueuesAtTrafficLights) {
+      for (auto& [direction, value] : pair) {
+        value = 0;
       }
     }
     m_previousOptimizationTime = this->time();
