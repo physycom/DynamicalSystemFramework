@@ -1702,87 +1702,67 @@ namespace dsm {
         Logger::error(std::format("Could not open log file: {}", logFile));
       }
     }
-    if (optimizationType == TrafficLightOptimization::SINGLE_TAIL) {
-      this->m_trafficlightSingleTailOptimizer(threshold, logStream);
-    } else if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
-      if (threshold < 0) {
-        Logger::error(std::format("The threshold parameter ({}) must be greater than 0.",
-                                  threshold));
-      }
-      auto const nCycles{static_cast<double>(this->time() - m_previousOptimizationTime) /
-                         m_dataUpdatePeriod.value()};
-      for (const auto& [nodeId, pNode] : this->graph().nodes()) {
+    this->m_trafficlightSingleTailOptimizer(threshold, logStream);
+    if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
+      // Try to synchronize congested traffic lights
+      std::unordered_map<Id, double> densities;
+      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
         if (!pNode->isTrafficLight()) {
           continue;
         }
-        if (logStream.has_value()) {
-          *logStream << std::format("\tTraffic Light {}\n", nodeId);
-        }
-        auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-        auto const& streetPriorities = tl.streetPriorities();
-        auto const meanGreenFraction{tl.meanGreenTime(true) / tl.cycleTime()};
-        auto const meanRedFraction{tl.meanGreenTime(false) / tl.cycleTime()};
-
-        double inputGreenSum{0.}, inputRedSum{0.};
-        auto const N{this->graph().nNodes()};
-        auto column = this->graph().adjacencyMatrix().getCol(nodeId);
-        for (const auto& sourceId : column) {
-          auto const streetId = sourceId * N + nodeId;
-          auto const& pStreet{this->graph().edge(streetId)};
-          if (streetPriorities.contains(streetId)) {
-            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
-              inputGreenSum += pair.second / pStreet->nLanes();
-            }
-          } else {
-            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
-              inputRedSum += pair.second / pStreet->nLanes();
-            }
-          }
-        }
-        inputGreenSum /= meanGreenFraction;
-        inputRedSum /= meanRedFraction;
-        auto const inputDifference{(inputGreenSum - inputRedSum) / nCycles};
-        delay_t const delta = std::round(std::abs(inputDifference) / column.size());
-        auto const greenTime = tl.minGreenTime(true);
-        auto const redTime = tl.minGreenTime(false);
-        // If the difference is not less than the threshold
-        //    - Check that the incoming streets have a density less than the mean one (eventually + tolerance): I want to avoid being into the cluster, better to be out or on the border
-        //    - If the previous check fails, do nothing
-        double outputGreenSum{0.}, outputRedSum{0.};
-        for (auto const& targetId : this->graph().adjacencyMatrix().getRow(nodeId)) {
-          auto const streetId = nodeId * N + targetId;
-          if (!m_queuesAtTrafficLights.contains(streetId)) {
+        double density{0.}, n{0.};
+        auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
+        for (auto const& sourceId : inNeighbours) {
+          if (!this->graph().node(sourceId)->isTrafficLight()) {
             continue;
           }
-          auto const& pStreet{this->graph().edge(streetId)};
-          if (streetPriorities.contains(streetId)) {
-            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
-              outputGreenSum += pair.second / pStreet->nLanes();
-            }
-          } else {
-            for (auto const& pair : m_queuesAtTrafficLights.at(streetId)) {
-              outputGreenSum += pair.second / pStreet->nLanes();
-            }
-          }
+          density += this->graph().edge(sourceId * this->graph().nNodes() + nodeId)->density(true);
+          ++n;
         }
-        auto const outputDifference{(outputGreenSum - outputRedSum) / nCycles};
-        if ((inputDifference * outputDifference > 0) ||
-            std::max(std::abs(inputDifference), std::abs(outputDifference)) < threshold ||
-            delta == 0) {
-          tl.resetCycles();
-          continue;
-        }
-        if (std::abs(inputDifference) > std::abs(outputDifference)) {
-          if ((inputDifference > 0) && (redTime > delta)) {
-            tl.increaseGreenTimes(delta);
-          } else if ((inputDifference < 0) && (greenTime > delta)) {
-            tl.decreaseGreenTimes(delta);
+        density /= n;
+        densities[nodeId] = density;
+      }
+      // Sort densities map from big to small values
+      std::vector<std::pair<Id, double>> sortedDensities(densities.begin(), densities.end());
+
+      // Sort by density descending
+      std::sort(sortedDensities.begin(), sortedDensities.end(),
+                [](auto const& a, auto const& b) {
+                    return a.second > b.second;
+                });
+      std::unordered_set<Id> optimizedNodes;
+
+      for (auto const [nodeId, density] : sortedDensities) {
+        auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
+        for (auto const& sourceId : inNeighbours) {
+          if (!densities.contains(sourceId) || optimizedNodes.contains(sourceId)) {
+            continue;
           }
-        } else {
-          if ((outputDifference < 0) && (redTime > delta)) {
-            tl.increaseGreenTimes(delta);
-          } else if ((outputDifference > 0) && (greenTime > delta)) {
-            tl.decreaseGreenTimes(delta);
+          auto const& neighbourDensity{densities.at(sourceId)};
+          if (neighbourDensity < 1.3 * density) {
+            continue;
+          }
+          // Try to green-wave the situation
+          auto& tl{static_cast<TrafficLight&>(*(this->graph().node(sourceId)))};
+          auto const& pStreet{this->graph().edge(sourceId * this->graph().nNodes() + nodeId)};
+          tl.increasePhases(pStreet->length() / (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
+          optimizedNodes.insert(sourceId);
+          if (logStream.has_value()) {
+            std::string logMsg =
+                std::format("\tNew cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
+            for (auto const& [streetId, pair] : tl.cycles()) {
+              auto const& pStreet{this->graph().edge(streetId)};
+              logMsg +=
+                  std::format("\t\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
+              for (auto const& [direction, cycle] : pair) {
+                logMsg += std::format("{}= ({} {}) ",
+                                      directionToString[direction],
+                                      cycle.greenTime(),
+                                      cycle.phase());
+              }
+              logMsg += '\n';
+            }
+            *logStream << logMsg << '\n';
           }
         }
       }

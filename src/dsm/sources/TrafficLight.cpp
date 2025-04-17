@@ -6,12 +6,18 @@
 
 namespace dsm {
   bool TrafficLightCycle::isGreen(Delay const cycleTime, Delay const counter) const {
-    auto const rest{(m_phase + m_greenTime) / cycleTime};
-    if (rest) {
-      return (counter < rest) || (counter >= m_phase);
+    auto const greenStart = m_phase % cycleTime;
+    auto const greenEnd = (m_phase + m_greenTime) % cycleTime;
+
+    if (greenStart < greenEnd) {
+        // Normal case: green does not wrap around
+        return (counter >= greenStart) && (counter < greenEnd);
+    } else {
+        // Wraparound case: green spans cycle boundary
+        return (counter >= greenStart) || (counter < greenEnd);
     }
-    return (counter >= m_phase) && (counter < m_phase + m_greenTime);
-  }
+}
+
 
   bool TrafficLight::m_allowFreeTurns{true};
   void TrafficLight::setAllowFreeTurns(bool allow) { m_allowFreeTurns = allow; }
@@ -128,6 +134,16 @@ namespace dsm {
         for (auto& [direction, cycle] : cycles) {
           cycle = TrafficLightCycle(cycle.greenTime() - delta, cycle.phase() + delta);
         }
+      }
+    }
+  }
+
+  void TrafficLight::increasePhases(Delay const phase) {
+    for (auto& [streetId, cycles] : m_cycles) {
+      for (auto& [direction, cycle] : cycles) {
+        // Module new phase with cycleTime
+        auto newPhase{(phase + cycle.phase()) % m_cycleTime};
+        cycle = TrafficLightCycle(cycle.greenTime(), newPhase);
       }
     }
   }
