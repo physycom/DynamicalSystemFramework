@@ -881,11 +881,17 @@ namespace dsm {
       if (!coilcode.empty()) {
         makeSpireStreet(streetId);
         auto& coil = edge<SpireStreet>(streetId);
-        coil.setCode(static_cast<Id>(std::stoul(coilcode)));
+        try {
+          auto const coilId{static_cast<Id>(std::stoul(coilcode))};
+          coil.setCode(coilId);
+        } catch (const std::invalid_argument& e) {
+          Logger::warning(std::format(
+              "Invalid coil code {} for edge {}->{}", coilcode, srcId, dstId));
+        }
       }
-      if (!forbiddenTurns.empty()) {
-        mapForbiddenTurns.emplace(streetId, forbiddenTurns);
-      }
+      // if (!forbiddenTurns.empty()) {
+      //   mapForbiddenTurns.emplace(streetId, forbiddenTurns);
+      // }
     }
     // Parse forbidden turns
     for (auto const& [streetId, forbiddenTurns] : mapForbiddenTurns) {
