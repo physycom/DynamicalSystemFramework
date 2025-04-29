@@ -28,7 +28,8 @@ namespace dsm {
   ///          It is defined as \f$A = (a_{ij})\f$, where \f$a_{ij} \in \{0, 1\}\f$.
   ///          Moreover, \f$a_{ij} = 1\f$ if there is an edge from node \f$i\f$ to node \f$j\f$ and \f$a_{ij} = 0\f$ otherwise.
   ///          It is used to store the adjacency matrix of the network and to perform operations on it.
-  ///          The adjacency matrix is stored in compressed sparse row format.
+  ///          The adjacency matrix is stored in both CSR and CSC formats, to optimize access to rows and columns.
+  ///          Thus, this matix has very fast access, using double the memory of a standard CSR/CSC one.
   class AdjacencyMatrix {
   private:
     // CSR format
@@ -44,15 +45,6 @@ namespace dsm {
     friend std::vector<Id> test::indices(const AdjacencyMatrix& adj);
 
   public:
-    using value_type = Id;
-    using difference_type = std::ptrdiff_t;
-    using reference = Id&;
-    using const_reference = const Id&;
-    using iterator = std::vector<Id>::iterator;
-    using const_iterator = std::vector<Id>::const_iterator;
-    using reverse_iterator = std::vector<Id>::reverse_iterator;
-    using const_reverse_iterator = std::vector<Id>::const_reverse_iterator;
-
     /// @brief Construct a new AdjacencyMatrix object
     AdjacencyMatrix();
     /// @brief Construct a new AdjacencyMatrix object using the @ref read method
