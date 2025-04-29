@@ -38,5 +38,7 @@ images
 examples/debug
 examples/release
 
+test/data/*dsm
+
 
 webapp/data/*
