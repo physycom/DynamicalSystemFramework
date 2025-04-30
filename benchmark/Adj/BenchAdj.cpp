@@ -17,9 +17,9 @@ int main() {
   graph.buildAdj();
   auto const& adj{graph.adjacencyMatrix()};
   auto const N{adj.n()};
-  SparseMatrix<bool> sm(N, N);
+  SparseMatrix<bool> sm;
   for (const auto& [srcId, dstId] : adj.elements()) {
-    sm.insert(srcId, dstId);
+    sm.insert(srcId, dstId, true);
   }
 
 
@@ -28,14 +28,14 @@ int main() {
   Logger::info("Benchmarking SparseMatrix::getCol");
   b1.benchmark([&sm, &N]() -> void { 
     for (size_t i{0}; i < N; ++i) {
-      sm.getCol(i);
+      sm.col(i);
     }
   });
   b1.print<sb::microseconds>();
   Logger::info("Benchmarking SparseMatrix::getRow");
   b2.benchmark([&sm, &N]() -> void { 
     for (size_t i{0}; i < N; ++i) {
-      sm.getRow(i);
+      sm.row(i);
     }
   });
   b2.print<sb::microseconds>();
