@@ -29,7 +29,7 @@ namespace dsm {
   ///          Moreover, \f$a_{ij} = 1\f$ if there is an edge from node \f$i\f$ to node \f$j\f$ and \f$a_{ij} = 0\f$ otherwise.
   ///          It is used to store the adjacency matrix of the network and to perform operations on it.
   ///          The adjacency matrix is stored in both CSR and CSC formats, to optimize access to rows and columns.
-  ///          Thus, this matix has very fast access, using double the memory of a standard CSR/CSC one.
+  ///          Thus, this matrix has very fast access, using double the memory of a standard CSR/CSC one.
   class AdjacencyMatrix {
   private:
     // CSR format
