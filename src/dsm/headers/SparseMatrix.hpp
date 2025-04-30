@@ -2,12 +2,10 @@
 
 #include <algorithm>
 #include <cassert>
-#ifndef __APPLE__
-#include <execution>
-#endif
 #include <format>
 #include <fstream>
 #include <map>  // A flat map would be better
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -165,13 +163,9 @@ namespace dsm {
     assert(row + 1 < m_rowOffsets.size());
 
     // Increase row offsets for rows after the inserted row
-    std::for_each(
-#ifndef __APPLE__
-        std::execution::par_unseq,
-#endif
-        m_rowOffsets.begin() + row + 1,
-        m_rowOffsets.end(),
-        [](Id& x) { x++; });
+    std::for_each(DSM_EXECUTION m_rowOffsets.begin() + row + 1,
+                  m_rowOffsets.end(),
+                  [](Id& x) { x++; });
 
     // Insert column index at the correct position
     auto csrOffset = m_rowOffsets[row + 1] - 1;
@@ -187,9 +181,9 @@ namespace dsm {
       for (Id row = 0; row + 1 < m_rowOffsets.size(); ++row) {
         auto lowerOffset = m_rowOffsets[row];
         auto upperOffset = m_rowOffsets[row + 1];
-        auto const sum = std::accumulate(m_values.begin() + lowerOffset,
-                                         m_values.begin() + upperOffset,
-                                         static_cast<T>(0));
+        auto const sum = std::reduce(DSM_EXECUTION m_values.begin() + lowerOffset,
+                                     m_values.begin() + upperOffset,
+                                     static_cast<T>(0));
         if (sum != static_cast<T>(0)) {
           auto const factor = value / sum;
           for (auto i = lowerOffset; i < upperOffset; ++i) {

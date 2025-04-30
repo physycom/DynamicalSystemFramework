@@ -5,6 +5,13 @@
 #include <cstdint>
 #include <string_view>
 
+#ifndef __APPLE__
+#include <execution>
+#define DSM_EXECUTION std::execution::par_unseq,
+#else
+#define DSM_PAR
+#endif
+
 namespace dsm {
 
   using Id = uint32_t;
