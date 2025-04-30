@@ -2,15 +2,15 @@
 
 #include <algorithm>
 #include <cassert>
-#ifndef __APPLE__
-#include <execution>
-#endif
 #include <format>
 #include <fstream>
 #include <map>  // A flat map would be better
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include <iostream>
 
 #include "../utility/Typedef.hpp"
 
@@ -20,6 +20,8 @@ namespace dsm {
   template <typename T>
     requires(std::is_arithmetic_v<T>)
   class SparseMatrix {
+    typedef bool axis_t;
+
   private:
     // CSR format
     std::vector<Id> m_rowOffsets;
@@ -34,6 +36,12 @@ namespace dsm {
     /// @brief Construct a new SparseMatrix object using the @ref read method
     /// @param fileName The name of the file containing the sparse matrix
     SparseMatrix(std::string const& fileName);
+    /// @brief Copy constructor
+    /// @param other The SparseMatrix to copy
+    SparseMatrix(const SparseMatrix& other) = default;
+    /// @brief Move constructor
+    /// @param other The SparseMatrix to move
+    SparseMatrix(SparseMatrix&& other) = default;
 
     /// @brief Returns the element at the specified row and column
     /// @param row The row index of the element
@@ -72,6 +80,13 @@ namespace dsm {
     ///   Where \f$i\f$ is the row index and \f$j\f$ is the column index.
     ///   The function will automatically resize the matrix to fit the new element.
     void insert(Id row, Id col, T value);
+
+    /// @brief Normalize the rows of the matrix
+    /// @param axis If 1, normalize the rows, otherwise (0) normalize the columns
+    /// @param value The value to normalize the rows to (default is 1)
+    /// @details The function will normalize the rows of the matrix to have the sum equal to the given value.
+    void normalize(const axis_t axis = true, const T value = static_cast<T>(1));
+
     /// @brief Read the sparse matrix from a binary file
     /// @param fileName The name of the file containing the sparse matrix
     /// @throw std::runtime_error if the file cannot be opened
@@ -110,7 +125,7 @@ namespace dsm {
     if (it == itLast) {
       return m_TdefaultValue;  // Return default value if not found
     }
-    size_t const index = std::distance(itFirst, it);
+    size_t const index = m_rowOffsets[row] + std::distance(itFirst, it);
     assert(index < m_values.size());
     return m_values[index];
   }
@@ -148,18 +163,61 @@ namespace dsm {
     assert(row + 1 < m_rowOffsets.size());
 
     // Increase row offsets for rows after the inserted row
-    std::for_each(
-#ifndef __APPLE__
-        std::execution::par_unseq,
-#endif
-        m_rowOffsets.begin() + row + 1,
-        m_rowOffsets.end(),
-        [](Id& x) { x++; });
+    std::for_each(DSM_EXECUTION m_rowOffsets.begin() + row + 1,
+                  m_rowOffsets.end(),
+                  [](Id& x) { x++; });
 
     // Insert column index at the correct position
     auto csrOffset = m_rowOffsets[row + 1] - 1;
     m_columnIndices.insert(m_columnIndices.begin() + csrOffset, col);
     m_values.insert(m_values.begin() + csrOffset, value);
+  }
+
+  template <typename T>
+    requires(std::is_arithmetic_v<T>)
+  void SparseMatrix<T>::normalize(const axis_t axis, const T value) {
+    if (axis) {
+      // Normalize rows
+      for (Id row = 0; row + 1 < m_rowOffsets.size(); ++row) {
+        auto lowerOffset = m_rowOffsets[row];
+        auto upperOffset = m_rowOffsets[row + 1];
+        auto const sum = std::reduce(DSM_EXECUTION m_values.begin() + lowerOffset,
+                                     m_values.begin() + upperOffset,
+                                     static_cast<T>(0));
+        if (sum != static_cast<T>(0)) {
+          auto const factor = value / sum;
+          for (auto i = lowerOffset; i < upperOffset; ++i) {
+            m_values[i] *= factor;
+          }
+        }
+      }
+    } else {
+      // Normalize columns
+      for (Id col = 0; col < m_n; ++col) {
+        T sum = static_cast<T>(0);
+        for (Id row = 0; row + 1 < m_rowOffsets.size(); ++row) {
+          auto lowerOffset = m_rowOffsets[row];
+          auto upperOffset = m_rowOffsets[row + 1];
+          for (auto i = lowerOffset; i < upperOffset; ++i) {
+            if (m_columnIndices[i] == col) {
+              sum += m_values[i];
+            }
+          }
+        }
+        if (sum != static_cast<T>(0)) {
+          T factor = value / sum;
+          for (Id row = 0; row + 1 < m_rowOffsets.size(); ++row) {
+            auto lowerOffset = m_rowOffsets[row];
+            auto upperOffset = m_rowOffsets[row + 1];
+            for (auto i = lowerOffset; i < upperOffset; ++i) {
+              if (m_columnIndices[i] == col) {
+                m_values[i] *= factor;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   template <typename T>

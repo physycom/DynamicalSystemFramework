@@ -272,7 +272,7 @@ namespace dsm {
   std::optional<DijkstraResult> RoadNetwork::shortestPath(const Node& source,
                                                           const Node& destination,
                                                           Func f) const {
-    return this->shortestPath(source.id(), destination.id());
+    return this->shortestPath(source.id(), destination.id(), f);
   }
 
   template <typename Func>

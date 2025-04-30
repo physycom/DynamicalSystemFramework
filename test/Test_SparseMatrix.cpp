@@ -31,6 +31,13 @@ TEST_CASE("Double matrix") {
   testMat.insert(2, 3, 4.0);
   testMat.insert(3, 4, 5.0);
   testMat.insert(0, 0, 6.0);
+  SUBCASE("Copy and move") {
+    auto copy = testMat;
+    CHECK_EQ(testMat, copy);
+    auto moved = std::move(copy);
+    CHECK(copy.empty());
+    CHECK_EQ(testMat, moved);
+  }
   SUBCASE("Save and read") {
     auto path = "./data/sparse_matrix.dsm";
     testMat.save(path);
@@ -57,6 +64,17 @@ TEST_CASE("Double matrix") {
     CHECK(row.empty());
     CHECK_THROWS_AS(testMat.row(5), std::out_of_range);
   }
+  SUBCASE("normalize rows") {
+    double value{5.0};
+    auto normalizedMat = testMat;
+    normalizedMat.normalize(1, value);
+    CHECK_EQ(normalizedMat(0, 0), value * testMat(0, 0) / 7.);
+    CHECK_EQ(normalizedMat(0, 1), value * testMat(0, 1) / 7.);
+    CHECK_EQ(normalizedMat(1, 2), value * testMat(1, 2) / 5.);
+    CHECK_EQ(normalizedMat(1, 3), doctest::Approx(value * testMat(1, 3) / 5.));
+    CHECK_EQ(normalizedMat(2, 3), value * testMat(2, 3) / 4.);
+    CHECK_EQ(normalizedMat(3, 4), value * testMat(3, 4) / 5.);
+  }
   SUBCASE("col getter") {
     std::map<Id, double> col;
     col = testMat.col(0);
@@ -76,5 +94,16 @@ TEST_CASE("Double matrix") {
     CHECK_EQ(col.size(), 1);
     CHECK_EQ(col[3], 5.0);
     CHECK_THROWS_AS(testMat.col(5), std::out_of_range);
+  }
+  SUBCASE("normalize cols") {
+    double value{6.0};
+    auto normalizedMat = testMat;
+    normalizedMat.normalize(false, value);
+    CHECK_EQ(normalizedMat(0, 0), value * testMat(0, 0) / 6.);
+    CHECK_EQ(normalizedMat(0, 1), value * testMat(0, 1) / 1.);
+    CHECK_EQ(normalizedMat(1, 2), value * testMat(1, 2) / 2.);
+    CHECK_EQ(normalizedMat(1, 3), doctest::Approx(value * testMat(1, 3) / 7.));
+    CHECK_EQ(normalizedMat(2, 3), value * testMat(2, 3) / 7.);
+    CHECK_EQ(normalizedMat(3, 4), value * testMat(3, 4) / 5.);
   }
 }
