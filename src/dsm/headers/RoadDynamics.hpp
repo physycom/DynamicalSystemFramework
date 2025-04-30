@@ -552,6 +552,18 @@ namespace dsm {
           possibleMoves = newPossibleMoves;
         }
       }
+    } else if (!m_transitionMatrix.empty()) {
+      auto transitionRow{m_transitionMatrix.row(nodeId)};
+      std::uniform_real_distribution<double> uniformDist{0., 1.};
+      auto const randomValue{uniformDist(this->m_generator)};
+      auto sum{0.};
+      for (auto const& [nextNodeId, probability] : transitionRow) {
+        sum += probability;
+        if (randomValue < sum) {
+          // Do not care about uturns when using transition matrix
+          return nodeId * this->graph().nNodes() + nextNodeId;
+        }
+      }
     }
 
     assert(!possibleMoves.empty());
@@ -891,7 +903,7 @@ namespace dsm {
           transitionMatrix.n())));
     }
     m_transitionMatrix = transitionMatrix;
-    m_transitionMatrix.normalizeRows();
+    m_transitionMatrix.normalize();
   }
 
   template <typename delay_t>
