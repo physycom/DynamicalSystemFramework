@@ -46,6 +46,7 @@ namespace dsm {
   class RoadDynamics : public Dynamics<RoadNetwork> {
     std::vector<std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
+    SparseMatrix<double> m_transitionMatrix;
 
   protected:
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
@@ -113,8 +114,15 @@ namespace dsm {
     /// @param errorProbability The error probability
     /// @throw std::invalid_argument If the error probability is not between 0 and 1
     void setErrorProbability(double errorProbability);
-
+    /// @brief Set the passage probability
+    /// @param passageProbability The passage probability
+    /// @details The passage probability is the probability of passing through a node
+    ///   It is useful in the case of random agents
     void setPassageProbability(double passageProbability);
+    /// @brief Set the transition matrix
+    /// @param transitionMatrix The transition matrix
+    /// @details The transition matrix is a sparse matrix representing the transition probabilities between the nodes
+    void setTransitionMatrix(const SparseMatrix<double>& transitionMatrix);
     /// @brief Set the force priorities flag
     /// @param forcePriorities The flag
     /// @details If true, if an agent cannot move to the next street, the whole node is skipped
@@ -861,7 +869,6 @@ namespace dsm {
     }
     m_errorProbability = errorProbability;
   }
-
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setPassageProbability(double passageProbability) {
@@ -870,6 +877,21 @@ namespace dsm {
                                 passageProbability));
     }
     m_passageProbability = passageProbability;
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::setTransitionMatrix(
+      const SparseMatrix<double>& transitionMatrix) {
+    if (transitionMatrix.n() != this->graph().nNodes()) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
+          "The transition matrix must have size {}x{} but given size is {}x{}",
+          this->graph().nNodes(),
+          this->graph().nNodes(),
+          transitionMatrix.n(),
+          transitionMatrix.n())));
+    }
+    m_transitionMatrix = transitionMatrix;
+    m_transitionMatrix.normalizeRows();
   }
 
   template <typename delay_t>
