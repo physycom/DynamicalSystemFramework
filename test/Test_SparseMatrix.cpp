@@ -44,6 +44,22 @@ TEST_CASE("Double matrix") {
     Matrix mat(path);
     CHECK_EQ(testMat, mat);
   }
+  SUBCASE("csv format") {
+    Matrix readMat("./data/sparsematrix.csv", "csv");
+    CHECK_EQ(readMat(0, 1), 3.270491);
+    CHECK_EQ(readMat(0, 3), 10.995416);
+    CHECK_EQ(readMat(0, 4), 53.969164);
+    CHECK_EQ(readMat(1, 1), 44.926008);
+    CHECK_EQ(readMat(1, 3), 6.705062);
+    CHECK_EQ(readMat(2, 1), 76.972337);
+    CHECK_EQ(readMat(3, 3), 34.396410);
+    CHECK_EQ(readMat(4, 0), 7.659321);
+    CHECK_EQ(readMat(4, 2), 44.597329);
+    CHECK_EQ(readMat(4, 3), 7.036792);
+    CHECK_EQ(readMat(4, 4), 6.309386);
+    CHECK_EQ(readMat.size(), 11);
+    CHECK_EQ(readMat.n(), 5);
+  }
   SUBCASE("row getter") {
     std::map<Id, double> row;
     row = testMat.row(0);
