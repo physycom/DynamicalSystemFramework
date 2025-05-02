@@ -10,20 +10,20 @@
 
 #include <algorithm>
 #include <cassert>
-#include <concepts>
-#include <vector>
-#include <random>
-#include <span>
-#include <numeric>
-#include <unordered_map>
 #include <cmath>
-#include <cassert>
-#include <format>
-#include <thread>
+#include <concepts>
 #include <exception>
+#include <format>
 #include <fstream>
 #include <iomanip>
+#include <numeric>
+#include <optional>
+#include <random>
+#include <span>
+#include <thread>
+#include <unordered_map>
 #include <variant>
+#include <vector>
 
 #include <tbb/tbb.h>
 
@@ -59,6 +59,8 @@ namespace dsm {
     std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
     std::optional<double> m_errorProbability;
     std::optional<double> m_passageProbability;
+    double m_maxTravelDistance;
+    Time m_maxTravelTime;
     double m_weightTreshold;
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
@@ -126,13 +128,29 @@ namespace dsm {
     /// @brief Set the force priorities flag
     /// @param forcePriorities The flag
     /// @details If true, if an agent cannot move to the next street, the whole node is skipped
-    void setForcePriorities(bool forcePriorities) { m_forcePriorities = forcePriorities; }
+    inline void setForcePriorities(bool forcePriorities) noexcept {
+      m_forcePriorities = forcePriorities;
+    }
     /// @brief Set the data update period.
     /// @param dataUpdatePeriod delay_t, The period
     /// @details Some data, i.e. the street queue lengths, are stored only after a fixed amount of time which is represented by this variable.
-    void setDataUpdatePeriod(delay_t dataUpdatePeriod) {
+    inline void setDataUpdatePeriod(delay_t dataUpdatePeriod) noexcept {
       m_dataUpdatePeriod = dataUpdatePeriod;
     }
+    /// @brief Set the maximum distance which a random agent can travel
+    /// @param maxDistance The maximum distance
+    /// @throw std::invalid_argument If the maximum distance is negative
+    inline void setMaxDistance(double const maxDistance) {
+      maxDistance < 0. ? throw std::invalid_argument(Logger::buildExceptionMessage(
+                             "The maximum distance must be positive."))
+                       : m_maxTravelDistance = maxDistance;
+    };
+    /// @brief Set the maximum travel time which a random agent can travel
+    /// @param maxTravelTime The maximum travel time
+    inline void setMaxTravelTime(Time const maxTravelTime) noexcept {
+      m_maxTravelTime = maxTravelTime;
+    };
+
     /// @brief Set the destination nodes
     /// @param destinationNodes The destination nodes (as an initializer list)
     /// @param updatePaths If true, the paths are updated
@@ -347,6 +365,8 @@ namespace dsm {
         m_weightFunction{weightFunction},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
+        m_maxTravelDistance{std::numeric_limits<double>::max()},
+        m_maxTravelTime{std::numeric_limits<Time>::max()},
         m_weightTreshold{weightTreshold},
         m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
@@ -763,6 +783,13 @@ namespace dsm {
         if (!pAgentTemp->isRandom()) {
           if (destinationNode->id() ==
               this->itineraries().at(pAgentTemp->itineraryId())->destination()) {
+            bArrived = true;
+          }
+        } else {
+          if (pAgentTemp->distance() >= m_maxTravelDistance) {
+            bArrived = true;
+          }
+          if (!bArrived && (this->time() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
             bArrived = true;
           }
         }
