@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <iostream>
@@ -92,8 +93,11 @@ namespace dsm {
     /// @brief Read the sparse matrix from a binary file
     /// @param fileName The name of the file containing the sparse matrix
     /// @param fileType The type of the file (default is "bin")
+    /// @param mapping A mapping of the indeces from strings to 0 -> N-1
     /// @throw std::runtime_error if the file cannot be opened
-    void read(std::string const& fileName, std::string const& fileType = "bin");
+    void read(std::string const& fileName,
+              std::string const& fileType = "bin",
+              std::unordered_map<std::string, Id> const& mapping = {});
     /// @brief Save the sparse matrix to a binary file
     /// @param fileName The name of the file to save the sparse matrix
     /// @throw std::runtime_error if the file cannot be opened
@@ -263,7 +267,9 @@ namespace dsm {
   }
   template <typename T>
     requires(std::is_arithmetic_v<T>)
-  void SparseMatrix<T>::read(std::string const& fileName, std::string const& fileType) {
+  void SparseMatrix<T>::read(std::string const& fileName,
+                             std::string const& fileType,
+                             std::unordered_map<std::string, Id> const& mapping) {
     // Binary file
     if (fileType == "bin") {
       std::ifstream inStream(fileName, std::ios::binary);
@@ -294,18 +300,32 @@ namespace dsm {
       std::string line;
       while (std::getline(inStream, line)) {
         std::istringstream iss(line);
-        std::string token;
-        size_t row, col;
-        T value;
-
-        if (!std::getline(iss, token, ';') || !(std::istringstream(token) >> row) ||
-            !std::getline(iss, token, ';') || !(std::istringstream(token) >> col) ||
-            !std::getline(iss, token, ';') || !(std::istringstream(token) >> value)) {
+        std::string strRow, strCol, strValue;
+        if (!std::getline(iss, strRow, ';') || !std::getline(iss, strCol, ';') ||
+            !std::getline(iss, strValue)) {
           throw std::runtime_error(
-              std::format("Error reading file '{}' at line: {}", fileName, line));
+              std::format("Malformed line in file '{}': {}", fileName, line));
         }
+        try {
+          auto const rowId =
+              mapping.empty() ? static_cast<Id>(std::stoul(strRow)) : mapping.at(strRow);
+          auto const colId =
+              mapping.empty() ? static_cast<Id>(std::stoul(strCol)) : mapping.at(strCol);
 
-        insert(row, col, value);
+          std::istringstream valueStream(strValue);
+          T value;
+          if (!(valueStream >> value)) {
+            throw std::runtime_error("Invalid value format");
+          }
+
+          insert(rowId, colId, value);
+        } catch (const std::exception& e) {
+          throw std::runtime_error(
+              std::format("Error parsing line in file '{}': {}\nLine: '{}'",
+                          fileName,
+                          e.what(),
+                          line));
+        }
       }
       inStream.close();
       return;
