@@ -6,6 +6,7 @@
 #include <fstream>
 #include <map>  // A flat map would be better
 #include <numeric>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -35,7 +36,8 @@ namespace dsm {
     SparseMatrix();
     /// @brief Construct a new SparseMatrix object using the @ref read method
     /// @param fileName The name of the file containing the sparse matrix
-    SparseMatrix(std::string const& fileName);
+    /// @param fileType The type of the file (default is "bin")
+    SparseMatrix(std::string const& fileName, std::string const& fileType = "bin");
     /// @brief Copy constructor
     /// @param other The SparseMatrix to copy
     SparseMatrix(const SparseMatrix& other) = default;
@@ -89,8 +91,9 @@ namespace dsm {
 
     /// @brief Read the sparse matrix from a binary file
     /// @param fileName The name of the file containing the sparse matrix
+    /// @param fileType The type of the file (default is "bin")
     /// @throw std::runtime_error if the file cannot be opened
-    void read(std::string const& fileName);
+    void read(std::string const& fileName, std::string const& fileType = "bin");
     /// @brief Save the sparse matrix to a binary file
     /// @param fileName The name of the file to save the sparse matrix
     /// @throw std::runtime_error if the file cannot be opened
@@ -106,8 +109,9 @@ namespace dsm {
       : m_rowOffsets{std::vector<Id>(2, 0)}, m_columnIndices{}, m_values{}, m_n{1} {}
   template <typename T>
     requires(std::is_arithmetic_v<T>)
-  SparseMatrix<T>::SparseMatrix(std::string const& fileName) {
-    read(fileName);
+  SparseMatrix<T>::SparseMatrix(std::string const& fileName, std::string const& fileType)
+      : m_rowOffsets{std::vector<Id>(2, 0)}, m_columnIndices{}, m_values{}, m_n{1} {
+    read(fileName, fileType);
   }
   /*********************************************************************************
      * OPERATORS
@@ -259,22 +263,54 @@ namespace dsm {
   }
   template <typename T>
     requires(std::is_arithmetic_v<T>)
-  void SparseMatrix<T>::read(std::string const& fileName) {
-    std::ifstream inStream(fileName, std::ios::binary);
-    if (!inStream.is_open()) {
-      throw std::runtime_error(
-          std::format("Could not open file \'{}\' for reading.", fileName));
+  void SparseMatrix<T>::read(std::string const& fileName, std::string const& fileType) {
+    // Binary file
+    if (fileType == "bin") {
+      std::ifstream inStream(fileName, std::ios::binary);
+      if (!inStream.is_open()) {
+        throw std::runtime_error(
+            std::format("Could not open file \'{}\' for reading.", fileName));
+      }
+      inStream.read(reinterpret_cast<char*>(&m_n), sizeof(size_t));
+      m_rowOffsets.resize(m_n + 1);
+      inStream.read(reinterpret_cast<char*>(m_rowOffsets.data()),
+                    m_rowOffsets.size() * sizeof(Id));
+      m_columnIndices.resize(m_rowOffsets.back());
+      inStream.read(reinterpret_cast<char*>(m_columnIndices.data()),
+                    m_columnIndices.size() * sizeof(Id));
+      m_values.resize(m_rowOffsets.back());
+      inStream.read(reinterpret_cast<char*>(m_values.data()),
+                    m_values.size() * sizeof(T));
+      inStream.close();
+      return;
     }
-    inStream.read(reinterpret_cast<char*>(&m_n), sizeof(size_t));
-    m_rowOffsets.resize(m_n + 1);
-    inStream.read(reinterpret_cast<char*>(m_rowOffsets.data()),
-                  m_rowOffsets.size() * sizeof(Id));
-    m_columnIndices.resize(m_rowOffsets.back());
-    inStream.read(reinterpret_cast<char*>(m_columnIndices.data()),
-                  m_columnIndices.size() * sizeof(Id));
-    m_values.resize(m_rowOffsets.back());
-    inStream.read(reinterpret_cast<char*>(m_values.data()), m_values.size() * sizeof(T));
-    inStream.close();
+    // CSV (; separated) file
+    if (fileType == "csv") {
+      std::ifstream inStream(fileName);
+      if (!inStream.is_open()) {
+        throw std::runtime_error(
+            std::format("Could not open file \'{}\' for reading.", fileName));
+      }
+      std::string line;
+      while (std::getline(inStream, line)) {
+        std::istringstream iss(line);
+        std::string token;
+        size_t row, col;
+        T value;
+
+        if (!std::getline(iss, token, ';') || !(std::istringstream(token) >> row) ||
+            !std::getline(iss, token, ';') || !(std::istringstream(token) >> col) ||
+            !std::getline(iss, token, ';') || !(std::istringstream(token) >> value)) {
+          throw std::runtime_error(
+              std::format("Error reading file '{}' at line: {}", fileName, line));
+        }
+
+        insert(row, col, value);
+      }
+      inStream.close();
+      return;
+    }
+    throw std::runtime_error(std::format("File type \'{}\' not supported.", fileType));
   }
   template <typename T>
     requires(std::is_arithmetic_v<T>)
