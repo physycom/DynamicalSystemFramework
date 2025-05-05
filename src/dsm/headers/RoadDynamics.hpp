@@ -2351,7 +2351,6 @@ namespace dsm {
       file << speed.mean << separator << speed.std << std::endl;
       m_travelDTs.clear();
     }
-    m_travelDTs.clear();
     file.close();
   }
 };  // namespace dsm
