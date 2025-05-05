@@ -10,20 +10,20 @@
 
 #include <algorithm>
 #include <cassert>
-#include <concepts>
-#include <vector>
-#include <random>
-#include <span>
-#include <numeric>
-#include <unordered_map>
 #include <cmath>
-#include <cassert>
-#include <format>
-#include <thread>
+#include <concepts>
 #include <exception>
+#include <format>
 #include <fstream>
 #include <iomanip>
+#include <numeric>
+#include <optional>
+#include <random>
+#include <span>
+#include <thread>
+#include <unordered_map>
 #include <variant>
+#include <vector>
 
 #include <tbb/tbb.h>
 
@@ -46,6 +46,7 @@ namespace dsm {
   class RoadDynamics : public Dynamics<RoadNetwork> {
     std::vector<std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
+    SparseMatrix<double> m_transitionMatrix;
 
   protected:
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
@@ -58,6 +59,8 @@ namespace dsm {
     std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
     std::optional<double> m_errorProbability;
     std::optional<double> m_passageProbability;
+    double m_maxTravelDistance;
+    Time m_maxTravelTime;
     double m_weightTreshold;
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
@@ -113,18 +116,44 @@ namespace dsm {
     /// @param errorProbability The error probability
     /// @throw std::invalid_argument If the error probability is not between 0 and 1
     void setErrorProbability(double errorProbability);
-
+    /// @brief Set the passage probability
+    /// @param passageProbability The passage probability
+    /// @details The passage probability is the probability of passing through a node
+    ///   It is useful in the case of random agents
     void setPassageProbability(double passageProbability);
+    /// @brief Set the transition matrix
+    /// @param transitionMatrix The transition matrix
+    /// @throw std::invalid_argument If some lines of the transition matrix are empty or if they differ from the adjacency matrix
+    /// @details The transition matrix is a sparse matrix representing the transition probabilities between the nodes
+    void setTransitionMatrix(const SparseMatrix<double>& transitionMatrix);
     /// @brief Set the force priorities flag
     /// @param forcePriorities The flag
     /// @details If true, if an agent cannot move to the next street, the whole node is skipped
-    void setForcePriorities(bool forcePriorities) { m_forcePriorities = forcePriorities; }
+    inline void setForcePriorities(bool forcePriorities) noexcept {
+      m_forcePriorities = forcePriorities;
+    }
     /// @brief Set the data update period.
     /// @param dataUpdatePeriod delay_t, The period
     /// @details Some data, i.e. the street queue lengths, are stored only after a fixed amount of time which is represented by this variable.
-    void setDataUpdatePeriod(delay_t dataUpdatePeriod) {
+    inline void setDataUpdatePeriod(delay_t dataUpdatePeriod) noexcept {
       m_dataUpdatePeriod = dataUpdatePeriod;
     }
+    /// @brief Set the maximum distance which a random agent can travel
+    /// @param maxDistance The maximum distance
+    /// @throw std::invalid_argument If the maximum distance is negative
+    inline void setMaxDistance(double const maxDistance) {
+      if (maxDistance < 0.) {
+        throw std::invalid_argument(
+            Logger::buildExceptionMessage("The maximum distance must be positive."));
+      }
+      m_maxTravelDistance = maxDistance;
+    };
+    /// @brief Set the maximum travel time which a random agent can travel
+    /// @param maxTravelTime The maximum travel time
+    inline void setMaxTravelTime(Time const maxTravelTime) noexcept {
+      m_maxTravelTime = maxTravelTime;
+    };
+
     /// @brief Set the destination nodes
     /// @param destinationNodes The destination nodes (as an initializer list)
     /// @param updatePaths If true, the paths are updated
@@ -142,9 +171,9 @@ namespace dsm {
 
     /// @brief Update the paths of the itineraries based on the given weight function
     void updatePaths();
-    /// @brief Add a set of agents to the simulation
+    /// @brief Add agents uniformly on the road network
     /// @param nAgents The number of agents to add
-    /// @param uniformly If true, the agents are added uniformly on the streets
+    /// @param itineraryId The id of the itinerary to use (default is std::nullopt)
     /// @throw std::runtime_error If there are no itineraries
     void addAgentsUniformly(Size nAgents, std::optional<Id> itineraryId = std::nullopt);
     /// @brief Add a set of agents to the simulation
@@ -214,12 +243,20 @@ namespace dsm {
 
     /// @brief Get the itineraries
     /// @return const std::unordered_map<Id, Itinerary>&, The itineraries
-    const std::unordered_map<Id, std::unique_ptr<Itinerary>>& itineraries() const {
+    inline const std::unordered_map<Id, std::unique_ptr<Itinerary>>& itineraries()
+        const noexcept {
       return m_itineraries;
+    }
+    /// @brief Get the transition matrix
+    /// @return const SparseMatrix<double>&, The transition matrix
+    inline const SparseMatrix<double>& transitionMatrix() const noexcept {
+      return m_transitionMatrix;
     }
     /// @brief Get the agents
     /// @return const std::unordered_map<Id, Agent<Id>>&, The agents
-    const std::vector<std::unique_ptr<Agent>>& agents() const { return m_agents; }
+    inline const std::vector<std::unique_ptr<Agent>>& agents() const noexcept {
+      return m_agents;
+    }
     /// @brief Get the number of agents currently in the simulation
     /// @return Size The number of agents
     size_t nAgents() const;
@@ -239,7 +276,8 @@ namespace dsm {
     /// @brief Get the turn counts of the agents
     /// @return const std::array<unsigned long long, 3>& The turn counts
     /// @details The array contains the counts of left (0), straight (1), right (2) and U (3) turns
-    const std::unordered_map<Id, std::array<unsigned long long, 4>>& turnCounts() const {
+    inline const std::unordered_map<Id, std::array<unsigned long long, 4>>& turnCounts()
+        const noexcept {
       return m_turnCounts;
     }
     /// @brief Get the turn probabilities of the agents
@@ -339,6 +377,8 @@ namespace dsm {
         m_weightFunction{weightFunction},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
+        m_maxTravelDistance{std::numeric_limits<double>::max()},
+        m_maxTravelTime{std::numeric_limits<Time>::max()},
         m_weightTreshold{weightTreshold},
         m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
@@ -495,8 +535,13 @@ namespace dsm {
                                            std::optional<Id> streetId) {
     auto possibleMoves = this->graph().adjacencyMatrix().getRow(nodeId);
 
+    Logger::debug(std::format("Is current agent random? {}", pAgent->isRandom()));
+    Logger::debug(
+        std::format("Is transition matrix empty? {}", m_transitionMatrix.empty()));
+
     std::set<Id> forbiddenStreetIds;
     if (streetId.has_value()) {
+      Logger::debug("Checking for forbidden turns");
       auto const& pStreet{this->graph().edge(*streetId)};
       forbiddenStreetIds = pStreet->forbiddenTurns();
       // Avoid U-TURNS, if possible
@@ -509,6 +554,7 @@ namespace dsm {
       }
     }
     // Exclude FORBIDDEN turns
+    Logger::debug("Excluding forbidden turns");
     for (auto const& forbiddenStreetId : forbiddenStreetIds) {
       auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
       // if possible moves contains the forbidden street, remove it
@@ -544,6 +590,23 @@ namespace dsm {
           possibleMoves = newPossibleMoves;
         }
       }
+    } else if (!m_transitionMatrix.empty()) {
+      Logger::debug(std::format("Using transition matrix for node {}", nodeId));
+      auto transitionRow{m_transitionMatrix.row(nodeId)};
+      assert(!transitionRow.empty());
+      std::uniform_real_distribution<double> uniformDist{0., 1.};
+      auto const randomValue{uniformDist(this->m_generator)};
+      auto sum{0.};
+      Id nextNodeId{0};
+      for (auto const& [nnid, probability] : transitionRow) {
+        sum += probability;
+        nextNodeId = nnid;
+        if (randomValue < sum) {
+          // Do not care about uturns when using transition matrix
+          break;
+        }
+      }
+      return nodeId * this->graph().nNodes() + nextNodeId;
     }
 
     assert(!possibleMoves.empty());
@@ -745,6 +808,13 @@ namespace dsm {
               this->itineraries().at(pAgentTemp->itineraryId())->destination()) {
             bArrived = true;
           }
+        } else {
+          if (pAgentTemp->distance() >= m_maxTravelDistance) {
+            bArrived = true;
+          }
+          if (!bArrived && (this->time() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
+            bArrived = true;
+          }
         }
         if (bArrived) {
           auto pAgent{pStreet->dequeue(queueIndex)};
@@ -861,7 +931,6 @@ namespace dsm {
     }
     m_errorProbability = errorProbability;
   }
-
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setPassageProbability(double passageProbability) {
@@ -870,6 +939,38 @@ namespace dsm {
                                 passageProbability));
     }
     m_passageProbability = passageProbability;
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::setTransitionMatrix(
+      const SparseMatrix<double>& transitionMatrix) {
+    if (transitionMatrix.n() != this->graph().nNodes()) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
+          "The transition matrix must have size {}x{} but given size is {}x{}",
+          this->graph().nNodes(),
+          this->graph().nNodes(),
+          transitionMatrix.n(),
+          transitionMatrix.n())));
+    }
+    for (auto i{0}; i < transitionMatrix.n(); ++i) {
+      auto const& trow{transitionMatrix.row(i)};
+      if (trow.empty()) {
+        throw std::invalid_argument(Logger::buildExceptionMessage(
+            std::format("The transition matrix row {} is empty", i)));
+      }
+      auto const& arow{this->graph().adjacencyMatrix().getRow(i)};
+      if (trow.size() != arow.size()) {
+        throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
+            "The transition matrix row {} has size {} but the adjacency matrix row {} "
+            "has size {}",
+            i,
+            trow.size(),
+            i,
+            arow.size())));
+      }
+    }
+    m_transitionMatrix = transitionMatrix;
+    m_transitionMatrix.normalize();
   }
 
   template <typename delay_t>
@@ -914,22 +1015,20 @@ namespace dsm {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::addAgentsUniformly(Size nAgents,
                                                  std::optional<Id> optItineraryId) {
-    if (this->itineraries().empty()) {
-      // TODO: make this possible for random agents
+    if (optItineraryId.has_value() && !this->itineraries().contains(*optItineraryId)) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
-          "It is not possible to add random agents without itineraries."));
+          std::format("No itineraries available. Cannot add agents with itinerary id {}",
+                      optItineraryId.value())));
     }
-    Id itineraryId{0};
-    const bool randomItinerary{!optItineraryId.has_value()};
-    if (!randomItinerary) {
-      itineraryId = optItineraryId.value();
-    }
+    bool const bRandomItinerary{!optItineraryId.has_value() &&
+                                !this->itineraries().empty()};
+    std::optional<Id> itineraryId{std::nullopt};
     std::uniform_int_distribution<Size> itineraryDist{
         0, static_cast<Size>(this->itineraries().size() - 1)};
     std::uniform_int_distribution<Size> streetDist{
         0, static_cast<Size>(this->graph().nEdges() - 1)};
     for (Size i{0}; i < nAgents; ++i) {
-      if (randomItinerary) {
+      if (bRandomItinerary) {
         auto itineraryIt{this->itineraries().cbegin()};
         std::advance(itineraryIt, itineraryDist(this->m_generator));
         itineraryId = itineraryIt->first;
@@ -1261,17 +1360,22 @@ namespace dsm {
     for (auto itAgent{m_agents.begin()}; itAgent != m_agents.end();) {
       auto& pAgent{*itAgent};
       if (!pAgent->srcNodeId().has_value()) {
+        Logger::debug("No source node id, generating a random one");
         pAgent->setSrcNodeId(nodeDist(this->m_generator));
       }
+      Logger::debug(std::format("Checking node {}", pAgent->srcNodeId().value()));
       auto const& srcNode{this->graph().node(pAgent->srcNodeId().value())};
       if (srcNode->isFull()) {
         ++itAgent;
         continue;
       }
       if (!pAgent->nextStreetId().has_value()) {
+        Logger::debug("No next street id, generating a random one");
         pAgent->setNextStreetId(
             this->m_nextStreetId(pAgent, srcNode->id(), pAgent->streetId()));
       }
+      Logger::debug(
+          std::format("Checking next street {}", pAgent->nextStreetId().value()));
       auto const& nextStreet{
           this->graph().edge(pAgent->nextStreetId().value())};  // next street
       if (nextStreet->isFull()) {
@@ -1279,6 +1383,7 @@ namespace dsm {
         continue;
       }
       assert(srcNode->id() == nextStreet->source());
+      Logger::debug("Adding agent on the source node");
       if (srcNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*srcNode);
         intersection.addAgent(0., std::move(pAgent));
