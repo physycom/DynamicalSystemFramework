@@ -93,7 +93,7 @@ namespace dsm {
     /// @brief Read the sparse matrix from a binary file
     /// @param fileName The name of the file containing the sparse matrix
     /// @param fileType The type of the file (default is "bin")
-    /// @param mapping A mapping of the indeces from strings to 0 -> N-1
+    /// @param mapping A mapping of the indices from strings to 0 -> N-1
     /// @throw std::runtime_error if the file cannot be opened
     void read(std::string const& fileName,
               std::string const& fileType = "bin",
