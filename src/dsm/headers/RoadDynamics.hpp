@@ -141,9 +141,11 @@ namespace dsm {
     /// @param maxDistance The maximum distance
     /// @throw std::invalid_argument If the maximum distance is negative
     inline void setMaxDistance(double const maxDistance) {
-      maxDistance < 0. ? throw std::invalid_argument(Logger::buildExceptionMessage(
-                             "The maximum distance must be positive."))
-                       : m_maxTravelDistance = maxDistance;
+      if (maxDistance < 0.) {
+        throw std::invalid_argument(
+            Logger::buildExceptionMessage("The maximum distance must be positive."));
+      }
+      m_maxTravelDistance = maxDistance;
     };
     /// @brief Set the maximum travel time which a random agent can travel
     /// @param maxTravelTime The maximum travel time
