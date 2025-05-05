@@ -49,7 +49,7 @@ namespace dsm {
     void reset();
   };
 
-  class TrafficLight : public Intersection {
+  class TrafficLight final : public Intersection {
   private:
     std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> m_cycles;
     std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>>
@@ -154,6 +154,6 @@ namespace dsm {
     /// @brief Resets all traffic light cycles
     /// @details For more info, see @ref TrafficLightCycle::reset()
     void resetCycles();
-    inline bool isTrafficLight() const noexcept final { return true; }
+    inline bool isTrafficLight() const noexcept { return true; }
   };
 }  // namespace dsm
