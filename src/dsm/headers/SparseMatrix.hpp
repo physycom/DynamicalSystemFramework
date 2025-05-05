@@ -51,7 +51,8 @@ namespace dsm {
     /// @param col The column index of the element
     /// @return The element at the specified row and column
     T operator()(Id row, Id col) const;
-
+    SparseMatrix& operator=(const SparseMatrix& other) = default;
+    SparseMatrix& operator=(SparseMatrix&& other) = default;
     bool operator==(const SparseMatrix& other) const;
 
     /// @brief Returns the number of (non-zero) elements in the matrix
