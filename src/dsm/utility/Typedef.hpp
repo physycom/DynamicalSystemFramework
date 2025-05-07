@@ -3,6 +3,12 @@
 
 #include <array>
 #include <cstdint>
+#ifndef __APPLE__
+#include <execution>
+#define DSM_EXECUTION std::execution::par_unseq,
+#else
+#define DSM_EXECUTION
+#endif
 #include <string_view>
 
 namespace dsm {
