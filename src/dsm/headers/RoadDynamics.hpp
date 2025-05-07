@@ -1837,7 +1837,7 @@ namespace dsm {
                 });
       std::unordered_set<Id> optimizedNodes;
 
-      for (auto const [nodeId, density] : sortedDensities) {
+      for (auto const& [nodeId, density] : sortedDensities) {
         auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
         for (auto const& sourceId : inNeighbours) {
           if (!densities.contains(sourceId) || optimizedNodes.contains(sourceId)) {
