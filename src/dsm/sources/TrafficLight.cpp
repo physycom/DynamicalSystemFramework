@@ -10,14 +10,13 @@ namespace dsm {
     auto const greenEnd = (m_phase + m_greenTime) % cycleTime;
 
     if (greenStart < greenEnd) {
-        // Normal case: green does not wrap around
-        return (counter >= greenStart) && (counter < greenEnd);
+      // Normal case: green does not wrap around
+      return (counter >= greenStart) && (counter < greenEnd);
     } else {
-        // Wraparound case: green spans cycle boundary
-        return (counter >= greenStart) || (counter < greenEnd);
+      // Wraparound case: green spans cycle boundary
+      return (counter >= greenStart) || (counter < greenEnd);
     }
-}
-
+  }
 
   bool TrafficLight::m_allowFreeTurns{true};
   void TrafficLight::setAllowFreeTurns(bool allow) { m_allowFreeTurns = allow; }

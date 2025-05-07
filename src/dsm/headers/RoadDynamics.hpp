@@ -738,7 +738,7 @@ namespace dsm {
                     continue;
                   }
                   auto const& pAgentTemp2{pStreetTemp->queue(i).front()};
-                  if (!pAgentTemp2->streetId().has_value()) {
+                  if (!pAgentTemp2->nextStreetId().has_value()) {
                     continue;
                   }
                   auto const& otherDirection{
@@ -827,6 +827,9 @@ namespace dsm {
             this->addAgent(std::move(pAgent));
           }
           continue;
+        }
+        if (!pAgentTemp->streetId().has_value()) {
+          Logger::error(std::format("Agent {} has no street id", pAgentTemp->id()));
         }
         auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
         if (nextStreet->isFull()) {
@@ -1027,6 +1030,13 @@ namespace dsm {
         0, static_cast<Size>(this->itineraries().size() - 1)};
     std::uniform_int_distribution<Size> streetDist{
         0, static_cast<Size>(this->graph().nEdges() - 1)};
+    if (this->nAgents() + nAgents > this->graph().maxCapacity()) {
+      Logger::error(std::format(
+          "Cannot add {} agents. The graph has reached its maximum capacity of {}",
+          nAgents,
+          this->graph().maxCapacity()));
+      return;
+    }
     for (Size i{0}; i < nAgents; ++i) {
       if (bRandomItinerary) {
         auto itineraryIt{this->itineraries().cbegin()};
@@ -1039,8 +1049,7 @@ namespace dsm {
         Size step = streetDist(this->m_generator);
         std::advance(streetIt, step);
         streetId = streetIt->first;
-      } while (this->graph().edge(streetId)->isFull() &&
-               this->nAgents() < this->graph().maxCapacity());
+      } while (this->graph().edge(streetId)->isFull());
       const auto& street{this->graph().edge(streetId)};
       auto pAgent{std::make_unique<Agent>(this->time(), itineraryId, street->source())};
       pAgent->setStreetId(streetId);
@@ -1253,15 +1262,17 @@ namespace dsm {
                 auto const streetId{sourceId * N + pNode->id()};
                 auto const& pStreet{this->graph().edge(streetId)};
                 if (bUpdateData && pNode->isTrafficLight()) {
-                  if (!m_queuesAtTrafficLights.contains(streetId)) {
+                  if (!m_queuesAtTrafficLights.contains(pStreet->id())) {
                     auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-                    for (auto const& [streetId, pair] : tl.cycles()) {
+                    assert(!tl.cycles().empty());
+                    for (auto const& [id, pair] : tl.cycles()) {
                       for (auto const& [direction, cycle] : pair) {
-                        m_queuesAtTrafficLights[streetId].emplace(direction, 0.);
+                        m_queuesAtTrafficLights[id].emplace(direction, 0.);
                       }
                     }
                   }
-                  for (auto& [direction, value] : m_queuesAtTrafficLights.at(streetId)) {
+                  for (auto& [direction, value] :
+                       m_queuesAtTrafficLights.at(pStreet->id())) {
                     value += pStreet->nExitingAgents(direction, true);
                   }
                 }
@@ -1821,20 +1832,22 @@ namespace dsm {
           if (!this->graph().node(sourceId)->isTrafficLight()) {
             continue;
           }
-          density += this->graph().edge(sourceId * this->graph().nNodes() + nodeId)->density(true);
+          density += this->graph()
+                         .edge(sourceId * this->graph().nNodes() + nodeId)
+                         ->density(true);
           ++n;
         }
         density /= n;
         densities[nodeId] = density;
       }
       // Sort densities map from big to small values
-      std::vector<std::pair<Id, double>> sortedDensities(densities.begin(), densities.end());
+      std::vector<std::pair<Id, double>> sortedDensities(densities.begin(),
+                                                         densities.end());
 
       // Sort by density descending
-      std::sort(sortedDensities.begin(), sortedDensities.end(),
-                [](auto const& a, auto const& b) {
-                    return a.second > b.second;
-                });
+      std::sort(sortedDensities.begin(),
+                sortedDensities.end(),
+                [](auto const& a, auto const& b) { return a.second > b.second; });
       std::unordered_set<Id> optimizedNodes;
 
       for (auto const& [nodeId, density] : sortedDensities) {
@@ -1849,16 +1862,18 @@ namespace dsm {
           }
           // Try to green-wave the situation
           auto& tl{static_cast<TrafficLight&>(*(this->graph().node(sourceId)))};
-          auto const& pStreet{this->graph().edge(sourceId * this->graph().nNodes() + nodeId)};
-          tl.increasePhases(pStreet->length() / (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
+          auto const& pStreet{
+              this->graph().edge(sourceId * this->graph().nNodes() + nodeId)};
+          tl.increasePhases(pStreet->length() /
+                            (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
           optimizedNodes.insert(sourceId);
           if (logStream.has_value()) {
             std::string logMsg =
                 std::format("\tNew cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
             for (auto const& [streetId, pair] : tl.cycles()) {
               auto const& pStreet{this->graph().edge(streetId)};
-              logMsg +=
-                  std::format("\t\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
+              logMsg += std::format(
+                  "\t\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
               for (auto const& [direction, cycle] : pair) {
                 logMsg += std::format("{}= ({} {}) ",
                                       directionToString[direction],

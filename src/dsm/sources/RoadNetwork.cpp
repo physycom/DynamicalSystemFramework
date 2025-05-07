@@ -197,6 +197,20 @@ namespace dsm {
         }
       }
       if (tl.streetPriorities().empty()) {
+        /*************************************************************
+         * 3. Check for streets with opposite angles
+         * ***********************************************************/
+        auto const& streetId = streetAngles.begin()->first;
+        auto const& angle = streetAngles.begin()->second;
+        for (auto const& [streetId2, angle2] : streetAngles) {
+          if (std::abs(angle - angle2) > 0.75 * std::numbers::pi) {
+            tl.addStreetPriority(streetId);
+            tl.addStreetPriority(streetId2);
+            break;
+          }
+        }
+      }
+      if (tl.streetPriorities().empty()) {
         Logger::warning(std::format("Failed to auto-init Traffic Light {}", id));
         continue;
       }
