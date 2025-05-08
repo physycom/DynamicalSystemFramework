@@ -211,8 +211,16 @@ namespace dsm {
         }
       }
       if (tl.streetPriorities().empty()) {
-        Logger::warning(std::format("Failed to auto-init Traffic Light {}", id));
-        continue;
+        Logger::warning(
+            std::format("Failed to auto-init Traffic Light {} - going random", id));
+        // Assign first and third keys of capacity map
+        auto it = capacities.begin();
+        auto const& firstKey = it->first;
+        ++it;
+        ++it;
+        auto const& thirdKey = it->first;
+        tl.addStreetPriority(firstKey);
+        tl.addStreetPriority(thirdKey);
       }
 
       // Assign cycles
