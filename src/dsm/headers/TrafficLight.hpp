@@ -134,6 +134,8 @@ namespace dsm {
     /// @brief Decrease the green times of the traffic light for priority streets and increase the green times for non-priority streets
     /// @param delta Delay, the time to increase or decrease the green times
     void decreaseGreenTimes(Delay const delta);
+
+    void increasePhases(Delay const phase);
     /// @brief Get the traffic light's cycles
     /// @return std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> const& The traffic light's cycles
     inline std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> const&

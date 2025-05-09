@@ -197,8 +197,30 @@ namespace dsm {
         }
       }
       if (tl.streetPriorities().empty()) {
-        Logger::warning(std::format("Failed to auto-init Traffic Light {}", id));
-        continue;
+        /*************************************************************
+         * 3. Check for streets with opposite angles
+         * ***********************************************************/
+        auto const& streetId = streetAngles.begin()->first;
+        auto const& angle = streetAngles.begin()->second;
+        for (auto const& [streetId2, angle2] : streetAngles) {
+          if (std::abs(angle - angle2) > 0.75 * std::numbers::pi) {
+            tl.addStreetPriority(streetId);
+            tl.addStreetPriority(streetId2);
+            break;
+          }
+        }
+      }
+      if (tl.streetPriorities().empty()) {
+        Logger::warning(
+            std::format("Failed to auto-init Traffic Light {} - going random", id));
+        // Assign first and third keys of capacity map
+        auto it = capacities.begin();
+        auto const& firstKey = it->first;
+        ++it;
+        ++it;
+        auto const& thirdKey = it->first;
+        tl.addStreetPriority(firstKey);
+        tl.addStreetPriority(thirdKey);
       }
 
       // Assign cycles
@@ -925,6 +947,52 @@ namespace dsm {
     }
 
     Logger::info(std::format("Successfully imported {} edges", nEdges()));
+  }
+  void RoadNetwork::importTrafficLights(const std::string& fileName) {
+    std::ifstream file{fileName};
+    if (!file.is_open()) {
+      throw std::invalid_argument(
+          Logger::buildExceptionMessage("Cannot find file: " + fileName));
+    }
+    std::string line;
+    std::getline(file, line);  // skip first line
+    while (!file.eof()) {
+      std::getline(file, line);
+      if (line.empty()) {
+        continue;
+      }
+      std::unordered_map<Id, Delay> storedGreenTimes;
+      std::istringstream iss{line};
+      std::string strId, streetSource, strCycleTime, strGT;
+      // id;streetSource;streetTarget;cycleTime;greenTime
+      std::getline(iss, strId, ';');
+      std::getline(iss, streetSource, ';');
+      std::getline(iss, strCycleTime, ';');
+      std::getline(iss, strGT, '\n');
+
+      auto const cycleTime{static_cast<Delay>(std::stoul(strCycleTime))};
+      // Cast node(id) to traffic light
+      auto& pNode{m_nodes.at(m_nodeMapping.at(strId))};
+      if (!pNode->isTrafficLight()) {
+        pNode = std::make_unique<TrafficLight>(
+            pNode->id(), cycleTime, pNode->coords().value());
+      }
+      auto& tl = static_cast<TrafficLight&>(*pNode);
+      auto const srcId{m_nodeMapping.at(streetSource)};
+      auto const streetId{srcId * m_nodes.size() + pNode->id()};
+      auto const greenTime{static_cast<Delay>(std::stoul(strGT))};
+      if (!storedGreenTimes.contains(pNode->id())) {
+        storedGreenTimes.emplace(pNode->id(), greenTime);
+      }
+      auto const storedGT{storedGreenTimes.at(pNode->id())};
+      if (storedGT == greenTime) {
+        auto cycle = TrafficLightCycle(greenTime, 0);
+        tl.setCycle(streetId, dsm::Direction::ANY, cycle);
+      } else {
+        auto cycle = TrafficLightCycle(greenTime, storedGT);
+        tl.setCycle(streetId, dsm::Direction::ANY, cycle);
+      }
+    }
   }
 
   void RoadNetwork::exportNodes(std::string const& path) {
