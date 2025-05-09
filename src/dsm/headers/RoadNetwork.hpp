@@ -130,6 +130,8 @@ namespace dsm {
     /// - coilcode: An integer code to identify the coil located on the street
     void importOSMEdges(const std::string& fileName);
 
+    void importTrafficLights(const std::string& fileName);
+
     /// @brief Export the graph's nodes to a csv-like file separated with ';'
     /// @param path The path to the file to export the nodes to
     /// @details The file format is csv-like, with the first line being the column names: id;lon;lat
