@@ -51,7 +51,8 @@ namespace dsm {
   protected:
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
-    std::unordered_map<Id, std::unordered_map<Direction, double>> m_queuesAtTrafficLights;
+    tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
+        m_queuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     Time m_previousOptimizationTime, m_previousSpireTime;
 
