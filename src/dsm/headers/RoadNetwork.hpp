@@ -129,7 +129,18 @@ namespace dsm {
     /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
     /// - coilcode: An integer code to identify the coil located on the street
     void importOSMEdges(const std::string& fileName);
-
+    /// @brief Import the graph's traffic lights from a file
+    /// @param fileName The name of the file to import the traffic lights from.
+    /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// - id: The id of the TrafficLight node
+    /// - sourceId: The id of the source node of the incoming street
+    /// - cycleTime: The traffic light's cycle time, in seconds
+    /// - greenTime: The green time of the considered phase, in time-steps
+    /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
+    /// @details The traffic lights are initialized with random parameters if no parameters are provided.
+    ///           The traffic lights with an input degree lower than 3 are converted to standard intersections.
+    ///           The traffic lights with no parameters set are initialized with random parameters.
+    ///           Street priorities are assigned considering the number of lanes and the speed limit.
     void importTrafficLights(const std::string& fileName);
 
     /// @brief Export the graph's nodes to a csv-like file separated with ';'

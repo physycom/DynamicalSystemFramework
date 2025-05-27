@@ -231,16 +231,18 @@ namespace dsm {
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
     void evolve(bool reinsert_agents = false);
     /// @brief Optimize the traffic lights by changing the green and red times
-    /// @param threshold double, The minimum difference between green and red queues to trigger the optimization (n agents - default is 0)
     /// @param optimizationType TrafficLightOptimization, The type of optimization. Default is DOUBLE_TAIL
     /// @param logFile The file into which write the logs (default is empty, meaning no logging)
+    /// @param threshold double, The minimum difference between green and red queues to trigger the local optimization (n agents - default is 0)
+    /// @param ratio double, The ratio between the self-density and neighbour density to trigger the non-local optimization (default is 1.3)
     /// @details The function cycles over the traffic lights and, if the difference between the two tails is greater than
     ///   the threshold multiplied by the mean capacity of the streets, it changes the green and red times of the traffic light, keeping the total cycle time constant.
     ///   The optimizationType parameter can be set to SINGLE_TAIL to use an algorith which looks only at the incoming street tails or to DOUBLE_TAIL to consider both incoming and outgoing street tails.
     void optimizeTrafficLights(
-        double const threshold = 0.,
         TrafficLightOptimization optimizationType = TrafficLightOptimization::DOUBLE_TAIL,
-        const std::string& logFile = std::string());
+        const std::string& logFile = std::string(),
+        double const threshold = 0.,
+        double const ratio = 1.3);
 
     /// @brief Get the itineraries
     /// @return const std::unordered_map<Id, Itinerary>&, The itineraries
@@ -1809,9 +1811,10 @@ namespace dsm {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::optimizeTrafficLights(
-      double const threshold,
       TrafficLightOptimization const optimizationType,
-      const std::string& logFile) {
+      const std::string& logFile,
+      double const threshold,
+      double const ratio) {
     std::optional<std::ofstream> logStream;
     if (!logFile.empty()) {
       logStream.emplace(logFile, std::ios::app);
@@ -1858,7 +1861,7 @@ namespace dsm {
             continue;
           }
           auto const& neighbourDensity{densities.at(sourceId)};
-          if (neighbourDensity < 1.3 * density) {
+          if (neighbourDensity < ratio * density) {
             continue;
           }
           // Try to green-wave the situation

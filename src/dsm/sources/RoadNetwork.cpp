@@ -139,7 +139,11 @@ namespace dsm {
         auto const cap{pStreet->capacity()};
         // Logger::debug(std::format("Street {} with capacity {}", streetId, cap));
         capacities.emplace(streetId, cap);
-        streetAngles.emplace(streetId, pStreet->angle());
+        auto angle{pStreet->angle()};
+        if (angle < 0.) {
+          angle += 2 * std::numbers::pi;
+        }
+        streetAngles.emplace(streetId, angle);
 
         maxSpeeds.emplace(streetId, speed);
         nLanes.emplace(streetId, nLan);
@@ -150,6 +154,18 @@ namespace dsm {
 
         higherNLanes = std::max(higherNLanes, nLan);
         lowerNLanes = std::min(lowerNLanes, nLan);
+      }
+      {
+        std::vector<std::pair<Id, double>> sortedAngles;
+        std::copy(
+            streetAngles.begin(), streetAngles.end(), std::back_inserter(sortedAngles));
+        std::sort(sortedAngles.begin(),
+                  sortedAngles.end(),
+                  [](auto const& a, auto const& b) { return a.second < b.second; });
+        streetAngles.clear();
+        for (auto const& [streetId, angle] : sortedAngles) {
+          streetAngles.emplace(streetId, angle);
+        }
       }
       if (tl.streetPriorities().empty()) {
         /*************************************************************
@@ -954,17 +970,16 @@ namespace dsm {
       throw std::invalid_argument(
           Logger::buildExceptionMessage("Cannot find file: " + fileName));
     }
+    std::unordered_map<Id, Delay> storedGreenTimes;
     std::string line;
     std::getline(file, line);  // skip first line
-    while (!file.eof()) {
-      std::getline(file, line);
+    while (std::getline(file, line)) {
       if (line.empty()) {
         continue;
       }
-      std::unordered_map<Id, Delay> storedGreenTimes;
       std::istringstream iss{line};
       std::string strId, streetSource, strCycleTime, strGT;
-      // id;streetSource;streetTarget;cycleTime;greenTime
+      // id;streetSource;cycleTime;greenTime
       std::getline(iss, strId, ';');
       std::getline(iss, streetSource, ';');
       std::getline(iss, strCycleTime, ';');
