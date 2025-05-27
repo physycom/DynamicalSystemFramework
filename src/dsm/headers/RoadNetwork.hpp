@@ -137,10 +137,11 @@ namespace dsm {
     /// - cycleTime: The traffic light's cycle time, in seconds
     /// - greenTime: The green time of the considered phase, in time-steps
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
-    /// @details The traffic lights are initialized with random parameters if no parameters are provided.
-    ///           The traffic lights with an input degree lower than 3 are converted to standard intersections.
-    ///           The traffic lights with no parameters set are initialized with random parameters.
-    ///           Street priorities are assigned considering the number of lanes and the speed limit.
+    /// @details The traffic lights are imported from the specified file. If the file does not provide
+    ///           sufficient parameters, the behavior of the traffic light initialization is undefined.
+    ///           Ensure the file contains valid and complete data for accurate traffic light configuration.
+    ///           Street priorities may be assigned based on additional parameters such as the number of lanes
+    ///           and the speed limit, if such data is available in the file.
     void importTrafficLights(const std::string& fileName);
 
     /// @brief Export the graph's nodes to a csv-like file separated with ';'
