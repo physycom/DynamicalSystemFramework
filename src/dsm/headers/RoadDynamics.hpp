@@ -1034,10 +1034,12 @@ namespace dsm {
     std::uniform_int_distribution<Size> streetDist{
         0, static_cast<Size>(this->graph().nEdges() - 1)};
     if (this->nAgents() + nAgents > this->graph().maxCapacity()) {
-      Logger::error(std::format(
-          "Cannot add {} agents. The graph has reached its maximum capacity of {}",
-          nAgents,
-          this->graph().maxCapacity()));
+      Logger::error(
+          std::format("Cannot add {} agents. The graph has currently {} with a maximum "
+                      "capacity of {}.",
+                      nAgents,
+                      this->nAgents(),
+                      this->graph().maxCapacity()));
       return;
     }
     for (Size i{0}; i < nAgents; ++i) {
