@@ -35,3 +35,24 @@ install(EXPORT dsmConfig
         FILE dsmConfig.cmake
         NAMESPACE dsm::
         DESTINATION lib/cmake/dsm)
+
+# Find pybind11
+find_package(pybind11 REQUIRED)
+
+# Add the Python binding module
+add_library(dsm_python_module MODULE src/dsm/binding.cpp)
+
+# Ensure the Python module name has no 'lib' prefix on Unix systems
+set_target_properties(dsm_python_module PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME "dsf"
+)
+
+# Link the pybind11 module with your static library and pybind11
+target_link_libraries(dsm_python_module PRIVATE dsm pybind11::module pybind11::headers)
+
+# Set include directories (if binding.cpp needs headers from your project)
+target_include_directories(dsm_python_module PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/headers
+)
+
