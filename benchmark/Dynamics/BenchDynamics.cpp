@@ -5,9 +5,9 @@
 #include "FirstOrderDynamics.hpp"
 #include "Bench.hpp"
 
-using RoadNetwork = dsm::RoadNetwork;
-using Itinerary = dsm::Itinerary;
-using Dynamics = dsm::FirstOrderDynamics;
+using RoadNetwork = dsf::RoadNetwork;
+using Itinerary = dsf::Itinerary;
+using Dynamics = dsf::FirstOrderDynamics;
 
 using Bench = sb::Bench<long long int>;
 

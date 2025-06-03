@@ -3,8 +3,8 @@
 
 #include "is_numeric.hpp"
 
-using dsm::is_numeric;
-using dsm::is_numeric_v;
+using dsf::is_numeric;
+using dsf::is_numeric_v;
 
 static_assert(is_numeric<int8_t>::value);
 static_assert(is_numeric<uint8_t>::value);

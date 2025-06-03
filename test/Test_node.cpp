@@ -9,14 +9,14 @@
 #include "doctest.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-using Intersection = dsm::Intersection;
-using TrafficLight = dsm::TrafficLight;
-using Station = dsm::Station;
+using Intersection = dsf::Intersection;
+using TrafficLight = dsf::TrafficLight;
+using Station = dsf::Station;
 
 TEST_CASE("Intersection") {
   SUBCASE("Constructor") {
     GIVEN("Some parameters") {
-      constexpr dsm::Id id = 1;
+      constexpr dsf::Id id = 1;
       constexpr double lat = 2.5;
       constexpr double lon = 3.5;
       const std::string name = "MyName";
@@ -89,47 +89,47 @@ TEST_CASE("TrafficLight") {
     TrafficLight::setAllowFreeTurns(true);
     GIVEN("A traffic light object with a cycle set") {
       TrafficLight tl{0, 2};
-      tl.setCycle(0, dsm::Direction::LEFT, {1, 0});
+      tl.setCycle(0, dsf::Direction::LEFT, {1, 0});
       WHEN("We increase counter") {
         ++tl;
         THEN("The traffic light is green for all except Left and U turns") {
-          CHECK(tl.isGreen(0, dsm::Direction::RIGHT));
-          CHECK(tl.isGreen(0, dsm::Direction::STRAIGHT));
-          CHECK_FALSE(tl.isGreen(0, dsm::Direction::LEFT));
-          CHECK_FALSE(tl.isGreen(0, dsm::Direction::UTURN));
+          CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
+          CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+          CHECK_FALSE(tl.isGreen(0, dsf::Direction::LEFT));
+          CHECK_FALSE(tl.isGreen(0, dsf::Direction::UTURN));
         }
         ++tl;
         THEN("The traffic light is green for all") {
-          CHECK(tl.isGreen(0, dsm::Direction::RIGHT));
-          CHECK(tl.isGreen(0, dsm::Direction::STRAIGHT));
-          CHECK(tl.isGreen(0, dsm::Direction::LEFT));
-          CHECK(tl.isGreen(0, dsm::Direction::UTURN));
+          CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
+          CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+          CHECK(tl.isGreen(0, dsf::Direction::LEFT));
+          CHECK(tl.isGreen(0, dsf::Direction::UTURN));
         }
       }
     }
     GIVEN("A traffic light object with a cycle set") {
       TrafficLight tl{0, 3};
-      tl.setCycle(0, dsm::Direction::RIGHT, {2, 2});
+      tl.setCycle(0, dsf::Direction::RIGHT, {2, 2});
       THEN("Traffic light is green for all") {
-        CHECK(tl.isGreen(0, dsm::Direction::RIGHT));
-        CHECK(tl.isGreen(0, dsm::Direction::STRAIGHT));
-        CHECK(tl.isGreen(0, dsm::Direction::LEFT));
-        CHECK(tl.isGreen(0, dsm::Direction::UTURN));
+        CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
+        CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+        CHECK(tl.isGreen(0, dsf::Direction::LEFT));
+        CHECK(tl.isGreen(0, dsf::Direction::UTURN));
       }
       WHEN("We increase counter") {
         ++tl;
         THEN("Traffic light is green for all except Right") {
-          CHECK_FALSE(tl.isGreen(0, dsm::Direction::RIGHT));
-          CHECK(tl.isGreen(0, dsm::Direction::STRAIGHT));
-          CHECK(tl.isGreen(0, dsm::Direction::LEFT));
-          CHECK(tl.isGreen(0, dsm::Direction::UTURN));
+          CHECK_FALSE(tl.isGreen(0, dsf::Direction::RIGHT));
+          CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+          CHECK(tl.isGreen(0, dsf::Direction::LEFT));
+          CHECK(tl.isGreen(0, dsf::Direction::UTURN));
         }
         ++tl;
         THEN("Traffic light is green for all") {
-          CHECK(tl.isGreen(0, dsm::Direction::RIGHT));
-          CHECK(tl.isGreen(0, dsm::Direction::STRAIGHT));
-          CHECK(tl.isGreen(0, dsm::Direction::LEFT));
-          CHECK(tl.isGreen(0, dsm::Direction::UTURN));
+          CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
+          CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+          CHECK(tl.isGreen(0, dsf::Direction::LEFT));
+          CHECK(tl.isGreen(0, dsf::Direction::UTURN));
         }
       }
     }
@@ -212,8 +212,8 @@ TEST_CASE("TrafficLight") {
 
 TEST_CASE("Station") {
   SUBCASE("Constructors") {
-    constexpr dsm::Id id = 1;
-    constexpr dsm::Delay managementTime = 2;
+    constexpr dsf::Id id = 1;
+    constexpr dsf::Delay managementTime = 2;
     constexpr double lat = 2.5;
     constexpr double lon = 3.5;
     const std::string name = "S0001";
@@ -255,17 +255,17 @@ TEST_CASE("Station") {
     }
   }
   SUBCASE("Enqueue and dequeue") {
-    constexpr dsm::Id id = 1;
-    constexpr dsm::Delay managementTime = 2;
+    constexpr dsf::Id id = 1;
+    constexpr dsf::Delay managementTime = 2;
     GIVEN("A Station object") {
       Station station{id, managementTime};
       WHEN("A train is enqueued") {
-        station.enqueue(1, dsm::train_t::BUS);
+        station.enqueue(1, dsf::train_t::BUS);
         THEN("The train is enqueued correctly") { CHECK_EQ(station.dequeue(), 1); }
       }
       WHEN("Multiple trains are enqueued") {
-        station.enqueue(1, dsm::train_t::RV);
-        station.enqueue(2, dsm::train_t::FRECCIAROSSA);
+        station.enqueue(1, dsf::train_t::RV);
+        station.enqueue(2, dsf::train_t::FRECCIAROSSA);
         THEN("The trains are enqueued correctly") {
           CHECK_EQ(station.dequeue(), 2);
           CHECK_EQ(station.dequeue(), 1);

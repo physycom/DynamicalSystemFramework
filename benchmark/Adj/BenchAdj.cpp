@@ -6,7 +6,7 @@
 #include "SparseMatrix.hpp"
 #include "Bench.hpp"
 
-using namespace dsm;
+using namespace dsf;
 
 using Bench = sb::Bench<long long int>;
 

@@ -2,9 +2,30 @@ import os
 import sys
 import platform
 import subprocess
+import re
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 from pathlib import Path
+
+
+def get_version_from_header():
+    """Extract version from C++ header file"""
+    header_path = Path(__file__).parent / "src" / "dsf" / "dsf.hpp"
+    try:
+        with open(header_path, 'r') as f:
+            content = f.read()
+        
+        major_match = re.search(r'DSF_VERSION_MAJOR = (\d+)', content)
+        minor_match = re.search(r'DSF_VERSION_MINOR = (\d+)', content)
+        patch_match = re.search(r'DSF_VERSION_PATCH = (\d+)', content)
+        
+        if major_match and minor_match and patch_match:
+            return f"{major_match.group(1)}.{minor_match.group(1)}.{patch_match.group(1)}"
+        else:
+            return "0.1.0"
+    except (FileNotFoundError, AttributeError):
+        # Fallback version if header can't be read
+        return "0.1.0"
 
 
 class CMakeExtension(Extension):
@@ -60,10 +81,13 @@ if os.path.exists("README.md"):
     with open("README.md", "r", encoding="utf-8") as f:
         long_description = f.read()
 
+# Get version from header file
+project_version = get_version_from_header()
+
 if long_description:
     setup(
         name="dsf",
-        version="0.1.0",
+        version=project_version,
         author="Your Name",
         author_email="your.email@example.com",
         description="DSM C++ core with Python bindings via pybind11",
@@ -77,7 +101,7 @@ if long_description:
 else:
     setup(
         name="dsf",
-        version="0.1.0",
+        version=project_version,
         author="Your Name",
         author_email="your.email@example.com",
         description="DSM C++ core with Python bindings via pybind11",

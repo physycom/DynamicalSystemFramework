@@ -4,9 +4,9 @@
 
 #include "is_street.hpp"
 
-using dsm::is_street;
-using dsm::is_street_v;
-using dsm::Street;
+using dsf::is_street;
+using dsf::is_street_v;
+using dsf::Street;
 
 // check the type trait
 static_assert(is_street<Street>::value);

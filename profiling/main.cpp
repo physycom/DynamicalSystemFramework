@@ -1,4 +1,4 @@
-#include "dsm/dsm.hpp"
+#include "dsf/dsf.hpp"
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -8,9 +8,9 @@
 
 using unit = uint32_t;
 
-using RoadNetwork = dsm::RoadNetwork;
-using Itinerary = dsm::Itinerary;
-using Dynamics = dsm::FirstOrderDynamics;
+using RoadNetwork = dsf::RoadNetwork;
+using Itinerary = dsf::Itinerary;
+using Dynamics = dsf::FirstOrderDynamics;
 
 int main() {
   RoadNetwork graph{};

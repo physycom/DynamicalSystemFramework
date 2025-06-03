@@ -2,7 +2,7 @@
 
 #include "doctest.h"
 
-using namespace dsm;
+using namespace dsf;
 
 TEST_CASE("Double matrix") {
   using Matrix = SparseMatrix<double>;
@@ -39,7 +39,7 @@ TEST_CASE("Double matrix") {
     CHECK_EQ(testMat, moved);
   }
   SUBCASE("Save and read") {
-    auto path = "./data/sparse_matrix.dsm";
+    auto path = "./data/sparse_matrix.dsf";
     testMat.save(path);
     Matrix mat(path);
     CHECK_EQ(testMat, mat);

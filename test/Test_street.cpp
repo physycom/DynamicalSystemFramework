@@ -9,11 +9,11 @@
 
 #include "doctest.h"
 
-using Agent = dsm::Agent;
-using Intersection = dsm::Intersection;
-using Street = dsm::Street;
-using Road = dsm::Road;
-using SpireStreet = dsm::SpireStreet;
+using Agent = dsf::Agent;
+using Intersection = dsf::Intersection;
+using Street = dsf::Street;
+using Road = dsf::Road;
+using SpireStreet = dsf::SpireStreet;
 
 TEST_CASE("Street") {
   Road::setMeanVehicleLength(1.);
@@ -75,17 +75,17 @@ TEST_CASE("Street") {
     GIVEN("A street with three lanes") {
       Street street{0, std::make_pair(0, 1), 5., 13.8888888889, 3};
       CHECK_EQ(street.laneMapping().size(), 3);
-      CHECK_EQ(street.laneMapping()[0], dsm::Direction::RIGHTANDSTRAIGHT);
-      CHECK_EQ(street.laneMapping()[1], dsm::Direction::STRAIGHT);
-      CHECK_EQ(street.laneMapping()[2], dsm::Direction::LEFT);
+      CHECK_EQ(street.laneMapping()[0], dsf::Direction::RIGHTANDSTRAIGHT);
+      CHECK_EQ(street.laneMapping()[1], dsf::Direction::STRAIGHT);
+      CHECK_EQ(street.laneMapping()[2], dsf::Direction::LEFT);
       WHEN("We change the lane mapping") {
-        street.setLaneMapping(std::vector<dsm::Direction>{
-            dsm::Direction::RIGHT, dsm::Direction::STRAIGHT, dsm::Direction::STRAIGHT});
+        street.setLaneMapping(std::vector<dsf::Direction>{
+            dsf::Direction::RIGHT, dsf::Direction::STRAIGHT, dsf::Direction::STRAIGHT});
         THEN("The lane mapping is updated") {
           CHECK_EQ(street.laneMapping().size(), 3);
-          CHECK_EQ(street.laneMapping()[0], dsm::Direction::RIGHT);
-          CHECK_EQ(street.laneMapping()[1], dsm::Direction::STRAIGHT);
-          CHECK_EQ(street.laneMapping()[2], dsm::Direction::STRAIGHT);
+          CHECK_EQ(street.laneMapping()[0], dsf::Direction::RIGHT);
+          CHECK_EQ(street.laneMapping()[1], dsf::Direction::STRAIGHT);
+          CHECK_EQ(street.laneMapping()[2], dsf::Direction::STRAIGHT);
         }
       }
     }

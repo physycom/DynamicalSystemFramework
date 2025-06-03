@@ -4,9 +4,9 @@
 
 #include "is_node.hpp"
 
-using dsm::is_node;
-using dsm::is_node_v;
-using dsm::Node;
+using dsf::is_node;
+using dsf::is_node_v;
+using dsf::Node;
 
 // check the type trait
 static_assert(is_node<Node>::value);
