@@ -1,19 +1,28 @@
+"""
+Setup script for DSF Python bindings
+This script uses setuptools to build the C++ core of DSF with Python bindings
+using pybind11 and CMake.
+It extracts the version from the C++ header file and configures the build
+process accordingly.
+"""
+
 import os
-import sys
+from pathlib import Path
 import platform
-import subprocess
 import re
+import sys
+import subprocess
+
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from pathlib import Path
 
 
 def get_version_from_header():
     """Extract version from C++ header file"""
     header_path = Path(__file__).parent / "src" / "dsf" / "dsf.hpp"
     try:
-        with open(header_path, "r") as f:
-            content = f.read()
+        with open(header_path, "r", encoding="UTF-8") as header_file:
+            content = header_file.read()
 
         major_match = re.search(r"DSF_VERSION_MAJOR = (\d+)", content)
         minor_match = re.search(r"DSF_VERSION_MINOR = (\d+)", content)
@@ -23,25 +32,30 @@ def get_version_from_header():
             return (
                 f"{major_match.group(1)}.{minor_match.group(1)}.{patch_match.group(1)}"
             )
-        else:
-            return "unknown"
+        return "unknown"
     except (FileNotFoundError, AttributeError):
         # Fallback version if header can't be read
         return "unknown"
 
 
-class CMakeExtension(Extension):
+class CMakeExtension(Extension):  # pylint: disable=too-few-public-methods
+    """Custom CMake extension class for setuptools"""
+
     def __init__(self, name: str, sourcedir: str = ""):
         super().__init__(name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
 
 
 class CMakeBuild(build_ext):
+    """Custom build_ext command to handle CMake extensions"""
+
     def run(self):
         try:
             subprocess.check_output(["cmake", "--version"])
-        except OSError:
-            raise RuntimeError("CMake must be installed to build the extensions")
+        except OSError as exc:
+            raise RuntimeError(
+                "CMake must be installed to build the extensions"
+            ) from exc
 
         for ext in self.extensions:
             self.build_extension(ext)
@@ -81,22 +95,22 @@ class CMakeBuild(build_ext):
 
 
 # Read long description from README.md if available
-long_description = ""
+LONG_DESCRIPTION = ""
 if os.path.exists("README.md"):
     with open("README.md", "r", encoding="utf-8") as f:
-        long_description = f.read()
+        LONG_DESCRIPTION = f.read()
 
 # Get version from header file
 project_version = get_version_from_header()
 
-if long_description:
+if LONG_DESCRIPTION:
     setup(
         name="dsf",
         version=project_version,
         author="Grufoony",
         author_email="gregorio.berselli@studio.unibo.it",
         description="DSF C++ core with Python bindings via pybind11",
-        long_description=long_description,
+        long_description=LONG_DESCRIPTION,
         long_description_content_type="text/markdown",
         ext_modules=[CMakeExtension("dsf")],
         cmdclass={"build_ext": CMakeBuild},
