@@ -101,12 +101,12 @@ if os.path.exists("README.md"):
         LONG_DESCRIPTION = f.read()
 
 # Get version from header file
-project_version = get_version_from_header()
+PROJECT_VERSION = get_version_from_header()
 
 if LONG_DESCRIPTION:
     setup(
         name="dsf",
-        version=project_version,
+        version=PROJECT_VERSION,
         author="Grufoony",
         author_email="gregorio.berselli@studio.unibo.it",
         description="DSF C++ core with Python bindings via pybind11",
