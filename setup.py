@@ -120,7 +120,7 @@ if LONG_DESCRIPTION:
 else:
     setup(
         name="dsf",
-        version=project_version,
+        version=PROJECT_VERSION,
         author="Grufoony",
         author_email="gregorio.berselli@studio.unibo.it",
         description="DSF C++ core with Python bindings via pybind11",
