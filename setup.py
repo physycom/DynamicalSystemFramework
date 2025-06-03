@@ -12,15 +12,17 @@ def get_version_from_header():
     """Extract version from C++ header file"""
     header_path = Path(__file__).parent / "src" / "dsf" / "dsf.hpp"
     try:
-        with open(header_path, 'r') as f:
+        with open(header_path, "r") as f:
             content = f.read()
-        
-        major_match = re.search(r'DSF_VERSION_MAJOR = (\d+)', content)
-        minor_match = re.search(r'DSF_VERSION_MINOR = (\d+)', content)
-        patch_match = re.search(r'DSF_VERSION_PATCH = (\d+)', content)
-        
+
+        major_match = re.search(r"DSF_VERSION_MAJOR = (\d+)", content)
+        minor_match = re.search(r"DSF_VERSION_MINOR = (\d+)", content)
+        patch_match = re.search(r"DSF_VERSION_PATCH = (\d+)", content)
+
         if major_match and minor_match and patch_match:
-            return f"{major_match.group(1)}.{minor_match.group(1)}.{patch_match.group(1)}"
+            return (
+                f"{major_match.group(1)}.{minor_match.group(1)}.{patch_match.group(1)}"
+            )
         else:
             return "0.1.0"
     except (FileNotFoundError, AttributeError):
@@ -54,6 +56,7 @@ class CMakeBuild(build_ext):
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",
+            "-DBUILD_PYTHON_BINDINGS=ON",
         ]
 
         build_args = []
@@ -72,7 +75,9 @@ class CMakeBuild(build_ext):
                 cmake_args += ["-G", "Unix Makefiles"]
 
         subprocess.check_call(["cmake", ext.sourcedir] + cmake_args, cwd=build_temp)
-        subprocess.check_call(["cmake", "--build", ".", "--config", cfg] + build_args, cwd=build_temp)
+        subprocess.check_call(
+            ["cmake", "--build", ".", "--config", cfg] + build_args, cwd=build_temp
+        )
 
 
 # Read long description from README.md if available

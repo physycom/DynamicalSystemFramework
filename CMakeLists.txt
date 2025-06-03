@@ -47,23 +47,37 @@ install(EXPORT dsmConfig
         NAMESPACE dsf::
         DESTINATION lib/cmake/dsf)
 
-# Find pybind11
-find_package(pybind11 REQUIRED)
+# Optional Python bindings - only build if requested
+option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
-# Add the Python binding module
-add_library(dsf_python_module MODULE src/dsf/binding.cpp)
+if(BUILD_PYTHON_BINDINGS)
+    include(FetchContent)
+    
+    # Get pybind11
+    FetchContent_Declare(pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11.git
+        GIT_TAG v2.13.6
+    )
+    FetchContent_GetProperties(pybind11)
+    if(NOT pybind11_POPULATED)
+        FetchContent_MakeAvailable(pybind11)
+    endif()
 
-# Ensure the Python module name has no 'lib' prefix on Unix systems
-set_target_properties(dsf_python_module PROPERTIES
-    PREFIX ""
-    OUTPUT_NAME "dsf"
-)
+    # Add the Python binding module
+    add_library(dsf_python_module MODULE src/dsf/binding.cpp)
 
-# Link the pybind11 module with your static library and pybind11
-target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers)
+    # Ensure the Python module name has no 'lib' prefix on Unix systems
+    set_target_properties(dsf_python_module PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "dsf"
+    )
 
-# Set include directories (if binding.cpp needs headers from your project)
-target_include_directories(dsf_python_module PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/headers
-)
+    # Link the pybind11 module with your static library and pybind11
+    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers)
+
+    # Set include directories (if binding.cpp needs headers from your project)
+    target_include_directories(dsf_python_module PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/headers
+    )
+endif()
 
