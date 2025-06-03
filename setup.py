@@ -24,10 +24,10 @@ def get_version_from_header():
                 f"{major_match.group(1)}.{minor_match.group(1)}.{patch_match.group(1)}"
             )
         else:
-            return "0.1.0"
+            return "unknown"
     except (FileNotFoundError, AttributeError):
         # Fallback version if header can't be read
-        return "0.1.0"
+        return "unknown"
 
 
 class CMakeExtension(Extension):

@@ -58,7 +58,7 @@ cmake -B build && make -C build
 ```
 To run all the tests together use the command:
 ```shell
-./dsm_tests.out
+./dsf_tests.out
 ```
 
 ## Benchmarking
