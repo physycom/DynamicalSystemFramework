@@ -1046,11 +1046,11 @@ namespace dsf {
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
-    file << "id;source_id;target_id;length;capacity;name;coil_code;geometry\n";
+    file << "id;source_id;target_id;length;nlanes;capacity;name;coil_code;geometry\n";
     for (auto const& [streetId, pStreet] : m_edges) {
       file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';'
-           << pStreet->length() << ';' << pStreet->capacity() << ';' << pStreet->name()
-           << ';';
+           << pStreet->length() << ';' << pStreet->nLanes() << ';' << pStreet->capacity()
+           << ';' << pStreet->name() << ';';
       if (pStreet->isSpire()) {
         file << dynamic_cast<SpireStreet&>(*pStreet).code() << ';';
       } else {
