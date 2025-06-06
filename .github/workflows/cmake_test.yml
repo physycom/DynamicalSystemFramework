@@ -33,7 +33,7 @@ jobs:
 
     - name: Run tests
       working-directory: ${{github.workspace}}/test
-      run: ./dsm_tests.out
+      run: ./dsf_tests.out
     
     - name: create Report
       working-directory: ${{github.workspace}}/test

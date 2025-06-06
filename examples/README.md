@@ -1,14 +1,14 @@
 # DSM - Examples
-Here are reported some example studies using the dsm framework.
+Here are reported some example studies using the dsf framework.
 Many of these simulations were used as thesis work.
 
 To compile all simulations, use cmake inside the *examples* folder:
 ```shell
-cmake -B release -DCMAKE_BUILD_TYPE=Release && make -C release
+cmake -B build -DCMAKE_BUILD_TYPE=Release && make -C build
 ```
 If anything goes wrong, try to build the example in debug mode:
 ```shell
-cmake -B debug -DCMAKE_BUILD_TYPE=Debug && make -C debug
+cmake -B build -DCMAKE_BUILD_TYPE=Debug && make -C build
 ```
 
 ## Simulation files

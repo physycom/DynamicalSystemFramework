@@ -38,7 +38,8 @@ images
 examples/debug
 examples/release
 
-test/data/*dsm
+test/data/*dsf
 
 
 webapp/data/*
+*egg-info*
