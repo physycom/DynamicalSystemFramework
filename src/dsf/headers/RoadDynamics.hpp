@@ -711,37 +711,71 @@ namespace dsf {
           auto const& thisDirection{this->graph()
                                         .edge(pAgentTemp->nextStreetId().value())
                                         ->turnDirection(pStreet->angle())};
-          if (!intersection.streetPriorities().contains(pStreet->id())) {
-            // I have to check if the agent has right of way
-            auto const& inNeighbours{
-                this->graph().adjacencyMatrix().getCol(destinationNode->id())};
-            for (auto const& sourceId : inNeighbours) {
-              auto const& streetId{sourceId * this->graph().nNodes() +
-                                   destinationNode->id()};
-              if (streetId == pStreet->id()) {
-                continue;
+          if (!intersection.streetPriorities().empty()) {
+            if (!intersection.streetPriorities().contains(pStreet->id())) {
+              // I have to check if the agent has right of way
+              auto const& inNeighbours{
+                  this->graph().adjacencyMatrix().getCol(destinationNode->id())};
+              for (auto const& sourceId : inNeighbours) {
+                auto const& streetId{sourceId * this->graph().nNodes() +
+                                     destinationNode->id()};
+                if (streetId == pStreet->id()) {
+                  continue;
+                }
+                auto const& pStreetTemp{this->graph().edge(streetId)};
+                if (pStreetTemp->nExitingAgents() == 0) {
+                  continue;
+                }
+                if (intersection.streetPriorities().contains(streetId)) {
+                  Logger::debug(std::format(
+                      "Skipping agent emission from street {} -> {} due to right of way.",
+                      pStreet->source(),
+                      pStreet->target()));
+                  bCanPass = false;
+                  break;
+                } else if (thisDirection >= Direction::LEFT) {
+                  // Check if the agent has right of way using direction
+                  // The problem arises only when you have to turn left
+                  for (auto i{0}; i < pStreetTemp->nLanes(); ++i) {
+                    // check queue is not empty and take the top agent
+                    if (pStreetTemp->queue(i).empty()) {
+                      continue;
+                    }
+                    auto const& pAgentTemp2{pStreetTemp->queue(i).front()};
+                    if (!pAgentTemp2->nextStreetId().has_value()) {
+                      continue;
+                    }
+                    auto const& otherDirection{
+                        this->graph()
+                            .edge(pAgentTemp2->nextStreetId().value())
+                            ->turnDirection(this->graph()
+                                                .edge(pAgentTemp2->streetId().value())
+                                                ->angle())};
+                    if (otherDirection < Direction::LEFT) {
+                      Logger::debug(std::format(
+                          "Skipping agent emission from street {} -> {} due to right of "
+                          "way with other agents.",
+                          pStreet->source(),
+                          pStreet->target()));
+                      bCanPass = false;
+                      break;
+                    }
+                  }
+                }
               }
-              auto const& pStreetTemp{this->graph().edge(streetId)};
-              if (pStreetTemp->nExitingAgents() == 0) {
-                continue;
-              }
-              if (intersection.streetPriorities().contains(streetId)) {
-                Logger::debug(std::format(
-                    "Skipping agent emission from street {} -> {} due to right of way.",
-                    pStreet->source(),
-                    pStreet->target()));
-                bCanPass = false;
-                break;
-              } else if (thisDirection >= Direction::LEFT) {
-                // Check if the agent has right of way using direction
-                // The problem arises only when you have to turn left
+            } else if (thisDirection >= Direction::LEFT) {
+              for (auto const& streetId : intersection.streetPriorities()) {
+                if (streetId == pStreet->id()) {
+                  continue;
+                }
+                auto const& pStreetTemp{this->graph().edge(streetId)};
                 for (auto i{0}; i < pStreetTemp->nLanes(); ++i) {
                   // check queue is not empty and take the top agent
                   if (pStreetTemp->queue(i).empty()) {
                     continue;
                   }
                   auto const& pAgentTemp2{pStreetTemp->queue(i).front()};
-                  if (!pAgentTemp2->nextStreetId().has_value()) {
+                  if (!pAgentTemp2->streetId().has_value()) {
                     continue;
                   }
                   auto const& otherDirection{
@@ -750,7 +784,7 @@ namespace dsf {
                           ->turnDirection(this->graph()
                                               .edge(pAgentTemp2->streetId().value())
                                               ->angle())};
-                  if (otherDirection < Direction::LEFT) {
+                  if (otherDirection < thisDirection) {
                     Logger::debug(std::format(
                         "Skipping agent emission from street {} -> {} due to right of "
                         "way with other agents.",
@@ -759,37 +793,6 @@ namespace dsf {
                     bCanPass = false;
                     break;
                   }
-                }
-              }
-            }
-          } else if (thisDirection >= Direction::LEFT) {
-            for (auto const& streetId : intersection.streetPriorities()) {
-              if (streetId == pStreet->id()) {
-                continue;
-              }
-              auto const& pStreetTemp{this->graph().edge(streetId)};
-              for (auto i{0}; i < pStreetTemp->nLanes(); ++i) {
-                // check queue is not empty and take the top agent
-                if (pStreetTemp->queue(i).empty()) {
-                  continue;
-                }
-                auto const& pAgentTemp2{pStreetTemp->queue(i).front()};
-                if (!pAgentTemp2->streetId().has_value()) {
-                  continue;
-                }
-                auto const& otherDirection{
-                    this->graph()
-                        .edge(pAgentTemp2->nextStreetId().value())
-                        ->turnDirection(
-                            this->graph().edge(pAgentTemp2->streetId().value())->angle())};
-                if (otherDirection < thisDirection) {
-                  Logger::debug(std::format(
-                      "Skipping agent emission from street {} -> {} due to right of "
-                      "way with other agents.",
-                      pStreet->source(),
-                      pStreet->target()));
-                  bCanPass = false;
-                  break;
                 }
               }
             }

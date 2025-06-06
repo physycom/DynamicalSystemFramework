@@ -135,6 +135,15 @@ PYBIND11_MODULE(dsf, m) {
           "addAgentsRandomly",
           [](dsf::FirstOrderDynamics& self,
              dsf::Size nAgents,
+             const std::variant<std::monostate, size_t, double>& minNodeDistance) {
+            self.addAgentsRandomly(nAgents, minNodeDistance);
+          },
+          pybind11::arg("nAgents"),
+          pybind11::arg("minNodeDistance") = std::monostate{})
+      .def(
+          "addAgentsRandomly",
+          [](dsf::FirstOrderDynamics& self,
+             dsf::Size nAgents,
              const std::unordered_map<dsf::Id, double>& src_weights,
              const std::unordered_map<dsf::Id, double>& dst_weights,
              const std::variant<std::monostate, size_t, double>& minNodeDistance) {
