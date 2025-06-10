@@ -1,12 +1,54 @@
 #include "./headers/AdjacencyMatrix.hpp"
 #include "./headers/RoadNetwork.hpp"
 #include "./headers/FirstOrderDynamics.hpp"
+#include "./utility/Logger.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>  // Changed to include all stl type casters
 
 PYBIND11_MODULE(dsf, m) {
   m.doc() = "Python bindings for the DSM library";
+
+  // Bind log_level_t enum
+  pybind11::enum_<dsf::log_level_t>(m, "LogLevel")
+      .value("DEBUG", dsf::log_level_t::DEBUG)
+      .value("WARNING", dsf::log_level_t::WARNING)
+      .value("INFO", dsf::log_level_t::INFO)
+      .value("ERROR", dsf::log_level_t::ERROR)
+      .export_values();
+
+  // Bind TrafficLightOptimization enum
+  pybind11::enum_<dsf::TrafficLightOptimization>(m, "TrafficLightOptimization")
+      .value("SINGLE_TAIL", dsf::TrafficLightOptimization::SINGLE_TAIL)
+      .value("DOUBLE_TAIL", dsf::TrafficLightOptimization::DOUBLE_TAIL)
+      .export_values();
+
+  // Bind Logger class
+  pybind11::class_<dsf::Logger>(m, "Logger")
+      .def_static("setVerbose", &dsf::Logger::setVerbose, pybind11::arg("verbose"))
+      .def_static("setLogLevel", &dsf::Logger::setLogLevel, pybind11::arg("logLevel"))
+      .def_static(
+          "buildExceptionMessage",
+          [](const std::string& message) {
+            return dsf::Logger::buildExceptionMessage(message);
+          },
+          pybind11::arg("message"))
+      .def_static(
+          "debug",
+          [](const std::string& message) { dsf::Logger::debug(message); },
+          pybind11::arg("message"))
+      .def_static(
+          "info",
+          [](const std::string& message) { dsf::Logger::info(message); },
+          pybind11::arg("message"))
+      .def_static(
+          "warning",
+          [](const std::string& message) { dsf::Logger::warning(message); },
+          pybind11::arg("message"))
+      .def_static(
+          "error",
+          [](const std::string& message) { dsf::Logger::error(message); },
+          pybind11::arg("message"));
 
   pybind11::class_<dsf::AdjacencyMatrix>(m, "AdjacencyMatrix")
       .def(pybind11::init<>())
@@ -111,9 +153,12 @@ PYBIND11_MODULE(dsf, m) {
       .def("setForcePriorities",
            &dsf::FirstOrderDynamics::setForcePriorities,
            pybind11::arg("forcePriorities"))
-      .def("setDataUpdatePeriod",
-           &dsf::FirstOrderDynamics::setDataUpdatePeriod,
-           pybind11::arg("dataUpdatePeriod"))
+      .def(
+          "setDataUpdatePeriod",
+          [](dsf::FirstOrderDynamics& self, int dataUpdatePeriod) {
+            self.setDataUpdatePeriod(static_cast<dsf::Delay>(dataUpdatePeriod));
+          },
+          pybind11::arg("dataUpdatePeriod"))
       .def("setMaxDistance",
            &dsf::FirstOrderDynamics::setMaxDistance,
            pybind11::arg("maxDistance"))
@@ -172,11 +217,12 @@ PYBIND11_MODULE(dsf, m) {
       .def("evolve",
            &dsf::FirstOrderDynamics::evolve,
            pybind11::arg("reinsert_agents") = false)
-      // .def("optimizeTrafficLights", &dsf::FirstOrderDynamics::optimizeTrafficLights,
-      //      pybind11::arg("optimizationType") = dsf::TrafficLightOptimization::DOUBLE_TAIL,
-      //      pybind11::arg("logFile") = "",
-      //      pybind11::arg("threshold") = 0.,
-      //      pybind11::arg("ratio") = 1.3)
+      .def("optimizeTrafficLights",
+           &dsf::FirstOrderDynamics::optimizeTrafficLights,
+           pybind11::arg("optimizationType") = dsf::TrafficLightOptimization::DOUBLE_TAIL,
+           pybind11::arg("logFile") = "",
+           pybind11::arg("threshold") = 0.,
+           pybind11::arg("ratio") = 1.3)
       // .def("itineraries", &dsf::FirstOrderDynamics::itineraries, pybind11::return_value_policy::reference_internal)
       // .def("transitionMatrix", &dsf::FirstOrderDynamics::transitionMatrix, pybind11::return_value_policy::reference_internal)
       // .def("agents", &dsf::FirstOrderDynamics::agents, pybind11::return_value_policy::reference_internal)
