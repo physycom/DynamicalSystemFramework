@@ -668,9 +668,11 @@ namespace dsf {
           // Logger::debug("Skipping due to time");
           continue;
         }
+        bool overtimed{false};
         {
           auto const timeDiff{this->time() - pAgentTemp->freeTime()};
           if (timeDiff > 120) {
+            overtimed = true;
             Logger::warning(std::format(
                 "Time {} - Agent currently on {} ({} -> {}), targetting {} ({} turn - "
                 "Traffic "
@@ -688,7 +690,11 @@ namespace dsf {
         pAgentTemp->setSpeed(0.);
         const auto& destinationNode{this->graph().node(pStreet->target())};
         if (destinationNode->isFull()) {
-          Logger::debug("Skipping due to space");
+          if (overtimed) {
+            Logger::warning("Skipping due to space");
+          } else {
+            Logger::debug("Skipping due to space");
+          }
           continue;
         }
         if (destinationNode->isTrafficLight()) {
@@ -839,6 +845,21 @@ namespace dsf {
         }
         auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
         if (nextStreet->isFull()) {
+          if (overtimed) {
+            Logger::warning(std::format(
+                "Skipping agent emission from street {} -> {} due to full next street "
+                "{}",
+                pStreet->source(),
+                pStreet->target(),
+                nextStreet->id()));
+          } else {
+            Logger::debug(std::format(
+                "Skipping agent emission from street {} -> {} due to full next street "
+                "{}",
+                pStreet->source(),
+                pStreet->target(),
+                nextStreet->id()));
+          }
           continue;
         }
         auto pAgent{pStreet->dequeue(queueIndex)};
