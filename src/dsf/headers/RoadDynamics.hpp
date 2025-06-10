@@ -396,7 +396,7 @@ namespace dsf {
     }
     updatePaths();
     std::for_each(
-        this->graph().edges().cbegin(),
+        DSM_EXECUTION this->graph().edges().cbegin(),
         this->graph().edges().cend(),
         [this](auto const& pair) {
           m_turnCounts.emplace(pair.first, std::array<unsigned long long, 4>{0, 0, 0, 0});
@@ -1133,15 +1133,19 @@ namespace dsf {
           }
         }
       }
+      Logger::debug(std::format(
+          "Exiting first while loop with srcId = {} and dstId = {}", srcId, dstId));
       if (nSources > 1) {
         dstId = srcId;
       }
       while (dstId == srcId) {
         dRand = dstUniformDist(this->m_generator);
         sum = 0.;
+        std::size_t n_emptyRows = 0;
         for (const auto& [id, weight] : dst_weights) {
           // if the node is at a minimum distance from the destination, skip it
           if (this->itineraries().at(id)->path()->getRow(srcId).empty()) {
+            ++n_emptyRows;
             continue;
           }
           if (std::holds_alternative<size_t>(minNodeDistance)) {
@@ -1170,7 +1174,16 @@ namespace dsf {
             break;
           }
         }
+        if (n_emptyRows == dst_weights.size()) {
+          Logger::error(
+              std::format("No destination nodes found from "
+                          "source node {}.",
+                          srcId));
+          return;
+        }
       }
+      Logger::debug(std::format(
+          "Exiting second while loop with srcId = {} and dstId = {}", srcId, dstId));
       // find the itinerary with the given destination as destination
       auto itineraryIt{std::find_if(this->itineraries().cbegin(),
                                     this->itineraries().cend(),
