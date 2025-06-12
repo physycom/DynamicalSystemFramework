@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16.0)
 
-project(dsm_tests VERSION 1.3.10 LANGUAGES CXX)
+project(dsf_tests VERSION 3.0.0 LANGUAGES CXX)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -34,11 +34,11 @@ endif()
 
 # add as executable all cpp files into '.' folder
 file(GLOB TEST_SOURCES "*.cpp")
-file(GLOB SRC_SOURCES "../src/dsm/sources/*.cpp" "../src/dsm/utility/*.cpp")
+file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
 list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 
 # Define the executable
-add_executable(dsm_tests.out ${SOURCES})
-target_include_directories(dsm_tests.out PRIVATE ../src/dsm/headers/ ../src/dsm/utility/TypeTraits/)
-target_include_directories(dsm_tests.out SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
-target_link_libraries(dsm_tests.out PRIVATE TBB::tbb)
+add_executable(dsf_tests.out ${SOURCES})
+target_include_directories(dsf_tests.out PRIVATE ../src/dsf/headers/ ../src/dsf/utility/TypeTraits/)
+target_include_directories(dsf_tests.out SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
+target_link_libraries(dsf_tests.out PRIVATE TBB::tbb)

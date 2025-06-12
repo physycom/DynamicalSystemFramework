@@ -1,4 +1,4 @@
-#include "../src/dsm/dsm.hpp"
+#include "../src/dsf/dsf.hpp"
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -33,11 +33,11 @@ std::atomic<bool> bExitFlag{false};
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using RoadNetwork = dsm::RoadNetwork;
-using Dynamics = dsm::FirstOrderDynamics;
-using Street = dsm::Street;
-using SpireStreet = dsm::SpireStreet;
-using Roundabout = dsm::Roundabout;
+using RoadNetwork = dsf::RoadNetwork;
+using Dynamics = dsf::FirstOrderDynamics;
+using Street = dsf::Street;
+using SpireStreet = dsf::SpireStreet;
+using Roundabout = dsf::Roundabout;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"
@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
   std::cout << "-------------------------------------------------\n";
 
   const std::string IN_MATRIX{"./data/matrix.dat"};       // input matrix file
-  const std::string IN_COORDS{"./data/coordinates.dsm"};  // input coords file
+  const std::string IN_COORDS{"./data/coordinates.dsf"};  // input coords file
   const std::string OUT_FOLDER{std::format("{}output_scrb_{}_{}/",
                                            BASE_OUT_FOLDER,
                                            ERROR_PROBABILITY,
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
   }
   fs::create_directory(OUT_FOLDER);
   // Starting
-  std::cout << "Using dsm version: " << dsm::version() << '\n';
+  std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
   graph.importMatrix(IN_MATRIX, false);

@@ -2,7 +2,7 @@
  * @brief Main function to simulate traffic dynamics over Via Stalingrado, in Bologna.
  */
 
-#include "../src/dsm/dsm.hpp"
+#include "../src/dsf/dsf.hpp"
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -24,12 +24,12 @@ std::atomic<unsigned int> progress{0};
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using RoadNetwork = dsm::RoadNetwork;
-using Itinerary = dsm::Itinerary;
-using Dynamics = dsm::FirstOrderDynamics;
-using Street = dsm::Street;
-using SpireStreet = dsm::SpireStreet;
-using TrafficLight = dsm::TrafficLight;
+using RoadNetwork = dsf::RoadNetwork;
+using Itinerary = dsf::Itinerary;
+using Dynamics = dsf::FirstOrderDynamics;
+using Street = dsf::Street;
+using SpireStreet = dsf::SpireStreet;
+using TrafficLight = dsf::TrafficLight;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"
@@ -54,7 +54,7 @@ int main() {
   RoadNetwork graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
-  dsm::Road::setMeanVehicleLength(8.);
+  dsf::Road::setMeanVehicleLength(8.);
   Street s01{1, std::make_pair(0, 1), 2281., 13.9, 2};
   Street s12{7, std::make_pair(1, 2), 118., 13.9, 2};
   Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};
@@ -62,19 +62,19 @@ int main() {
   // Viale Aldo Moro
   graph.addNode<TrafficLight>(1, 132);
   auto& tl1 = graph.node<TrafficLight>(1);
-  tl1.setCycle(s01.id(), dsm::Direction::ANY, {62, 0});
+  tl1.setCycle(s01.id(), dsf::Direction::ANY, {62, 0});
   // Via Donato Creti
   graph.addNode<TrafficLight>(2, 141);
   auto& tl2 = graph.node<TrafficLight>(2);
-  tl2.setCycle(s12.id(), dsm::Direction::ANY, {72, 0});
+  tl2.setCycle(s12.id(), dsf::Direction::ANY, {72, 0});
   // Via del Lavoro
   graph.addNode<TrafficLight>(3, 138);
   auto& tl3 = graph.node<TrafficLight>(3);
-  tl3.setCycle(s23.id(), dsm::Direction::ANY, {88, 0});
+  tl3.setCycle(s23.id(), dsf::Direction::ANY, {88, 0});
   // Viali
   graph.addNode<TrafficLight>(4, 131);
   auto& tl4 = graph.node<TrafficLight>(4);
-  tl4.setCycle(s34.id(), dsm::Direction::ANY, {81, 0});
+  tl4.setCycle(s34.id(), dsf::Direction::ANY, {81, 0});
 
   graph.addStreets(s01, s12, s23, s34);
   graph.buildAdj();
@@ -82,8 +82,8 @@ int main() {
   graph.makeSpireStreet(19);
   auto& spire = graph.edge<SpireStreet>(19);
 
-  dsm::Logger::info(std::format("Intersections: {}", graph.nNodes()));
-  dsm::Logger::info(std::format("Streets: {}", graph.nEdges()));
+  dsf::Logger::info(std::format("Intersections: {}", graph.nNodes()));
+  dsf::Logger::info(std::format("Streets: {}", graph.nEdges()));
 
   // Create the dynamics
   Dynamics dynamics{graph, false, 69, 0.6};

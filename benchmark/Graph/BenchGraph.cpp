@@ -7,10 +7,10 @@
 
 #include "RoadNetwork.hpp"
 
-using RoadNetwork = dsm::RoadNetwork;
-using Intersection = dsm::Intersection;
-using Street = dsm::Street;
-using SparseMatrix = dsm::SparseMatrix<bool>;
+using RoadNetwork = dsf::RoadNetwork;
+using Intersection = dsf::Intersection;
+using Street = dsf::Street;
+using SparseMatrix = dsf::SparseMatrix<bool>;
 
 using Bench = sb::Bench<long long int>;
 

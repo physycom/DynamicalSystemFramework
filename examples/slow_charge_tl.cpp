@@ -1,4 +1,4 @@
-#include "../src/dsm/dsm.hpp"
+#include "../src/dsf/dsf.hpp"
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -34,11 +34,11 @@ std::atomic<bool> bExitFlag{false};
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using RoadNetwork = dsm::RoadNetwork;
-using Dynamics = dsm::FirstOrderDynamics;
-using Street = dsm::Street;
-using SpireStreet = dsm::SpireStreet;
-using TrafficLight = dsm::TrafficLight;
+using RoadNetwork = dsf::RoadNetwork;
+using Dynamics = dsf::FirstOrderDynamics;
+using Street = dsf::Street;
+using SpireStreet = dsf::SpireStreet;
+using TrafficLight = dsf::TrafficLight;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"
@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
   auto nAgents{std::stoul(argv[5])};
 
   const std::string IN_MATRIX{"./data/matrix.dat"};       // input matrix file
-  const std::string IN_COORDS{"./data/coordinates.dsm"};  // input coords file
+  const std::string IN_COORDS{"./data/coordinates.dsf"};  // input coords file
   std::string OUT_FOLDER{std::format("{}output_sctl_{}_{}/",
                                      BASE_OUT_FOLDER,
                                      ERROR_PROBABILITY,
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
   }
   fs::create_directory(OUT_FOLDER);
   // Starting
-  std::cout << "Using dsm version: " << dsm::version() << '\n';
+  std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
   graph.importMatrix(IN_MATRIX, false);
@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
       }
     }
     for (auto const& streetId : streets) {
-      tl.setCycle(streetId, dsm::Direction::ANY, {static_cast<dsm::Delay>(value), 0});
+      tl.setCycle(streetId, dsf::Direction::ANY, {static_cast<dsf::Delay>(value), 0});
     }
     for (const auto& sourceId : col) {
       auto const streetId = sourceId * graph.nNodes() + nodeId;
@@ -305,7 +305,7 @@ int main(int argc, char** argv) {
     dynamics.evolve(false);
     if (OPTIMIZE && (dynamics.time() % 420 == 0)) {
       dynamics.optimizeTrafficLights(
-          dsm::TrafficLightOptimization::DOUBLE_TAIL, std::string(), 0.3);
+          dsf::TrafficLightOptimization::DOUBLE_TAIL, std::string(), 0.3);
     }
     if (dynamics.time() % 2400 == 0 && nAgents > 0) {
       // auto meanDelta = std::accumulate(deltas.begin(), deltas.end(), 0) /

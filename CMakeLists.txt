@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.16.0)
 
-project(dms VERSION 2.5.8 LANGUAGES CXX)
+# Read version from header file
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/dsf/dsf.hpp" DSF_HPP_CONTENT)
+string(REGEX MATCH "DSF_VERSION_MAJOR = ([0-9]+)" _ ${DSF_HPP_CONTENT})
+set(DSF_VERSION_MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "DSF_VERSION_MINOR = ([0-9]+)" _ ${DSF_HPP_CONTENT})
+set(DSF_VERSION_MINOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "DSF_VERSION_PATCH = ([0-9]+)" _ ${DSF_HPP_CONTENT})
+set(DSF_VERSION_PATCH ${CMAKE_MATCH_1})
+
+set(DSF_VERSION "${DSF_VERSION_MAJOR}.${DSF_VERSION_MINOR}.${DSF_VERSION_PATCH}")
+
+project(dsf VERSION ${DSF_VERSION} LANGUAGES CXX)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -14,16 +25,16 @@ endif()
 
 find_package(TBB REQUIRED CONFIG)
 
-file(GLOB SOURCES "src/dsm/sources/*.cpp" "src/dsm/utility/*.cpp")
+file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp")
 
-add_library(dsm STATIC ${SOURCES})
-target_include_directories(dsm PUBLIC 
+add_library(dsf STATIC ${SOURCES})
+target_include_directories(dsf PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/headers>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(dsm PRIVATE TBB::tbb)
+target_link_libraries(dsf PRIVATE TBB::tbb)
 
-install(TARGETS dsm
+install(TARGETS dsf
         EXPORT dsmConfig
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
@@ -33,5 +44,40 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_INSTALL_PREFIX}
 
 install(EXPORT dsmConfig
         FILE dsmConfig.cmake
-        NAMESPACE dsm::
-        DESTINATION lib/cmake/dsm)
+        NAMESPACE dsf::
+        DESTINATION lib/cmake/dsf)
+
+# Optional Python bindings - only build if requested
+option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
+
+if(BUILD_PYTHON_BINDINGS)
+    include(FetchContent)
+    
+    # Get pybind11
+    FetchContent_Declare(pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11.git
+        GIT_TAG v2.13.6
+    )
+    FetchContent_GetProperties(pybind11)
+    if(NOT pybind11_POPULATED)
+        FetchContent_MakeAvailable(pybind11)
+    endif()
+
+    # Add the Python binding module
+    add_library(dsf_python_module MODULE src/dsf/binding.cpp)
+
+    # Ensure the Python module name has no 'lib' prefix on Unix systems
+    set_target_properties(dsf_python_module PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "dsf"
+    )
+
+    # Link the pybind11 module with your static library and pybind11
+    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers)
+
+    # Set include directories (if binding.cpp needs headers from your project)
+    target_include_directories(dsf_python_module PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/headers
+    )
+endif()
+

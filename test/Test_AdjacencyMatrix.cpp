@@ -3,7 +3,7 @@
 
 #include "doctest.h"
 
-using namespace dsm;
+using namespace dsf;
 
 TEST_CASE("Test default construction and insertion") {
   AdjacencyMatrix adj;

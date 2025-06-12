@@ -34,8 +34,8 @@ jobs:
       working-directory: ${{github.workspace}}
       run: |
         touch test.cpp
-        echo "#include <dsm/dsm.hpp>" >> test.cpp
+        echo "#include <dsf/dsf.hpp>" >> test.cpp
         echo "int main() {}" >> test.cpp
         g++ test.cpp -std=c++20 -I$(brew --prefix tbb)/include -L$(brew --prefix tbb)/lib -ltbb \
           && echo "Compiled successfully" \
-          || (echo "Cannot include dsm" ; exit 1)
+          || (echo "Cannot include dsf" ; exit 1)
