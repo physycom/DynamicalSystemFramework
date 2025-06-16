@@ -7,7 +7,7 @@
 
 #include "doctest.h"
 
-using namespace dsm;
+using namespace dsf;
 
 TEST_CASE("Measurement") {
   SUBCASE("STL vector") {
@@ -38,15 +38,15 @@ TEST_CASE("Measurement") {
 }
 
 TEST_CASE("FirstOrderDynamics") {
-  // dsm::Logger::setLogLevel(dsm::log_level_t::DEBUG);
+  // dsf::Logger::setLogLevel(dsf::log_level_t::DEBUG);
   SUBCASE("Constructor") {
     GIVEN("A graph object") {
       auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsm");
+      graph.importMatrix("./data/matrix.dsf");
       graph.buildAdj();
       WHEN("A dynamics object is created") {
         FirstOrderDynamics dynamics{
-            graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+            graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
         THEN("The node and the street sets are the same") {
           CHECK_EQ(dynamics.graph().nNodes(), 3);
           CHECK_EQ(dynamics.graph().nEdges(), 4);
@@ -89,7 +89,7 @@ TEST_CASE("FirstOrderDynamics") {
       auto graph = RoadNetwork{};
       graph.importMatrix("./data/matrix.dat");
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       WHEN("We add a span of destination nodes") {
         std::array<uint32_t, 3> nodes{0, 1, 2};
         dynamics.setDestinationNodes(nodes);
@@ -106,9 +106,9 @@ TEST_CASE("FirstOrderDynamics") {
   SUBCASE("addAgent") {
     GIVEN("A dynamics object, a source node and a destination node") {
       auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsm");
+      graph.importMatrix("./data/matrix.dsf");
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
       WHEN("We add the agent") {
         dynamics.addAgent(2, 0);
@@ -125,9 +125,9 @@ TEST_CASE("FirstOrderDynamics") {
   SUBCASE("addAgentsUniformly") {
     GIVEN("A dynamics object and an itinerary") {
       auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsm");
+      graph.importMatrix("./data/matrix.dsf");
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       WHEN("We add a random agent") {
         dynamics.addItinerary(2, 2);
         dynamics.addAgentsUniformly(1);
@@ -140,9 +140,9 @@ TEST_CASE("FirstOrderDynamics") {
     }
     GIVEN("A dynamics object and many itineraries") {
       auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsm");
+      graph.importMatrix("./data/matrix.dsf");
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
       dynamics.addItinerary(1, 1);
       WHEN("We add many agents") {
@@ -176,7 +176,7 @@ TEST_CASE("FirstOrderDynamics") {
       auto graph = RoadNetwork{};
       graph.importMatrix("./data/matrix.dat");
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       WHEN("We add one agent for existing itinerary") {
         std::unordered_map<uint32_t, double> src{{0, 1.}};
         std::unordered_map<uint32_t, double> dst{{2, 1.}};
@@ -194,7 +194,7 @@ TEST_CASE("FirstOrderDynamics") {
       WHEN("We add agents for existing itineraries") {
         std::unordered_map<uint32_t, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
         std::unordered_map<uint32_t, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
-        std::vector<dsm::Id> destinations{14, 102, 107};
+        std::vector<dsf::Id> destinations{14, 102, 107};
         dynamics.setDestinationNodes(destinations);
         dynamics.addAgentsRandomly(3, src, dst);
         THEN("The agents are correctly set") {
@@ -226,7 +226,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph.importMatrix("./data/matrix.dat", false);
       graph.buildAdj();
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.setPassageProbability(p);
       WHEN("We add some agent") {
         dynamics.addAgents(n);
@@ -243,9 +243,9 @@ TEST_CASE("FirstOrderDynamics") {
   SUBCASE("addAgents") {
     GIVEN("A dynamics object and one itinerary") {
       auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsm");
+      graph.importMatrix("./data/matrix.dsf");
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
       WHEN("We add an agent with itinerary 2") {
         dynamics.addAgent(2, 0);
@@ -274,7 +274,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addStreets(s1, s2, s3);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0.0, dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0.0, dsf::weight_functions::streetLength, 1.};
       WHEN("We add an itinerary and update the paths") {
         dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 2)));
         dynamics.updatePaths();
@@ -333,7 +333,7 @@ TEST_CASE("FirstOrderDynamics") {
       RoadNetwork graph2{};
       graph2.importMatrix("./data/matrix.dat");
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(0, 118);
       dynamics.addItinerary(1, 118);
       dynamics.addItinerary(2, 118);
@@ -359,7 +359,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph.addStreets(s1, s2, s3, s4);
       graph.buildAdj();
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(0, 2);
       WHEN("We update the paths") {
         dynamics.updatePaths();
@@ -395,8 +395,8 @@ TEST_CASE("FirstOrderDynamics") {
       graph.addStreets(s1, s2, s3, s4);
       graph.buildAdj();
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0., dsm::weight_functions::streetTime, 1.};
-      // dynamics.setWeightFunction(dsm::weight_functions::streetTime);
+          graph, false, 69, 0., dsf::weight_functions::streetTime, 1.};
+      // dynamics.setWeightFunction(dsf::weight_functions::streetTime);
       dynamics.addItinerary(0, 2);
       WHEN("We update the paths") {
         dynamics.updatePaths();
@@ -431,7 +431,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph.addStreets(s1, s2, s3);
       graph.buildAdj();
       FirstOrderDynamics dynamics{
-          graph, false, 69, 0.0, dsm::weight_functions::streetLength, 1.};
+          graph, false, 69, 0.0, dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       WHEN("We add an agent randomly and evolve the dynamics") {
@@ -476,7 +476,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(1, 1);
       dynamics.updatePaths();
       dynamics.addAgent(1, 0);
@@ -504,7 +504,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 1)));
       dynamics.updatePaths();
       dynamics.addAgent(0, 0);
@@ -534,7 +534,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(1, 1);
       dynamics.updatePaths();
       dynamics.addAgent(1, 0);
@@ -566,9 +566,9 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.setDestinationNodes({1, 2});
-      std::vector<dsm::Id> trip{2, 1};
+      std::vector<dsf::Id> trip{2, 1};
       dynamics.addAgent(trip, 0);
       WHEN("We evolve the dynamics") {
         dynamics.evolve(false);
@@ -606,11 +606,11 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addNode<TrafficLight>(1, 4);
       graph2.addStreets(s1, s2, s3, s4);
       auto& tl = graph2.node<TrafficLight>(1);
-      tl.setCycle(1, dsm::Direction::ANY, {2, 0});
-      tl.setCycle(16, dsm::Direction::ANY, {2, 2});
+      tl.setCycle(1, dsf::Direction::ANY, {2, 0});
+      tl.setCycle(16, dsf::Direction::ANY, {2, 2});
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       dynamics.addAgent(2, 0);
@@ -655,9 +655,9 @@ TEST_CASE("FirstOrderDynamics") {
       {
         graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
         auto& tl = graph2.node<TrafficLight>(1);
-        tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 2});
-        tl.setCycle(1, dsm::Direction::LEFT, {1, 4});
-        tl.setCycle(11, dsm::Direction::ANY, {3, 2});
+        tl.setCycle(1, dsf::Direction::RIGHTANDSTRAIGHT, {2, 2});
+        tl.setCycle(1, dsf::Direction::LEFT, {1, 4});
+        tl.setCycle(11, dsf::Direction::ANY, {3, 2});
         tl.setComplementaryCycle(8, 11);
         tl.setComplementaryCycle(21, 11);
       }
@@ -671,7 +671,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.adjustNodeCapacities();
 
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.setDestinationNodes({0, 2, 3, 4});
 
       WHEN("We add agents and make the system evolve") {
@@ -718,9 +718,9 @@ TEST_CASE("FirstOrderDynamics") {
         graph2.addNode<TrafficLight>(1, 6, std::make_pair(0, 0));
         auto& tl = graph2.node<TrafficLight>(1);
         // Now testing red light = NO PHASE
-        tl.setCycle(1, dsm::Direction::RIGHTANDSTRAIGHT, {2, 0});
-        tl.setCycle(1, dsm::Direction::LEFT, {1, 2});
-        tl.setCycle(11, dsm::Direction::ANY, {3, 0});
+        tl.setCycle(1, dsf::Direction::RIGHTANDSTRAIGHT, {2, 0});
+        tl.setCycle(1, dsf::Direction::LEFT, {1, 2});
+        tl.setCycle(11, dsf::Direction::ANY, {3, 0});
         tl.setComplementaryCycle(8, 11);
         tl.setComplementaryCycle(21, 11);
       }
@@ -735,7 +735,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.autoMapStreetLanes();
 
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.setDestinationNodes({0, 2, 3, 4});
 
       WHEN("We add agents and make the system evolve") {
@@ -785,12 +785,12 @@ TEST_CASE("FirstOrderDynamics") {
         auto& tl = graph2.makeTrafficLight(1, 8, 3);
         tl.addStreetPriority(1);
         tl.addStreetPriority(11);
-        tl.setCycle(1, dsm::Direction::ANY, {4, 0});
-        tl.setCycle(11, dsm::Direction::ANY, {4, 0});
+        tl.setCycle(1, dsf::Direction::ANY, {4, 0});
+        tl.setCycle(11, dsf::Direction::ANY, {4, 0});
         tl.setComplementaryCycle(16, 11);
         tl.setComplementaryCycle(21, 11);
         FirstOrderDynamics dynamics{
-            graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+            graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
         dynamics.setDestinationNodes({0, 2, 3, 4});
         WHEN("We evolve the dynamics and optimize traffic lights") {
           dynamics.addAgents(7, 0, 2);
@@ -800,7 +800,7 @@ TEST_CASE("FirstOrderDynamics") {
             dynamics.evolve(false);
           }
           dynamics.optimizeTrafficLights(
-              dsm::TrafficLightOptimization::SINGLE_TAIL, std::string(), 1);
+              dsf::TrafficLightOptimization::SINGLE_TAIL, std::string(), 1);
           THEN("Green and red time are different") {
             CHECK(tl.meanGreenTime(true) > tl.meanGreenTime(false));
           }
@@ -818,7 +818,7 @@ TEST_CASE("FirstOrderDynamics") {
             dynamics.evolve(false);
           }
           dynamics.optimizeTrafficLights(
-              dsm::TrafficLightOptimization::SINGLE_TAIL, std::string(), 1);
+              dsf::TrafficLightOptimization::SINGLE_TAIL, std::string(), 1);
           THEN("Green and red time are equal") {
             CHECK_EQ(tl.meanGreenTime(true), tl.meanGreenTime(false));
           }
@@ -842,7 +842,7 @@ TEST_CASE("FirstOrderDynamics") {
       auto& rb = graph2.makeRoundabout(1);
       graph2.adjustNodeCapacities();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(0, 0);
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
@@ -888,7 +888,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addStreets(s1, s2);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       dynamics.addAgent(2, 0);
@@ -916,7 +916,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.buildAdj();
       graph2.makeStochasticStreet(1, 0.3);
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       dynamics.addAgent(2, 0);
@@ -1009,7 +1009,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addEdge<Street>(7, std::make_pair(4, 0), 10., 10.);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.graph().node(0)->setCapacity(3);
       dynamics.graph().node(0)->setTransportCapacity(1);
       auto& nodeO{dynamic_cast<Intersection&>(*dynamics.graph().node(0))};
@@ -1027,7 +1027,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent in A passes first") {
           CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
-          CHECK_EQ(nodeO.agents().size(), 1);
+          CHECK_EQ(nodeO.agents().size(), 2);
           CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 20);
         }
         dynamics.evolve(false);
@@ -1052,7 +1052,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent in D passes first") {
           CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
-          CHECK_EQ(nodeO.agents().size(), 1);
+          CHECK_EQ(nodeO.agents().size(), 2);
           CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 15);
         }
         dynamics.evolve(false);
@@ -1091,7 +1091,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addEdge<Street>(1, std::make_pair(1, 2), 10., 10.);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
       dynamics.updatePaths();
       dynamics.addAgent(2, 0);
@@ -1120,7 +1120,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addEdge(1, std::make_pair(1, 2), 10., 10.);
       graph2.buildAdj();
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsm::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       dynamics.addAgent(2, 0);

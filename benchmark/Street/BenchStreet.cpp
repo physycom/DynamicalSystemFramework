@@ -6,9 +6,9 @@
 
 #include "RoadNetwork.hpp"
 
-using Agent = dsm::Agent;
-using Street = dsm::Street;
-using SparseMatrix = dsm::SparseMatrix<bool>;
+using Agent = dsf::Agent;
+using Street = dsf::Street;
+using SparseMatrix = dsf::SparseMatrix<bool>;
 
 using Bench = sb::Bench<long long int>;
 

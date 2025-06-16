@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16.0)
 
-project(dsm_examples VERSION 1.3.10 LANGUAGES CXX)
+project(dsf_examples VERSION 3.0.0 LANGUAGES CXX)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -21,12 +21,12 @@ set(EXECUTABLE_OUTPUT_PATH ../)
 
 # add as executable all cpp files into '.' folder
 file(GLOB SOURCES "*.cpp")
-file(GLOB SRC_SOURCES "../src/dsm/sources/*.cpp" "../src/dsm/utility/*.cpp")
+file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
 
 # Loop through each source file and create an executable
 foreach(SOURCE ${SOURCES})
     get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
 	add_executable(${EXE_NAME}.out ${SOURCE} ${SRC_SOURCES})
-    target_include_directories(${EXE_NAME}.out PRIVATE ../src/dsm/headers/ ../src/dsm/utility/TypeTraits/)
+    target_include_directories(${EXE_NAME}.out PRIVATE ../src/dsf/headers/ ../src/dsf/utility/TypeTraits/)
     target_link_libraries(${EXE_NAME}.out PRIVATE TBB::tbb)
 endforeach()

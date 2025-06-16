@@ -10,10 +10,10 @@
 
 #include "doctest.h"
 
-using RoadNetwork = dsm::RoadNetwork;
-using AdjacencyMatrix = dsm::AdjacencyMatrix;
-using Street = dsm::Street;
-using Road = dsm::Road;
+using RoadNetwork = dsf::RoadNetwork;
+using AdjacencyMatrix = dsf::AdjacencyMatrix;
+using Street = dsf::Street;
+using Road = dsf::Road;
 using Path = std::vector<uint>;
 
 template <typename T1, typename T2>
@@ -116,41 +116,41 @@ TEST_CASE("RoadNetwork") {
       CHECK_EQ(graph.nEdges(), 6);
       CHECK_EQ(graph.nNodes(), 4);
       WHEN("We automatically map street lanes") {
-        // dsm::Logger::setLogLevel(dsm::log_level_t::DEBUG);
+        // dsf::Logger::setLogLevel(dsf::log_level_t::DEBUG);
         graph.autoMapStreetLanes();
-        // dsm::Logger::setLogLevel(dsm::log_level_t::INFO);
+        // dsf::Logger::setLogLevel(dsf::log_level_t::INFO);
         THEN("The lanes are correctly mapped") {
           CHECK_EQ(graph.edge(1)->laneMapping().size(), 3);
-          CHECK_EQ(graph.edge(1)->laneMapping()[0], dsm::Direction::ANY);
-          CHECK_EQ(graph.edge(1)->laneMapping()[1], dsm::Direction::ANY);
-          CHECK_EQ(graph.edge(1)->laneMapping()[2], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(1)->laneMapping()[0], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(1)->laneMapping()[1], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(1)->laneMapping()[2], dsf::Direction::ANY);
           CHECK_EQ(graph.edge(4)->laneMapping().size(), 3);
-          CHECK_EQ(graph.edge(4)->laneMapping()[0], dsm::Direction::RIGHT);
-          CHECK_EQ(graph.edge(4)->laneMapping()[1], dsm::Direction::RIGHT);
-          CHECK_EQ(graph.edge(4)->laneMapping()[2], dsm::Direction::LEFT);
+          CHECK_EQ(graph.edge(4)->laneMapping()[0], dsf::Direction::RIGHT);
+          CHECK_EQ(graph.edge(4)->laneMapping()[1], dsf::Direction::RIGHT);
+          CHECK_EQ(graph.edge(4)->laneMapping()[2], dsf::Direction::LEFT);
           CHECK_EQ(graph.edge(2)->laneMapping().size(), 1);
-          CHECK_EQ(graph.edge(2)->laneMapping()[0], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(2)->laneMapping()[0], dsf::Direction::ANY);
           CHECK_EQ(graph.edge(8)->laneMapping().size(), 1);
-          CHECK_EQ(graph.edge(8)->laneMapping()[0], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(8)->laneMapping()[0], dsf::Direction::ANY);
           CHECK_EQ(graph.edge(3)->laneMapping().size(), 2);
-          CHECK_EQ(graph.edge(3)->laneMapping()[0], dsm::Direction::ANY);
-          CHECK_EQ(graph.edge(3)->laneMapping()[1], dsm::Direction::ANY);
+          CHECK_EQ(graph.edge(3)->laneMapping()[0], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(3)->laneMapping()[1], dsf::Direction::ANY);
           CHECK_EQ(graph.edge(12)->laneMapping().size(), 2);
-          CHECK_EQ(graph.edge(12)->laneMapping()[0], dsm::Direction::RIGHT);
-          CHECK_EQ(graph.edge(12)->laneMapping()[1], dsm::Direction::STRAIGHT);
+          CHECK_EQ(graph.edge(12)->laneMapping()[0], dsf::Direction::RIGHT);
+          CHECK_EQ(graph.edge(12)->laneMapping()[1], dsf::Direction::STRAIGHT);
         }
       }
     }
   }
-  SUBCASE("importMatrix - dsm") {
-    // This tests the importMatrix function over .dsm files
+  SUBCASE("importMatrix - dsf") {
+    // This tests the importMatrix function over .dsf files
     // GIVEN: a graph
-    // WHEN: we import a .dsm file
+    // WHEN: we import a .dsf file
     // THEN: the graph's adjacency matrix is the same as the one in the file
     GIVEN("An empty graph") {
       RoadNetwork graph{};
-      WHEN("A matrix in dsm format is imported") {
-        graph.importMatrix("./data/matrix.dsm");
+      WHEN("A matrix in dsf format is imported") {
+        graph.importMatrix("./data/matrix.dsf");
         THEN("The graph is correctly built") {
           CHECK_EQ(graph.adjacencyMatrix().n(), 3);
           CHECK(graph.adjacencyMatrix().operator()(2, 2));
@@ -160,10 +160,10 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.nNodes(), 3);
           CHECK_EQ(graph.nEdges(), 4);
         }
-        THEN("It is correctly exported") { graph.exportMatrix("./data/temp.dsm", true); }
+        THEN("It is correctly exported") { graph.exportMatrix("./data/temp.dsf", true); }
       }
       WHEN("The exported one is imported") {
-        graph.importMatrix("./data/temp.dsm");
+        graph.importMatrix("./data/temp.dsf");
         THEN("The graph is correctly built") {
           CHECK_EQ(graph.adjacencyMatrix().n(), 3);
           CHECK(graph.adjacencyMatrix().operator()(2, 2));
@@ -179,10 +179,10 @@ TEST_CASE("RoadNetwork") {
   SUBCASE("Coordinates import/export") {
     GIVEN("A RoadNetwork object with the adj matrix imported") {
       RoadNetwork graph{};
-      graph.importMatrix("./data/matrix.dsm");
+      graph.importMatrix("./data/matrix.dsf");
       auto const& nodes = graph.nodes();
-      WHEN("We import the coordinates in dsm format") {
-        graph.importCoordinates("./data/coords.dsm");
+      WHEN("We import the coordinates in dsf format") {
+        graph.importCoordinates("./data/coords.dsf");
         THEN("The coordinates are correctly imported") {
           CHECK_EQ(nodes.at(0)->coords(), std::make_pair(0., 0.));
           CHECK_EQ(nodes.at(1)->coords(), std::make_pair(1., 0.));
@@ -240,7 +240,7 @@ TEST_CASE("RoadNetwork") {
     // THEN: an exception is thrown
     RoadNetwork graph{};
     CHECK_THROWS(graph.importMatrix("./data/matrix.nogood"));
-    CHECK_THROWS(graph.importMatrix("./data/not_found.dsm"));
+    CHECK_THROWS(graph.importMatrix("./data/not_found.dsf"));
   }
   SUBCASE("importOSMNodes and importOSMEdges") {
     GIVEN("A graph object") {
@@ -320,7 +320,7 @@ TEST_CASE("RoadNetwork") {
       Street s3{16, std::make_pair(3, 1), 30., 15., 1};
       Street s4{21, std::make_pair(4, 1), 30., 15., 2};
       RoadNetwork graph2;
-      graph2.addNode<dsm::TrafficLight>(1, 120);
+      graph2.addNode<dsf::TrafficLight>(1, 120);
       graph2.addStreets(s1, s2, s3, s4);
       for (auto const& pair : graph2.edges()) {
         pair.second->setCapacity(2 * pair.second->nLanes());
@@ -329,22 +329,22 @@ TEST_CASE("RoadNetwork") {
       WHEN("We auto-init Traffic Lights") {
         graph2.initTrafficLights();
         THEN("Parameters are correctly set") {
-          auto& tl{graph2.node<dsm::TrafficLight>(1)};
+          auto& tl{graph2.node<dsf::TrafficLight>(1)};
           CHECK_EQ(tl.cycleTime(), 120);
           auto const& cycles{tl.cycles()};
           CHECK_EQ(cycles.size(), 4);
-          CHECK_EQ(cycles.at(1).at(dsm::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-          CHECK_EQ(cycles.at(1).at(dsm::Direction::LEFT).greenTime(), 26);
-          CHECK_EQ(cycles.at(1).at(dsm::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-          CHECK_EQ(cycles.at(1).at(dsm::Direction::LEFT).phase(), 53);
-          CHECK_EQ(cycles.at(11).at(dsm::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-          CHECK_EQ(cycles.at(11).at(dsm::Direction::LEFT).greenTime(), 26);
-          CHECK_EQ(cycles.at(11).at(dsm::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-          CHECK_EQ(cycles.at(11).at(dsm::Direction::LEFT).phase(), 53);
-          CHECK_EQ(cycles.at(16).at(dsm::Direction::ANY).greenTime(), 40);
-          CHECK_EQ(cycles.at(16).at(dsm::Direction::ANY).phase(), 80);
-          CHECK_EQ(cycles.at(21).at(dsm::Direction::ANY).greenTime(), 40);
-          CHECK_EQ(cycles.at(21).at(dsm::Direction::ANY).phase(), 80);
+          CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
+          CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 26);
+          CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
+          CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 53);
+          CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
+          CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 26);
+          CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
+          CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 53);
+          CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 40);
+          CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 80);
+          CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 40);
+          CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 80);
         }
       }
     }
