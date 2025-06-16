@@ -48,6 +48,24 @@ cmake --build build
 cmake --install build
 ```
 
+## Installation via Pybind11
+If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have Python and pybind11 installed:
+```shell
+pip install pybind11
+```
+
+Then, the installation is automatic via `pip`:
+```shell
+pip install .
+```
+
+After installation, you should be able to import the module in Python:
+```python
+import dsf
+```
+
+If you encounter issues, ensure that the installation path is in your `PYTHONPATH` environment variable.
+
 ## Testing
 This project uses [Doctest](https://github.com/doctest/doctest) for testing.
 
