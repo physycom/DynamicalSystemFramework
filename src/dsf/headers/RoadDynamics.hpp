@@ -538,13 +538,13 @@ namespace dsf {
                                            std::optional<Id> streetId) {
     auto possibleMoves = this->graph().adjacencyMatrix().getRow(nodeId);
 
-    Logger::debug(std::format("Is current agent random? {}", pAgent->isRandom()));
-    Logger::debug(
-        std::format("Is transition matrix empty? {}", m_transitionMatrix.empty()));
+    // Logger::debug(std::format("Is current agent random? {}", pAgent->isRandom()));
+    // Logger::debug(
+    //     std::format("Is transition matrix empty? {}", m_transitionMatrix.empty()));
 
     std::set<Id> forbiddenStreetIds;
     if (streetId.has_value()) {
-      Logger::debug("Checking for forbidden turns");
+      // Logger::debug("Checking for forbidden turns");
       auto const& pStreet{this->graph().edge(*streetId)};
       forbiddenStreetIds = pStreet->forbiddenTurns();
       // Avoid U-TURNS, if possible
@@ -557,7 +557,7 @@ namespace dsf {
       }
     }
     // Exclude FORBIDDEN turns
-    Logger::debug("Excluding forbidden turns");
+    Logger::debug(std::format("Excluding {} forbidden turns", forbiddenStreetIds.size()));
     for (auto const& forbiddenStreetId : forbiddenStreetIds) {
       auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
       // if possible moves contains the forbidden street, remove it
@@ -714,10 +714,13 @@ namespace dsf {
                    pAgentTemp->nextStreetId().has_value()) {
           auto& intersection = static_cast<Intersection&>(*destinationNode);
           bool bCanPass{true};
-          auto const& thisDirection{this->graph()
-                                        .edge(pAgentTemp->nextStreetId().value())
-                                        ->turnDirection(pStreet->angle())};
           if (!intersection.streetPriorities().empty()) {
+            Logger::debug(std::format("Checking priorities for street {} -> {}",
+                                      pStreet->source(),
+                                      pStreet->target()));
+            auto const& thisDirection{this->graph()
+                                          .edge(pAgentTemp->nextStreetId().value())
+                                          ->turnDirection(pStreet->angle())};
             if (!intersection.streetPriorities().contains(pStreet->id())) {
               // I have to check if the agent has right of way
               auto const& inNeighbours{
@@ -808,7 +811,8 @@ namespace dsf {
           }
         }
         bool bArrived{false};
-        if (!(uniformDist(this->m_generator) < m_passageProbability.value_or(1.1))) {
+        if (!(uniformDist(this->m_generator) <
+              m_passageProbability.value_or(std::numeric_limits<double>::max()))) {
           if (pAgentTemp->isRandom()) {
             bArrived = true;
           } else {
@@ -819,6 +823,9 @@ namespace dsf {
           if (destinationNode->id() ==
               this->itineraries().at(pAgentTemp->itineraryId())->destination()) {
             bArrived = true;
+            Logger::debug(std::format("Agent {} has arrived at destination node {}",
+                                      pAgentTemp->id(),
+                                      destinationNode->id()));
           }
         } else {
           if (pAgentTemp->distance() >= m_maxTravelDistance) {
@@ -911,6 +918,14 @@ namespace dsf {
           this->setAgentSpeed(pAgent);
           pAgent->setFreeTime(this->time() +
                               std::ceil(nextStreet->length() / pAgent->speed()));
+          Logger::debug(std::format(
+              "An agent at time {} has been dequeued from intersection {} and "
+              "enqueued on street {} with speed {} and free time {}",
+              this->time(),
+              pNode->id(),
+              nextStreet->id(),
+              pAgent->speed(),
+              pAgent->freeTime()));
           nextStreet->addAgent(std::move(pAgent));
           it = intersection.agents().erase(it);
           break;
@@ -938,6 +953,14 @@ namespace dsf {
           this->setAgentSpeed(pAgent);
           pAgent->setFreeTime(this->time() +
                               std::ceil(nextStreet->length() / pAgent->speed()));
+          Logger::debug(
+              std::format("An agent at time {} has been dequeued from roundabout {} and "
+                          "enqueued on street {} with speed {} and free time {}",
+                          this->time(),
+                          pNode->id(),
+                          nextStreet->id(),
+                          pAgent->speed(),
+                          pAgent->freeTime()));
           nextStreet->addAgent(std::move(pAgent));
         } else {
           return;
@@ -1946,7 +1969,7 @@ namespace dsf {
     requires(is_numeric_v<delay_t>)
   size_t RoadDynamics<delay_t>::nAgents() const {
     auto nAgents{m_agents.size()};
-    Logger::debug(std::format("Number of agents: {}", nAgents));
+    // Logger::debug(std::format("Number of agents: {}", nAgents));
     for (const auto& [nodeId, pNode] : this->graph().nodes()) {
       if (pNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*pNode);
@@ -1955,12 +1978,12 @@ namespace dsf {
         auto& roundabout = dynamic_cast<Roundabout&>(*pNode);
         nAgents += roundabout.agents().size();
       }
-      Logger::debug(std::format("Number of agents: {}", nAgents));
+      // Logger::debug(std::format("Number of agents: {}", nAgents));
     }
     for (const auto& [streetId, pStreet] : this->graph().edges()) {
       nAgents += pStreet->nAgents();
     }
-    Logger::debug(std::format("Number of agents: {}", nAgents));
+    // Logger::debug(std::format("Number of agents: {}", nAgents));
     return nAgents;
   }
 
