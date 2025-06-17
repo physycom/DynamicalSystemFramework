@@ -5,6 +5,15 @@
 #include "../utility/Typedef.hpp"
 
 namespace dsf {
+  struct EdgeAttributes {
+    Id id;
+    std::pair<Id, Id> nodePair;
+    int capacity;
+    double transportCapacity;
+    double angle;
+    std::vector<std::pair<double, double>> geometry;
+  };
+
   class Edge {
   protected:
     std::vector<std::pair<double, double>> m_geometry;
@@ -13,6 +22,7 @@ namespace dsf {
     int m_capacity;
     double m_transportCapacity;
     double m_angle;
+    std::optional<std::string> m_strId;
 
     void m_setAngle(std::pair<double, double> srcNodeCoordinates,
                     std::pair<double, double> dstNodeCoordinates);
@@ -39,6 +49,7 @@ namespace dsf {
     void setCapacity(int capacity);
     void setTransportCapacity(double capacity);
     void setGeometry(std::vector<std::pair<double, double>> geometry);
+    inline void setStrId(std::string const& strId) { m_strId = strId; }
 
     /// @brief Get the edge's id
     /// @return Id The edge's id
@@ -64,6 +75,8 @@ namespace dsf {
     /// @brief Get the edge's angle, in radians, between the source and target nodes
     /// @return double The edge's angle, in radians
     double angle() const;
+
+    inline std::optional<std::string> const& strId() const noexcept { return m_strId; }
 
     virtual bool isFull() const = 0;
 
