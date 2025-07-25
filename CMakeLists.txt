@@ -35,15 +35,15 @@ target_include_directories(dsf PUBLIC
 target_link_libraries(dsf PRIVATE TBB::tbb)
 
 install(TARGETS dsf
-        EXPORT dsmConfig
+        EXPORT dsfConfig
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
 
-install(EXPORT dsmConfig
-        FILE dsmConfig.cmake
+install(EXPORT dsfConfig
+        FILE dsfConfig.cmake
         NAMESPACE dsf::
         DESTINATION lib/cmake/dsf)
 

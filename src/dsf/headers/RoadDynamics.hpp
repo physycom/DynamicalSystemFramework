@@ -233,16 +233,15 @@ namespace dsf {
     /// @brief Optimize the traffic lights by changing the green and red times
     /// @param optimizationType TrafficLightOptimization, The type of optimization. Default is DOUBLE_TAIL
     /// @param logFile The file into which write the logs (default is empty, meaning no logging)
-    /// @param threshold double, The minimum difference between green and red queues to trigger the local optimization (n agents - default is 0)
-    /// @param ratio double, The ratio between the self-density and neighbour density to trigger the non-local optimization (default is 1.3)
-    /// @details The function cycles over the traffic lights and, if the difference between the two tails is greater than
-    ///   the threshold multiplied by the mean capacity of the streets, it changes the green and red times of the traffic light, keeping the total cycle time constant.
-    ///   The optimizationType parameter can be set to SINGLE_TAIL to use an algorith which looks only at the incoming street tails or to DOUBLE_TAIL to consider both incoming and outgoing street tails.
+    /// @param percentage double, the maximum amount (percentage) of the green time to change (default is 0.3)
+    /// @param threshold double, The ratio between the self-density and neighbour density to trigger the non-local optimization (default is 1.3)
+    /// @details The local optimization is done by changing the green time of each traffic light, trying to make it proportional to the
+    ///    queue lengths at each phase. The non-local optimization is done by synchronizing the traffic lights which are congested over threshold.
     void optimizeTrafficLights(
         TrafficLightOptimization optimizationType = TrafficLightOptimization::DOUBLE_TAIL,
         const std::string& logFile = std::string(),
-        double const threshold = 0.,
-        double const ratio = 1.3);
+        double const percentage = 0.3,
+        double const threshold = 1.3);
 
     /// @brief Get the itineraries
     /// @return const std::unordered_map<Id, Itinerary>&, The itineraries
@@ -1875,8 +1874,8 @@ namespace dsf {
   void RoadDynamics<delay_t>::optimizeTrafficLights(
       TrafficLightOptimization const optimizationType,
       const std::string& logFile,
-      double const threshold,
-      double const ratio) {
+      double const percentage,
+      double const threshold) {
     std::optional<std::ofstream> logStream;
     if (!logFile.empty()) {
       logStream.emplace(logFile, std::ios::app);
@@ -1884,7 +1883,7 @@ namespace dsf {
         Logger::error(std::format("Could not open log file: {}", logFile));
       }
     }
-    this->m_trafficlightSingleTailOptimizer(threshold, logStream);
+    this->m_trafficlightSingleTailOptimizer(percentage, logStream);
     if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
       // Try to synchronize congested traffic lights
       std::unordered_map<Id, double> densities;
@@ -1923,7 +1922,7 @@ namespace dsf {
             continue;
           }
           auto const& neighbourDensity{densities.at(sourceId)};
-          if (neighbourDensity < ratio * density) {
+          if (neighbourDensity < threshold * density) {
             continue;
           }
           // Try to green-wave the situation
