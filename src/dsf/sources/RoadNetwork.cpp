@@ -1,4 +1,3 @@
-
 #include "../headers/RoadNetwork.hpp"
 
 #include <algorithm>
@@ -53,6 +52,7 @@ namespace dsf {
       const auto srcId{street->source()};
       const auto dstId{street->target()};
       const auto newStreetId{static_cast<Id>(srcId * N + dstId)};
+      auto const strId(street->strId());
       assert(!m_edges.contains(newStreetId));
       street->resetId(newStreetId);
       if (street->isSpire() && street->isStochastic()) {
@@ -63,6 +63,11 @@ namespace dsf {
         addEdge(std::move(dynamic_cast<SpireStreet&>(*street)));
       } else {
         addEdge(std::move(*street));
+      }
+      if (strId.has_value()) {
+        // If the street has a string id, we need to set it again
+        // because the street id is changed
+        m_edges.at(newStreetId)->setStrId(strId.value());
       }
       newStreetIds.emplace(streetId, newStreetId);
     }
@@ -918,6 +923,8 @@ namespace dsf {
                       iLanes,
                       name,
                       coords);
+      // Always set strId for all edges
+      m_edges.at(streetId)->setStrId(id);
       if (!coilcode.empty()) {
         makeSpireStreet(streetId);
         auto& coil = edge<SpireStreet>(streetId);
@@ -928,11 +935,7 @@ namespace dsf {
           Logger::warning(std::format(
               "Invalid coil code {} for edge {}->{}", coilcode, srcId, dstId));
         }
-        m_edges.at(streetId)->setStrId(id);
       }
-      // if (!forbiddenTurns.empty()) {
-      //   mapForbiddenTurns.emplace(streetId, forbiddenTurns);
-      // }
     }
     // Parse forbidden turns
     for (auto const& [streetId, forbiddenTurns] : mapForbiddenTurns) {
@@ -1058,8 +1061,8 @@ namespace dsf {
       if (useExternalIds) {
         auto const& pSrcNode{m_nodes.at(pStreet->source())};
         auto const& pTargetNode{m_nodes.at(pStreet->target())};
-        file << pStreet->strId().value_or(std::to_string(streetId)) << ';' << pSrcNode->strId().value_or(std::to_string(pStreet->source())) << ';'
-             << pTargetNode->strId().value_or(std::to_string(pStreet->target())) << ';';
+        file << pStreet->strId().value_or("N/A") << ';' << pSrcNode->strId().value_or("N/A") << ';'
+             << pTargetNode->strId().value_or("N/A") << ';';
       } else {
         file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';';
       }
