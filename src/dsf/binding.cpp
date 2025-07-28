@@ -167,6 +167,9 @@ PYBIND11_MODULE(dsf, m) {
       .def("setMaxTravelTime",
            &dsf::FirstOrderDynamics::setMaxTravelTime,
            pybind11::arg("maxTravelTime"))
+      .def("setErrorProbability",
+           &dsf::FirstOrderDynamics::setErrorProbability,
+           pybind11::arg("errorProbability"))
       .def("setDestinationNodes",
            static_cast<void (dsf::FirstOrderDynamics::*)(std::initializer_list<dsf::Id>,
                                                          bool)>(
