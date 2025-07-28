@@ -641,8 +641,72 @@ namespace dsf {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_evolveStreet(const std::unique_ptr<Street>& pStreet,
                                              bool reinsert_agents) {
-    auto const& transportCapacity{pStreet->transportCapacity()};
     auto const nLanes = pStreet->nLanes();
+    while (!pStreet->movingAgents().empty()) {
+      auto const& pAgent{pStreet->movingAgents().top()};
+      if (pAgent->freeTime() < this->time()) {
+        break;
+      }
+      pAgent->setSpeed(0.);
+      bool bArrived{false};
+      if (!pAgent->isRandom()) {
+        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
+            pStreet->target()) {
+          pAgent->updateItinerary();
+        }
+        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
+            pStreet->target()) {
+          bArrived = true;
+        }
+      }
+      if (bArrived) {
+        std::uniform_int_distribution<size_t> laneDist{0,
+                                                       static_cast<size_t>(nLanes - 1)};
+        pStreet->enqueue(laneDist(this->m_generator));
+        continue;
+      }
+      auto const nextStreetId =
+          this->m_nextStreetId(pAgent, pStreet->target(), pStreet->id());
+      auto const& pNextStreet{this->graph().edge(nextStreetId)};
+      pAgent->setNextStreetId(nextStreetId);
+      if (nLanes == 1) {
+        pStreet->enqueue(0);
+        continue;
+      }
+      auto const direction{pNextStreet->turnDirection(pStreet->angle())};
+      switch (direction) {
+        case Direction::UTURN:
+        case Direction::LEFT:
+          pStreet->enqueue(nLanes - 1);
+          break;
+        case Direction::RIGHT:
+          pStreet->enqueue(0);
+          break;
+        default:
+          std::vector<double> weights;
+          for (auto const& queue : pStreet->exitQueues()) {
+            weights.push_back(1. / (queue.size() + 1));
+          }
+          // If all weights are the same, make the last 0
+          if (std::all_of(weights.begin(), weights.end(), [&](double w) {
+                return std::abs(w - weights.front()) <
+                       std::numeric_limits<double>::epsilon();
+              })) {
+            weights.back() = 0.;
+            if (nLanes > 2) {
+              weights.front() = 0.;
+            }
+          }
+          // Normalize the weights
+          auto const sum = std::accumulate(weights.begin(), weights.end(), 0.);
+          for (auto& w : weights) {
+            w /= sum;
+          }
+          std::discrete_distribution<size_t> laneDist{weights.begin(), weights.end()};
+          pStreet->enqueue(laneDist(this->m_generator));
+      }
+    }
+    auto const& transportCapacity{pStreet->transportCapacity()};
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     for (auto i = 0; i < std::ceil(transportCapacity); ++i) {
       if (pStreet->isStochastic() &&
@@ -1316,102 +1380,33 @@ namespace dsf {
     // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
     const size_t grainSize = std::max(size_t(1), numNodes / concurrency);
     this->m_taskArena.execute([&] {
-      tbb::parallel_for(
-          tbb::blocked_range<size_t>(0, numNodes, grainSize),
-          [&](const tbb::blocked_range<size_t>& range) {
-            for (size_t i = range.begin(); i != range.end(); ++i) {
-              auto const& pNode = nodes.at(i);
-              for (auto const& sourceId :
-                   this->graph().adjacencyMatrix().getCol(pNode->id())) {
-                auto const streetId{sourceId * N + pNode->id()};
-                auto const& pStreet{this->graph().edge(streetId)};
-                if (bUpdateData && pNode->isTrafficLight()) {
-                  if (!m_queuesAtTrafficLights.contains(pStreet->id())) {
-                    auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-                    assert(!tl.cycles().empty());
-                    for (auto const& [id, pair] : tl.cycles()) {
-                      for (auto const& [direction, cycle] : pair) {
-                        m_queuesAtTrafficLights[id].emplace(direction, 0.);
-                      }
-                    }
-                  }
-                  for (auto& [direction, value] :
-                       m_queuesAtTrafficLights.at(pStreet->id())) {
-                    value += pStreet->nExitingAgents(direction, true);
-                  }
-                }
-                m_evolveStreet(pStreet, reinsert_agents);
-
-                while (!pStreet->movingAgents().empty()) {
-                  auto const& pAgent{pStreet->movingAgents().top()};
-                  if (pAgent->freeTime() < this->time()) {
-                    break;
-                  }
-                  pAgent->setSpeed(0.);
-                  auto const nLanes = pStreet->nLanes();
-                  bool bArrived{false};
-                  if (!pAgent->isRandom()) {
-                    if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-                        pStreet->target()) {
-                      pAgent->updateItinerary();
-                    }
-                    if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-                        pStreet->target()) {
-                      bArrived = true;
-                    }
-                  }
-                  if (bArrived) {
-                    std::uniform_int_distribution<size_t> laneDist{
-                        0, static_cast<size_t>(nLanes - 1)};
-                    pStreet->enqueue(laneDist(this->m_generator));
-                    continue;
-                  }
-                  auto const nextStreetId =
-                      this->m_nextStreetId(pAgent, pStreet->target(), pStreet->id());
-                  auto const& pNextStreet{this->graph().edge(nextStreetId)};
-                  pAgent->setNextStreetId(nextStreetId);
-                  if (nLanes == 1) {
-                    pStreet->enqueue(0);
-                    continue;
-                  }
-                  auto const direction{pNextStreet->turnDirection(pStreet->angle())};
-                  switch (direction) {
-                    case Direction::UTURN:
-                    case Direction::LEFT:
-                      pStreet->enqueue(nLanes - 1);
-                      break;
-                    case Direction::RIGHT:
-                      pStreet->enqueue(0);
-                      break;
-                    default:
-                      std::vector<double> weights;
-                      for (auto const& queue : pStreet->exitQueues()) {
-                        weights.push_back(1. / (queue.size() + 1));
-                      }
-                      // If all weights are the same, make the last 0
-                      if (std::all_of(weights.begin(), weights.end(), [&](double w) {
-                            return std::abs(w - weights.front()) <
-                                   std::numeric_limits<double>::epsilon();
-                          })) {
-                        weights.back() = 0.;
-                        if (nLanes > 2) {
-                          weights.front() = 0.;
-                        }
-                      }
-                      // Normalize the weights
-                      auto const sum =
-                          std::accumulate(weights.begin(), weights.end(), 0.);
-                      for (auto& w : weights) {
-                        w /= sum;
-                      }
-                      std::discrete_distribution<size_t> laneDist{weights.begin(),
-                                                                  weights.end()};
-                      pStreet->enqueue(laneDist(this->m_generator));
-                  }
-                }
-              }
-            }
-          });
+      tbb::parallel_for(tbb::blocked_range<size_t>(0, numNodes, grainSize),
+                        [&](const tbb::blocked_range<size_t>& range) {
+                          for (size_t i = range.begin(); i != range.end(); ++i) {
+                            auto const& pNode = nodes.at(i);
+                            for (auto const& sourceId :
+                                 this->graph().adjacencyMatrix().getCol(pNode->id())) {
+                              auto const streetId{sourceId * N + pNode->id()};
+                              auto const& pStreet{this->graph().edge(streetId)};
+                              if (bUpdateData && pNode->isTrafficLight()) {
+                                if (!m_queuesAtTrafficLights.contains(pStreet->id())) {
+                                  auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+                                  assert(!tl.cycles().empty());
+                                  for (auto const& [id, pair] : tl.cycles()) {
+                                    for (auto const& [direction, cycle] : pair) {
+                                      m_queuesAtTrafficLights[id].emplace(direction, 0.);
+                                    }
+                                  }
+                                }
+                                for (auto& [direction, value] :
+                                     m_queuesAtTrafficLights.at(pStreet->id())) {
+                                  value += pStreet->nExitingAgents(direction, true);
+                                }
+                              }
+                              m_evolveStreet(pStreet, reinsert_agents);
+                            }
+                          }
+                        });
     });
     Logger::debug("Pre-nodes");
     // Move transport capacity agents from each node
