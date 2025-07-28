@@ -98,8 +98,10 @@ PYBIND11_MODULE(dsf, m) {
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,
            pybind11::arg("fileName"))
-      .def("exportNodes", &dsf::RoadNetwork::exportNodes, pybind11::arg("fileName"))
-      .def("exportEdges", &dsf::RoadNetwork::exportEdges, pybind11::arg("fileName"));
+      .def("exportNodes", &dsf::RoadNetwork::exportNodes, pybind11::arg("fileName"), 
+           pybind11::arg("useExternalIds") = false)
+      .def("exportEdges", &dsf::RoadNetwork::exportEdges, pybind11::arg("fileName"),
+           pybind11::arg("useExternalIds") = false);
 
   pybind11::class_<dsf::Itinerary>(m, "Itinerary")
       .def(pybind11::init<dsf::Id, dsf::Id>(),
@@ -165,6 +167,9 @@ PYBIND11_MODULE(dsf, m) {
       .def("setMaxTravelTime",
            &dsf::FirstOrderDynamics::setMaxTravelTime,
            pybind11::arg("maxTravelTime"))
+      .def("setErrorProbability",
+           &dsf::FirstOrderDynamics::setErrorProbability,
+           pybind11::arg("errorProbability"))
       .def("setDestinationNodes",
            static_cast<void (dsf::FirstOrderDynamics::*)(std::initializer_list<dsf::Id>,
                                                          bool)>(

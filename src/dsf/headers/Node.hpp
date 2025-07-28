@@ -29,6 +29,7 @@ namespace dsf {
     Id m_id;
     std::optional<std::pair<double, double>> m_coords;
     std::string m_name;
+    std::optional<std::string> m_strId;
 
   public:
     /// @brief Construct a new Node object with capacity 1
@@ -55,22 +56,30 @@ namespace dsf {
 
     /// @brief Set the node's id
     /// @param id The node's id
-    void setId(Id id) { m_id = id; }
+    inline void setId(Id id) { m_id = id; }
     /// @brief Set the node's coordinates
     /// @param coords A std::pair containing the node's coordinates (lat, lon)
-    void setCoords(std::pair<double, double> coords) { m_coords = std::move(coords); }
+    inline void setCoords(std::pair<double, double> coords) {
+      m_coords = std::move(coords);
+    }
     /// @brief Set the node's name
     /// @param name The node's name
-    void setName(const std::string& name) { m_name = name; }
+    inline void setName(const std::string& name) { m_name = name; }
+
+    inline void setStrId(const std::string& strId) { m_strId = strId; }
     /// @brief Get the node's id
     /// @return Id The node's id
-    Id id() const { return m_id; }
+    inline Id id() const { return m_id; }
     /// @brief Get the node's coordinates
     /// @return std::optional<std::pair<double, double>> A std::pair containing the node's coordinates
-    const std::optional<std::pair<double, double>>& coords() const { return m_coords; }
+    inline std::optional<std::pair<double, double>> const& coords() const {
+      return m_coords;
+    }
     /// @brief Get the node's name
     /// @return std::string The node's name
-    const std::string& name() const { return m_name; }
+    inline std::string const& name() const noexcept { return m_name; }
+
+    inline std::optional<std::string> const& strId() const noexcept { return m_strId; }
 
     virtual bool isStation() const noexcept { return false; }
   };

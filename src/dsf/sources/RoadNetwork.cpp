@@ -1,4 +1,3 @@
-
 #include "../headers/RoadNetwork.hpp"
 
 #include <algorithm>
@@ -53,6 +52,7 @@ namespace dsf {
       const auto srcId{street->source()};
       const auto dstId{street->target()};
       const auto newStreetId{static_cast<Id>(srcId * N + dstId)};
+      auto const strId(street->strId());
       assert(!m_edges.contains(newStreetId));
       street->resetId(newStreetId);
       if (street->isSpire() && street->isStochastic()) {
@@ -63,6 +63,11 @@ namespace dsf {
         addEdge(std::move(dynamic_cast<SpireStreet&>(*street)));
       } else {
         addEdge(std::move(*street));
+      }
+      if (strId.has_value()) {
+        // If the street has a string id, we need to set it again
+        // because the street id is changed
+        m_edges.at(newStreetId)->setStrId(strId.value());
       }
       newStreetIds.emplace(streetId, newStreetId);
     }
@@ -775,6 +780,7 @@ namespace dsf {
           }
         }
         m_nodeMapping.emplace(std::make_pair(id, nodeIndex));
+        m_nodes.at(nodeIndex)->setStrId(id);
         ++nodeIndex;
       }
     } else {
@@ -800,9 +806,10 @@ namespace dsf {
         continue;
       }
       std::istringstream iss{line};
-      std::string sourceId, targetId, length, lanes, highway, maxspeed, name, geometry,
-          forbiddenTurns, coilcode;
-      // sourceId;targetId;length;highway;maxspeed;name;geometry;forbiddenTurns;coilcode
+      std::string id, sourceId, targetId, length, lanes, highway, maxspeed, name,
+          geometry, forbiddenTurns, coilcode;
+      // id;sourceId;targetId;length;highway;maxspeed;name;geometry;forbiddenTurns;coilcode
+      std::getline(iss, id, ';');
       std::getline(iss, sourceId, ';');
       std::getline(iss, targetId, ';');
       std::getline(iss, length, ';');
@@ -916,6 +923,8 @@ namespace dsf {
                       iLanes,
                       name,
                       coords);
+      // Always set strId for all edges
+      m_edges.at(streetId)->setStrId(id);
       if (!coilcode.empty()) {
         makeSpireStreet(streetId);
         auto& coil = edge<SpireStreet>(streetId);
@@ -927,9 +936,6 @@ namespace dsf {
               "Invalid coil code {} for edge {}->{}", coilcode, srcId, dstId));
         }
       }
-      // if (!forbiddenTurns.empty()) {
-      //   mapForbiddenTurns.emplace(streetId, forbiddenTurns);
-      // }
     }
     // Parse forbidden turns
     for (auto const& [streetId, forbiddenTurns] : mapForbiddenTurns) {
@@ -1010,7 +1016,7 @@ namespace dsf {
     }
   }
 
-  void RoadNetwork::exportNodes(std::string const& path) {
+  void RoadNetwork::exportNodes(std::string const& path, bool const useExternalIds) {
     // assert that path ends with ".csv"
     assert((void("Only csv export is supported."),
             path.substr(path.find_last_of(".")) == ".csv"));
@@ -1018,7 +1024,11 @@ namespace dsf {
     // Column names
     file << "id;lat;lon;type\n";
     for (auto const& [nodeId, pNode] : m_nodes) {
-      file << nodeId << ';';
+      if (useExternalIds) {
+        file << pNode->strId().value_or(std::to_string(nodeId)) << ';';
+      } else {
+        file << nodeId << ';';
+      }
       if (pNode->coords().has_value()) {
         file << pNode->coords().value().first << ';' << pNode->coords().value().second;
       } else {
@@ -1040,7 +1050,7 @@ namespace dsf {
     }
     file.close();
   }
-  void RoadNetwork::exportEdges(std::string const& path) {
+  void RoadNetwork::exportEdges(std::string const& path, bool const useExternalIds) {
     // assert that path ends with ".csv"
     assert((void("Only csv export is supported."),
             path.substr(path.find_last_of(".")) == ".csv"));
@@ -1048,8 +1058,16 @@ namespace dsf {
     // Column names
     file << "id;source_id;target_id;length;nlanes;capacity;name;coil_code;geometry\n";
     for (auto const& [streetId, pStreet] : m_edges) {
-      file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';'
-           << pStreet->length() << ';' << pStreet->nLanes() << ';' << pStreet->capacity()
+      if (useExternalIds) {
+        auto const& pSrcNode{m_nodes.at(pStreet->source())};
+        auto const& pTargetNode{m_nodes.at(pStreet->target())};
+        file << pStreet->strId().value_or("N/A") << ';'
+             << pSrcNode->strId().value_or("N/A") << ';'
+             << pTargetNode->strId().value_or("N/A") << ';';
+      } else {
+        file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';';
+      }
+      file << pStreet->length() << ';' << pStreet->nLanes() << ';' << pStreet->capacity()
            << ';' << pStreet->name() << ';';
       if (pStreet->isSpire()) {
         file << dynamic_cast<SpireStreet&>(*pStreet).code() << ';';
