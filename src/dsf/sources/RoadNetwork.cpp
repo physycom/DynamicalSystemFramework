@@ -806,8 +806,8 @@ namespace dsf {
         continue;
       }
       std::istringstream iss{line};
-      std::string id, sourceId, targetId, length, lanes, highway, maxspeed, name, geometry,
-          forbiddenTurns, coilcode;
+      std::string id, sourceId, targetId, length, lanes, highway, maxspeed, name,
+          geometry, forbiddenTurns, coilcode;
       // id;sourceId;targetId;length;highway;maxspeed;name;geometry;forbiddenTurns;coilcode
       std::getline(iss, id, ';');
       std::getline(iss, sourceId, ';');
@@ -1061,7 +1061,8 @@ namespace dsf {
       if (useExternalIds) {
         auto const& pSrcNode{m_nodes.at(pStreet->source())};
         auto const& pTargetNode{m_nodes.at(pStreet->target())};
-        file << pStreet->strId().value_or("N/A") << ';' << pSrcNode->strId().value_or("N/A") << ';'
+        file << pStreet->strId().value_or("N/A") << ';'
+             << pSrcNode->strId().value_or("N/A") << ';'
              << pTargetNode->strId().value_or("N/A") << ';';
       } else {
         file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';';

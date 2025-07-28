@@ -59,7 +59,9 @@ namespace dsf {
     inline void setId(Id id) { m_id = id; }
     /// @brief Set the node's coordinates
     /// @param coords A std::pair containing the node's coordinates (lat, lon)
-    inline void setCoords(std::pair<double, double> coords) { m_coords = std::move(coords); }
+    inline void setCoords(std::pair<double, double> coords) {
+      m_coords = std::move(coords);
+    }
     /// @brief Set the node's name
     /// @param name The node's name
     inline void setName(const std::string& name) { m_name = name; }
@@ -70,12 +72,14 @@ namespace dsf {
     inline Id id() const { return m_id; }
     /// @brief Get the node's coordinates
     /// @return std::optional<std::pair<double, double>> A std::pair containing the node's coordinates
-    inline std::optional<std::pair<double, double>> const& coords() const { return m_coords; }
+    inline std::optional<std::pair<double, double>> const& coords() const {
+      return m_coords;
+    }
     /// @brief Get the node's name
     /// @return std::string The node's name
     inline std::string const& name() const noexcept { return m_name; }
 
-    inline std::optional<std::string> const& strId() const noexcept { return m_strId; } 
+    inline std::optional<std::string> const& strId() const noexcept { return m_strId; }
 
     virtual bool isStation() const noexcept { return false; }
   };
