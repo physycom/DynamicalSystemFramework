@@ -97,7 +97,7 @@ namespace dsf {
     void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
 
     void m_trafficlightSingleTailOptimizer(double const& beta,
-                                           std::optional<std::ofstream>& logStream);
+                                           std::optional<std::ofstream>& logStream, bool prova = false);
 
   public:
     /// @brief Construct a new RoadDynamics object
@@ -1469,7 +1469,7 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_trafficlightSingleTailOptimizer(
-      double const& beta, std::optional<std::ofstream>& logStream) {
+      double const& beta, std::optional<std::ofstream>& logStream, bool prova) {
     assert(beta >= 0. && beta <= 1.);
     if (logStream.has_value()) {
       *logStream << std::format(
@@ -1487,6 +1487,9 @@ namespace dsf {
 
       // Default is RIGHTANDSTRAIGHT - LEFT phases for both priority and non-priority
       std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
+      double meanPriorityDensity{0.}, meanNonPriorityDensity{0.};
+      int maxPriorityMovingAgents{0}, maxNonPriorityMovingAgents{0};
+      Delay newPhase{0};
       bool isPrioritySinglePhase{false}, isNonPrioritySinglePhase{false};
 
       for (const auto& sourceId : inNeighbours) {
@@ -1505,6 +1508,23 @@ namespace dsf {
 
       for (const auto& sourceId : inNeighbours) {
         auto const streetId = sourceId * this->graph().nNodes() + nodeId;
+        if (tl.streetPriorities().contains(streetId)) {
+          meanPriorityDensity +=
+              this->graph().edge(streetId)->density(true);
+          if (this->graph().edge(streetId)->nMovingAgents() > maxPriorityMovingAgents) {
+            newPhase = static_cast<Delay>(this->graph().edge(streetId)->length() /
+                                          this->graph().edge(streetId)->maxSpeed());
+          }
+          maxPriorityMovingAgents = std::max(
+              maxPriorityMovingAgents,
+              this->graph().edge(streetId)->nMovingAgents());
+        } else {
+          meanNonPriorityDensity +=
+              this->graph().edge(streetId)->density(true);
+          maxNonPriorityMovingAgents = std::max(
+              maxNonPriorityMovingAgents,
+              this->graph().edge(streetId)->nMovingAgents());
+        }
         for (auto const& [direction, tail] : m_queuesAtTrafficLights.at(streetId)) {
           if (tl.streetPriorities().contains(streetId)) {
             if (isPrioritySinglePhase) {
@@ -1550,6 +1570,18 @@ namespace dsf {
         inputNonPrioritySum[0] *= beta;
         inputNonPrioritySum[1] *= beta;
       }
+      // Normalize densities
+      meanPriorityDensity /= tl.streetPriorities().size();
+      meanNonPriorityDensity /= (inNeighbours.size() - tl.streetPriorities().size());
+
+      Delay phaseShift{0};
+
+      if (meanPriorityDensity > meanNonPriorityDensity * 1.3) {
+        phaseShift = newPhase;
+      }
+      // } else if (meanNonPriorityDensity > meanPriorityDensity * 1.3) {
+      //   phaseShift = static_cast<Delay>(maxNonPriorityMovingAgents);
+      // }
 
       if (logStream.has_value()) {
         *logStream << std::format(
@@ -1688,45 +1720,45 @@ namespace dsf {
 
       std::unordered_map<Direction, TrafficLightCycle> priorityCycles;
       priorityCycles.emplace(Direction::RIGHT,
-                             TrafficLightCycle{static_cast<Delay>(inputPriorityR), 0});
+                             TrafficLightCycle{static_cast<Delay>(inputPriorityR), phaseShift});
       priorityCycles.emplace(Direction::STRAIGHT,
-                             TrafficLightCycle{static_cast<Delay>(inputPriorityS), 0});
+                             TrafficLightCycle{static_cast<Delay>(inputPriorityS), phaseShift});
       priorityCycles.emplace(Direction::RIGHTANDSTRAIGHT,
-                             TrafficLightCycle{static_cast<Delay>(inputPriorityS), 0});
+                             TrafficLightCycle{static_cast<Delay>(inputPriorityS), phaseShift});
       priorityCycles.emplace(
           Direction::ANY,
-          TrafficLightCycle{static_cast<Delay>(inputPriorityS + inputPriorityL), 0});
+          TrafficLightCycle{static_cast<Delay>(inputPriorityS + inputPriorityL), phaseShift});
       priorityCycles.emplace(Direction::LEFT,
                              TrafficLightCycle{static_cast<Delay>(inputPriorityL),
-                                               static_cast<Delay>(inputPriorityS)});
+                                               static_cast<Delay>(inputPriorityS) + phaseShift});
 
       std::unordered_map<Direction, TrafficLightCycle> nonPriorityCycles;
       nonPriorityCycles.emplace(
           Direction::RIGHT,
           TrafficLightCycle{static_cast<Delay>(inputNonPriorityR),
-                            static_cast<Delay>(inputPriorityS + inputPriorityL)});
+                            static_cast<Delay>(inputPriorityS + inputPriorityL) + phaseShift});
       nonPriorityCycles.emplace(
           Direction::STRAIGHT,
           TrafficLightCycle{static_cast<Delay>(inputNonPriorityS),
-                            static_cast<Delay>(inputPriorityS + inputPriorityL)});
+                            static_cast<Delay>(inputPriorityS + inputPriorityL) + phaseShift});
       nonPriorityCycles.emplace(
           Direction::RIGHTANDSTRAIGHT,
           TrafficLightCycle{static_cast<Delay>(inputNonPriorityS),
-                            static_cast<Delay>(inputPriorityS + inputPriorityL)});
+                            static_cast<Delay>(inputPriorityS + inputPriorityL) + phaseShift});
       nonPriorityCycles.emplace(
           Direction::ANY,
           TrafficLightCycle{static_cast<Delay>(inputNonPriorityS + inputNonPriorityL),
-                            static_cast<Delay>(inputPriorityS + inputPriorityL)});
+                            static_cast<Delay>(inputPriorityS + inputPriorityL) + phaseShift});
       nonPriorityCycles.emplace(
           Direction::LEFT,
           TrafficLightCycle{
               static_cast<Delay>(inputNonPriorityL),
-              static_cast<Delay>(inputPriorityS + inputPriorityL + inputNonPriorityS)});
+              static_cast<Delay>(inputPriorityS + inputPriorityL + inputNonPriorityS) + phaseShift});
       nonPriorityCycles.emplace(
           Direction::LEFTANDSTRAIGHT,
           TrafficLightCycle{
               static_cast<Delay>(inputNonPriorityL + inputNonPriorityS),
-              static_cast<Delay>(inputPriorityS + inputPriorityL + inputNonPriorityR)});
+              static_cast<Delay>(inputPriorityS + inputPriorityL + inputNonPriorityR) + phaseShift});
 
       std::vector<Id> streetIds;
       std::set<Id> forbiddenLeft;
@@ -1878,75 +1910,75 @@ namespace dsf {
         Logger::error(std::format("Could not open log file: {}", logFile));
       }
     }
-    this->m_trafficlightSingleTailOptimizer(percentage, logStream);
-    if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
-      // Try to synchronize congested traffic lights
-      std::unordered_map<Id, double> densities;
-      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
-        if (!pNode->isTrafficLight()) {
-          continue;
-        }
-        double density{0.}, n{0.};
-        auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
-        for (auto const& sourceId : inNeighbours) {
-          if (!this->graph().node(sourceId)->isTrafficLight()) {
-            continue;
-          }
-          density += this->graph()
-                         .edge(sourceId * this->graph().nNodes() + nodeId)
-                         ->density(true);
-          ++n;
-        }
-        density /= n;
-        densities[nodeId] = density;
-      }
-      // Sort densities map from big to small values
-      std::vector<std::pair<Id, double>> sortedDensities(densities.begin(),
-                                                         densities.end());
+    this->m_trafficlightSingleTailOptimizer(percentage, logStream, optimizationType == TrafficLightOptimization::DOUBLE_TAIL);
+    // if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
+    //   // Try to synchronize congested traffic lights
+    //   std::unordered_map<Id, double> densities;
+    //   for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+    //     if (!pNode->isTrafficLight()) {
+    //       continue;
+    //     }
+    //     double density{0.}, n{0.};
+    //     auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
+    //     for (auto const& sourceId : inNeighbours) {
+    //       if (!this->graph().node(sourceId)->isTrafficLight()) {
+    //         continue;
+    //       }
+    //       density += this->graph()
+    //                      .edge(sourceId * this->graph().nNodes() + nodeId)
+    //                      ->density(true);
+    //       ++n;
+    //     }
+    //     density /= n;
+    //     densities[nodeId] = density;
+    //   }
+    //   // Sort densities map from big to small values
+    //   std::vector<std::pair<Id, double>> sortedDensities(densities.begin(),
+    //                                                      densities.end());
 
-      // Sort by density descending
-      std::sort(sortedDensities.begin(),
-                sortedDensities.end(),
-                [](auto const& a, auto const& b) { return a.second > b.second; });
-      std::unordered_set<Id> optimizedNodes;
+    //   // Sort by density descending
+    //   std::sort(sortedDensities.begin(),
+    //             sortedDensities.end(),
+    //             [](auto const& a, auto const& b) { return a.second > b.second; });
+    //   std::unordered_set<Id> optimizedNodes;
 
-      for (auto const& [nodeId, density] : sortedDensities) {
-        auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
-        for (auto const& sourceId : inNeighbours) {
-          if (!densities.contains(sourceId) || optimizedNodes.contains(sourceId)) {
-            continue;
-          }
-          auto const& neighbourDensity{densities.at(sourceId)};
-          if (neighbourDensity < threshold * density) {
-            continue;
-          }
-          // Try to green-wave the situation
-          auto& tl{static_cast<TrafficLight&>(*(this->graph().node(sourceId)))};
-          auto const& pStreet{
-              this->graph().edge(sourceId * this->graph().nNodes() + nodeId)};
-          tl.increasePhases(pStreet->length() /
-                            (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
-          optimizedNodes.insert(sourceId);
-          if (logStream.has_value()) {
-            std::string logMsg =
-                std::format("\tNew cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
-            for (auto const& [streetId, pair] : tl.cycles()) {
-              auto const& pStreet{this->graph().edge(streetId)};
-              logMsg += std::format(
-                  "\t\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
-              for (auto const& [direction, cycle] : pair) {
-                logMsg += std::format("{}= ({} {}) ",
-                                      directionToString[direction],
-                                      cycle.greenTime(),
-                                      cycle.phase());
-              }
-              logMsg += '\n';
-            }
-            *logStream << logMsg << '\n';
-          }
-        }
-      }
-    }
+    //   for (auto const& [nodeId, density] : sortedDensities) {
+    //     auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
+    //     for (auto const& sourceId : inNeighbours) {
+    //       if (!densities.contains(sourceId) || optimizedNodes.contains(sourceId)) {
+    //         continue;
+    //       }
+    //       auto const& neighbourDensity{densities.at(sourceId)};
+    //       if (neighbourDensity < threshold * density) {
+    //         continue;
+    //       }
+    //       // Try to green-wave the situation
+    //       auto& tl{static_cast<TrafficLight&>(*(this->graph().node(sourceId)))};
+    //       auto const& pStreet{
+    //           this->graph().edge(sourceId * this->graph().nNodes() + nodeId)};
+    //       tl.increasePhases(pStreet->length() /
+    //                         (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
+    //       optimizedNodes.insert(sourceId);
+    //       if (logStream.has_value()) {
+    //         std::string logMsg =
+    //             std::format("\tNew cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
+    //         for (auto const& [streetId, pair] : tl.cycles()) {
+    //           auto const& pStreet{this->graph().edge(streetId)};
+    //           logMsg += std::format(
+    //               "\t\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
+    //           for (auto const& [direction, cycle] : pair) {
+    //             logMsg += std::format("{}= ({} {}) ",
+    //                                   directionToString[direction],
+    //                                   cycle.greenTime(),
+    //                                   cycle.phase());
+    //           }
+    //           logMsg += '\n';
+    //         }
+    //         *logStream << logMsg << '\n';
+    //       }
+    //     }
+    //   }
+    // }
     // Cleaning variables
     for (auto& [streetId, pair] : m_queuesAtTrafficLights) {
       for (auto& [direction, value] : pair) {
