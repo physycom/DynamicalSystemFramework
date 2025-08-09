@@ -61,6 +61,13 @@ namespace dsf {
       m_angle = 0.;
     }
   }
+  void Edge::setWeight(double const weight) {
+    if (weight <= 0.) {
+      throw std::invalid_argument(
+          Logger::buildExceptionMessage("Edge weight must be positive."));
+    }
+    m_weight = weight;
+  }
 
   Id Edge::id() const { return m_id; }
   Id Edge::source() const { return m_nodePair.first; }
@@ -69,6 +76,10 @@ namespace dsf {
   int Edge::capacity() const { return m_capacity; }
   double Edge::transportCapacity() const { return m_transportCapacity; }
   double Edge::angle() const { return m_angle; }
+  double Edge::weight() const {
+    return m_weight.has_value() ? *m_weight
+                                : throw std::runtime_error("Edge weight is not set.");
+  }
   std::vector<std::pair<double, double>> const& Edge::geometry() const {
     return m_geometry;
   }

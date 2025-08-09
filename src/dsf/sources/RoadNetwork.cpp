@@ -807,8 +807,8 @@ namespace dsf {
       }
       std::istringstream iss{line};
       std::string id, sourceId, targetId, length, lanes, highway, maxspeed, name,
-          geometry, forbiddenTurns, coilcode;
-      // id;sourceId;targetId;length;highway;maxspeed;name;geometry;forbiddenTurns;coilcode
+          geometry, forbiddenTurns, coilcode, customWeight;
+      // id;sourceId;targetId;length;highway;maxspeed;name;geometry;forbiddenTurns;coilcode;customWeight
       std::getline(iss, id, ';');
       std::getline(iss, sourceId, ';');
       std::getline(iss, targetId, ';');
@@ -819,7 +819,8 @@ namespace dsf {
       std::getline(iss, name, ';');
       std::getline(iss, geometry, ';');
       std::getline(iss, forbiddenTurns, ';');
-      std::getline(iss, coilcode, '\n');
+      std::getline(iss, coilcode, ';');
+      std::getline(iss, customWeight, '\n');
       if (lanes.empty()) {
         lanes = "1";  // Default to 1 lane if no value is provided
       } else {
@@ -934,6 +935,15 @@ namespace dsf {
         } catch (const std::invalid_argument& e) {
           Logger::warning(std::format(
               "Invalid coil code {} for edge {}->{}", coilcode, srcId, dstId));
+        }
+      }
+      if (!customWeight.empty()) {
+        try {
+          auto const weight{std::stod(customWeight)};
+          m_edges.at(streetId)->setWeight(weight);
+        } catch (const std::invalid_argument& e) {
+          Logger::warning(std::format(
+              "Invalid custom weight {} for edge {}->{}", customWeight, srcId, dstId));
         }
       }
     }

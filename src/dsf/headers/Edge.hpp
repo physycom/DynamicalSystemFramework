@@ -6,15 +6,6 @@
 #include "../utility/Typedef.hpp"
 
 namespace dsf {
-  struct EdgeAttributes {
-    Id id;
-    std::pair<Id, Id> nodePair;
-    int capacity;
-    double transportCapacity;
-    double angle;
-    std::vector<std::pair<double, double>> geometry;
-  };
-
   class Edge {
   protected:
     std::vector<std::pair<double, double>> m_geometry;
@@ -22,6 +13,7 @@ namespace dsf {
     std::pair<Id, Id> m_nodePair;
     int m_capacity;
     double m_transportCapacity;
+    std::optional<double> m_weight;
     double m_angle;
     std::optional<std::string> m_strId;
 
@@ -36,7 +28,8 @@ namespace dsf {
     /// edge at the same time. Default is 1.
     /// @param transportCapacity The edge's transport capacity, in number of agents, i.e. the maximum number of agents
     /// that can be emitted by the same time. Default is 1.
-    /// @param angle The edge's angle, in radians, between the source and destination nodes
+    /// @param geometry The edge's geometry, a vector of pairs of doubles representing the coordinates of the edge's
+    /// geometry. Default is an empty vector.
     Edge(Id id,
          std::pair<Id, Id> nodePair,
          int capacity = 1,
@@ -50,6 +43,7 @@ namespace dsf {
     void setCapacity(int capacity);
     void setTransportCapacity(double capacity);
     void setGeometry(std::vector<std::pair<double, double>> geometry);
+    void setWeight(double const weight);
     inline void setStrId(std::string const& strId) { m_strId = strId; }
 
     /// @brief Get the edge's id
@@ -76,6 +70,9 @@ namespace dsf {
     /// @brief Get the edge's angle, in radians, between the source and target nodes
     /// @return double The edge's angle, in radians
     double angle() const;
+    /// @brief Get the edge's weight
+    /// @return double The edge's weight
+    double weight() const;
 
     inline std::optional<std::string> const& strId() const noexcept { return m_strId; }
 
