@@ -102,7 +102,7 @@ namespace dsf {
     double density(bool normalized = false) const final;
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
-    bool isFull() const final { return nAgents() == m_capacity; }
+    inline bool isFull() const final { return this->nAgents() == this->m_capacity; }
 
     dsf::priority_queue<std::unique_ptr<Agent>,
                         std::vector<std::unique_ptr<Agent>>,

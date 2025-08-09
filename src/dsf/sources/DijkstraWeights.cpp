@@ -17,6 +17,11 @@ namespace dsf {
                        (1. - (*street)->nAgents() / (*street)->capacity())};
       return std::ceil(length / speed);
     }
+
+    double streetWeight(const RoadNetwork* graph, Id node1, Id node2) {
+      auto const street{graph->street(node1, node2)};
+      return (*street)->weight();
+    }
   }  // namespace weight_functions
 
 };  // namespace dsf

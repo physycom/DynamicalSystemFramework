@@ -147,11 +147,11 @@ namespace dsf {
     /// @brief Export the graph's nodes to a csv-like file separated with ';'
     /// @param path The path to the file to export the nodes to
     /// @details The file format is csv-like, with the first line being the column names: id;lon;lat
-    void exportNodes(const std::string& fileName);
+    void exportNodes(const std::string& fileName, bool const useExternalIds = false);
     /// @brief Export the graph's edges to a csv-like file separated with ';'
     /// @param path The path to the file to export the edges to
     /// @details The file format is csv-like, with the first line being the column names: id;source_id;target_id;name;geometry
-    void exportEdges(const std::string& fileName);
+    void exportEdges(const std::string& fileName, bool const useExternalIds = false);
     /// @brief Export the graph's adjacency matrix to a file
     /// @param path The path to the file to export the adjacency matrix to (default: ./matrix.dsm)
     /// @param isAdj A boolean value indicating if the file contains the adjacency matrix or the distance matrix.
