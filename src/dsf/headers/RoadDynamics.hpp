@@ -122,6 +122,8 @@ namespace dsf {
     /// @details The passage probability is the probability of passing through a node
     ///   It is useful in the case of random agents
     void setPassageProbability(double passageProbability);
+
+    void setWeightFunction(std::string const& strWeightFunction);
     /// @brief Set the transition matrix
     /// @param transitionMatrix The transition matrix
     /// @throw std::invalid_argument If some lines of the transition matrix are empty or if they differ from the adjacency matrix
@@ -393,7 +395,7 @@ namespace dsf {
     for (const auto& nodeId : this->graph().outputNodes()) {
       this->addItinerary(nodeId, nodeId);
     }
-    updatePaths();
+    // updatePaths();
     std::for_each(
         DSM_EXECUTION this->graph().edges().cbegin(),
         this->graph().edges().cend(),
@@ -1099,6 +1101,22 @@ namespace dsf {
                                 passageProbability));
     }
     m_passageProbability = passageProbability;
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::setWeightFunction(std::string const& strWeightFunction) {
+    if (strWeightFunction == "length") {
+      m_weightFunction = weight_functions::streetLength;
+    } else if (strWeightFunction == "time") {
+      m_weightFunction = weight_functions::streetTime;
+    } else if (strWeightFunction == "weight") {
+      m_weightFunction = weight_functions::streetWeight;
+    } else {
+      Logger::warning(
+          std::format("Invalid weigth function name ({}). Keeping the previous one.",
+                      strWeightFunction));
+    }
+    this->updatePaths();
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
