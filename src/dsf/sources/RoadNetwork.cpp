@@ -786,7 +786,7 @@ namespace dsf {
     } else {
       Logger::error(std::format("File extension ({}) not supported", fileExt));
     }
-    Logger::info(std::format("Successfully imported {} nodes", nNodes()));
+    Logger::debug(std::format("Successfully imported {} nodes", nNodes()));
   }
 
   void RoadNetwork::importOSMEdges(const std::string& fileName) {
@@ -861,6 +861,14 @@ namespace dsf {
       int iLanes{0};
       try {
         iLanes = std::stoi(lanes);
+        if (iLanes < 1) {
+          Logger::warning(std::format(
+              "Invalid number of lanes {} for edge {}->{}. Defaulting to 1 lane.",
+              iLanes,
+              srcId,
+              dstId));
+          ++iLanes;  // Ensure at least 1 lane
+        }
       } catch (const std::invalid_argument& e) {
         iLanes = 1;  // Default to 1 lane if lanes is invalid
       }
@@ -978,7 +986,7 @@ namespace dsf {
       }
     }
 
-    Logger::info(std::format("Successfully imported {} edges", nEdges()));
+    Logger::debug(std::format("Successfully imported {} edges", nEdges()));
   }
   void RoadNetwork::importTrafficLights(const std::string& fileName) {
     std::ifstream file{fileName};

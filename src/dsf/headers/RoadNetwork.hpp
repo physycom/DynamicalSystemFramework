@@ -115,6 +115,7 @@ namespace dsf {
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
     /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// - id: The id of the street
     /// - sourceId: The id of the source node
     /// - targetId: The id of the target node
     /// - length: The length of the street, in meters
@@ -128,6 +129,7 @@ namespace dsf {
     ///
     /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
     /// - coilcode: An integer code to identify the coil located on the street
+    /// - customWeight: will be stored in the `weight` parameter of the Edge class. You can use it for the shortest path via dsf::weight_functions::customWeight.
     void importOSMEdges(const std::string& fileName);
     /// @brief Import the graph's traffic lights from a file
     /// @param fileName The name of the file to import the traffic lights from.
