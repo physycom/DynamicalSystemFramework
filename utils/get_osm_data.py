@@ -20,7 +20,7 @@ from matplotlib import pyplot as plt
 import osmnx as ox
 from tqdm import tqdm
 
-__version__ = "2025.3.14"
+__version__ = "2025.8.12"
 
 RGBA_RED = (1, 0, 0, 0.3)
 RGBA_WHITE = (1, 1, 1, 1)
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     if FLAGS is None:
         CUSTOM_FILTER = None
     else:
-        CUSTOM_FILTER = f"[\"highway\"~\"{'|'.join(FLAGS)}\"]"
+        CUSTOM_FILTER = f'["highway"~"{"|".join(FLAGS)}"]'
     logging.info("Custom filter: %s", CUSTOM_FILTER)
     FULL_GRAPH = ox.graph_from_place(parser.place, network_type="drive")
     fig, ax = plt.subplots(figsize=(24, 24))
@@ -238,6 +238,7 @@ if __name__ == "__main__":
             gdf_nodes = gdf_nodes[["osmid_original", "x", "y", "highway"]]
             gdf_edges = gdf_edges[
                 [
+                    "osmid_original",
                     "u_original",
                     "v_original",
                     "length",
@@ -255,7 +256,7 @@ if __name__ == "__main__":
         if not parser.save_all:
             gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
             gdf_edges = gdf_edges[
-                ["u", "v", "length", "lanes", "highway", "maxspeed", "name"]
+                ["osmid", "u", "v", "length", "lanes", "highway", "maxspeed", "name"]
             ]
     if parser.allow_duplicates:
         N_DUPLICATES = 0
