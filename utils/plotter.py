@@ -110,7 +110,6 @@ class RealTimePeakDetection:
         if abs(self.y[l] - self.avg_filter[l - 1]) > (
             self._params["threshold"] * self.std_filter[l - 1]
         ):
-
             if self.y[l] > self.avg_filter[l - 1]:
                 self.signals[l] = 1
             else:

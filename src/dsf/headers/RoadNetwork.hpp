@@ -115,6 +115,7 @@ namespace dsf {
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
     /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// - id: The id of the street
     /// - sourceId: The id of the source node
     /// - targetId: The id of the target node
     /// - length: The length of the street, in meters
@@ -128,6 +129,7 @@ namespace dsf {
     ///
     /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
     /// - coilcode: An integer code to identify the coil located on the street
+    /// - customWeight: will be stored in the `weight` parameter of the Edge class. You can use it for the shortest path via dsf::weight_functions::customWeight.
     void importOSMEdges(const std::string& fileName);
     /// @brief Import the graph's traffic lights from a file
     /// @param fileName The name of the file to import the traffic lights from.
@@ -147,11 +149,11 @@ namespace dsf {
     /// @brief Export the graph's nodes to a csv-like file separated with ';'
     /// @param path The path to the file to export the nodes to
     /// @details The file format is csv-like, with the first line being the column names: id;lon;lat
-    void exportNodes(const std::string& fileName);
+    void exportNodes(const std::string& fileName, bool const useExternalIds = false);
     /// @brief Export the graph's edges to a csv-like file separated with ';'
     /// @param path The path to the file to export the edges to
     /// @details The file format is csv-like, with the first line being the column names: id;source_id;target_id;name;geometry
-    void exportEdges(const std::string& fileName);
+    void exportEdges(const std::string& fileName, bool const useExternalIds = false);
     /// @brief Export the graph's adjacency matrix to a file
     /// @param path The path to the file to export the adjacency matrix to (default: ./matrix.dsm)
     /// @param isAdj A boolean value indicating if the file contains the adjacency matrix or the distance matrix.

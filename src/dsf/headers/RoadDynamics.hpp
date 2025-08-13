@@ -36,7 +36,7 @@
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
-static auto constexpr g_cacheFolder = "./.dsmcache/";
+static auto constexpr g_cacheFolder = "./.dsfcache/";
 
 namespace dsf {
   /// @brief The RoadDynamics class represents the dynamics of the network.
@@ -122,6 +122,8 @@ namespace dsf {
     /// @details The passage probability is the probability of passing through a node
     ///   It is useful in the case of random agents
     void setPassageProbability(double passageProbability);
+
+    void setWeightFunction(std::string const& strWeightFunction);
     /// @brief Set the transition matrix
     /// @param transitionMatrix The transition matrix
     /// @throw std::invalid_argument If some lines of the transition matrix are empty or if they differ from the adjacency matrix
@@ -393,7 +395,7 @@ namespace dsf {
     for (const auto& nodeId : this->graph().outputNodes()) {
       this->addItinerary(nodeId, nodeId);
     }
-    updatePaths();
+    // updatePaths();
     std::for_each(
         DSM_EXECUTION this->graph().edges().cbegin(),
         this->graph().edges().cend(),
@@ -611,7 +613,10 @@ namespace dsf {
       return nodeId * this->graph().nNodes() + nextNodeId;
     }
 
-    assert(!possibleMoves.empty());
+    if (possibleMoves.empty()) {
+      throw std::runtime_error(std::format(
+          "No possible moves for agent {} at node {}.", pAgent->id(), nodeId));
+    }
 
     if (possibleMoves.size() == 1) {
       return nodeId * this->graph().nNodes() + possibleMoves[0];
@@ -728,7 +733,9 @@ namespace dsf {
         // Logger::debug("Taking temp agent");
         auto const& pAgentTemp{pStreet->queue(queueIndex).front()};
         if (pAgentTemp->freeTime() > this->time()) {
-          // Logger::debug("Skipping due to time");
+          Logger::debug(std::format("Skipping due to time {} < free time {}",
+                                    this->time(),
+                                    pAgentTemp->freeTime()));
           continue;
         }
         bool overtimed{false};
@@ -737,10 +744,13 @@ namespace dsf {
           if (timeDiff > 120) {
             overtimed = true;
             Logger::warning(std::format(
-                "Time {} - Agent currently on {} ({} -> {}), targetting {} ({} turn - "
+                "Time {} - Agent ({} -> {}) currently on {} ({} -> {}), targetting {} "
+                "({} turn - "
                 "Traffic "
                 "Light? {}), has been still for more than 120 seconds ({} seconds)",
                 this->time(),
+                pAgentTemp->srcNodeId().value_or(-1),
+                this->m_itineraries.at(pAgentTemp->itineraryId())->destination(),
                 pStreet->id(),
                 pStreet->source(),
                 pStreet->target(),
@@ -870,6 +880,18 @@ namespace dsf {
             }
           }
           if (!bCanPass) {
+            Logger::debug(std::format(
+                "Skipping agent emission from street {} -> {} due to right of way.",
+                pStreet->source(),
+                pStreet->target()));
+            if (overtimed) {
+              Logger::warning(std::format(
+                  "Skipping agent emission from street {} -> {} due to right of way "
+                  "and overtimed agent {}",
+                  pStreet->source(),
+                  pStreet->target(),
+                  pAgentTemp->id()));
+            }
             continue;
           }
         }
@@ -879,6 +901,19 @@ namespace dsf {
           if (pAgentTemp->isRandom()) {
             bArrived = true;
           } else {
+            Logger::debug(
+                std::format("Skipping agent emission from street {} -> {} due to passage "
+                            "probability",
+                            pStreet->source(),
+                            pStreet->target()));
+            if (overtimed) {
+              Logger::warning(std::format(
+                  "Skipping agent emission from street {} -> {} due to passage "
+                  "probability and overtimed agent {}",
+                  pStreet->source(),
+                  pStreet->target(),
+                  pAgentTemp->id()));
+            }
             continue;
           }
         }
@@ -918,10 +953,13 @@ namespace dsf {
           if (overtimed) {
             Logger::warning(std::format(
                 "Skipping agent emission from street {} -> {} due to full next street "
-                "{}",
+                "{} - strId {} ({}/{})",
                 pStreet->source(),
                 pStreet->target(),
-                nextStreet->id()));
+                nextStreet->id(),
+                nextStreet->strId().value_or("None"),
+                nextStreet->nAgents(),
+                nextStreet->capacity()));
           } else {
             Logger::debug(std::format(
                 "Skipping agent emission from street {} -> {} due to full next street "
@@ -957,13 +995,17 @@ namespace dsf {
         double integral;
         double fractional = std::modf(transportCapacity, &integral);
         if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
+          Logger::debug(
+              std::format("Skipping dequeue from node {} due to transport capacity {}",
+                          pNode->id(),
+                          transportCapacity));
           return;
         }
       }
       if (pNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*pNode);
         if (intersection.agents().empty()) {
-          // Logger::debug(std::format("No agents on node {}", pNode->id()));
+          Logger::debug(std::format("No agents on node {}", pNode->id()));
           return;
         }
         for (auto it{intersection.agents().begin()}; it != intersection.agents().end();) {
@@ -972,6 +1014,10 @@ namespace dsf {
           if (nextStreet->isFull()) {
             Logger::debug(std::format("Next street {} is full", nextStreet->id()));
             if (m_forcePriorities) {
+              Logger::debug(
+                  std::format("Forcing priority from intersection {} on street {}",
+                              pNode->id(),
+                              nextStreet->id()));
               return;
             }
             ++it;
@@ -1055,6 +1101,22 @@ namespace dsf {
                                 passageProbability));
     }
     m_passageProbability = passageProbability;
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::setWeightFunction(std::string const& strWeightFunction) {
+    if (strWeightFunction == "length") {
+      m_weightFunction = weight_functions::streetLength;
+    } else if (strWeightFunction == "time") {
+      m_weightFunction = weight_functions::streetTime;
+    } else if (strWeightFunction == "weight") {
+      m_weightFunction = weight_functions::streetWeight;
+    } else {
+      Logger::warning(
+          std::format("Invalid weigth function name ({}). Keeping the previous one.",
+                      strWeightFunction));
+    }
+    this->updatePaths();
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
@@ -1444,16 +1506,21 @@ namespace dsf {
         pAgent->setNextStreetId(
             this->m_nextStreetId(pAgent, srcNode->id(), pAgent->streetId()));
       }
-      Logger::debug(
-          std::format("Checking next street {}", pAgent->nextStreetId().value()));
+      // Logger::debug(
+      //     std::format("Checking next street {}", pAgent->nextStreetId().value()));
       auto const& nextStreet{
           this->graph().edge(pAgent->nextStreetId().value())};  // next street
       if (nextStreet->isFull()) {
         ++itAgent;
+        Logger::debug(
+            std::format("Skipping agent {} on node {} due to full initial street {}",
+                        pAgent->id(),
+                        srcNode->id(),
+                        nextStreet->id()));
         continue;
       }
       assert(srcNode->id() == nextStreet->source());
-      Logger::debug("Adding agent on the source node");
+      // Logger::debug("Adding agent on the source node");
       if (srcNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*srcNode);
         intersection.addAgent(0., std::move(pAgent));
