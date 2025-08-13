@@ -36,7 +36,7 @@
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
-static auto constexpr g_cacheFolder = "./.dsmcache/";
+static auto constexpr g_cacheFolder = "./.dsfcache/";
 
 namespace dsf {
   /// @brief The RoadDynamics class represents the dynamics of the network.
