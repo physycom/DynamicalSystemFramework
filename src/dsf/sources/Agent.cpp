@@ -1,5 +1,7 @@
 #include "../headers/Agent.hpp"
 
+#include <format>
+
 namespace dsf {
   Agent::Agent(Time const& spawnTime,
                std::optional<Id> itineraryId,

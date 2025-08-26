@@ -216,3 +216,23 @@ namespace dsf {
   };
 
 };  // namespace dsf
+
+template <>
+struct std::formatter<dsf::Street> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename fmtContext>
+  auto format(const dsf::Street& street, fmtContext& ctx) const {
+    return std::format_to(
+        ctx.out(),
+        "Street \"{}\" ({}: {} -> {}). {} m - {} m/s - {} lanes - {} agents ({} exiting)",
+        street.name(),
+        street.id(),
+        street.nodePair().first,
+        street.nodePair().second,
+        street.length(),
+        street.maxSpeed(),
+        street.nLanes(),
+        street.nAgents(),
+        street.nExitingAgents());
+  }
+};

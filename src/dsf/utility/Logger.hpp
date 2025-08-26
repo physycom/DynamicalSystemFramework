@@ -9,10 +9,10 @@
 #include <string>
 #include <set>
 
-static std::string buildMessage(const std::string& type,
-                                const std::string& message,
-                                const std::source_location& location,
-                                bool verbose) {
+static inline std::string buildMessage(const std::string& type,
+                                       const std::string& message,
+                                       const std::source_location& location,
+                                       bool verbose) {
   if (verbose) {
     return std::format("{} ({}:{}) \'{}\': {}",
                        type,

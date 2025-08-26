@@ -10,6 +10,10 @@
 #pragma once
 
 #include "Intersection.hpp"
+#include "../utility/Typedef.hpp"
+
+#include <format>
+#include <string>
 
 namespace dsf {
   class TrafficLightCycle {
@@ -143,6 +147,7 @@ namespace dsf {
     cycles() const {
       return m_cycles;
     }
+    inline Delay counter() const { return m_counter; }
     /// @brief Returns true if all the cycles are set to their default values
     bool isDefault() const;
     /// @brief Returns true if the traffic light is green for a street and a direction
@@ -160,3 +165,40 @@ namespace dsf {
     inline bool isTrafficLight() const noexcept { return true; }
   };
 }  // namespace dsf
+
+template <>
+struct std::formatter<dsf::TrafficLightCycle> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(const dsf::TrafficLightCycle& cycle, FormatContext& ctx) const {
+    return std::format_to(ctx.out(),
+                          "TrafficLightCycle (green time: {} - phase shift: {})",
+                          cycle.greenTime(),
+                          cycle.phase());
+  }
+};
+
+template <>
+struct std::formatter<dsf::TrafficLight> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(const dsf::TrafficLight& tl, FormatContext& ctx) const {
+    std::string strCycles;
+    for (auto const& [streetId, cycles] : tl.cycles()) {
+      std::string strStreetCycles{std::format("\tStreet {}:\n", streetId)};
+      for (auto const& [direction, cycle] : cycles) {
+        strStreetCycles += std::format(
+            "\t\t- dir {}: {}\n", dsf::directionToString.at(direction), cycle);
+      }
+      strCycles += strStreetCycles;
+    }
+    return std::format_to(
+        ctx.out(),
+        "TrafficLight \"{}\" ({}): cycle time {} - counter {}. Cycles:\n{}",
+        tl.name(),
+        tl.id(),
+        tl.cycleTime(),
+        tl.counter(),
+        strCycles);
+  }
+};
