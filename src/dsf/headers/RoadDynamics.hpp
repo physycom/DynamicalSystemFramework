@@ -952,14 +952,11 @@ namespace dsf {
         if (nextStreet->isFull()) {
           if (overtimed) {
             Logger::warning(std::format(
-                "Skipping agent emission from street {} -> {} due to full next street "
-                "{} - strId {} ({}/{})",
+                "Skipping agent emission from street {} -> {} due to full next street: "
+                "{}",
                 pStreet->source(),
                 pStreet->target(),
-                nextStreet->id(),
-                nextStreet->strId().value_or("None"),
-                nextStreet->nAgents(),
-                nextStreet->capacity()));
+                *nextStreet));
           } else {
             Logger::debug(std::format(
                 "Skipping agent emission from street {} -> {} due to full next street "
@@ -1012,7 +1009,7 @@ namespace dsf {
           auto& pAgent{it->second};
           auto const& nextStreet{this->graph().edge(pAgent->nextStreetId().value())};
           if (nextStreet->isFull()) {
-            Logger::debug(std::format("Next street {} is full", nextStreet->id()));
+            Logger::debug(std::format("Next street is full: {}", *nextStreet));
             if (m_forcePriorities) {
               Logger::debug(
                   std::format("Forcing priority from intersection {} on street {}",
@@ -1029,12 +1026,11 @@ namespace dsf {
                               std::ceil(nextStreet->length() / pAgent->speed()));
           Logger::debug(std::format(
               "An agent at time {} has been dequeued from intersection {} and "
-              "enqueued on street {} with speed {} and free time {}",
+              "enqueued on street {}: {}",
               this->time(),
               pNode->id(),
               nextStreet->id(),
-              pAgent->speed(),
-              pAgent->freeTime()));
+              *pAgent));
           nextStreet->addAgent(std::move(pAgent));
           it = intersection.agents().erase(it);
           break;
@@ -1064,12 +1060,11 @@ namespace dsf {
                               std::ceil(nextStreet->length() / pAgent->speed()));
           Logger::debug(
               std::format("An agent at time {} has been dequeued from roundabout {} and "
-                          "enqueued on street {} with speed {} and free time {}",
+                          "enqueued on street {}: {}",
                           this->time(),
                           pNode->id(),
                           nextStreet->id(),
-                          pAgent->speed(),
-                          pAgent->freeTime()));
+                          *pAgent));
           nextStreet->addAgent(std::move(pAgent));
         } else {
           return;
