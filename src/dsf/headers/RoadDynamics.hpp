@@ -51,8 +51,6 @@ namespace dsf {
   protected:
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
-    tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
-        m_queuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     Time m_previousOptimizationTime, m_previousSpireTime;
 
@@ -96,8 +94,9 @@ namespace dsf {
     /// and increments all travel times.
     // void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
 
-    void m_trafficlightSingleTailOptimizer(double const& beta,
-                                           std::optional<std::ofstream>& logStream);
+    void m_trafficlightGreenTimeOptimizer(double const& beta,
+                                          std::optional<std::ofstream>& logStream);
+    void m_trafficLightPhaseOptimizer(std::optional<std::ofstream>& logStream);
 
   public:
     /// @brief Construct a new RoadDynamics object
@@ -1439,19 +1438,12 @@ namespace dsf {
                                  this->graph().adjacencyMatrix().getCol(pNode->id())) {
                               auto const streetId{sourceId * N + pNode->id()};
                               auto const& pStreet{this->graph().edge(streetId)};
-                              if (bUpdateData && pNode->isTrafficLight()) {
-                                if (!m_queuesAtTrafficLights.contains(pStreet->id())) {
-                                  auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-                                  assert(!tl.cycles().empty());
-                                  for (auto const& [id, pair] : tl.cycles()) {
-                                    for (auto const& [direction, cycle] : pair) {
-                                      m_queuesAtTrafficLights[id].emplace(direction, 0.);
-                                    }
+                              if (this->time() > 0 && bUpdateData && pNode->isTrafficLight()) {
+                                auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+                                for (auto& cycle : tl.cycles()) {
+                                  for (auto const& [streetId, dir] : cycle.associations()) {
+                                    cycle.increaseCounts(pStreet->nExitingAgents(dir, true));
                                   }
-                                }
-                                for (auto& [direction, value] :
-                                     m_queuesAtTrafficLights.at(pStreet->id())) {
-                                  value += pStreet->nExitingAgents(direction, true);
                                 }
                               }
                               m_evolveStreet(pStreet, reinsert_agents);
@@ -1521,7 +1513,7 @@ namespace dsf {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_trafficlightSingleTailOptimizer(
+  void RoadDynamics<delay_t>::m_trafficlightGreenTimeOptimizer(
       double const& beta, std::optional<std::ofstream>& logStream) {
     assert(beta >= 0. && beta <= 1.);
     if (logStream.has_value()) {
@@ -1530,376 +1522,392 @@ namespace dsf {
           this->time(),
           beta);
     }
-    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
-      if (!pNode->isTrafficLight()) {
-        continue;
-      }
-      auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+    // for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+    //   if (!pNode->isTrafficLight()) {
+    //     continue;
+    //   }
+    //   auto& tl = dynamic_cast<TrafficLight&>(*pNode);
 
-      auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
+    //   auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
 
-      // Default is RIGHTANDSTRAIGHT - LEFT phases for both priority and non-priority
-      std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
-      bool isPrioritySinglePhase{false}, isNonPrioritySinglePhase{false};
+    //   // Default is RIGHTANDSTRAIGHT - LEFT phases for both priority and non-priority
+    //   std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
+    //   bool isPrioritySinglePhase{false}, isNonPrioritySinglePhase{false};
 
-      for (const auto& sourceId : inNeighbours) {
-        auto const streetId = sourceId * this->graph().nNodes() + nodeId;
-        if (tl.cycles().at(streetId).contains(Direction::ANY)) {
-          tl.streetPriorities().contains(streetId) ? isPrioritySinglePhase = true
-                                                   : isNonPrioritySinglePhase = true;
-        }
-      }
-      if (isPrioritySinglePhase && logStream.has_value()) {
-        *logStream << std::format("\tFound a single phase for priority streets.\n");
-      }
-      if (isNonPrioritySinglePhase && logStream.has_value()) {
-        *logStream << std::format("\tFound a single phase for non-priority streets.\n");
-      }
+    //   for (const auto& sourceId : inNeighbours) {
+    //     auto const streetId = sourceId * this->graph().nNodes() + nodeId;
+    //     if (tl.cycles().at(streetId).contains(Direction::ANY)) {
+    //       tl.streetPriorities().contains(streetId) ? isPrioritySinglePhase = true
+    //                                                : isNonPrioritySinglePhase = true;
+    //     }
+    //   }
+    //   if (isPrioritySinglePhase && logStream.has_value()) {
+    //     *logStream << std::format("\tFound a single phase for priority streets.\n");
+    //   }
+    //   if (isNonPrioritySinglePhase && logStream.has_value()) {
+    //     *logStream << std::format("\tFound a single phase for non-priority streets.\n");
+    //   }
 
-      for (const auto& sourceId : inNeighbours) {
-        auto const streetId = sourceId * this->graph().nNodes() + nodeId;
-        for (auto const& [direction, tail] : m_queuesAtTrafficLights.at(streetId)) {
-          if (tl.streetPriorities().contains(streetId)) {
-            if (isPrioritySinglePhase) {
-              inputPrioritySum[0] += tail;
-            } else {
-              if (direction == Direction::LEFT ||
-                  direction == Direction::LEFTANDSTRAIGHT) {
-                inputPrioritySum[1] += tail;
-              } else {
-                inputPrioritySum[0] += tail;
-              }
-            }
-          } else {
-            if (isNonPrioritySinglePhase) {
-              inputNonPrioritySum[0] += tail;
-            } else {
-              if (direction == Direction::LEFT ||
-                  direction == Direction::LEFTANDSTRAIGHT) {
-                inputNonPrioritySum[1] += tail;
-              } else {
-                inputNonPrioritySum[0] += tail;
-              }
-            }
-          }
-        }
-      }
-      {
-        // Sum normalization
-        auto const sum{inputPrioritySum[0] + inputPrioritySum[1] +
-                       inputNonPrioritySum[0] + inputNonPrioritySum[1]};
-        if (sum == 0.) {
-          continue;
-        }
-        inputPrioritySum[0] /= sum;
-        inputPrioritySum[1] /= sum;
-        inputNonPrioritySum[0] /= sum;
-        inputNonPrioritySum[1] /= sum;
+    //   for (const auto& sourceId : inNeighbours) {
+    //     auto const streetId = sourceId * this->graph().nNodes() + nodeId;
+    //     for (auto const& [direction, tail] : m_queuesAtTrafficLights.at(streetId)) {
+    //       if (tl.streetPriorities().contains(streetId)) {
+    //         if (isPrioritySinglePhase) {
+    //           inputPrioritySum[0] += tail;
+    //         } else {
+    //           if (direction == Direction::LEFT ||
+    //               direction == Direction::LEFTANDSTRAIGHT) {
+    //             inputPrioritySum[1] += tail;
+    //           } else {
+    //             inputPrioritySum[0] += tail;
+    //           }
+    //         }
+    //       } else {
+    //         if (isNonPrioritySinglePhase) {
+    //           inputNonPrioritySum[0] += tail;
+    //         } else {
+    //           if (direction == Direction::LEFT ||
+    //               direction == Direction::LEFTANDSTRAIGHT) {
+    //             inputNonPrioritySum[1] += tail;
+    //           } else {
+    //             inputNonPrioritySum[0] += tail;
+    //           }
+    //         }
+    //       }
+    //     }
+    //   }
+    //   {
+    //     // Sum normalization
+    //     auto const sum{inputPrioritySum[0] + inputPrioritySum[1] +
+    //                    inputNonPrioritySum[0] + inputNonPrioritySum[1]};
+    //     if (sum == 0.) {
+    //       continue;
+    //     }
+    //     inputPrioritySum[0] /= sum;
+    //     inputPrioritySum[1] /= sum;
+    //     inputNonPrioritySum[0] /= sum;
+    //     inputNonPrioritySum[1] /= sum;
 
-        // int const cycleTime{(1. - alpha) * tl.cycleTime()};
+    //     // int const cycleTime{(1. - alpha) * tl.cycleTime()};
 
-        inputPrioritySum[0] *= beta;
-        inputPrioritySum[1] *= beta;
-        inputNonPrioritySum[0] *= beta;
-        inputNonPrioritySum[1] *= beta;
-      }
+    //     inputPrioritySum[0] *= beta;
+    //     inputPrioritySum[1] *= beta;
+    //     inputNonPrioritySum[0] *= beta;
+    //     inputNonPrioritySum[1] *= beta;
+    //   }
 
-      if (logStream.has_value()) {
-        *logStream << std::format(
-            "\tInput cycle queue ratios are {:.2f} {:.2f} - {:.2f} {:.2f}\n",
-            inputPrioritySum[0],
-            inputPrioritySum[1],
-            inputNonPrioritySum[0],
-            inputNonPrioritySum[1]);
-      }
+    //   if (logStream.has_value()) {
+    //     *logStream << std::format(
+    //         "\tInput cycle queue ratios are {:.2f} {:.2f} - {:.2f} {:.2f}\n",
+    //         inputPrioritySum[0],
+    //         inputPrioritySum[1],
+    //         inputNonPrioritySum[0],
+    //         inputNonPrioritySum[1]);
+    //   }
 
-      tl.resetCycles();
-      auto cycles{tl.cycles()};
-      std::array<int, 4> n{0, 0, 0, 0};
-      std::array<double, 4> greenTimes{0., 0., 0., 0.};
+    //   tl.resetCycles();
+    //   auto cycles{tl.cycles()};
+    //   std::array<int, 4> n{0, 0, 0, 0};
+    //   std::array<double, 4> greenTimes{0., 0., 0., 0.};
 
-      for (auto const& [streetId, pair] : cycles) {
-        for (auto const& [direction, cycle] : pair) {
-          if (tl.streetPriorities().contains(streetId)) {
-            if (isPrioritySinglePhase) {
-              greenTimes[0] += cycle.greenTime();
-              ++n[0];
-            } else {
-              if (direction == Direction::LEFT ||
-                  direction == Direction::LEFTANDSTRAIGHT) {
-                greenTimes[1] += cycle.greenTime();
-                ++n[1];
-              } else {
-                greenTimes[0] += cycle.greenTime();
-                ++n[0];
-              }
-            }
-          } else {
-            if (isNonPrioritySinglePhase) {
-              greenTimes[2] += cycle.greenTime();
-              ++n[2];
-            } else {
-              if (direction == Direction::LEFT ||
-                  direction == Direction::LEFTANDSTRAIGHT) {
-                greenTimes[3] += cycle.greenTime();
-                ++n[3];
-              } else {
-                greenTimes[2] += cycle.greenTime();
-                ++n[2];
-              }
-            }
-          }
-        }
-      }
+    //   for (auto const& [streetId, pair] : cycles) {
+    //     for (auto const& [direction, cycle] : pair) {
+    //       if (tl.streetPriorities().contains(streetId)) {
+    //         if (isPrioritySinglePhase) {
+    //           greenTimes[0] += cycle.greenTime();
+    //           ++n[0];
+    //         } else {
+    //           if (direction == Direction::LEFT ||
+    //               direction == Direction::LEFTANDSTRAIGHT) {
+    //             greenTimes[1] += cycle.greenTime();
+    //             ++n[1];
+    //           } else {
+    //             greenTimes[0] += cycle.greenTime();
+    //             ++n[0];
+    //           }
+    //         }
+    //       } else {
+    //         if (isNonPrioritySinglePhase) {
+    //           greenTimes[2] += cycle.greenTime();
+    //           ++n[2];
+    //         } else {
+    //           if (direction == Direction::LEFT ||
+    //               direction == Direction::LEFTANDSTRAIGHT) {
+    //             greenTimes[3] += cycle.greenTime();
+    //             ++n[3];
+    //           } else {
+    //             greenTimes[2] += cycle.greenTime();
+    //             ++n[2];
+    //           }
+    //         }
+    //       }
+    //     }
+    //   }
 
-      if (logStream.has_value()) {
-        *logStream << std::format("\tGreen times are {} {} - {} {}\n",
-                                  greenTimes[0],
-                                  greenTimes[1],
-                                  greenTimes[2],
-                                  greenTimes[3]);
-      }
+    //   if (logStream.has_value()) {
+    //     *logStream << std::format("\tGreen times are {} {} - {} {}\n",
+    //                               greenTimes[0],
+    //                               greenTimes[1],
+    //                               greenTimes[2],
+    //                               greenTimes[3]);
+    //   }
 
-      for (auto i{0}; i < 4; ++i) {
-        if (n[i] > 1) {
-          greenTimes[i] /= n[i];
-        }
-      }
+    //   for (auto i{0}; i < 4; ++i) {
+    //     if (n[i] > 1) {
+    //       greenTimes[i] /= n[i];
+    //     }
+    //   }
 
-      {
-        auto sum{0.};
-        for (auto const& greenTime : greenTimes) {
-          sum += greenTime;
-        }
-        if (sum == 0.) {
-          continue;
-        }
-        for (auto& greenTime : greenTimes) {
-          greenTime /= sum;
-        }
-      }
-      for (auto& el : greenTimes) {
-        el *= (1. - beta);
-      }
+    //   {
+    //     auto sum{0.};
+    //     for (auto const& greenTime : greenTimes) {
+    //       sum += greenTime;
+    //     }
+    //     if (sum == 0.) {
+    //       continue;
+    //     }
+    //     for (auto& greenTime : greenTimes) {
+    //       greenTime /= sum;
+    //     }
+    //   }
+    //   for (auto& el : greenTimes) {
+    //     el *= (1. - beta);
+    //   }
 
-      int inputPriorityR{static_cast<int>(
-          std::floor((inputPrioritySum[0] + greenTimes[0]) * tl.cycleTime()))};
-      int inputPriorityS{inputPriorityR};
-      int inputPriorityL{static_cast<int>(
-          std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime()))};
+    //   int inputPriorityR{static_cast<int>(
+    //       std::floor((inputPrioritySum[0] + greenTimes[0]) * tl.cycleTime()))};
+    //   int inputPriorityS{inputPriorityR};
+    //   int inputPriorityL{static_cast<int>(
+    //       std::floor((inputPrioritySum[1] + greenTimes[1]) * tl.cycleTime()))};
 
-      int inputNonPriorityR{static_cast<int>(
-          std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime()))};
-      int inputNonPriorityS{inputNonPriorityR};
-      int inputNonPriorityL{static_cast<int>(
-          std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime()))};
+    //   int inputNonPriorityR{static_cast<int>(
+    //       std::floor((inputNonPrioritySum[0] + greenTimes[2]) * tl.cycleTime()))};
+    //   int inputNonPriorityS{inputNonPriorityR};
+    //   int inputNonPriorityL{static_cast<int>(
+    //       std::floor((inputNonPrioritySum[1] + greenTimes[3]) * tl.cycleTime()))};
 
-      {
-        // Adjust phases to have the sum equal to the cycle time
-        // To do this, first add seconds to the priority streets, then to the
-        // non-priority streets
-        auto total{static_cast<Delay>(inputPriorityR + inputPriorityL +
-                                      inputNonPriorityR + inputNonPriorityL)};
-        size_t idx{0};
-        while (total < tl.cycleTime()) {
-          switch (idx % 4) {
-            case 0:
-              ++inputPriorityR;
-              ++inputPriorityS;
-              break;
-            case 1:
-              ++inputPriorityL;
-              break;
-            case 2:
-              ++inputNonPriorityR;
-              ++inputNonPriorityS;
-              break;
-            case 3:
-              ++inputNonPriorityL;
-              break;
-          }
-          ++idx;
-          ++total;
-        }
-      }
+    //   {
+    //     // Adjust phases to have the sum equal to the cycle time
+    //     // To do this, first add seconds to the priority streets, then to the
+    //     // non-priority streets
+    //     auto total{static_cast<Delay>(inputPriorityR + inputPriorityL +
+    //                                   inputNonPriorityR + inputNonPriorityL)};
+    //     size_t idx{0};
+    //     while (total < tl.cycleTime()) {
+    //       switch (idx % 4) {
+    //         case 0:
+    //           ++inputPriorityR;
+    //           ++inputPriorityS;
+    //           break;
+    //         case 1:
+    //           ++inputPriorityL;
+    //           break;
+    //         case 2:
+    //           ++inputNonPriorityR;
+    //           ++inputNonPriorityS;
+    //           break;
+    //         case 3:
+    //           ++inputNonPriorityL;
+    //           break;
+    //       }
+    //       ++idx;
+    //       ++total;
+    //     }
+    //   }
 
-      if (isPrioritySinglePhase) {
-        inputPriorityR = 0;
-        inputPriorityL = 0;
-      }
-      if (isNonPrioritySinglePhase) {
-        inputNonPriorityR = 0;
-        inputNonPriorityL = 0;
-      }
+    //   if (isPrioritySinglePhase) {
+    //     inputPriorityR = 0;
+    //     inputPriorityL = 0;
+    //   }
+    //   if (isNonPrioritySinglePhase) {
+    //     inputNonPriorityR = 0;
+    //     inputNonPriorityL = 0;
+    //   }
 
-      // Logger::info(std::format(
-      //     "Cycle time: {} - Current sum: {}",
-      //     tl.cycleTime(),
-      //     inputPriorityRS + inputPriorityL + inputNonPriorityRS + inputNonPriorityL));
-      assert(inputPriorityS + inputPriorityL + inputNonPriorityS + inputNonPriorityL ==
-             tl.cycleTime());
+    //   // Logger::info(std::format(
+    //   //     "Cycle time: {} - Current sum: {}",
+    //   //     tl.cycleTime(),
+    //   //     inputPriorityRS + inputPriorityL + inputNonPriorityRS + inputNonPriorityL));
+    //   assert(inputPriorityS + inputPriorityL + inputNonPriorityS + inputNonPriorityL ==
+    //          tl.cycleTime());
 
-      std::unordered_map<Direction, TrafficLightCycle> priorityCycles;
-      priorityCycles.emplace(Direction::RIGHT,
-                             TrafficLightCycle{static_cast<Delay>(inputPriorityR), 0});
-      priorityCycles.emplace(Direction::STRAIGHT,
-                             TrafficLightCycle{static_cast<Delay>(inputPriorityS), 0});
-      priorityCycles.emplace(Direction::RIGHTANDSTRAIGHT,
-                             TrafficLightCycle{static_cast<Delay>(inputPriorityS), 0});
-      priorityCycles.emplace(
-          Direction::ANY,
-          TrafficLightCycle{static_cast<Delay>(inputPriorityS + inputPriorityL), 0});
-      priorityCycles.emplace(Direction::LEFT,
-                             TrafficLightCycle{static_cast<Delay>(inputPriorityL),
-                                               static_cast<Delay>(inputPriorityS)});
+    //   std::unordered_map<Direction, TrafficLightCycle> priorityCycles;
+    //   priorityCycles.emplace(Direction::RIGHT,
+    //                          TrafficLightCycle{static_cast<Delay>(inputPriorityR), 0});
+    //   priorityCycles.emplace(Direction::STRAIGHT,
+    //                          TrafficLightCycle{static_cast<Delay>(inputPriorityS), 0});
+    //   priorityCycles.emplace(Direction::RIGHTANDSTRAIGHT,
+    //                          TrafficLightCycle{static_cast<Delay>(inputPriorityS), 0});
+    //   priorityCycles.emplace(
+    //       Direction::ANY,
+    //       TrafficLightCycle{static_cast<Delay>(inputPriorityS + inputPriorityL), 0});
+    //   priorityCycles.emplace(Direction::LEFT,
+    //                          TrafficLightCycle{static_cast<Delay>(inputPriorityL),
+    //                                            static_cast<Delay>(inputPriorityS)});
 
-      std::unordered_map<Direction, TrafficLightCycle> nonPriorityCycles;
-      nonPriorityCycles.emplace(
-          Direction::RIGHT,
-          TrafficLightCycle{static_cast<Delay>(inputNonPriorityR),
-                            static_cast<Delay>(inputPriorityS + inputPriorityL)});
-      nonPriorityCycles.emplace(
-          Direction::STRAIGHT,
-          TrafficLightCycle{static_cast<Delay>(inputNonPriorityS),
-                            static_cast<Delay>(inputPriorityS + inputPriorityL)});
-      nonPriorityCycles.emplace(
-          Direction::RIGHTANDSTRAIGHT,
-          TrafficLightCycle{static_cast<Delay>(inputNonPriorityS),
-                            static_cast<Delay>(inputPriorityS + inputPriorityL)});
-      nonPriorityCycles.emplace(
-          Direction::ANY,
-          TrafficLightCycle{static_cast<Delay>(inputNonPriorityS + inputNonPriorityL),
-                            static_cast<Delay>(inputPriorityS + inputPriorityL)});
-      nonPriorityCycles.emplace(
-          Direction::LEFT,
-          TrafficLightCycle{
-              static_cast<Delay>(inputNonPriorityL),
-              static_cast<Delay>(inputPriorityS + inputPriorityL + inputNonPriorityS)});
-      nonPriorityCycles.emplace(
-          Direction::LEFTANDSTRAIGHT,
-          TrafficLightCycle{
-              static_cast<Delay>(inputNonPriorityL + inputNonPriorityS),
-              static_cast<Delay>(inputPriorityS + inputPriorityL + inputNonPriorityR)});
+    //   std::unordered_map<Direction, TrafficLightCycle> nonPriorityCycles;
+    //   nonPriorityCycles.emplace(
+    //       Direction::RIGHT,
+    //       TrafficLightCycle{static_cast<Delay>(inputNonPriorityR),
+    //                         static_cast<Delay>(inputPriorityS + inputPriorityL)});
+    //   nonPriorityCycles.emplace(
+    //       Direction::STRAIGHT,
+    //       TrafficLightCycle{static_cast<Delay>(inputNonPriorityS),
+    //                         static_cast<Delay>(inputPriorityS + inputPriorityL)});
+    //   nonPriorityCycles.emplace(
+    //       Direction::RIGHTANDSTRAIGHT,
+    //       TrafficLightCycle{static_cast<Delay>(inputNonPriorityS),
+    //                         static_cast<Delay>(inputPriorityS + inputPriorityL)});
+    //   nonPriorityCycles.emplace(
+    //       Direction::ANY,
+    //       TrafficLightCycle{static_cast<Delay>(inputNonPriorityS + inputNonPriorityL),
+    //                         static_cast<Delay>(inputPriorityS + inputPriorityL)});
+    //   nonPriorityCycles.emplace(
+    //       Direction::LEFT,
+    //       TrafficLightCycle{
+    //           static_cast<Delay>(inputNonPriorityL),
+    //           static_cast<Delay>(inputPriorityS + inputPriorityL + inputNonPriorityS)});
+    //   nonPriorityCycles.emplace(
+    //       Direction::LEFTANDSTRAIGHT,
+    //       TrafficLightCycle{
+    //           static_cast<Delay>(inputNonPriorityL + inputNonPriorityS),
+    //           static_cast<Delay>(inputPriorityS + inputPriorityL + inputNonPriorityR)});
 
-      std::vector<Id> streetIds;
-      std::set<Id> forbiddenLeft;
+    //   std::vector<Id> streetIds;
+    //   std::set<Id> forbiddenLeft;
 
-      for (auto const& pair : cycles) {
-        streetIds.push_back(pair.first);
-      }
-      for (auto const streetId : streetIds) {
-        auto const& pStreet{this->graph().edge(streetId)};
-        if (tl.streetPriorities().contains(streetId)) {
-          for (auto& [dir, cycle] : cycles.at(streetId)) {
-            if (isPrioritySinglePhase) {
-              cycle = priorityCycles.at(Direction::STRAIGHT);
-            } else {
-              cycle = priorityCycles.at(dir);
-            }
-          }
-          if (cycles.at(streetId).contains(Direction::RIGHT) &&
-              cycles.at(streetId).contains(Direction::STRAIGHT)) {
-            TrafficLightCycle freecycle{
-                static_cast<Delay>(inputPriorityS + inputPriorityL), 0};
-            // Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
-            //                          pStreet->source(),
-            //                          pStreet->target(),
-            //                          freecycle.greenTime(),
-            //                          freecycle.phase()));
-            cycles.at(streetId).at(Direction::RIGHT) = freecycle;
-          }
-        } else {
-          for (auto& [dir, cycle] : cycles.at(streetId)) {
-            if (isNonPrioritySinglePhase) {
-              cycle = nonPriorityCycles.at(Direction::STRAIGHT);
-            } else {
-              cycle = nonPriorityCycles.at(dir);
-            }
-          }
-          if (cycles.at(streetId).contains(Direction::RIGHT) &&
-              cycles.at(streetId).contains(Direction::STRAIGHT)) {
-            TrafficLightCycle freecycle{
-                static_cast<Delay>(inputNonPriorityS + inputNonPriorityL),
-                static_cast<Delay>(inputPriorityS + inputPriorityL)};
-            // Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
-            //                          pStreet->source(),
-            //                          pStreet->target(),
-            //                          freecycle.greenTime(),
-            //                          freecycle.phase()));
-            cycles.at(streetId).at(Direction::RIGHT) = freecycle;
-          }
-        }
-        bool found{false};
-        for (auto const dir : pStreet->laneMapping()) {
-          if (dir == Direction::LEFT || dir == Direction::LEFTANDSTRAIGHT ||
-              dir == Direction::ANY) {
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          forbiddenLeft.insert(streetId);
-          // Logger::info(std::format("Street {} -> {} has forbidden left turn.",
-          //                          pStreet->source(),
-          //                          pStreet->target()));
-        }
-      }
-      for (auto const forbiddenLeftStreetId : forbiddenLeft) {
-        for (auto const streetId : streetIds) {
-          if (streetId == forbiddenLeftStreetId) {
-            continue;
-          }
-          if (tl.streetPriorities().contains(streetId) &&
-              tl.streetPriorities().contains(forbiddenLeftStreetId)) {
-            TrafficLightCycle freecycle{
-                static_cast<Delay>(inputPriorityS + inputPriorityL), 0};
-            for (auto& [direction, cycle] : cycles.at(streetId)) {
-              if (direction == Direction::RIGHT || direction == Direction::STRAIGHT ||
-                  direction == Direction::RIGHTANDSTRAIGHT) {
-                auto const& pStreet{this->graph().edge(streetId)};
-                if (logStream.has_value()) {
-                  *logStream << std::format("\tFree cycle for {} -> {}: dir {} - {}\n",
-                                            pStreet->source(),
-                                            pStreet->target(),
-                                            directionToString[direction],
-                                            freecycle);
-                }
-                cycle = freecycle;
-              }
-            }
-          } else if (!tl.streetPriorities().contains(streetId) &&
-                     !tl.streetPriorities().contains(forbiddenLeftStreetId)) {
-            TrafficLightCycle freecycle{
-                static_cast<Delay>(inputNonPriorityS + inputNonPriorityL),
-                static_cast<Delay>(inputPriorityS + inputPriorityL)};
-            for (auto& [direction, cycle] : cycles.at(streetId)) {
-              if (direction == Direction::RIGHT || direction == Direction::STRAIGHT ||
-                  direction == Direction::RIGHTANDSTRAIGHT) {
-                auto const& pStreet{this->graph().edge(streetId)};
-                if (logStream.has_value()) {
-                  *logStream << std::format("Free cycle ({}) for {} -> {}: {} {}\n",
-                                            directionToString[direction],
-                                            pStreet->source(),
-                                            pStreet->target(),
-                                            freecycle.greenTime(),
-                                            freecycle.phase());
-                }
-                cycle = freecycle;
-              }
-            }
-          }
-        }
-      }
+    //   for (auto const& pair : cycles) {
+    //     streetIds.push_back(pair.first);
+    //   }
+    //   for (auto const streetId : streetIds) {
+    //     auto const& pStreet{this->graph().edge(streetId)};
+    //     if (tl.streetPriorities().contains(streetId)) {
+    //       for (auto& [dir, cycle] : cycles.at(streetId)) {
+    //         if (isPrioritySinglePhase) {
+    //           cycle = priorityCycles.at(Direction::STRAIGHT);
+    //         } else {
+    //           cycle = priorityCycles.at(dir);
+    //         }
+    //       }
+    //       if (cycles.at(streetId).contains(Direction::RIGHT) &&
+    //           cycles.at(streetId).contains(Direction::STRAIGHT)) {
+    //         TrafficLightCycle freecycle{
+    //             static_cast<Delay>(inputPriorityS + inputPriorityL), 0};
+    //         // Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
+    //         //                          pStreet->source(),
+    //         //                          pStreet->target(),
+    //         //                          freecycle.greenTime(),
+    //         //                          freecycle.phase()));
+    //         cycles.at(streetId).at(Direction::RIGHT) = freecycle;
+    //       }
+    //     } else {
+    //       for (auto& [dir, cycle] : cycles.at(streetId)) {
+    //         if (isNonPrioritySinglePhase) {
+    //           cycle = nonPriorityCycles.at(Direction::STRAIGHT);
+    //         } else {
+    //           cycle = nonPriorityCycles.at(dir);
+    //         }
+    //       }
+    //       if (cycles.at(streetId).contains(Direction::RIGHT) &&
+    //           cycles.at(streetId).contains(Direction::STRAIGHT)) {
+    //         TrafficLightCycle freecycle{
+    //             static_cast<Delay>(inputNonPriorityS + inputNonPriorityL),
+    //             static_cast<Delay>(inputPriorityS + inputPriorityL)};
+    //         // Logger::info(std::format("Free cycle (RIGHT) for {} -> {}: {} {}",
+    //         //                          pStreet->source(),
+    //         //                          pStreet->target(),
+    //         //                          freecycle.greenTime(),
+    //         //                          freecycle.phase()));
+    //         cycles.at(streetId).at(Direction::RIGHT) = freecycle;
+    //       }
+    //     }
+    //     bool found{false};
+    //     for (auto const dir : pStreet->laneMapping()) {
+    //       if (dir == Direction::LEFT || dir == Direction::LEFTANDSTRAIGHT ||
+    //           dir == Direction::ANY) {
+    //         found = true;
+    //         break;
+    //       }
+    //     }
+    //     if (!found) {
+    //       forbiddenLeft.insert(streetId);
+    //       // Logger::info(std::format("Street {} -> {} has forbidden left turn.",
+    //       //                          pStreet->source(),
+    //       //                          pStreet->target()));
+    //     }
+    //   }
+    //   for (auto const forbiddenLeftStreetId : forbiddenLeft) {
+    //     for (auto const streetId : streetIds) {
+    //       if (streetId == forbiddenLeftStreetId) {
+    //         continue;
+    //       }
+    //       if (tl.streetPriorities().contains(streetId) &&
+    //           tl.streetPriorities().contains(forbiddenLeftStreetId)) {
+    //         TrafficLightCycle freecycle{
+    //             static_cast<Delay>(inputPriorityS + inputPriorityL), 0};
+    //         for (auto& [direction, cycle] : cycles.at(streetId)) {
+    //           if (direction == Direction::RIGHT || direction == Direction::STRAIGHT ||
+    //               direction == Direction::RIGHTANDSTRAIGHT) {
+    //             auto const& pStreet{this->graph().edge(streetId)};
+    //             if (logStream.has_value()) {
+    //               *logStream << std::format("\tFree cycle for {} -> {}: dir {} - {}\n",
+    //                                         pStreet->source(),
+    //                                         pStreet->target(),
+    //                                         directionToString[direction],
+    //                                         freecycle);
+    //             }
+    //             cycle = freecycle;
+    //           }
+    //         }
+    //       } else if (!tl.streetPriorities().contains(streetId) &&
+    //                  !tl.streetPriorities().contains(forbiddenLeftStreetId)) {
+    //         TrafficLightCycle freecycle{
+    //             static_cast<Delay>(inputNonPriorityS + inputNonPriorityL),
+    //             static_cast<Delay>(inputPriorityS + inputPriorityL)};
+    //         for (auto& [direction, cycle] : cycles.at(streetId)) {
+    //           if (direction == Direction::RIGHT || direction == Direction::STRAIGHT ||
+    //               direction == Direction::RIGHTANDSTRAIGHT) {
+    //             auto const& pStreet{this->graph().edge(streetId)};
+    //             if (logStream.has_value()) {
+    //               *logStream << std::format("Free cycle ({}) for {} -> {}: {} {}\n",
+    //                                         directionToString[direction],
+    //                                         pStreet->source(),
+    //                                         pStreet->target(),
+    //                                         freecycle.greenTime(),
+    //                                         freecycle.phase());
+    //             }
+    //             cycle = freecycle;
+    //           }
+    //         }
+    //       }
+    //     }
+    //   }
 
-      tl.setCycles(cycles);
-      if (logStream.has_value()) {
-        *logStream << std::format("\nNew cycles for {}", tl);
-      }
-    }
-    if (logStream.has_value()) {
-      *logStream << std::format("End Traffic Lights optimization - Time {}\n",
-                                this->time());
-    }
+    //   tl.setCycles(cycles);
+    //   if (logStream.has_value()) {
+    //     *logStream << std::format("\nNew cycles for {}", tl);
+    //   }
+    // }
+    // if (logStream.has_value()) {
+    //   *logStream << std::format("End Traffic Lights optimization - Time {}\n",
+    //                             this->time());
+    // }
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_trafficLightPhaseOptimizer(
+      std::optional<std::ofstream>& logStream) {
+    // for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+    //   if (!pNode->isTrafficLight()) {
+    //     continue;
+    //   }
+    //   for (const auto& sourceId : inNeighbours) {
+    //     auto const streetId = sourceId * this->graph().nNodes() + nodeId;
+    //     for (auto const& [direction, tail] : m_queuesAtTrafficLights.at(streetId)) {
+    //     }
+    //   }
+    // }
   }
 
   template <typename delay_t>
@@ -1916,67 +1924,16 @@ namespace dsf {
         Logger::error(std::format("Could not open log file: {}", logFile));
       }
     }
-    this->m_trafficlightSingleTailOptimizer(percentage, logStream);
+    this->m_trafficlightGreenTimeOptimizer(percentage, logStream);
     if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
-      // Try to synchronize congested traffic lights
-      std::unordered_map<Id, double> densities;
-      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
-        if (!pNode->isTrafficLight()) {
-          continue;
-        }
-        double density{0.}, n{0.};
-        auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
-        for (auto const& sourceId : inNeighbours) {
-          if (!this->graph().node(sourceId)->isTrafficLight()) {
-            continue;
-          }
-          density += this->graph()
-                         .edge(sourceId * this->graph().nNodes() + nodeId)
-                         ->density(true);
-          ++n;
-        }
-        density /= n;
-        densities[nodeId] = density;
-      }
-      // Sort densities map from big to small values
-      std::vector<std::pair<Id, double>> sortedDensities(densities.begin(),
-                                                         densities.end());
-
-      // Sort by density descending
-      std::sort(sortedDensities.begin(),
-                sortedDensities.end(),
-                [](auto const& a, auto const& b) { return a.second > b.second; });
-      std::unordered_set<Id> optimizedNodes;
-
-      for (auto const& [nodeId, density] : sortedDensities) {
-        auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
-        for (auto const& sourceId : inNeighbours) {
-          if (!densities.contains(sourceId) || optimizedNodes.contains(sourceId)) {
-            continue;
-          }
-          auto const& neighbourDensity{densities.at(sourceId)};
-          if (neighbourDensity < threshold * density) {
-            continue;
-          }
-          // Try to green-wave the situation
-          auto& tl{static_cast<TrafficLight&>(*(this->graph().node(sourceId)))};
-          auto const& pStreet{
-              this->graph().edge(sourceId * this->graph().nNodes() + nodeId)};
-          tl.increasePhases(pStreet->length() /
-                            (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
-          optimizedNodes.insert(sourceId);
-          if (logStream.has_value()) {
-            *logStream << std::format("\nNew cycles for {}", tl);
-          }
-        }
-      }
+      this->m_trafficLightPhaseOptimizer(logStream);
     }
     // Cleaning variables
-    for (auto& [streetId, pair] : m_queuesAtTrafficLights) {
-      for (auto& [direction, value] : pair) {
-        value = 0.;
-      }
-    }
+    // for (auto& [streetId, pair] : m_queuesAtTrafficLights) {
+    //   for (auto& [direction, value] : pair) {
+    //     value = 0.;
+    //   }
+    // }
     m_previousOptimizationTime = this->time();
     if (logStream.has_value()) {
       logStream->close();

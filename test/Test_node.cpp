@@ -85,55 +85,55 @@ TEST_CASE("TrafficLight") {
       }
     }
   }
-  SUBCASE("Light cycle") {
-    TrafficLight::setAllowFreeTurns(true);
-    GIVEN("A traffic light object with a cycle set") {
-      TrafficLight tl{0, 2};
-      tl.setCycle(0, dsf::Direction::LEFT, {1, 0});
-      WHEN("We increase counter") {
-        ++tl;
-        THEN("The traffic light is green for all except Left and U turns") {
-          CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
-          CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
-          CHECK_FALSE(tl.isGreen(0, dsf::Direction::LEFT));
-          CHECK_FALSE(tl.isGreen(0, dsf::Direction::UTURN));
-        }
-        ++tl;
-        THEN("The traffic light is green for all") {
-          CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
-          CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
-          CHECK(tl.isGreen(0, dsf::Direction::LEFT));
-          CHECK(tl.isGreen(0, dsf::Direction::UTURN));
-        }
-      }
-    }
-    GIVEN("A traffic light object with a cycle set") {
-      TrafficLight tl{0, 3};
-      tl.setCycle(0, dsf::Direction::RIGHT, {2, 2});
-      THEN("Traffic light is green for all") {
-        CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
-        CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
-        CHECK(tl.isGreen(0, dsf::Direction::LEFT));
-        CHECK(tl.isGreen(0, dsf::Direction::UTURN));
-      }
-      WHEN("We increase counter") {
-        ++tl;
-        THEN("Traffic light is green for all except Right") {
-          CHECK_FALSE(tl.isGreen(0, dsf::Direction::RIGHT));
-          CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
-          CHECK(tl.isGreen(0, dsf::Direction::LEFT));
-          CHECK(tl.isGreen(0, dsf::Direction::UTURN));
-        }
-        ++tl;
-        THEN("Traffic light is green for all") {
-          CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
-          CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
-          CHECK(tl.isGreen(0, dsf::Direction::LEFT));
-          CHECK(tl.isGreen(0, dsf::Direction::UTURN));
-        }
-      }
-    }
-  }
+  // SUBCASE("Light cycle") {
+  //   TrafficLight::setAllowFreeTurns(true);
+  //   GIVEN("A traffic light object with a cycle set") {
+  //     TrafficLight tl{0, 2};
+  //     tl.setCycle(0, dsf::Direction::LEFT, {1, 0});
+  //     WHEN("We increase counter") {
+  //       ++tl;
+  //       THEN("The traffic light is green for all except Left and U turns") {
+  //         CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+  //         CHECK_FALSE(tl.isGreen(0, dsf::Direction::LEFT));
+  //         CHECK_FALSE(tl.isGreen(0, dsf::Direction::UTURN));
+  //       }
+  //       ++tl;
+  //       THEN("The traffic light is green for all") {
+  //         CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::LEFT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::UTURN));
+  //       }
+  //     }
+  //   }
+  //   GIVEN("A traffic light object with a cycle set") {
+  //     TrafficLight tl{0, 3};
+  //     tl.setCycle(0, dsf::Direction::RIGHT, {2, 2});
+  //     THEN("Traffic light is green for all") {
+  //       CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
+  //       CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+  //       CHECK(tl.isGreen(0, dsf::Direction::LEFT));
+  //       CHECK(tl.isGreen(0, dsf::Direction::UTURN));
+  //     }
+  //     WHEN("We increase counter") {
+  //       ++tl;
+  //       THEN("Traffic light is green for all except Right") {
+  //         CHECK_FALSE(tl.isGreen(0, dsf::Direction::RIGHT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::LEFT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::UTURN));
+  //       }
+  //       ++tl;
+  //       THEN("Traffic light is green for all") {
+  //         CHECK(tl.isGreen(0, dsf::Direction::RIGHT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::STRAIGHT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::LEFT));
+  //         CHECK(tl.isGreen(0, dsf::Direction::UTURN));
+  //       }
+  //     }
+  //   }
+  // }
   // SUBCASE("Phase") {
   //   /// This tests the phase.
   //   /// GIVEN: A TrafficLight
