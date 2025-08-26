@@ -614,8 +614,8 @@ namespace dsf {
     }
 
     if (possibleMoves.empty()) {
-      throw std::runtime_error(std::format(
-          "No possible moves for agent {} at node {}.", pAgent->id(), nodeId));
+      throw std::runtime_error(
+          std::format("No possible moves for agent {} at node {}.", *pAgent, nodeId));
     }
 
     if (possibleMoves.size() == 1) {
@@ -743,21 +743,15 @@ namespace dsf {
           auto const timeDiff{this->time() - pAgentTemp->freeTime()};
           if (timeDiff > 120) {
             overtimed = true;
-            Logger::warning(std::format(
-                "Time {} - Agent ({} -> {}) currently on {} ({} -> {}), targetting {} "
-                "({} turn - "
-                "Traffic "
-                "Light? {}), has been still for more than 120 seconds ({} seconds)",
-                this->time(),
-                pAgentTemp->srcNodeId().value_or(-1),
-                this->m_itineraries.at(pAgentTemp->itineraryId())->destination(),
-                pStreet->id(),
-                pStreet->source(),
-                pStreet->target(),
-                pAgentTemp->nextStreetId().value_or(-1),
-                directionToString.at(pStreet->laneMapping().at(queueIndex)),
-                this->graph().node(pStreet->target())->isTrafficLight(),
-                timeDiff));
+            Logger::warning(
+                std::format("Time {} - {} currently on {} ({} turn - Traffic Light? {}), "
+                            "has been still for more than 120 seconds ({} seconds)",
+                            this->time(),
+                            *pAgentTemp,
+                            *pStreet,
+                            directionToString.at(pStreet->laneMapping().at(queueIndex)),
+                            this->graph().node(pStreet->target())->isTrafficLight(),
+                            timeDiff));
           }
         }
         pAgentTemp->setSpeed(0.);
@@ -946,7 +940,7 @@ namespace dsf {
           continue;
         }
         if (!pAgentTemp->streetId().has_value()) {
-          Logger::error(std::format("Agent {} has no street id", pAgentTemp->id()));
+          Logger::error(std::format("{} has no street id", *pAgentTemp));
         }
         auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
         if (nextStreet->isFull()) {
@@ -958,12 +952,12 @@ namespace dsf {
                             pStreet->target(),
                             *nextStreet));
           } else {
-            Logger::debug(std::format(
-                "Skipping agent emission from street {} -> {} due to full next street "
-                "{}",
-                pStreet->source(),
-                pStreet->target(),
-                nextStreet->id()));
+            Logger::debug(
+                std::format("Skipping agent emission from street {} -> {} due to full "
+                            "next street: {}",
+                            pStreet->source(),
+                            pStreet->target(),
+                            *nextStreet));
           }
           continue;
         }
@@ -1507,11 +1501,8 @@ namespace dsf {
           this->graph().edge(pAgent->nextStreetId().value())};  // next street
       if (nextStreet->isFull()) {
         ++itAgent;
-        Logger::debug(
-            std::format("Skipping agent {} on node {} due to full initial street {}",
-                        pAgent->id(),
-                        srcNode->id(),
-                        nextStreet->id()));
+        Logger::debug(std::format(
+            "Skipping agent {} due to full input street {}", *pAgent, *nextStreet));
         continue;
       }
       assert(srcNode->id() == nextStreet->source());
@@ -1867,12 +1858,11 @@ namespace dsf {
                   direction == Direction::RIGHTANDSTRAIGHT) {
                 auto const& pStreet{this->graph().edge(streetId)};
                 if (logStream.has_value()) {
-                  *logStream << std::format("\tFree cycle ({}) for {} -> {}: {} {}\n",
-                                            directionToString[direction],
+                  *logStream << std::format("\tFree cycle for {} -> {}: dir {} - {}\n",
                                             pStreet->source(),
                                             pStreet->target(),
-                                            freecycle.greenTime(),
-                                            freecycle.phase());
+                                            directionToString[direction],
+                                            freecycle);
                 }
                 cycle = freecycle;
               }
@@ -1903,21 +1893,7 @@ namespace dsf {
 
       tl.setCycles(cycles);
       if (logStream.has_value()) {
-        std::string logMsg =
-            std::format("\tNew cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
-        for (auto const& [streetId, pair] : tl.cycles()) {
-          auto const& pStreet{this->graph().edge(streetId)};
-          logMsg +=
-              std::format("\t\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
-          for (auto const& [direction, cycle] : pair) {
-            logMsg += std::format("{}= ({} {}) ",
-                                  directionToString[direction],
-                                  cycle.greenTime(),
-                                  cycle.phase());
-          }
-          logMsg += '\n';
-        }
-        *logStream << logMsg << '\n';
+        *logStream << std::format("\nNew cycles for {}", tl);
       }
     }
     if (logStream.has_value()) {
@@ -1990,21 +1966,7 @@ namespace dsf {
                             (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
           optimizedNodes.insert(sourceId);
           if (logStream.has_value()) {
-            std::string logMsg =
-                std::format("\tNew cycles for TL {} ({}):\n", tl.id(), tl.cycleTime());
-            for (auto const& [streetId, pair] : tl.cycles()) {
-              auto const& pStreet{this->graph().edge(streetId)};
-              logMsg += std::format(
-                  "\t\tStreet {} -> {}: ", pStreet->source(), pStreet->target());
-              for (auto const& [direction, cycle] : pair) {
-                logMsg += std::format("{}= ({} {}) ",
-                                      directionToString[direction],
-                                      cycle.greenTime(),
-                                      cycle.phase());
-              }
-              logMsg += '\n';
-            }
-            *logStream << logMsg << '\n';
+            *logStream << std::format("\nNew cycles for {}", tl);
           }
         }
       }
