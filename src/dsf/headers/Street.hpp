@@ -235,9 +235,3 @@ struct std::formatter<dsf::Street> {
         street.nExitingAgents());
   }
 };
-
-template <>
-struct std::formatter<dsf::Street&> : std::formatter<dsf::Street> {};
-
-template <>
-struct std::formatter<const dsf::Street&> : std::formatter<dsf::Street> {};

@@ -137,9 +137,3 @@ struct std::formatter<dsf::Agent> {
                           agent.distance());
   }
 };
-
-template <>
-struct std::formatter<dsf::Agent&> : std::formatter<dsf::Agent> {};
-
-template <>
-struct std::formatter<const dsf::Agent&> : std::formatter<dsf::Agent> {};
