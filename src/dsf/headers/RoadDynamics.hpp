@@ -94,7 +94,7 @@ namespace dsf {
     /// @brief Evolve the agents.
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
-    void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
+    // void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
 
     void m_trafficlightSingleTailOptimizer(double const& beta,
                                            std::optional<std::ofstream>& logStream);
@@ -951,12 +951,12 @@ namespace dsf {
         auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
         if (nextStreet->isFull()) {
           if (overtimed) {
-            Logger::warning(std::format(
-                "Skipping agent emission from street {} -> {} due to full next street: "
-                "{}",
-                pStreet->source(),
-                pStreet->target(),
-                *nextStreet));
+            Logger::warning(
+                std::format("Skipping agent emission from street {} -> {} due to full "
+                            "next street: {}",
+                            pStreet->source(),
+                            pStreet->target(),
+                            *nextStreet));
           } else {
             Logger::debug(std::format(
                 "Skipping agent emission from street {} -> {} due to full next street "
@@ -1073,11 +1073,11 @@ namespace dsf {
     }
   }
 
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_evolveAgent(std::unique_ptr<Agent> const& pAgent) {
-    // The "cost" of enqueuing is one time unit, so we consider it as passed
-  }
+  // template <typename delay_t>
+  //   requires(is_numeric_v<delay_t>)
+  // void RoadDynamics<delay_t>::m_evolveAgent(std::unique_ptr<Agent> const& pAgent) {
+  //   // The "cost" of enqueuing is one time unit, so we consider it as passed
+  // }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
