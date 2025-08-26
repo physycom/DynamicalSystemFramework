@@ -170,7 +170,7 @@ template <>
 struct std::formatter<dsf::TrafficLightCycle> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(const dsf::TrafficLightCycle& cycle, FormatContext& ctx) const {
+  auto format(const dsf::TrafficLightCycle& cycle, FormatContext&& ctx) const {
     return std::format_to(ctx.out(),
                           "TrafficLightCycle (green time: {} - phase shift: {})",
                           cycle.greenTime(),
@@ -182,7 +182,7 @@ template <>
 struct std::formatter<dsf::TrafficLight> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(const dsf::TrafficLight& tl, FormatContext& ctx) const {
+  auto format(const dsf::TrafficLight& tl, FormatContext&& ctx) const {
     std::string strCycles;
     for (auto const& [streetId, cycles] : tl.cycles()) {
       std::string strStreetCycles{std::format("\tStreet {}:\n", streetId)};

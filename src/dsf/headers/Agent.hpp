@@ -125,7 +125,7 @@ template <>
 struct std::formatter<dsf::Agent> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(const dsf::Agent& agent, FormatContext& ctx) const {
+  auto format(const dsf::Agent& agent, FormatContext&& ctx) const {
     auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
                                                    : std::to_string(agent.itineraryId());
     return std::format_to(ctx.out(),
