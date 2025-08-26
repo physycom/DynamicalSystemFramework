@@ -33,7 +33,6 @@
 #include "Itinerary.hpp"
 #include "RoadNetwork.hpp"
 #include "SparseMatrix.hpp"
-#include "Street.hpp"
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
