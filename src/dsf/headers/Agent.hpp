@@ -139,19 +139,7 @@ struct std::formatter<dsf::Agent> {
 };
 
 template <>
-struct std::formatter<dsf::Agent&> {
-  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
-  auto format(const dsf::Agent& agent, std::format_context& ctx) const {
-    return std::format_to(ctx.out(),
-                          "Agent (srcNode {} - it) spawn time {} - free time {}: {} "
-                          "-> {} ({} m/s - {} m)",
-                          agent.srcNodeId().value_or(-1),
-                          // agent.itineraryId(),
-                          agent.spawnTime(),
-                          agent.freeTime(),
-                          agent.streetId().value_or(-1),
-                          agent.nextStreetId().value_or(-1),
-                          agent.speed(),
-                          agent.distance());
-  }
-};
+struct std::formatter<dsf::Agent&> : std::formatter<dsf::Agent> {};
+
+template <>
+struct std::formatter<const dsf::Agent&> : std::formatter<dsf::Agent> {};
