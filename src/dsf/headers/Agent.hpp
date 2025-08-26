@@ -16,6 +16,7 @@
 
 #include <cassert>
 #include <concepts>
+#include <format>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -118,3 +119,21 @@ namespace dsf {
     bool isRandom() const;
   };
 };  // namespace dsf
+
+template <>
+struct std::formatter<dsf::Agent> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  auto format(const dsf::Agent& agent, std::format_context& ctx) const {
+    return std::format_to(ctx.out(),
+                          "Agent (srcNode {} - it) spawn time {} - free time {}: {} "
+                          "-> {} ({} m/s - {} m)",
+                          agent.srcNodeId().value_or(-1),
+                          // agent.itineraryId(),
+                          agent.spawnTime(),
+                          agent.freeTime(),
+                          agent.streetId().value_or(-1),
+                          agent.nextStreetId().value_or(-1),
+                          agent.speed(),
+                          agent.distance());
+  }
+};
