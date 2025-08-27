@@ -49,8 +49,8 @@ namespace dsf {
   class RoadNetwork : public Network<RoadJunction, Street> {
   private:
     std::unordered_map<std::string, Id> m_nodeMapping;
-    std::vector<Id> m_inputNodes;
-    std::vector<Id> m_outputNodes;
+    std::vector<Id> m_originNodes;
+    std::vector<Id> m_destinationNodes;
     unsigned long long m_maxAgentCapacity;
 
     /// @brief Reassign the street ids using the max node id
@@ -226,18 +226,20 @@ namespace dsf {
       return m_nodeMapping;
     }
 
-    /// @brief Get the input nodes of the graph
-    /// @return std::vector<Id> const& The input nodes of the graph
-    inline std::vector<Id> const& inputNodes() const noexcept { return m_inputNodes; }
-    /// @brief Get the input nodes of the graph
-    /// @return std::vector<Id>& The input nodes of the graph
-    inline std::vector<Id>& inputNodes() noexcept { return m_inputNodes; }
-    /// @brief Get the output nodes of the graph
-    /// @return std::vector<Id> const& The output nodes of the graph
-    inline std::vector<Id> const& outputNodes() const noexcept { return m_outputNodes; }
-    /// @brief Get the output nodes of the graph
-    /// @return std::vector<Id>& The output nodes of the graph
-    inline std::vector<Id>& outputNodes() noexcept { return m_outputNodes; }
+    /// @brief Get the origin nodes of the graph
+    /// @return std::vector<Id> const& The origin nodes of the graph
+    inline std::vector<Id> const& originNodes() const noexcept { return m_originNodes; }
+    /// @brief Get the origin nodes of the graph
+    /// @return std::vector<Id>& The origin nodes of the graph
+    inline std::vector<Id>& originNodes() noexcept { return m_originNodes; }
+    /// @brief Get the destination nodes of the graph
+    /// @return std::vector<Id> const& The destination nodes of the graph
+    inline std::vector<Id> const& destinationNodes() const noexcept {
+      return m_destinationNodes;
+    }
+    /// @brief Get the destination nodes of the graph
+    /// @return std::vector<Id>& The destination nodes of the graph
+    inline std::vector<Id>& destinationNodes() noexcept { return m_destinationNodes; }
 
     /// @brief Get the shortest path between two nodes using dijkstra algorithm
     /// @param source The source node
