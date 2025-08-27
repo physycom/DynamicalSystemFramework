@@ -1051,16 +1051,21 @@ namespace dsf {
       } else {
         file << "Nan;Nan";
       }
+      bool const bIsOrigin{std::find(m_originNodes.begin(),
+                                     m_originNodes.end(),
+                                     nodeId) != m_originNodes.end()};
+      bool const bIsDestination{std::find(m_destinationNodes.begin(),
+                                          m_destinationNodes.end(),
+                                          nodeId) != m_destinationNodes.end()};
       if (pNode->isTrafficLight()) {
         file << ";traffic_light";
       } else if (pNode->isRoundabout()) {
         file << ";roundabout";
-      } else if (std::find(m_originNodes.begin(), m_originNodes.end(), nodeId) !=
-                 m_originNodes.end()) {
+      } else if (bIsOrigin && bIsDestination) {
+        file << ";origin-destination";
+      } else if (bIsOrigin) {
         file << ";origin";
-      } else if (std::find(m_destinationNodes.begin(),
-                           m_destinationNodes.end(),
-                           nodeId) != m_destinationNodes.end()) {
+      } else if (bIsDestination) {
         file << ";destination";
       } else {
         file << ";";
