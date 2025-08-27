@@ -111,6 +111,15 @@ namespace dsf {
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
+    /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// - id: The id of the node
+    /// - lon: The x coordinate of the node
+    /// - lat: The y coordinate of the node
+    /// - type: The type of the node
+    /// The node type can be one of the following:
+    /// - traffic_signals: intersection + traffic light
+    /// - roundabout
+    /// - origin/destination: intesection counted as origin, destination or both. To have both, the string must contain both the strings "origin" and "destination".
     void importOSMNodes(const std::string& fileName);
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
