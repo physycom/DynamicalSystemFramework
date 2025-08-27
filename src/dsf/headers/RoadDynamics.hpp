@@ -392,7 +392,7 @@ namespace dsf {
       }
       Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
     }
-    for (const auto& nodeId : this->graph().outputNodes()) {
+    for (const auto& nodeId : this->graph().destinationNodes()) {
       this->addItinerary(nodeId, nodeId);
     }
     // updatePaths();
@@ -1361,10 +1361,10 @@ namespace dsf {
   void RoadDynamics<delay_t>::addAgentsRandomly(
       Size nAgents, const std::variant<std::monostate, size_t, double> minNodeDistance) {
     std::unordered_map<Id, double> src_weights, dst_weights;
-    for (auto const& id : this->graph().inputNodes()) {
+    for (auto const& id : this->graph().originNodes()) {
       src_weights[id] = 1.;
     }
-    for (auto const& id : this->graph().outputNodes()) {
+    for (auto const& id : this->graph().destinationNodes()) {
       dst_weights[id] = 1.;
     }
     addAgentsRandomly(nAgents, src_weights, dst_weights, minNodeDistance);

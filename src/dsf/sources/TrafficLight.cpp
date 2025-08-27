@@ -71,38 +71,6 @@ namespace dsf {
     return *this;
   }
 
-  Delay TrafficLight::maxGreenTime(bool priorityStreets) const {
-    Delay maxTime{0};
-    for (auto const& [streetId, cycles] : m_cycles) {
-      if (priorityStreets && m_streetPriorities.contains(streetId)) {
-        for (auto const& [direction, cycle] : cycles) {
-          maxTime = std::max(maxTime, cycle.greenTime());
-        }
-      } else {
-        for (auto const& [direction, cycle] : cycles) {
-          maxTime = std::max(maxTime, cycle.greenTime());
-        }
-      }
-    }
-    return maxTime;
-  }
-
-  Delay TrafficLight::minGreenTime(bool priorityStreets) const {
-    Delay minTime{std::numeric_limits<Delay>::max()};
-    for (auto const& [streetId, cycles] : m_cycles) {
-      if (priorityStreets && m_streetPriorities.contains(streetId)) {
-        for (auto const& [direction, cycle] : cycles) {
-          minTime = std::min(minTime, cycle.greenTime());
-        }
-      } else {
-        for (auto const& [direction, cycle] : cycles) {
-          minTime = std::min(minTime, cycle.greenTime());
-        }
-      }
-    }
-    return minTime;
-  }
-
   double TrafficLight::meanGreenTime(bool priorityStreets) const {
     double meanTime{0.};
     size_t nCycles{0};
@@ -123,40 +91,12 @@ namespace dsf {
     return meanTime / nCycles;
   }
 
-  void TrafficLight::increaseGreenTimes(Delay const delta) {
-    for (auto& [streetId, cycles] : m_cycles) {
-      if (m_streetPriorities.contains(streetId)) {
-        for (auto& [direction, cycle] : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() + delta, cycle.phase());
-        }
-      } else {
-        for (auto& [direction, cycle] : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() - delta, cycle.phase() + delta);
-        }
-      }
-    }
-  }
-
   void TrafficLight::increasePhases(Delay const phase) {
     for (auto& [streetId, cycles] : m_cycles) {
       for (auto& [direction, cycle] : cycles) {
         // Module new phase with cycleTime
         auto newPhase{(phase + cycle.phase()) % m_cycleTime};
         cycle = TrafficLightCycle(cycle.greenTime(), newPhase);
-      }
-    }
-  }
-
-  void TrafficLight::decreaseGreenTimes(Delay const delta) {
-    for (auto& [streetId, cycles] : m_cycles) {
-      if (!m_streetPriorities.contains(streetId)) {
-        for (auto& [direction, cycle] : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() + delta, cycle.phase());
-        }
-      } else {
-        for (auto& [direction, cycle] : cycles) {
-          cycle = TrafficLightCycle(cycle.greenTime() - delta, cycle.phase() + delta);
-        }
       }
     }
   }
@@ -226,20 +166,6 @@ namespace dsf {
       return m_allowFreeTurns;
     }
     return m_cycles.at(streetId).at(direction).isGreen(m_cycleTime, m_counter);
-  }
-
-  bool TrafficLight::isFavouringDirection(bool const priority) const {
-    for (auto const& [streetId, cycles] : m_cycles) {
-      if ((priority && m_streetPriorities.contains(streetId)) ||
-          (!priority && !m_streetPriorities.contains(streetId))) {
-        for (auto const& [direction, cycle] : cycles) {
-          if (!cycle.isGreenTimeIncreased()) {
-            return false;
-          }
-        }
-      }
-    }
-    return true;
   }
 
   void TrafficLight::resetCycles() {

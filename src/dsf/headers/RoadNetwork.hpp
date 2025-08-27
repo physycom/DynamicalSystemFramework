@@ -49,8 +49,8 @@ namespace dsf {
   class RoadNetwork : public Network<RoadJunction, Street> {
   private:
     std::unordered_map<std::string, Id> m_nodeMapping;
-    std::vector<Id> m_inputNodes;
-    std::vector<Id> m_outputNodes;
+    std::vector<Id> m_originNodes;
+    std::vector<Id> m_destinationNodes;
     unsigned long long m_maxAgentCapacity;
 
     /// @brief Reassign the street ids using the max node id
@@ -111,6 +111,15 @@ namespace dsf {
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
+    /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// - id: The id of the node
+    /// - lon: The x coordinate of the node
+    /// - lat: The y coordinate of the node
+    /// - type: The type of the node
+    /// The node type can be one of the following:
+    /// - traffic_signals: intersection + traffic light
+    /// - roundabout
+    /// - origin/destination: intesection counted as origin, destination or both. To have both, the string must contain both the strings "origin" and "destination".
     void importOSMNodes(const std::string& fileName);
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
@@ -226,18 +235,20 @@ namespace dsf {
       return m_nodeMapping;
     }
 
-    /// @brief Get the input nodes of the graph
-    /// @return std::vector<Id> const& The input nodes of the graph
-    inline std::vector<Id> const& inputNodes() const noexcept { return m_inputNodes; }
-    /// @brief Get the input nodes of the graph
-    /// @return std::vector<Id>& The input nodes of the graph
-    inline std::vector<Id>& inputNodes() noexcept { return m_inputNodes; }
-    /// @brief Get the output nodes of the graph
-    /// @return std::vector<Id> const& The output nodes of the graph
-    inline std::vector<Id> const& outputNodes() const noexcept { return m_outputNodes; }
-    /// @brief Get the output nodes of the graph
-    /// @return std::vector<Id>& The output nodes of the graph
-    inline std::vector<Id>& outputNodes() noexcept { return m_outputNodes; }
+    /// @brief Get the origin nodes of the graph
+    /// @return std::vector<Id> const& The origin nodes of the graph
+    inline std::vector<Id> const& originNodes() const noexcept { return m_originNodes; }
+    /// @brief Get the origin nodes of the graph
+    /// @return std::vector<Id>& The origin nodes of the graph
+    inline std::vector<Id>& originNodes() noexcept { return m_originNodes; }
+    /// @brief Get the destination nodes of the graph
+    /// @return std::vector<Id> const& The destination nodes of the graph
+    inline std::vector<Id> const& destinationNodes() const noexcept {
+      return m_destinationNodes;
+    }
+    /// @brief Get the destination nodes of the graph
+    /// @return std::vector<Id>& The destination nodes of the graph
+    inline std::vector<Id>& destinationNodes() noexcept { return m_destinationNodes; }
 
     /// @brief Get the shortest path between two nodes using dijkstra algorithm
     /// @param source The source node

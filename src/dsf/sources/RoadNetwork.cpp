@@ -768,15 +768,14 @@ namespace dsf {
         } else {
           addNode<Intersection>(nodeIndex,
                                 std::make_pair(std::stod(lat), std::stod(lon)));
-          if ((highway.find("in_out") != std::string::npos) ||
-              (highway.find("outgoing_only") != std::string::npos)) {
-            Logger::debug(std::format("Setting node {} as an output node", nodeIndex));
-            m_outputNodes.push_back(nodeIndex);
+          if (highway.find("destination") != std::string::npos) {
+            Logger::debug(
+                std::format("Setting node {} as a destination node", nodeIndex));
+            m_destinationNodes.push_back(nodeIndex);
           }
-          if ((highway.find("in_out") != std::string::npos) ||
-              (highway.find("ingoing_only") != std::string::npos)) {
-            Logger::debug(std::format("Setting node {} as an input node", nodeIndex));
-            m_inputNodes.push_back(nodeIndex);
+          if (highway.find("origin") != std::string::npos) {
+            Logger::debug(std::format("Setting node {} as an origin node", nodeIndex));
+            m_originNodes.push_back(nodeIndex);
           }
         }
         m_nodeMapping.emplace(std::make_pair(id, nodeIndex));
@@ -1056,11 +1055,13 @@ namespace dsf {
         file << ";traffic_light";
       } else if (pNode->isRoundabout()) {
         file << ";roundabout";
-      } else if (std::find(m_inputNodes.begin(), m_inputNodes.end(), nodeId) !=
-                     m_inputNodes.end() ||
-                 std::find(m_outputNodes.begin(), m_outputNodes.end(), nodeId) !=
-                     m_outputNodes.end()) {
-        file << ";io";
+      } else if (std::find(m_originNodes.begin(), m_originNodes.end(), nodeId) !=
+                 m_originNodes.end()) {
+        file << ";origin";
+      } else if (std::find(m_destinationNodes.begin(),
+                           m_destinationNodes.end(),
+                           nodeId) != m_destinationNodes.end()) {
+        file << ";destination";
       } else {
         file << ";";
       }
