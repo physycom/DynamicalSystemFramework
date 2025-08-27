@@ -105,6 +105,8 @@ namespace dsf {
     ///          the priority streets if priorityStreets is true, or for the non-priority
     ///          streets if priorityStreets is false.
     double meanGreenTime(bool priorityStreets) const;
+
+    void setCounter(Delay counter) { m_counter = counter; }
     /// @brief Get the traffic light's total cycle time
     /// @return Delay The traffic light's cycle time
     inline Delay cycleTime() const { return m_cycleTime; }
