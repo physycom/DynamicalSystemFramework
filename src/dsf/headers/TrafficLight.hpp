@@ -78,25 +78,9 @@ namespace dsf {
     ~TrafficLight() = default;
 
     TrafficLight& operator++();
-    /// @brief Get the maximum green time over every cycle
-    /// @param priorityStreets bool, if true, only the priority streets are considered;
-    ///        if false, only the non-priority streets are considered
-    /// @return Delay The maximum green time
-    /// @details The maximum green time is the maximum green time of all the cycles for
-    ///          the priority streets if priorityStreets is true, or for the non-priority
-    ///          streets if priorityStreets is false.
 
     static void setAllowFreeTurns(bool allow);
 
-    Delay maxGreenTime(bool priorityStreets) const;
-    /// @brief Get the minimum green time over every cycle
-    /// @param priorityStreets bool, if true, only the priority streets are considered;
-    ///        if false, only the non-priority streets are considered
-    /// @return Delay The minimum green time
-    /// @details The minimum green time is the minimum green time of all the cycles for
-    ///          the priority streets if priorityStreets is true, or for the non-priority
-    ///          streets if priorityStreets is false.
-    Delay minGreenTime(bool priorityStreets) const;
     /// @brief Get the mean green time over every cycle
     /// @param priorityStreets bool, if true, only the priority streets are considered;
     ///        if false, only the non-priority streets are considered
@@ -134,12 +118,6 @@ namespace dsf {
     /// @param oldStreetId Id, the old street id
     /// @param newStreetId Id, the new street id
     void moveCycle(Id const oldStreetId, Id const newStreetId);
-    /// @brief Increase the green times of the traffic light for priority streets and decrease the green times for non-priority streets
-    /// @param delta Delay, the time to increase or decrease the green times
-    void increaseGreenTimes(Delay const delta);
-    /// @brief Decrease the green times of the traffic light for priority streets and increase the green times for non-priority streets
-    /// @param delta Delay, the time to increase or decrease the green times
-    void decreaseGreenTimes(Delay const delta);
     /// @brief Increase the phase times of the traffic light cycles
     /// @param phase Delay, the amount of time to increase the phase for each cycle
     void increasePhases(Delay const phase);
@@ -157,10 +135,6 @@ namespace dsf {
     /// @param direction Direction, the direction
     /// @return true if the traffic light is green for the street and direction
     bool isGreen(Id const streetId, Direction direction) const;
-    /// @brief Returns true if the traffic light has green increased for all the cycles with priority
-    /// @param priority bool, if true, only the priority streets are considered; else, only the non-priority streets are considered
-    /// @return true if the traffic light has green increased for all the cycles with priority
-    bool isFavouringDirection(bool const priority) const;
     /// @brief Resets all traffic light cycles
     /// @details For more info, see @ref TrafficLightCycle::reset()
     void resetCycles();
