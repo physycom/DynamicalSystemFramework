@@ -20,6 +20,7 @@
 # cache files
 *cache
 *.adj
+.docstrings.hpp
 
 temp*
 
@@ -35,6 +36,7 @@ utils/*.png
 # Utils generated folders
 __pycache__
 images
+xml
 examples/debug
 examples/release
 
