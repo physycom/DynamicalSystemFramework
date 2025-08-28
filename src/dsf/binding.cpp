@@ -56,92 +56,171 @@ PYBIND11_MODULE(dsf, m) {
           [](const std::string& message) { dsf::Logger::error(message); },
           pybind11::arg("message"));
   pybind11::class_<dsf::Measurement<double>>(m, "Measurement")
-      .def(pybind11::init<double, double>(), pybind11::arg("mean"), pybind11::arg("std"))
-      .def_readwrite("mean", &dsf::Measurement<double>::mean)
-      .def_readwrite("std", &dsf::Measurement<double>::std);
+      .def(pybind11::init<double, double>(),
+           pybind11::arg("mean"),
+           pybind11::arg("std"),
+           dsf::g_docstrings.at("dsf::Measurement::Measurement").c_str())
+      .def_readwrite("mean",
+                     &dsf::Measurement<double>::mean,
+                     dsf::g_docstrings.at("dsf::Measurement::mean").c_str())
+      .def_readwrite("std",
+                     &dsf::Measurement<double>::std,
+                     dsf::g_docstrings.at("dsf::Measurement::std").c_str());
 
   pybind11::class_<dsf::AdjacencyMatrix>(m, "AdjacencyMatrix")
-      .def(pybind11::init<>())
+      .def(pybind11::init<>(),
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::AdjacencyMatrix").c_str())
       .def(pybind11::init<std::string const&>(),
-           pybind11::arg("fileName"))  // Added constructor
-      .def("n", &dsf::AdjacencyMatrix::n)
-      .def("size", &dsf::AdjacencyMatrix::size)
-      .def("empty", &dsf::AdjacencyMatrix::empty)  // Added empty
-      .def("getRow", &dsf::AdjacencyMatrix::getRow)
-      .def("getCol", &dsf::AdjacencyMatrix::getCol)  // Added getCol
-      .def("__call__",
-           [](const dsf::AdjacencyMatrix& self, dsf::Id i, dsf::Id j) {
-             return self(i, j);
-           })
-      .def("insert", &dsf::AdjacencyMatrix::insert)      // Added insert
-      .def("contains", &dsf::AdjacencyMatrix::contains)  // Added contains
-      .def("elements", &dsf::AdjacencyMatrix::elements)  // Added elements
-      .def("clear", &dsf::AdjacencyMatrix::clear)
-      .def("clearRow", &dsf::AdjacencyMatrix::clearRow)  // Added clearRow
-      .def("clearCol", &dsf::AdjacencyMatrix::clearCol)  // Added clearCol
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::AdjacencyMatrix")
+               .c_str())  // Added constructor
+      .def("n",
+           &dsf::AdjacencyMatrix::n,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::n").c_str())
+      .def("size",
+           &dsf::AdjacencyMatrix::size,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::size").c_str())
+      .def("empty",
+           &dsf::AdjacencyMatrix::empty,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::empty").c_str())  // Added empty
+      .def("getRow",
+           &dsf::AdjacencyMatrix::getRow,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getRow").c_str())
+      .def("getCol",
+           &dsf::AdjacencyMatrix::getCol,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getCol").c_str())  // Added getCol
+      .def(
+          "__call__",
+          [](const dsf::AdjacencyMatrix& self, dsf::Id i, dsf::Id j) {
+            return self(i, j);
+          },
+          dsf::g_docstrings.at("dsf::AdjacencyMatrix::operator()").c_str())
+      .def("insert",
+           &dsf::AdjacencyMatrix::insert,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::insert").c_str())  // Added insert
+      .def("contains",
+           &dsf::AdjacencyMatrix::contains,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::contains")
+               .c_str())  // Added contains
+      .def("elements",
+           &dsf::AdjacencyMatrix::elements,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::elements")
+               .c_str())  // Added elements
+      .def("clear",
+           &dsf::AdjacencyMatrix::clear,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clear").c_str())
+      .def("clearRow",
+           &dsf::AdjacencyMatrix::clearRow,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clearRow")
+               .c_str())  // Added clearRow
+      .def("clearCol",
+           &dsf::AdjacencyMatrix::clearCol,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clearCol")
+               .c_str())  // Added clearCol
       .def("getInDegreeVector",
-           &dsf::AdjacencyMatrix::getInDegreeVector)  // Added getInDegreeVector
+           &dsf::AdjacencyMatrix::getInDegreeVector,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getInDegreeVector")
+               .c_str())  // Added getInDegreeVector
       .def("getOutDegreeVector",
-           &dsf::AdjacencyMatrix::getOutDegreeVector)  // Added getOutDegreeVector
-      .def("read", &dsf::AdjacencyMatrix::read, pybind11::arg("fileName"))   // Added read
-      .def("save", &dsf::AdjacencyMatrix::save, pybind11::arg("fileName"));  // Added save
+           &dsf::AdjacencyMatrix::getOutDegreeVector,
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getOutDegreeVector")
+               .c_str())  // Added getOutDegreeVector
+      .def("read",
+           &dsf::AdjacencyMatrix::read,
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::read").c_str())  // Added read
+      .def("save",
+           &dsf::AdjacencyMatrix::save,
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::AdjacencyMatrix::save").c_str());  // Added save
 
   pybind11::class_<dsf::RoadNetwork>(m, "RoadNetwork")
-      .def(pybind11::init<>())
-      .def(pybind11::init<const dsf::AdjacencyMatrix&>())
-      .def("buildAdj", &dsf::RoadNetwork::buildAdj)
-      .def("adjustNodeCapacities", &dsf::RoadNetwork::adjustNodeCapacities)
+      .def(pybind11::init<>(),
+           dsf::g_docstrings.at("dsf::RoadNetwork::RoadNetwork").c_str())
+      .def(pybind11::init<const dsf::AdjacencyMatrix&>(),
+           dsf::g_docstrings.at("dsf::RoadNetwork::RoadNetwork").c_str())
+      .def("buildAdj",
+           &dsf::RoadNetwork::buildAdj,
+           dsf::g_docstrings.at("dsf::RoadNetwork::buildAdj").c_str())
+      .def("adjustNodeCapacities",
+           &dsf::RoadNetwork::adjustNodeCapacities,
+           dsf::g_docstrings.at("dsf::RoadNetwork::adjustNodeCapacities").c_str())
       .def("initTrafficLights",
            &dsf::RoadNetwork::initTrafficLights,
-           pybind11::arg("minGreenTime") = 30)
-      .def("autoMapStreetLanes", &dsf::RoadNetwork::autoMapStreetLanes)
+           pybind11::arg("minGreenTime") = 30,
+           dsf::g_docstrings.at("dsf::RoadNetwork::initTrafficLights").c_str())
+      .def("autoMapStreetLanes",
+           &dsf::RoadNetwork::autoMapStreetLanes,
+           dsf::g_docstrings.at("dsf::RoadNetwork::autoMapStreetLanes").c_str())
       .def("importMatrix",
            &dsf::RoadNetwork::importMatrix,
            pybind11::arg("fileName"),
            pybind11::arg("isAdj") = true,
-           pybind11::arg("defaultSpeed") = 13.8888888889)
+           pybind11::arg("defaultSpeed") = 13.8888888889,
+           dsf::g_docstrings.at("dsf::RoadNetwork::importMatrix").c_str())
       .def("importCoordinates",
            &dsf::RoadNetwork::importCoordinates,
-           pybind11::arg("fileName"))
-      .def("importOSMNodes", &dsf::RoadNetwork::importOSMNodes, pybind11::arg("fileName"))
-      .def("importOSMEdges", &dsf::RoadNetwork::importOSMEdges, pybind11::arg("fileName"))
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::RoadNetwork::importCoordinates").c_str())
+      .def("importOSMNodes",
+           &dsf::RoadNetwork::importOSMNodes,
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::RoadNetwork::importOSMNodes").c_str())
+      .def("importOSMEdges",
+           &dsf::RoadNetwork::importOSMEdges,
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::RoadNetwork::importOSMEdges").c_str())
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,
-           pybind11::arg("fileName"))
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::RoadNetwork::importTrafficLights").c_str())
       .def("exportNodes",
            &dsf::RoadNetwork::exportNodes,
            pybind11::arg("fileName"),
-           pybind11::arg("useExternalIds") = false)
+           pybind11::arg("useExternalIds") = false,
+           dsf::g_docstrings.at("dsf::RoadNetwork::exportNodes").c_str())
       .def("exportEdges",
            &dsf::RoadNetwork::exportEdges,
            pybind11::arg("fileName"),
-           pybind11::arg("useExternalIds") = false);
+           pybind11::arg("useExternalIds") = false,
+           dsf::g_docstrings.at("dsf::RoadNetwork::exportEdges").c_str());
 
   pybind11::class_<dsf::Itinerary>(m, "Itinerary")
       .def(pybind11::init<dsf::Id, dsf::Id>(),
            pybind11::arg("id"),
-           pybind11::arg("destination"))
-      .def("setPath", &dsf::Itinerary::setPath, pybind11::arg("path"))
-      .def("id", &dsf::Itinerary::id)
-      .def("destination", &dsf::Itinerary::destination);
+           pybind11::arg("destination"),
+           dsf::g_docstrings.at("dsf::Itinerary::Itinerary").c_str())
+      .def("setPath",
+           &dsf::Itinerary::setPath,
+           pybind11::arg("path"),
+           dsf::g_docstrings.at("dsf::Itinerary::setPath").c_str())
+      .def("id", &dsf::Itinerary::id, dsf::g_docstrings.at("dsf::Itinerary::id").c_str())
+      .def("destination",
+           &dsf::Itinerary::destination,
+           dsf::g_docstrings.at("dsf::Itinerary::destination").c_str());
   // .def("path", &dsf::Itinerary::path, pybind11::return_value_policy::reference_internal);
 
   pybind11::class_<dsf::FirstOrderDynamics>(m, "Dynamics")
       //     // Constructors are not directly exposed due to the template nature and complexity.
       //     // Users should use derived classes like FirstOrderDynamics.
-      .def(pybind11::init<dsf::RoadNetwork&>(), pybind11::arg("graph"))
+      .def(pybind11::init<dsf::RoadNetwork&>(),
+           pybind11::arg("graph"),
+           dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
       .def(pybind11::init<dsf::RoadNetwork&, bool>(),
            pybind11::arg("graph"),
-           pybind11::arg("useCache"))
+           pybind11::arg("useCache"),
+           dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
       .def(pybind11::init<dsf::RoadNetwork&, bool, std::optional<unsigned int>>(),
            pybind11::arg("graph"),
            pybind11::arg("useCache"),
-           pybind11::arg("seed"))
+           pybind11::arg("seed"),
+           dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
       .def(pybind11::init<dsf::RoadNetwork&, bool, std::optional<unsigned int>, double>(),
            pybind11::arg("graph"),
            pybind11::arg("useCache"),
            pybind11::arg("seed"),
-           pybind11::arg("alpha"))
+           pybind11::arg("alpha"),
+           dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
       .def(pybind11::init<dsf::RoadNetwork&, bool, std::optional<unsigned int>, double>(),
            pybind11::arg("graph"),
            pybind11::arg("useCache"),
