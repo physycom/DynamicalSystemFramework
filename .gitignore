@@ -37,6 +37,7 @@ utils/*.png
 __pycache__
 images
 xml
+docs
 examples/debug
 examples/release
 
