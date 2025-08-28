@@ -96,7 +96,7 @@ for f in ./*.out ; do ./$f ; done
 ## Citing
 
 ```BibTex
-@misc{DSM,
+@misc{DSF,
   author = {Berselli, Gregorio and Balducci, Simone},
   title = {Framework for modelling dynamical complex systems.},
   year = {2023},
