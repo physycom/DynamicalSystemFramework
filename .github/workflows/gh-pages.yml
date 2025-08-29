@@ -34,6 +34,6 @@ jobs:
         
       - name: Commit and Push
         run: |
-          git add ./docs
+          git add ./docs -f
           git commit -m "Auto-deploy documentation"
           git push --force

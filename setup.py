@@ -10,8 +10,10 @@ import os
 from pathlib import Path
 import platform
 import re
-import sys
+import shutil
 import subprocess
+import sys
+import xml.etree.ElementTree as ET
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
@@ -50,6 +52,7 @@ class CMakeBuild(build_ext):
     """Custom build_ext command to handle CMake extensions"""
 
     def run(self):
+        self.pre_build()
         try:
             subprocess.check_output(["cmake", "--version"])
         except OSError as exc:
@@ -59,6 +62,8 @@ class CMakeBuild(build_ext):
 
         for ext in self.extensions:
             self.build_extension(ext)
+
+        self.run_stubgen()
 
     def build_extension(self, ext: CMakeExtension):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
@@ -93,6 +98,296 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", ".", "--config", cfg] + build_args, cwd=build_temp
         )
 
+    def pre_build(self):
+        """Extracts doxygen documentation from XML files and creates a C++ unordered_map"""
+
+        try:
+            subprocess.run(["doxygen", "Doxyfile"], check=True)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "Doxygen is not installed or not found in PATH. Please install Doxygen to build documentation."
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(
+                "Doxygen failed to run. Ensure that 'Doxyfile' exists and is valid."
+            ) from exc
+        docs = {}
+        DOXYGEN_XML_DIR = "xml"
+
+        def extract_param_info(member):
+            """Extract parameter information from a memberdef element."""
+            params = []
+            for param in member.findall(".//param"):
+                param_type = param.find("type")
+                param_name = param.find("declname")
+
+                type_text = ""
+                if param_type is not None:
+                    # Handle complex types with references
+                    type_parts = []
+                    if param_type.text:
+                        type_parts.append(param_type.text)
+                    for ref in param_type.findall("ref"):
+                        if ref.text:
+                            type_parts.append(ref.text)
+                    if param_type.tail:
+                        type_parts.append(param_type.tail)
+                    type_text = "".join(type_parts).strip()
+
+                name_text = param_name.text if param_name is not None else ""
+
+                if type_text or name_text:
+                    params.append(f"{type_text} {name_text}".strip())
+
+            return params
+
+        def extract_param_docs(member):
+            """Extract parameter documentation from detailed description."""
+            param_docs = {}
+            detailed_desc = member.find("detaileddescription")
+            if detailed_desc is not None:
+                for param_list in detailed_desc.findall(
+                    ".//parameterlist[@kind='param']"
+                ):
+                    for param_item in param_list.findall("parameteritem"):
+                        param_name_list = param_item.find("parameternamelist")
+                        param_desc = param_item.find("parameterdescription")
+
+                        if param_name_list is not None and param_desc is not None:
+                            param_name = param_name_list.find("parametername")
+                            if param_name is not None and param_name.text:
+                                desc_para = param_desc.find("para")
+                                desc_text = (
+                                    desc_para.text
+                                    if desc_para is not None and desc_para.text
+                                    else ""
+                                )
+                                param_docs[param_name.text] = desc_text
+
+            return param_docs
+
+        def extract_return_info(member):
+            """Extract return type and documentation."""
+            return_type = ""
+            return_doc = ""
+
+            # Extract return type
+            type_elem = member.find("type")
+            if type_elem is not None:
+                type_parts = []
+                if type_elem.text:
+                    type_parts.append(type_elem.text)
+                for ref in type_elem.findall("ref"):
+                    if ref.text:
+                        type_parts.append(ref.text)
+                if type_elem.tail:
+                    type_parts.append(type_elem.tail)
+                return_type = "".join(type_parts).strip()
+
+            # Extract return documentation
+            detailed_desc = member.find("detaileddescription")
+            if detailed_desc is not None:
+                for return_elem in detailed_desc.findall(
+                    ".//simplesect[@kind='return']"
+                ):
+                    para = return_elem.find("para")
+                    if para is not None and para.text:
+                        return_doc = para.text
+                        break
+
+            return return_type, return_doc
+
+        def format_documentation_entry(
+            name,
+            brief,
+            detailed,
+            params=None,
+            param_docs=None,
+            return_type="",
+            return_doc="",
+        ):
+            """Format a documentation entry with Description, Args, and Returns sections."""
+            # Description section
+            description = []
+            if brief:
+                description.append(brief)
+            if detailed and detailed != brief:
+                description.append(detailed)
+
+            doc_parts = []
+
+            # Description
+            desc_text = "\n".join(description).strip()
+            if desc_text:
+                doc_parts.append(f"Description\n{desc_text}")
+            else:
+                doc_parts.append("Description\nNo description available.")
+
+            # Args section
+            if params:
+                args_section = ["Args"]
+                if param_docs:
+                    for param in params:
+                        param_name = param.split()[-1] if param else ""
+                        param_doc = param_docs.get(param_name, "No description")
+                        args_section.append(f"  {param}: {param_doc}")
+                else:
+                    for param in params:
+                        args_section.append(f"  {param}: No description")
+                doc_parts.append("\n".join(args_section))
+            else:
+                doc_parts.append("Args\n  None")
+
+            # Returns section
+            returns_section = ["Returns"]
+            if return_type:
+                if return_doc:
+                    returns_section.append(f"  {return_type}: {return_doc}")
+                else:
+                    returns_section.append(f"  {return_type}: No description")
+            else:
+                returns_section.append("  void: No return value")
+
+            doc_parts.append("\n".join(returns_section))
+
+            return "\n\n".join(doc_parts)
+
+        # Main parsing function
+        for filename in os.listdir(DOXYGEN_XML_DIR):
+            if (
+                filename.startswith("class")
+                or filename.startswith("namespace")
+                or filename.startswith("struct")
+            ):
+                tree = ET.parse(os.path.join(DOXYGEN_XML_DIR, filename))
+                root = tree.getroot()
+
+                for compound in root.findall(".//compounddef"):
+                    name = compound.find("compoundname").text
+                    brief = compound.find("briefdescription").findtext(
+                        "para", default=""
+                    )
+                    detailed = compound.find("detaileddescription").findtext(
+                        "para", default=""
+                    )
+
+                    # Format compound documentation
+                    docs[name] = format_documentation_entry(name, brief, detailed)
+
+                    # Process member functions/variables
+                    for member in compound.findall(".//memberdef"):
+                        member_name = member.find("name").text
+                        member_brief = member.find("briefdescription").findtext(
+                            "para", default=""
+                        )
+                        member_detailed = member.find("detaileddescription").findtext(
+                            "para", default=""
+                        )
+
+                        # Extract function-specific information
+                        if member.get("kind") == "function":
+                            # Extract parameters
+                            params = extract_param_info(member)
+                            param_docs = extract_param_docs(member)
+
+                            # Extract return information
+                            return_type, return_doc = extract_return_info(member)
+
+                            # Format with full documentation structure
+                            docs[f"{name}::{member_name}"] = format_documentation_entry(
+                                f"{name}::{member_name}",
+                                member_brief,
+                                member_detailed,
+                                params,
+                                param_docs,
+                                return_type,
+                                return_doc,
+                            )
+                        else:
+                            # For non-function members (variables, etc.)
+                            docs[f"{name}::{member_name}"] = format_documentation_entry(
+                                f"{name}::{member_name}", member_brief, member_detailed
+                            )
+        with open("./src/dsf/.docstrings.hpp", "w") as f:
+            f.write("#pragma once\n\n#include <unordered_map>\n#include <string>\n\n")
+            f.write("namespace dsf {\n")
+            f.write(
+                "    const std::unordered_map<std::string, std::string> g_docstrings = {\n"
+            )
+            for k, v in docs.items():
+                f.write(f'        {{"{k}", R"""({v})"""}},\n')
+            f.write("    };\n")
+            f.write("}\n")
+
+    def run_stubgen(self):
+        """Generate stub files for the Python bindings"""
+        print("Starting stub generation...")
+
+        # Find the built extension module
+        ext_path = None
+        for ext in self.extensions:
+            ext_path = self.get_ext_fullpath(ext.name)
+            print(f"Extension path: {ext_path}")
+            break
+
+        if not ext_path:
+            print("Warning: No extension path found, skipping stub generation")
+            return
+
+        # Check both the full path and build lib location
+        module_dir = os.path.dirname(ext_path)
+        build_lib_path = os.path.join(self.build_lib, "dsf.so")
+
+        print(f"Checking extension at: {ext_path}")
+        print(f"Checking build lib at: {build_lib_path}")
+        print(f"Module directory: {module_dir}")
+
+        # Use build lib directory for stub generation
+        stub_output_dir = self.build_lib
+
+        # Set up environment with proper Python path
+        env = os.environ.copy()
+        env["PYTHONPATH"] = self.build_lib + os.pathsep + env.get("PYTHONPATH", "")
+        print(f"PYTHONPATH: {env['PYTHONPATH']}")
+
+        try:
+            # Generate stub files
+            cmd = [
+                "pybind11-stubgen",
+                "dsf",
+                "--ignore-invalid-expressions",
+                "std::function|dsf::RoadDynamics",
+                "--enum-class-locations",
+                "TrafficLightOptimization:dsf",
+                "--output-dir",
+                stub_output_dir,
+            ]
+            print(f"Running command: {' '.join(cmd)}")
+
+            result = subprocess.run(
+                cmd, check=True, env=env, capture_output=True, text=True
+            )
+            print("Stub generation completed successfully")
+            print(f"stdout: {result.stdout}")
+
+            # Check if stub file was created
+            stub_file = os.path.join(stub_output_dir, "dsf.pyi")
+            if os.path.exists(stub_file):
+                print(f"Stub file successfully created at {stub_file}")
+                # For editable installs, also copy to source directory for development
+                source_stub = os.path.join(os.path.dirname(__file__), "dsf.pyi")
+                if source_stub != stub_file:
+                    print(f"Copying stub file to source directory: {source_stub}")
+                    shutil.copy2(stub_file, source_stub)
+            else:
+                print(f"Warning: Stub file not found at {stub_file}")
+
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Stub generation failed: {e}")
+            print(f"stdout: {e.stdout}")
+            print(f"stderr: {e.stderr}")
+            # Don't fail the build if stub generation fails
+
 
 # Read long description from README.md if available
 LONG_DESCRIPTION = ""
@@ -103,29 +398,21 @@ if os.path.exists("README.md"):
 # Get version from header file
 PROJECT_VERSION = get_version_from_header()
 
-if LONG_DESCRIPTION:
-    setup(
-        name="dsf",
-        version=PROJECT_VERSION,
-        author="Grufoony",
-        author_email="gregorio.berselli@studio.unibo.it",
-        description="DSF C++ core with Python bindings via pybind11",
-        long_description=LONG_DESCRIPTION,
-        long_description_content_type="text/markdown",
-        ext_modules=[CMakeExtension("dsf")],
-        cmdclass={"build_ext": CMakeBuild},
-        zip_safe=False,
-        python_requires=">=3.7",
-    )
-else:
-    setup(
-        name="dsf",
-        version=PROJECT_VERSION,
-        author="Grufoony",
-        author_email="gregorio.berselli@studio.unibo.it",
-        description="DSF C++ core with Python bindings via pybind11",
-        ext_modules=[CMakeExtension("dsf")],
-        cmdclass={"build_ext": CMakeBuild},
-        zip_safe=False,
-        python_requires=">=3.7",
-    )
+setup(
+    name="dsf",
+    version=PROJECT_VERSION,
+    author="Grufoony",
+    author_email="gregorio.berselli@studio.unibo.it",
+    description="DSF C++ core with Python bindings via pybind11",
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type="text/markdown",
+    ext_modules=[CMakeExtension("dsf")],
+    cmdclass={"build_ext": CMakeBuild},
+    package_data={
+        "": ["*.pyi"],
+    },
+    include_package_data=True,
+    zip_safe=False,
+    python_requires=">=3.8",
+    install_requires=["pybind11-stubgen"],
+)

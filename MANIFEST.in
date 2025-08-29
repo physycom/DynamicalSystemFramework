@@ -1,0 +1,10 @@
+include README.md
+include LICENSE
+include requirements.txt
+include CMakeLists.txt
+include Doxyfile
+recursive-include src *
+recursive-include dsf *.pyi
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude *.so
