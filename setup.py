@@ -10,8 +10,10 @@ import os
 from pathlib import Path
 import platform
 import re
-import sys
+import shutil
 import subprocess
+import sys
+import xml.etree.ElementTree as ET
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
@@ -98,8 +100,6 @@ class CMakeBuild(build_ext):
 
     def pre_build(self):
         """Extracts doxygen documentation from XML files and creates a C++ unordered_map"""
-
-        import xml.etree.ElementTree as ET
 
         subprocess.run(["doxygen", "Doxyfile"], check=True)
         docs = {}
@@ -371,8 +371,6 @@ class CMakeBuild(build_ext):
                 source_stub = os.path.join(os.path.dirname(__file__), "dsf.pyi")
                 if source_stub != stub_file:
                     print(f"Copying stub file to source directory: {source_stub}")
-                    import shutil
-
                     shutil.copy2(stub_file, source_stub)
             else:
                 print(f"Warning: Stub file not found at {stub_file}")
@@ -409,7 +407,5 @@ setup(
     include_package_data=True,
     zip_safe=False,
     python_requires=">=3.8",
-    install_requires=[
-        "pybind11-stubgen"
-    ],  # Changed from setup_requires to install_requires
+    install_requires=["pybind11-stubgen"],
 )
