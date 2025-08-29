@@ -15,7 +15,6 @@ import subprocess
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from setuptools.command.install import install
 
 
 def get_version_from_header():
@@ -51,6 +50,7 @@ class CMakeBuild(build_ext):
     """Custom build_ext command to handle CMake extensions"""
 
     def run(self):
+        self.pre_build()
         try:
             subprocess.check_output(["cmake", "--version"])
         except OSError as exc:
@@ -60,6 +60,8 @@ class CMakeBuild(build_ext):
 
         for ext in self.extensions:
             self.build_extension(ext)
+
+        self.run_stubgen()
 
     def build_extension(self, ext: CMakeExtension):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
@@ -94,9 +96,7 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", ".", "--config", cfg] + build_args, cwd=build_temp
         )
 
-
-class CustomInstaller(install):
-    def pre_install(self):
+    def pre_build(self):
         """Extracts doxygen documentation from XML files and creates a C++ unordered_map"""
 
         import xml.etree.ElementTree as ET
@@ -310,28 +310,78 @@ class CustomInstaller(install):
             f.write("    };\n")
             f.write("}\n")
 
-    def post_install(self):
-        # Change the command making as output dir the dir in which dsf has been installed
-        subprocess.run(
-            [
-                "pybind11-stubgen",
+    def run_stubgen(self):
+        """Generate stub files for the Python bindings"""
+        print("Starting stub generation...")
+
+        # Find the built extension module
+        ext_path = None
+        for ext in self.extensions:
+            ext_path = self.get_ext_fullpath(ext.name)
+            print(f"Extension path: {ext_path}")
+            break
+
+        if not ext_path:
+            print("Warning: No extension path found, skipping stub generation")
+            return
+
+        # Check both the full path and build lib location
+        module_dir = os.path.dirname(ext_path)
+        build_lib_path = os.path.join(self.build_lib, "dsf.so")
+
+        print(f"Checking extension at: {ext_path}")
+        print(f"Checking build lib at: {build_lib_path}")
+        print(f"Module directory: {module_dir}")
+
+        # Use build lib directory for stub generation
+        stub_output_dir = self.build_lib
+
+        # Set up environment with proper Python path
+        env = os.environ.copy()
+        env["PYTHONPATH"] = self.build_lib + os.pathsep + env.get("PYTHONPATH", "")
+        print(f"PYTHONPATH: {env['PYTHONPATH']}")
+
+        try:
+            # Generate stub files
+            cmd = [
+                sys.executable,
+                "-m",
+                "pybind11_stubgen",
                 "dsf",
                 "--ignore-invalid-expressions",
                 "std::function|dsf::RoadDynamics",
                 "--enum-class-locations",
                 "TrafficLightOptimization:dsf",
                 "--output-dir",
-                self.install_lib,
-            ],
-            check=True,
-        )
+                stub_output_dir,
+            ]
+            print(f"Running command: {' '.join(cmd)}")
 
-    def run(self):
-        self.pre_install()
+            result = subprocess.run(
+                cmd, check=True, env=env, capture_output=True, text=True
+            )
+            print("Stub generation completed successfully")
+            print(f"stdout: {result.stdout}")
 
-        install.run(self)
+            # Check if stub file was created
+            stub_file = os.path.join(stub_output_dir, "dsf.pyi")
+            if os.path.exists(stub_file):
+                print(f"Stub file successfully created at {stub_file}")
+                # For editable installs, also copy to source directory for development
+                source_stub = os.path.join(os.path.dirname(__file__), "dsf.pyi")
+                if source_stub != stub_file:
+                    print(f"Copying stub file to source directory: {source_stub}")
+                    import shutil
 
-        self.post_install()
+                    shutil.copy2(stub_file, source_stub)
+            else:
+                print(f"Warning: Stub file not found at {stub_file}")
+
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Stub generation failed: {e}")
+            print(f"stdout: {e.stdout}")
+            print(f"stderr: {e.stderr}")
+            # Don't fail the build if stub generation fails
 
 
 # Read long description from README.md if available
@@ -343,29 +393,23 @@ if os.path.exists("README.md"):
 # Get version from header file
 PROJECT_VERSION = get_version_from_header()
 
-if LONG_DESCRIPTION:
-    setup(
-        name="dsf",
-        version=PROJECT_VERSION,
-        author="Grufoony",
-        author_email="gregorio.berselli@studio.unibo.it",
-        description="DSF C++ core with Python bindings via pybind11",
-        long_description=LONG_DESCRIPTION,
-        long_description_content_type="text/markdown",
-        ext_modules=[CMakeExtension("dsf")],
-        cmdclass={"build_ext": CMakeBuild, "install": CustomInstaller},
-        zip_safe=False,
-        python_requires=">=3.7",
-    )
-else:
-    setup(
-        name="dsf",
-        version=PROJECT_VERSION,
-        author="Grufoony",
-        author_email="gregorio.berselli@studio.unibo.it",
-        description="DSF C++ core with Python bindings via pybind11",
-        ext_modules=[CMakeExtension("dsf")],
-        cmdclass={"build_ext": CMakeBuild, "install": CustomInstaller},
-        zip_safe=False,
-        python_requires=">=3.7",
-    )
+setup(
+    name="dsf",
+    version=PROJECT_VERSION,
+    author="Grufoony",
+    author_email="gregorio.berselli@studio.unibo.it",
+    description="DSF C++ core with Python bindings via pybind11",
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type="text/markdown",
+    ext_modules=[CMakeExtension("dsf")],
+    cmdclass={"build_ext": CMakeBuild},
+    package_data={
+        "": ["*.pyi"],
+    },
+    include_package_data=True,
+    zip_safe=False,
+    python_requires=">=3.8",
+    install_requires=[
+        "pybind11-stubgen"
+    ],  # Changed from setup_requires to install_requires
+)

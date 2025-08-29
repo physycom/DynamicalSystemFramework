@@ -3,6 +3,7 @@
 
 # Shared libraries
 *.so
+*.pyi
 
 # CMake build directories
 *build
