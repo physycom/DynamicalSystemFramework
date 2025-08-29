@@ -86,10 +86,10 @@ class RealTimePeakDetection:
         Use thresholding algorithm
         """
         self.y.append(new_value)
-        l = len(self.y) - 1
-        if l < self._params["lag"]:
+        length = len(self.y) - 1
+        if length < self._params["lag"]:
             return 0
-        if l == self._params["lag"]:
+        if length == self._params["lag"]:
             self.signals = [0] * len(self.y)
             self.filtered_y = np.array(self.y).tolist()
             self.avg_filter = [0] * len(self.y)
@@ -107,27 +107,35 @@ class RealTimePeakDetection:
         self.avg_filter += [0]
         self.std_filter += [0]
 
-        if abs(self.y[l] - self.avg_filter[l - 1]) > (
-            self._params["threshold"] * self.std_filter[l - 1]
+        if abs(self.y[length] - self.avg_filter[length - 1]) > (
+            self._params["threshold"] * self.std_filter[length - 1]
         ):
-            if self.y[l] > self.avg_filter[l - 1]:
-                self.signals[l] = 1
+            if self.y[length] > self.avg_filter[length - 1]:
+                self.signals[length] = 1
             else:
-                self.signals[l] = -1
+                self.signals[length] = -1
 
-            self.filtered_y[l] = (
-                self._params["influence"] * self.y[l]
-                + (1 - self._params["influence"]) * self.filtered_y[l - 1]
+            self.filtered_y[length] = (
+                self._params["influence"] * self.y[length]
+                + (1 - self._params["influence"]) * self.filtered_y[length - 1]
             )
-            self.avg_filter[l] = np.mean(self.filtered_y[(l - self._params["lag"]) : l])
-            self.std_filter[l] = np.std(self.filtered_y[(l - self._params["lag"]) : l])
+            self.avg_filter[length] = np.mean(
+                self.filtered_y[(length - self._params["lag"]) : length]
+            )
+            self.std_filter[length] = np.std(
+                self.filtered_y[(length - self._params["lag"]) : length]
+            )
         else:
-            self.signals[l] = 0
-            self.filtered_y[l] = self.y[l]
-            self.avg_filter[l] = np.mean(self.filtered_y[(l - self._params["lag"]) : l])
-            self.std_filter[l] = np.std(self.filtered_y[(l - self._params["lag"]) : l])
+            self.signals[length] = 0
+            self.filtered_y[length] = self.y[length]
+            self.avg_filter[length] = np.mean(
+                self.filtered_y[(length - self._params["lag"]) : length]
+            )
+            self.std_filter[length] = np.std(
+                self.filtered_y[(length - self._params["lag"]) : length]
+            )
 
-        return self.signals[l]
+        return self.signals[length]
 
     @property
     def params(self):

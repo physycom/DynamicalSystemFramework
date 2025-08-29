@@ -251,7 +251,7 @@ if __name__ == "__main__":
             ]
 
     else:
-        if not "lanes" in gdf_edges.columns:
+        if "lanes" not in gdf_edges.columns:
             gdf_edges["lanes"] = 1
         if not parser.save_all:
             gdf_nodes = gdf_nodes[["osmid", "x", "y", "highway"]]
