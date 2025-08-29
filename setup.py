@@ -101,7 +101,16 @@ class CMakeBuild(build_ext):
     def pre_build(self):
         """Extracts doxygen documentation from XML files and creates a C++ unordered_map"""
 
-        subprocess.run(["doxygen", "Doxyfile"], check=True)
+        try:
+            subprocess.run(["doxygen", "Doxyfile"], check=True)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "Doxygen is not installed or not found in PATH. Please install Doxygen to build documentation."
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(
+                "Doxygen failed to run. Ensure that 'Doxyfile' exists and is valid."
+            ) from exc
         docs = {}
         DOXYGEN_XML_DIR = "xml"
 
