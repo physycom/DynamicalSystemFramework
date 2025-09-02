@@ -25,6 +25,15 @@ endif()
 
 find_package(TBB REQUIRED CONFIG)
 
+# FetchContent for jsoncpp
+include(FetchContent)
+FetchContent_Declare(
+    jsoncpp
+    GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp.git
+    GIT_TAG        1.9.6
+)
+FetchContent_MakeAvailable(jsoncpp)
+
 file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp")
 
 add_library(dsf STATIC ${SOURCES})
@@ -33,6 +42,7 @@ target_include_directories(dsf PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(dsf PRIVATE TBB::tbb)
+target_link_libraries(dsf PRIVATE jsoncpp_lib)
 
 install(TARGETS dsf
         EXPORT dsfConfig

@@ -162,6 +162,10 @@ PYBIND11_MODULE(dsf, m) {
            &dsf::RoadNetwork::importCoordinates,
            pybind11::arg("fileName"),
            dsf::g_docstrings.at("dsf::RoadNetwork::importCoordinates").c_str())
+      .def("importGeoJSON",
+           &dsf::RoadNetwork::importGeoJSON,
+           pybind11::arg("fileName"))
+          //  dsf::g_docstrings.at("dsf::RoadNetwork::importGeoJSON").c_str())
       .def("importOSMNodes",
            &dsf::RoadNetwork::importOSMNodes,
            pybind11::arg("fileName"),

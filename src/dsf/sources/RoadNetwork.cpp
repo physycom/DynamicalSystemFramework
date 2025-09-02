@@ -737,6 +737,30 @@ namespace dsf {
     }
   }
 
+  void RoadNetwork::importGeoJSON(const std::string& fileName) {
+    std::ifstream file{fileName};
+    if (!file.is_open()) {
+      throw std::invalid_argument(
+          Logger::buildExceptionMessage("Cannot open file: " + fileName));
+    }
+
+    Json::Value root;
+    file >> root;
+    std::cout << root << std::endl;
+    // for (const auto& feature : root["features"]) {
+    //   const auto& properties = feature["properties"];
+    //   const auto& geometry = feature["geometry"];
+
+    //   // Extract node information
+    //   Id nodeId = properties["id"].asUInt();
+    //   double lat = properties["lat"].asDouble();
+    //   double lon = properties["lon"].asDouble();
+
+    //   // Create the node
+    //   addNode<Intersection>(nodeId, std::make_pair(lat, lon));
+    // }
+  }
+
   void RoadNetwork::importOSMNodes(const std::string& fileName) {
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
     if (fileExt == "csv") {

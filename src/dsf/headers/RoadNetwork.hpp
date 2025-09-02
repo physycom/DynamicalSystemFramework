@@ -26,6 +26,8 @@
 #include <cassert>
 #include <format>
 
+#include <json/json.h>
+
 #include "AdjacencyMatrix.hpp"
 #include "DijkstraWeights.hpp"
 #include "Network.hpp"
@@ -108,6 +110,8 @@ namespace dsf {
     ///           The first input number is the number of nodes, followed by the coordinates of each node.
     ///           In the i-th row of the file, the (i - 1)-th node's coordinates are expected.
     void importCoordinates(const std::string& fileName);
+
+    void importGeoJSON(const std::string& fileName);
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
