@@ -44,7 +44,6 @@
 #include "../utility/TypeTraits/is_street.hpp"
 
 namespace dsf {
-
   /// @brief The RoadNetwork class represents a graph in the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
@@ -111,7 +110,7 @@ namespace dsf {
     ///           In the i-th row of the file, the (i - 1)-th node's coordinates are expected.
     void importCoordinates(const std::string& fileName);
 
-    void importGeoJSON(const std::string& fileName);
+    void importGeoJSON(const std::string& fileName, std::unordered_map<std::string, std::string> const& fields);
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
