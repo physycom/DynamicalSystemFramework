@@ -19,11 +19,11 @@ namespace dsf {
    * CONSTRUCTORS
    **********************************************************************************/
   AdjacencyMatrix::AdjacencyMatrix()
-      : m_rowOffsets{std::vector<Id>(2, 0)},
+      : m_rowOffsets{std::vector<Id>(1, 0)},
         m_columnIndices{},
-        m_colOffsets{std::vector<Id>(2, 0)},
+        m_colOffsets{std::vector<Id>(1, 0)},
         m_rowIndices{},
-        m_n{1} {}
+        m_n{0} {}
   AdjacencyMatrix::AdjacencyMatrix(std::string const& fileName) { read(fileName); }
   AdjacencyMatrix::AdjacencyMatrix(
       const std::unordered_map<Id, std::unique_ptr<Street>>& streets)
@@ -156,7 +156,10 @@ namespace dsf {
   }
 
   std::vector<Id> AdjacencyMatrix::getRow(Id row) const {
-    assert(row + 1 < m_rowOffsets.size());
+    if (row + 1 >= m_rowOffsets.size()) {
+      throw std::out_of_range(Logger::buildExceptionMessage(
+          std::format("Row index {} out of range [0, {}[.", row, m_n - 1)));
+    }
     const auto lowerOffset = m_rowOffsets[row];
     const auto upperOffset = m_rowOffsets[row + 1];
     std::vector<Id> rowVector(upperOffset - lowerOffset);
@@ -192,11 +195,11 @@ namespace dsf {
   }
 
   void AdjacencyMatrix::clear() {
-    m_rowOffsets = std::vector<Id>(2, 0);
-    m_colOffsets = std::vector<Id>(2, 0);
+    m_rowOffsets = std::vector<Id>(1, 0);
+    m_colOffsets = std::vector<Id>(1, 0);
     m_columnIndices.clear();
     m_rowIndices.clear();
-    m_n = 1;
+    m_n = 0;
   }
   void AdjacencyMatrix::clearRow(Id row) {
     // CSR: Clear row in column indices

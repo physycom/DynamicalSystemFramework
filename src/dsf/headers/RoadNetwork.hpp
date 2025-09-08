@@ -61,7 +61,7 @@ namespace dsf {
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
 
-    void m_addMissingNodes(Id const nodeId) final;
+    // void m_addMissingNodes(Id const nodeId) final;
 
   public:
     RoadNetwork();
@@ -72,11 +72,6 @@ namespace dsf {
     /// @param streetSet A map of streets representing the graph's streets
     RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
 
-    /// @brief Build the graph's adjacency matrix and computes max capacity
-    /// @details The adjacency matrix is built using the graph's streets and nodes. N.B.: The street ids
-    /// are reassigned using the max node id, i.e. newStreetId = srcId * n + dstId, where n is the max node id.
-    /// Moreover, street angles and geometries are set using the nodes' coordinates.
-    void buildAdj();
     /// @brief Adjust the nodes' transport capacity
     /// @details The nodes' capacity is adjusted using the graph's streets transport capacity, which may vary basing on the number of lanes. The node capacity will be set to the sum of the incoming streets' transport capacity.
     void adjustNodeCapacities();
@@ -98,9 +93,9 @@ namespace dsf {
     /// @param defaultSpeed The default speed limit for the streets
     /// @throws std::invalid_argument if the file is not found or invalid
     /// The matrix format is deduced from the file extension. Currently only .dsm files are supported.
-    void importMatrix(const std::string& fileName,
-                      bool isAdj = true,
-                      double defaultSpeed = 13.8888888889);
+    [[deprecated]] void importMatrix(const std::string& fileName,
+                                     bool isAdj = true,
+                                     double defaultSpeed = 13.8888888889);
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
@@ -219,11 +214,6 @@ namespace dsf {
     /// @param destination The destination node
     /// @return A std::unique_ptr to the street if it exists, nullptr otherwise
     const std::unique_ptr<Street>* street(Id source, Id destination) const;
-    /// @brief Get the opposite street of a street in the graph
-    /// @param streetId The id of the street
-    /// @throws std::invalid_argument if the street does not exist
-    /// @return A std::unique_ptr to the street if it exists, nullptr otherwise
-    const std::unique_ptr<Street>* oppositeStreet(Id streetId) const;
 
     /// @brief Get the maximum agent capacity
     /// @return unsigned long long The maximum agent capacity of the graph
@@ -284,10 +274,6 @@ namespace dsf {
   template <typename T1>
     requires is_street_v<std::remove_reference_t<T1>>
   void RoadNetwork::addStreets(T1&& street) {
-    if (m_edges.contains(street.id())) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Street with id {} already exists.", street.id())));
-    }
     addEdge(std::move(street));
   }
 
@@ -319,18 +305,15 @@ namespace dsf {
     std::unordered_set<Id> unvisitedNodes;
     bool source_found{false};
     bool dest_found{false};
-    std::for_each(m_nodes.begin(),
-                  m_nodes.end(),
-                  [&unvisitedNodes, &source_found, &dest_found, source, destination](
-                      const auto& node) -> void {
-                    if (!source_found && node.first == source) {
-                      source_found = true;
-                    }
-                    if (!dest_found && node.first == destination) {
-                      dest_found = true;
-                    }
-                    unvisitedNodes.emplace(node.first);
-                  });
+    for (auto const& [nodeId, pNode] : std::views::enumerate(m_nodes)) {
+      if (!source_found && nodeId == source) {
+        source_found = true;
+      }
+      if (!dest_found && nodeId == destination) {
+        dest_found = true;
+      }
+      unvisitedNodes.emplace(nodeId);
+    }
     if (!source_found || !dest_found) {
       return std::nullopt;
     }

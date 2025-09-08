@@ -19,6 +19,7 @@
 #include <numeric>
 #include <optional>
 #include <random>
+#include <ranges>
 #include <span>
 #include <thread>
 #include <unordered_map>
@@ -462,28 +463,28 @@ namespace dsf {
         });
     AdjacencyMatrix path;
     // cycle over the nodes
-    for (const auto& [nodeId, node] : this->graph().nodes()) {
-      if (nodeId == destinationID) {
+    for (const auto& node : this->graph().nodes()) {
+      if (node->id() == destinationID) {
         continue;
       }
       // save the minimum distance between i and the destination
-      const auto minDistance{shortestPaths[nodeId].distance()};
+      const auto minDistance{shortestPaths[node->id()].distance()};
       if (minDistance < 0.) {
         continue;
       }
-      auto const& row{this->graph().adjacencyMatrix().getRow(nodeId)};
+      auto const& row{this->graph().adjacencyMatrix().getRow(node->id())};
       for (const auto nextNodeId : row) {
         if (nextNodeId == destinationID) {
-          if (std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) -
+          if (std::abs(m_weightFunction(&this->graph(), node->id(), nextNodeId) -
                        minDistance) <
               m_weightTreshold)  // 1 meter tolerance between shortest paths
           {
-            path.insert(nodeId, nextNodeId);
+            path.insert(node->id(), nextNodeId);
           } else {
             Logger::debug(
                 std::format("Found a path from {} to {} which differs for more than {} "
                             "unit(s) from the shortest one.",
-                            nodeId,
+                            node->id(),
                             destinationID,
                             m_weightTreshold));
           }
@@ -495,20 +496,20 @@ namespace dsf {
         }
         if (std::find(shortestPaths[nextNodeId].path().cbegin(),
                       shortestPaths[nextNodeId].path().cend(),
-                      nodeId) != shortestPaths[nextNodeId].path().cend()) {
+                      node->id()) != shortestPaths[nextNodeId].path().cend()) {
           continue;
         }
         bool const bIsMinDistance{
-            std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) + distance -
+            std::abs(m_weightFunction(&this->graph(), node->id(), nextNodeId) + distance -
                      minDistance) <
             m_weightTreshold};  // 1 meter tolerance between shortest paths
         if (bIsMinDistance) {
-          path.insert(nodeId, nextNodeId);
+          path.insert(node->id(), nextNodeId);
         } else {
           Logger::debug(
               std::format("Found a path from {} to {} which differs for more than {} "
                           "unit(s) from the shortest one.",
-                          nodeId,
+                          node->id(),
                           destinationID,
                           m_weightTreshold));
         }
@@ -551,7 +552,8 @@ namespace dsf {
       // Avoid U-TURNS, if possible
       if (!(this->graph().node(nodeId)->isRoundabout()) &&
           (possibleMoves.size() > forbiddenStreetIds.size() + 1)) {
-        auto const& pOppositeStreet{this->graph().oppositeStreet(*streetId)};
+        auto const& pOppositeStreet{
+            this->graph().street(pStreet->target(), pStreet->source())};
         if (pOppositeStreet) {
           forbiddenStreetIds.insert(pOppositeStreet->get()->id());
         }
@@ -1409,7 +1411,11 @@ namespace dsf {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Itinerary with id {} already exists.", itinerary->id())));
     }
-    if (!this->graph().nodes().contains(itinerary->destination())) {
+    auto const& it = std::find_if(
+        m_itineraries.cbegin(), m_itineraries.cend(), [&itinerary](auto const& pair) {
+          return pair.second->destination() == itinerary->destination();
+        });
+    if (it == m_itineraries.cend()) {
       throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
           "Destination node with id {} not found", itinerary->destination())));
     }
@@ -1530,7 +1536,7 @@ namespace dsf {
           this->time(),
           beta);
     }
-    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+    for (auto const& [nodeId, pNode] : std::views::enumerate(this->graph().nodes())) {
       if (!pNode->isTrafficLight()) {
         continue;
       }
@@ -1920,7 +1926,7 @@ namespace dsf {
     if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
       // Try to synchronize congested traffic lights
       std::unordered_map<Id, double> densities;
-      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+      for (auto const& [nodeId, pNode] : std::views::enumerate(this->graph().nodes())) {
         if (!pNode->isTrafficLight()) {
           continue;
         }
@@ -1988,7 +1994,7 @@ namespace dsf {
   size_t RoadDynamics<delay_t>::nAgents() const {
     auto nAgents{m_agents.size()};
     // Logger::debug(std::format("Number of agents: {}", nAgents));
-    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
+    for (const auto& pNode : this->graph().nodes()) {
       if (pNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*pNode);
         nAgents += intersection.agents().size();
@@ -2392,7 +2398,7 @@ namespace dsf {
                                (this->time() - m_previousSpireTime));
         }
       }
-      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+      for (auto const& pNode : this->graph().nodes()) {
         if (pNode->isIntersection()) {
           auto& intersection = dynamic_cast<Intersection&>(*pNode);
           nAgents += intersection.agents().size();
