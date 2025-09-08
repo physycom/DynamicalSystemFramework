@@ -407,7 +407,8 @@ namespace dsf {
           // Turn mappings
           const auto& srcNodeId = pair.second->target();
           for (const auto& targetId : this->graph().adjacencyMatrix().getRow(srcNodeId)) {
-            auto const previousStreetId = srcNodeId * this->graph().nNodes() + targetId;
+            auto const previousStreetId =
+                this->graph().edgeInternalId(srcNodeId, targetId);
             auto const& delta{
                 pair.second->deltaAngle(this->graph().edge(previousStreetId)->angle())};
             if (std::abs(delta) < std::numbers::pi) {

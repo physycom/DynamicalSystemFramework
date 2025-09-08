@@ -371,7 +371,7 @@ TEST_CASE("RoadNetwork") {
       RoadNetwork graph{};
       auto const& streetId = graph.addEdge(Street{0, std::make_pair(0, 1)});
       WHEN("We make the street a spire street") {
-        graph.makeSpireStreet(streetId);
+        graph.makeSpireStreet(0);
         THEN("The street is a spire street") { CHECK(graph.edge(streetId)->isSpire()); }
       }
     }

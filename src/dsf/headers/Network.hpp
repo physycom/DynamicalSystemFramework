@@ -86,6 +86,9 @@ namespace dsf {
     template <typename TEdge>
       requires(std::is_base_of_v<edge_t, TEdge>)
     TEdge& edge(Id edgeId);
+
+    Id edgeInternalId(Id source, Id target) const;
+    Id nodeInternalId(Id nodeId) const;
   };
 
   template <typename node_t, typename edge_t>
@@ -233,5 +236,23 @@ namespace dsf {
     requires(std::is_base_of_v<edge_t, TEdge>)
   TEdge& Network<node_t, edge_t>::edge(Id edgeId) {
     return dynamic_cast<TEdge&>(*m_edges.at(edgeId));
+  }
+
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  Id Network<node_t, edge_t>::edgeInternalId(Id source, Id target) const {
+    return m_cantorPairingHashing(source, target);
+  }
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  Id Network<node_t, edge_t>::nodeInternalId(Id nodeId) const {
+    auto it = std::find_if(m_nodes.cbegin(), m_nodes.cend(), [nodeId](auto const& node) {
+      return node->id() == nodeId;
+    });
+    if (it == m_nodes.cend()) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Node with id {} not found.", nodeId)));
+    }
+    return static_cast<Id>(std::distance(m_nodes.cbegin(), it));
   }
 }  // namespace dsf

@@ -1097,7 +1097,18 @@ namespace dsf {
         new StochasticStreet(std::move(*pStreet), flowRate));
   }
   void RoadNetwork::makeSpireStreet(Id streetId) {
-    auto& pStreet = m_edges.at(streetId);
+    Id internalStreetId;
+    auto const& it{std::find_if(m_edges.cbegin(),
+                                m_edges.cend(),
+                                [streetId, &internalStreetId](auto const& pair) {
+                                  internalStreetId = pair.first;
+                                  return pair.second->id() == streetId;
+                                })};
+    if (it == m_edges.cend()) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Street with id {} not found.", streetId)));
+    }
+    auto& pStreet = m_edges.at(internalStreetId);
     if (pStreet->isStochastic()) {
       pStreet = std::unique_ptr<StochasticSpireStreet>(new StochasticSpireStreet(
           std::move(*pStreet), dynamic_cast<StochasticStreet&>(*pStreet).flowRate()));
