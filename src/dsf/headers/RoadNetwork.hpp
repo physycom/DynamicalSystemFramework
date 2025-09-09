@@ -61,6 +61,8 @@ namespace dsf {
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
 
+    void m_updateMaxAgentCapacity();
+
   public:
     RoadNetwork();
     /// @brief Construct a new RoadNetwork object
@@ -91,9 +93,9 @@ namespace dsf {
     /// @param defaultSpeed The default speed limit for the streets
     /// @throws std::invalid_argument if the file is not found or invalid
     /// The matrix format is deduced from the file extension. Currently only .dsm files are supported.
-    [[deprecated]] void importMatrix(const std::string& fileName,
-                                     bool isAdj = true,
-                                     double defaultSpeed = 13.8888888889);
+    void importMatrix(const std::string& fileName,
+                      bool isAdj = true,
+                      double defaultSpeed = 13.8888888889);
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported

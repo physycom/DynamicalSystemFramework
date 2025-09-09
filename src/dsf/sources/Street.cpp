@@ -71,6 +71,7 @@ namespace dsf {
 
   void Street::addAgent(std::unique_ptr<Agent> pAgent) {
     assert(!isFull());
+    Logger::debug(std::format("Adding {} on {}", *pAgent, *this));
     m_movingAgents.push(std::move(pAgent));
   }
   void Street::enqueue(size_t const& queueId) {

@@ -4,6 +4,12 @@
 #include <ranges>
 
 namespace dsf {
+  void RoadNetwork::m_updateMaxAgentCapacity() {
+    m_maxAgentCapacity = 0;
+    for (auto const& pStreet : this->edges()) {
+      m_maxAgentCapacity += pStreet->capacity();
+    }
+  }
   RoadNetwork::RoadNetwork() : Network{AdjacencyMatrix()}, m_maxAgentCapacity{0} {}
 
   RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj)
@@ -541,6 +547,7 @@ namespace dsf {
         ++index;
       }
     }
+    this->m_updateMaxAgentCapacity();
   }
 
   void RoadNetwork::importCoordinates(const std::string& fileName) {
