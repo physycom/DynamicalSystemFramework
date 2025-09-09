@@ -56,7 +56,8 @@ namespace dsf {
     std::string strLaneMapping;
     std::for_each(
         laneMapping.cbegin(), laneMapping.cend(), [&strLaneMapping](auto const item) {
-          strLaneMapping += std::format("{} - ", static_cast<int>(item));
+          strLaneMapping +=
+              std::format("{} - ", directionToString[static_cast<size_t>(item)]);
         });
     Logger::debug(std::format("New lane mapping for street {} -> {} is: {}",
                               m_nodePair.first,

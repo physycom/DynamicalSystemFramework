@@ -94,15 +94,11 @@ TEST_CASE("RoadNetwork") {
       graph.addNode(2, std::make_pair(-1., 0.));
       graph.addNode(3, std::make_pair(1., 1.));
       graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 50 / 3.6, 3);
-      // graph.edge(1)->setPriority(0);
       graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 50 / 3.6, 3);
-      // graph.edge(4)->setPriority(0);
       graph.addEdge<Street>(2, std::make_pair(0, 2), 1., 30 / 3.6);
       graph.addEdge<Street>(8, std::make_pair(2, 0), 1., 30 / 3.6);
       graph.addEdge<Street>(3, std::make_pair(0, 3), 1., 30 / 3.6, 2);
-      // graph.edge(3)->setPriority(2);
       graph.addEdge<Street>(12, std::make_pair(3, 0), 1., 30 / 3.6, 2);
-      // graph.edge(12)->setPriority(2);
       CHECK_EQ(graph.nEdges(), 6);
       CHECK_EQ(graph.nNodes(), 4);
       WHEN("We automatically map street lanes") {
@@ -126,46 +122,44 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.edge(0, 3)->laneMapping()[0], dsf::Direction::ANY);
           CHECK_EQ(graph.edge(0, 3)->laneMapping()[1], dsf::Direction::ANY);
           CHECK_EQ(graph.edge(3, 0)->laneMapping().size(), 2);
-          CHECK_EQ(graph.edge(3, 0)->laneMapping()[0], dsf::Direction::RIGHT);
-          CHECK_EQ(graph.edge(3, 0)->laneMapping()[1], dsf::Direction::STRAIGHT);
+          CHECK_EQ(graph.edge(3, 0)->laneMapping()[0], dsf::Direction::STRAIGHT);
+          CHECK_EQ(graph.edge(3, 0)->laneMapping()[1], dsf::Direction::LEFT);
         }
       }
     }
   }
   SUBCASE("importMatrix - dsf") {
-    //   // This tests the importMatrix function over .dsf files
-    //   // GIVEN: a graph
-    //   // WHEN: we import a .dsf file
-    //   // THEN: the graph's adjacency matrix is the same as the one in the file
-    //   GIVEN("An empty graph") {
-    //     RoadNetwork graph{};
-    //     WHEN("A matrix in dsf format is imported") {
-    //       graph.importMatrix("./data/matrix.dsf");
-    //       THEN("The graph is correctly built") {
-    //         CHECK_EQ(graph.adjacencyMatrix().n(), 3);
-    //         CHECK(graph.adjacencyMatrix().operator()(2, 2));
-    //         CHECK(graph.adjacencyMatrix().operator()(2, 0));
-    //         CHECK(graph.adjacencyMatrix().operator()(1, 0));
-    //         CHECK(graph.adjacencyMatrix().operator()(0, 1));
-    //         CHECK_EQ(graph.nNodes(), 3);
-    //         CHECK_EQ(graph.nEdges(), 4);
-    //       }
-    //       THEN("It is correctly exported") { graph.exportMatrix("./data/temp.dsf", true); }
-    //     }
-    //     WHEN("The exported one is imported") {
-    //       graph.importMatrix("./data/temp.dsf");
-    //       THEN("The graph is correctly built") {
-    //         CHECK_EQ(graph.adjacencyMatrix().n(), 3);
-    //         CHECK(graph.adjacencyMatrix().operator()(2, 2));
-    //         CHECK(graph.adjacencyMatrix().operator()(2, 0));
-    //         CHECK(graph.adjacencyMatrix().operator()(1, 0));
-    //         CHECK(graph.adjacencyMatrix().operator()(0, 1));
-    //         CHECK_EQ(graph.nNodes(), 3);
-    //         CHECK_EQ(graph.nEdges(), 4);
-    //       }
-    //     }
-    //   }
-    // }
+    // This tests the importMatrix function over .dsf files
+    // GIVEN: a graph
+    // WHEN: we import a .dsf file
+    // THEN: the graph's adjacency matrix is the same as the one in the file
+    GIVEN("An empty graph") {
+      RoadNetwork graph{};
+      WHEN("A matrix in dsf format is imported") {
+        graph.importMatrix("./data/matrix.dsf");
+        THEN("The graph is correctly built") {
+          CHECK(graph.edge(2, 2));
+          CHECK(graph.edge(2, 0));
+          CHECK(graph.edge(1, 0));
+          CHECK(graph.edge(0, 1));
+          CHECK_EQ(graph.nNodes(), 3);
+          CHECK_EQ(graph.nEdges(), 4);
+        }
+        // THEN("It is correctly exported") { graph.exportMatrix("./data/temp.dsf", true); }
+      }
+      // WHEN("The exported one is imported") {
+      //   graph.importMatrix("./data/temp.dsf");
+      //   THEN("The graph is correctly built") {
+      //     CHECK(graph.edge(2, 2));
+      //     CHECK(graph.edge(2, 0));
+      //     CHECK(graph.edge(1, 0));
+      //     CHECK(graph.edge(0, 1));
+      //     CHECK_EQ(graph.nNodes(), 3);
+      //     CHECK_EQ(graph.nEdges(), 4);
+      //   }
+      // }
+      // }
+    }
     // SUBCASE("Coordinates import/export") {
     //   GIVEN("A RoadNetwork object with the adj matrix imported") {
     //     RoadNetwork graph{};
@@ -371,42 +365,41 @@ TEST_CASE("RoadNetwork") {
       }
     }
   }
-  //   SUBCASE("street and oppositeStreet") {
-  //     GIVEN("A RoadNetwork object with two streets") {
-  //       RoadNetwork graph{};
-  //       Street street{1, std::make_pair(0, 1), 1.};
-  //       Street opposite{2, std::make_pair(1, 0), 1.};
-  //       graph.addNDefaultNodes(2);
-  //       graph.addStreets(street, opposite);
-  //       WHEN("We search for a street") {
-  //         auto result = graph.street(0, 1);
-  //         THEN("The street is found and has correct values") {
-  //           CHECK(result);
-  //           const auto& road = *result;
-  //           CHECK_EQ(road->id(), 1);
-  //           CHECK_EQ(road->length(), 1.);
-  //           CHECK_EQ(road->capacity(), 1);
-  //         }
-  //       }
-  //       WHEN("We search for the opposite street") {
-  //         auto result = graph.street(1, 0);
-  //         THEN("The opposite street is found and has correct values") {
-  //           CHECK(result);
-  //           const auto& road = *result;
-  //           CHECK_EQ(road->id(), 2);
-  //           CHECK_EQ(road->length(), 1.);
-  //           CHECK_EQ(road->capacity(), 1);
-  //         }
-  //       }
-  //       WHEN("We search for a not existing street") {
-  //         auto result = graph.street(1, 2);
-  //         THEN("The street is not found") { CHECK_FALSE(result); }
-  //       }
-  //       WHEN("We search for the opposite of a not existing street") {
-  //         THEN("It throws an exception") { CHECK_EQ(graph.street(2, 1), nullptr); }
-  //       }
-  //     }
-  //   }
+  SUBCASE("street and oppositeStreet") {
+    GIVEN("A RoadNetwork object with two streets") {
+      RoadNetwork graph{};
+      Street street{1, std::make_pair(0, 1), 1.};
+      Street opposite{2, std::make_pair(1, 0), 1.};
+      graph.addNDefaultNodes(2);
+      graph.addStreets(street, opposite);
+      WHEN("We search for a street") {
+        auto result = graph.street(0, 1);
+        THEN("The street is found and has correct values") {
+          CHECK(result);
+          const auto& road = *result;
+          CHECK_EQ(road->id(), 1);
+          CHECK_EQ(road->length(), 1.);
+          CHECK_EQ(road->capacity(), 1);
+        }
+      }
+      WHEN("We search for the opposite street") {
+        auto result = graph.street(1, 0);
+        THEN("The opposite street is found and has correct values") {
+          CHECK(result);
+          const auto& road = *result;
+          CHECK_EQ(road->id(), 2);
+          CHECK_EQ(road->length(), 1.);
+          CHECK_EQ(road->capacity(), 1);
+        }
+      }
+      WHEN("We search for a not existing street") {
+        THEN("The street is not found") { CHECK_THROWS(graph.street(1, 2)); }
+      }
+      WHEN("We search for the opposite of a not existing street") {
+        THEN("It throws an exception") { CHECK_THROWS(graph.street(2, 1)); }
+      }
+    }
+  }
 
   //   SUBCASE("adjustNodeCapacities and normalizeStreetCapacities") {
   //     GIVEN("A graph composed of three streets with a different lane number") {

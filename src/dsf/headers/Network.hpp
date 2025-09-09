@@ -40,8 +40,13 @@ namespace dsf {
     /// @brief Get the edges as an unordered map
     /// @return std::unordered_map<Id, std::unique_ptr<edge_t>> The edges
     std::vector<std::unique_ptr<edge_t>> const& edges() const;
-
+    /// @brief Get the input neighbors of a node, which correspond to the adjacency matrix's column
+    /// @param nodeId The node's id
+    /// @return std::vector<const node_t*> The input neighbors
     std::vector<const node_t*> inputNeighbors(Id nodeId) const;
+    /// @brief Get the output neighbors of a node, which correspond to the adjacency matrix's row
+    /// @param nodeId The node's id
+    /// @return std::vector<const node_t*> The output neighbors
     std::vector<const node_t*> outputNeighbors(Id nodeId) const;
     /// @brief Get the number of nodes
     /// @return size_t The number of nodes
@@ -237,6 +242,13 @@ namespace dsf {
         addNode(tmpEdge.target(), geometry.back());
       } else {
         addNode(tmpEdge.target());
+      }
+    }
+    if (geometry.empty()) {
+      auto const& sourceNode{this->node(tmpEdge.source())};
+      auto const& targetNode{this->node(tmpEdge.target())};
+      if (sourceNode->coords().has_value() && targetNode->coords().has_value()) {
+        tmpEdge.setGeometry({sourceNode->coords().value(), targetNode->coords().value()});
       }
     }
     auto const& sourceNodeId{m_mapNodeId.at(tmpEdge.source())};
