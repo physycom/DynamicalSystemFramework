@@ -369,10 +369,10 @@ TEST_CASE("RoadNetwork") {
   SUBCASE("make spire street") {
     GIVEN("A graph object with two nodes and one street") {
       RoadNetwork graph{};
-      auto const& streetId = graph.addEdge(Street{0, std::make_pair(0, 1)});
+      graph.addEdge(Street{0, std::make_pair(0, 1)});
       WHEN("We make the street a spire street") {
         graph.makeSpireStreet(0);
-        THEN("The street is a spire street") { CHECK(graph.edge(streetId)->isSpire()); }
+        THEN("The street is a spire street") { CHECK(graph.edge(0)->isSpire()); }
       }
     }
   }

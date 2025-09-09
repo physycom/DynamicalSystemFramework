@@ -515,13 +515,13 @@ namespace dsf {
     for (auto const& [nodeId, pNode] : std::views::enumerate(m_nodes)) {
       value = 0.;
       for (const auto& sourceId : m_adjacencyMatrix.getCol(nodeId)) {
-        auto const& pStreet{*street(sourceId, nodeId)};
+        auto const& pStreet{*street(m_nodes.at(sourceId)->id(), m_nodes.at(nodeId)->id())};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
       pNode->setCapacity(value);
       value = 0.;
       for (const auto& targetId : m_adjacencyMatrix.getRow(nodeId)) {
-        auto const& pStreet{*street(nodeId, targetId)};
+        auto const& pStreet{*street(m_nodes.at(nodeId)->id(), m_nodes.at(targetId)->id())};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
       pNode->setTransportCapacity(value == 0. ? 1. : value);
@@ -1119,7 +1119,7 @@ namespace dsf {
 
   void RoadNetwork::addStreet(Street&& street) {
     auto const& edge_id = addEdge<Street>(std::move(street));
-    m_maxAgentCapacity += edge(edge_id)->capacity();
+    m_maxAgentCapacity += edge(edge_id, true)->capacity();
   }
 
   const std::unique_ptr<Street>* RoadNetwork::street(Id source, Id destination) const {

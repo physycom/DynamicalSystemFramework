@@ -65,11 +65,11 @@ namespace dsf {
     /// @brief Get a node by id
     /// @param nodeId The node's id
     /// @return std::unique_ptr<node_t> const& A const reference to the node
-    std::unique_ptr<node_t> const& node(Id nodeId) const;
+    std::unique_ptr<node_t> const& node(Id nodeId, bool bInternalId = false) const;
     /// @brief Get an edge by id
     /// @param edgeId The edge's id
     /// @return std::unique_ptr<edge_t> const& A const reference to the edge
-    std::unique_ptr<edge_t> const& edge(Id edgeId) const;
+    std::unique_ptr<edge_t> const& edge(Id edgeId, bool bInternalId = false) const;
 
     std::unique_ptr<edge_t> const& edge(Id source, Id target) const;
     /// @brief Get a node by id
@@ -191,7 +191,7 @@ namespace dsf {
     } else {
       targetNodeId = static_cast<Id>(std::distance(m_nodes.cbegin(), it));
     }
-    auto const& edgeId{m_cantorPairingHashing(sourceNodeId, targetNodeId)};
+    auto const& edgeId{m_cantorPairingHashing(tmpEdge.nodePair())};
     if (m_edges.contains(edgeId)) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Edge with internal id {} ({}) connecting {} to {} already exists.",
@@ -208,13 +208,35 @@ namespace dsf {
 
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  std::unique_ptr<node_t> const& Network<node_t, edge_t>::node(Id nodeId) const {
-    return m_nodes.at(nodeId);
+  std::unique_ptr<node_t> const& Network<node_t, edge_t>::node(Id nodeId, bool bInternalId) const {
+    if (bInternalId) {
+      return m_nodes.at(nodeId);
+    }
+    auto const& it = std::find_if(m_nodes.cbegin(), m_nodes.cend(),
+                                        [nodeId](auto const& node) {
+                                          return node->id() == nodeId;
+                                        });
+    if (it == m_nodes.cend()) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Node with id {} not found.", nodeId)));
+    }
+    return *it;
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  std::unique_ptr<edge_t> const& Network<node_t, edge_t>::edge(Id edgeId) const {
-    return m_edges.at(edgeId);
+  std::unique_ptr<edge_t> const& Network<node_t, edge_t>::edge(Id edgeId, bool bInternalId) const {
+    if (bInternalId) {
+      return m_edges.at(edgeId);
+    }
+    auto const& it = std::find_if(m_edges.cbegin(), m_edges.cend(),
+                                        [edgeId](auto const& edge) {
+                                          return edge.second->id() == edgeId;
+                                        });
+    if (it == m_edges.cend()) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Edge with id {} not found.", edgeId)));
+    }
+    return it->second;
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
@@ -246,13 +268,6 @@ namespace dsf {
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   Id Network<node_t, edge_t>::nodeInternalId(Id nodeId) const {
-    auto it = std::find_if(m_nodes.cbegin(), m_nodes.cend(), [nodeId](auto const& node) {
-      return node->id() == nodeId;
-    });
-    if (it == m_nodes.cend()) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Node with id {} not found.", nodeId)));
-    }
-    return static_cast<Id>(std::distance(m_nodes.cbegin(), it));
+    return node(nodeId)->id();
   }
 }  // namespace dsf

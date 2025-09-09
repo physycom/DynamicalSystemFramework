@@ -406,11 +406,11 @@ namespace dsf {
           m_turnMapping.emplace(pair.first, std::array<long, 4>{-1, -1, -1, -1});
           // Turn mappings
           const auto& srcNodeId = pair.second->target();
-          for (const auto& targetId : this->graph().adjacencyMatrix().getRow(srcNodeId)) {
+          for (const auto& targetId : this->graph().adjacencyMatrix().getRow(this->graph().nodeInternalId(srcNodeId))) {
             auto const previousStreetId =
-                this->graph().edgeInternalId(srcNodeId, targetId);
+                this->graph().edgeInternalId(srcNodeId, this->graph().node(targetId, true)->id());
             auto const& delta{
-                pair.second->deltaAngle(this->graph().edge(previousStreetId)->angle())};
+                pair.second->deltaAngle(this->graph().edge(previousStreetId, true)->angle())};
             if (std::abs(delta) < std::numbers::pi) {
               if (delta < 0.) {
                 m_turnMapping[pair.first][dsf::Direction::RIGHT] =
@@ -443,28 +443,32 @@ namespace dsf {
     }
     auto const destinationID = pItinerary->destination();
     std::vector<DijkstraResult> shortestPaths(this->graph().nNodes());
-    tbb::parallel_for_each(
-        this->graph().nodes().cbegin(),
-        this->graph().nodes().cend(),
-        [this, &shortestPaths, &destinationID](auto const& it) -> void {
-          auto const nodeId{it.first};
-          if (nodeId == destinationID) {
-            shortestPaths[nodeId] = DijkstraResult{};
-          } else {
-            auto result =
-                this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
-            if (result.has_value()) {
-              shortestPaths[nodeId] = *result;
-            } else {
-              Logger::warning(std::format(
-                  "No path found from node {} to node {}", nodeId, destinationID));
+    
+    // Use indexed range instead of enumerate view for TBB compatibility
+    tbb::parallel_for(
+        tbb::blocked_range<size_t>(0, this->graph().nNodes()),
+        [this, &shortestPaths, &destinationID](const tbb::blocked_range<size_t>& range) -> void {
+          for (size_t nodeId = range.begin(); nodeId != range.end(); ++nodeId) {
+            if (nodeId == destinationID) {
               shortestPaths[nodeId] = DijkstraResult{};
+            } else {
+              auto result =
+                  this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
+              if (result.has_value()) {
+                shortestPaths[nodeId] = *result;
+              } else {
+                Logger::warning(std::format(
+                    "No path found from node {} to node {}", nodeId, destinationID));
+                shortestPaths[nodeId] = DijkstraResult{};
+              }
             }
           }
         });
     AdjacencyMatrix path;
     // cycle over the nodes
+    auto nodeId{-1};
     for (const auto& node : this->graph().nodes()) {
+      ++nodeId;
       if (node->id() == destinationID) {
         continue;
       }
@@ -476,16 +480,16 @@ namespace dsf {
       auto const& row{this->graph().adjacencyMatrix().getRow(node->id())};
       for (const auto nextNodeId : row) {
         if (nextNodeId == destinationID) {
-          if (std::abs(m_weightFunction(&this->graph(), node->id(), nextNodeId) -
+          if (std::abs(m_weightFunction(&this->graph(), node->id(), this->graph().node(nextNodeId)->id()) -
                        minDistance) <
               m_weightTreshold)  // 1 meter tolerance between shortest paths
           {
-            path.insert(node->id(), nextNodeId);
+            path.insert(nodeId, nextNodeId);
           } else {
             Logger::debug(
                 std::format("Found a path from {} to {} which differs for more than {} "
                             "unit(s) from the shortest one.",
-                            node->id(),
+                            nodeId,
                             destinationID,
                             m_weightTreshold));
           }
@@ -2167,7 +2171,7 @@ namespace dsf {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
     for (const auto& [streetId, street] : this->graph().edges()) {
-      flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+      flows.push_back(street->density() * this->streetMeanSpeed(street->id()));
     }
     return Measurement<double>(flows);
   }
@@ -2180,9 +2184,9 @@ namespace dsf {
     flows.reserve(this->graph().nEdges());
     for (const auto& [streetId, street] : this->graph().edges()) {
       if (above && (street->density(true) > threshold)) {
-        flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+        flows.push_back(street->density() * this->streetMeanSpeed(street->id()));
       } else if (!above && (street->density(true) < threshold)) {
-        flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+        flows.push_back(street->density() * this->streetMeanSpeed(street->id()));
       }
     }
     return Measurement<double>(flows);

@@ -61,8 +61,6 @@ namespace dsf {
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
 
-    // void m_addMissingNodes(Id const nodeId) final;
-
   public:
     RoadNetwork();
     /// @brief Construct a new RoadNetwork object

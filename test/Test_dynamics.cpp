@@ -83,25 +83,25 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
-  //   SUBCASE("setDestinationNodes") {
-  //     GIVEN("A dynamics object and a destination node") {
-  //       auto graph = RoadNetwork{};
-  //       graph.importMatrix("./data/matrix.dat");
-  //       FirstOrderDynamics dynamics{
-  //           graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
-  //       WHEN("We add a span of destination nodes") {
-  //         std::array<uint32_t, 3> nodes{0, 1, 2};
-  //         dynamics.setDestinationNodes(nodes);
-  //         THEN("The destination nodes are added") {
-  //           const auto& itineraries = dynamics.itineraries();
-  //           CHECK_EQ(itineraries.size(), nodes.size());
-  //           for (uint16_t i{0}; i < nodes.size(); ++i) {
-  //             CHECK_EQ(itineraries.at(i)->destination(), nodes.at(i));
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
+    SUBCASE("setDestinationNodes") {
+      GIVEN("A dynamics object and a destination node") {
+        auto graph = RoadNetwork{};
+        graph.importMatrix("./data/matrix.dat");
+        FirstOrderDynamics dynamics{
+            graph, false, 69, 0., dsf::weight_functions::streetLength, 1.};
+        WHEN("We add a span of destination nodes") {
+          std::array<uint32_t, 3> nodes{0, 1, 2};
+          dynamics.setDestinationNodes(nodes);
+          THEN("The destination nodes are added") {
+            const auto& itineraries = dynamics.itineraries();
+            CHECK_EQ(itineraries.size(), nodes.size());
+            for (uint16_t i{0}; i < nodes.size(); ++i) {
+              CHECK_EQ(itineraries.at(i)->destination(), nodes.at(i));
+            }
+          }
+        }
+      }
+    }
   //   SUBCASE("addAgent") {
   //     GIVEN("A dynamics object, a source node and a destination node") {
   //       auto graph = RoadNetwork{};
