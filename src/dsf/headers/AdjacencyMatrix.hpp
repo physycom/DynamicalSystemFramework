@@ -97,6 +97,8 @@ namespace dsf {
     /// @return A vector containing all the links in the adjacency matrix as pairs of nodes
     std::vector<std::pair<Id, Id>> elements() const;
 
+    size_t elementIndex(Id row, Id col) const;
+
     /// @brief Clear the adjacency matrix
     void clear();
     /// @brief Clear the row at the specified index

@@ -32,15 +32,13 @@ bool checkPath(const std::vector<T1>& path1, const std::vector<T2>& path2) {
 
 TEST_CASE("RoadNetwork") {
   Road::setMeanVehicleLength(5.);
-  SUBCASE("Constructor_1") {
-    RoadNetwork graph{};
-    graph.addEdge<Street>(1, std::make_pair(0, 1));
-    CHECK_EQ(graph.nEdges(), 1);
-    CHECK_EQ(graph.nNodes(), 2);
-    CHECK_EQ(graph.adjacencyMatrix().size(), graph.nEdges());
+  SUBCASE("Empty Constructor") {
+    RoadNetwork network{};
+    network.addEdge<Street>(1, std::make_pair(0, 1));
+    CHECK_EQ(network.nEdges(), 1);
+    CHECK_EQ(network.nNodes(), 2);
   }
-
-  SUBCASE("Constructor_2") {
+  SUBCASE("AdjacencyMatrix Constructor") {
     AdjacencyMatrix sm;
     sm.insert(0, 1);
     sm.insert(1, 0);
@@ -50,14 +48,13 @@ TEST_CASE("RoadNetwork") {
     RoadNetwork graph{sm};
     CHECK_EQ(graph.nNodes(), 4);
     CHECK_EQ(graph.nEdges(), 5);
-    CHECK_EQ(graph.adjacencyMatrix().size(), graph.nEdges());
-    CHECK(graph.adjacencyMatrix().contains(1, 2));
-    CHECK(graph.adjacencyMatrix().contains(2, 3));
-    CHECK(graph.adjacencyMatrix().contains(3, 2));
-    CHECK_FALSE(graph.adjacencyMatrix().contains(2, 1));
+    CHECK(graph.edge(1, 2));
+    CHECK(graph.edge(2, 3));
+    CHECK(graph.edge(3, 2));
+    CHECK_THROWS_AS(graph.edge(2, 1), std::invalid_argument);
   }
 
-  SUBCASE("Construction with addStreet") {
+  SUBCASE("Construction with addEdge") {
     RoadNetwork graph;
     graph.addEdge<Street>(1, std::make_pair(0, 1));
     graph.addEdge<Street>(2, std::make_pair(1, 2));
@@ -66,12 +63,11 @@ TEST_CASE("RoadNetwork") {
     graph.addEdge<Street>(5, std::make_pair(2, 3));
     CHECK_EQ(graph.nEdges(), 5);
     CHECK_EQ(graph.nNodes(), 4);
-    CHECK_EQ(graph.adjacencyMatrix().size(), 5);
-    CHECK(graph.adjacencyMatrix().contains(0, 1));
-    CHECK(graph.adjacencyMatrix().contains(1, 2));
-    CHECK(graph.adjacencyMatrix().contains(0, 2));
-    CHECK(graph.adjacencyMatrix().contains(0, 3));
-    CHECK(graph.adjacencyMatrix().contains(2, 3));
+    CHECK(graph.edge(0, 1));
+    CHECK(graph.edge(1, 2));
+    CHECK(graph.edge(0, 2));
+    CHECK(graph.edge(0, 3));
+    CHECK(graph.edge(2, 3));
   }
   SUBCASE("Construction with addStreets") {
     Street s1(1, std::make_pair(0, 1));
@@ -83,59 +79,58 @@ TEST_CASE("RoadNetwork") {
     graph.addStreets(s1, s2, s3, s4, s5);
     CHECK_EQ(graph.nEdges(), 5);
     CHECK_EQ(graph.nNodes(), 4);
-    CHECK_EQ(graph.adjacencyMatrix().size(), graph.nEdges());
-    CHECK(graph.adjacencyMatrix().contains(0, 1));
-    CHECK(graph.adjacencyMatrix().contains(1, 2));
-    CHECK(graph.adjacencyMatrix().contains(0, 2));
-    CHECK(graph.adjacencyMatrix().contains(0, 3));
-    CHECK(graph.adjacencyMatrix().contains(2, 3));
+    CHECK(graph.edge(0, 1));
+    CHECK(graph.edge(1, 2));
+    CHECK(graph.edge(0, 2));
+    CHECK(graph.edge(0, 3));
+    CHECK(graph.edge(2, 3));
   }
 
   SUBCASE("automatically do things") {
-    // GIVEN("A Graph object") {
-    //   RoadNetwork graph{};
-    //   graph.addNode(0, std::make_pair(0., 0.));
-    //   graph.addNode(1, std::make_pair(0., -1.));
-    //   graph.addNode(2, std::make_pair(-1., 0.));
-    //   graph.addNode(3, std::make_pair(1., 1.));
-    //   graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 50 / 3.6, 3);
-    //   // graph.edge(1)->setPriority(0);
-    //   graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 50 / 3.6, 3);
-    //   // graph.edge(4)->setPriority(0);
-    //   graph.addEdge<Street>(2, std::make_pair(0, 2), 1., 30 / 3.6);
-    //   graph.addEdge<Street>(8, std::make_pair(2, 0), 1., 30 / 3.6);
-    //   graph.addEdge<Street>(3, std::make_pair(0, 3), 1., 30 / 3.6, 2);
-    //   // graph.edge(3)->setPriority(2);
-    //   graph.addEdge<Street>(12, std::make_pair(3, 0), 1., 30 / 3.6, 2);
-    //   // graph.edge(12)->setPriority(2);
-    //   CHECK_EQ(graph.nEdges(), 6);
-    //   CHECK_EQ(graph.nNodes(), 4);
-    //   WHEN("We automatically map street lanes") {
-    //     // dsf::Logger::setLogLevel(dsf::log_level_t::DEBUG);
-    //     graph.autoMapStreetLanes();
-    //     // dsf::Logger::setLogLevel(dsf::log_level_t::INFO);
-    //     THEN("The lanes are correctly mapped") {
-    //       CHECK_EQ(graph.edge(0, 1)->laneMapping().size(), 3);
-    //       CHECK_EQ(graph.edge(0, 1)->laneMapping()[0], dsf::Direction::ANY);
-    //       CHECK_EQ(graph.edge(0, 1)->laneMapping()[1], dsf::Direction::ANY);
-    //       CHECK_EQ(graph.edge(0, 1)->laneMapping()[2], dsf::Direction::ANY);
-    //       CHECK_EQ(graph.edge(1, 0)->laneMapping().size(), 3);
-    //       CHECK_EQ(graph.edge(1, 0)->laneMapping()[0], dsf::Direction::RIGHT);
-    //       CHECK_EQ(graph.edge(1, 0)->laneMapping()[1], dsf::Direction::RIGHT);
-    //       CHECK_EQ(graph.edge(1, 0)->laneMapping()[2], dsf::Direction::LEFT);
-    //       CHECK_EQ(graph.edge(0, 2)->laneMapping().size(), 1);
-    //       CHECK_EQ(graph.edge(0, 2)->laneMapping()[0], dsf::Direction::ANY);
-    //       CHECK_EQ(graph.edge(2, 0)->laneMapping().size(), 1);
-    //       CHECK_EQ(graph.edge(2, 0)->laneMapping()[0], dsf::Direction::ANY);
-    //       CHECK_EQ(graph.edge(0, 3)->laneMapping().size(), 2);
-    //       CHECK_EQ(graph.edge(0, 3)->laneMapping()[0], dsf::Direction::ANY);
-    //       CHECK_EQ(graph.edge(0, 3)->laneMapping()[1], dsf::Direction::ANY);
-    //       CHECK_EQ(graph.edge(3, 0)->laneMapping().size(), 2);
-    //       CHECK_EQ(graph.edge(3, 0)->laneMapping()[0], dsf::Direction::RIGHT);
-    //       CHECK_EQ(graph.edge(3, 0)->laneMapping()[1], dsf::Direction::STRAIGHT);
-    //     }
-    //   }
-    // }
+    GIVEN("A Graph object") {
+      RoadNetwork graph{};
+      graph.addNode(0, std::make_pair(0., 0.));
+      graph.addNode(1, std::make_pair(0., -1.));
+      graph.addNode(2, std::make_pair(-1., 0.));
+      graph.addNode(3, std::make_pair(1., 1.));
+      graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 50 / 3.6, 3);
+      // graph.edge(1)->setPriority(0);
+      graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 50 / 3.6, 3);
+      // graph.edge(4)->setPriority(0);
+      graph.addEdge<Street>(2, std::make_pair(0, 2), 1., 30 / 3.6);
+      graph.addEdge<Street>(8, std::make_pair(2, 0), 1., 30 / 3.6);
+      graph.addEdge<Street>(3, std::make_pair(0, 3), 1., 30 / 3.6, 2);
+      // graph.edge(3)->setPriority(2);
+      graph.addEdge<Street>(12, std::make_pair(3, 0), 1., 30 / 3.6, 2);
+      // graph.edge(12)->setPriority(2);
+      CHECK_EQ(graph.nEdges(), 6);
+      CHECK_EQ(graph.nNodes(), 4);
+      WHEN("We automatically map street lanes") {
+        // dsf::Logger::setLogLevel(dsf::log_level_t::DEBUG);
+        graph.autoMapStreetLanes();
+        // dsf::Logger::setLogLevel(dsf::log_level_t::INFO);
+        THEN("The lanes are correctly mapped") {
+          CHECK_EQ(graph.edge(0, 1)->laneMapping().size(), 3);
+          CHECK_EQ(graph.edge(0, 1)->laneMapping()[0], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(0, 1)->laneMapping()[1], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(0, 1)->laneMapping()[2], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(1, 0)->laneMapping().size(), 3);
+          CHECK_EQ(graph.edge(1, 0)->laneMapping()[0], dsf::Direction::RIGHT);
+          CHECK_EQ(graph.edge(1, 0)->laneMapping()[1], dsf::Direction::RIGHT);
+          CHECK_EQ(graph.edge(1, 0)->laneMapping()[2], dsf::Direction::LEFT);
+          CHECK_EQ(graph.edge(0, 2)->laneMapping().size(), 1);
+          CHECK_EQ(graph.edge(0, 2)->laneMapping()[0], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(2, 0)->laneMapping().size(), 1);
+          CHECK_EQ(graph.edge(2, 0)->laneMapping()[0], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(0, 3)->laneMapping().size(), 2);
+          CHECK_EQ(graph.edge(0, 3)->laneMapping()[0], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(0, 3)->laneMapping()[1], dsf::Direction::ANY);
+          CHECK_EQ(graph.edge(3, 0)->laneMapping().size(), 2);
+          CHECK_EQ(graph.edge(3, 0)->laneMapping()[0], dsf::Direction::RIGHT);
+          CHECK_EQ(graph.edge(3, 0)->laneMapping()[1], dsf::Direction::STRAIGHT);
+        }
+      }
+    }
   }
   SUBCASE("importMatrix - dsf") {
     //   // This tests the importMatrix function over .dsf files
@@ -305,7 +300,7 @@ TEST_CASE("RoadNetwork") {
       CHECK_EQ(street2->id(), 1);
       CHECK_EQ(street2->length(), 1.);
       CHECK_EQ(street2->capacity(), 1);
-      CHECK_FALSE(graph.street(1, 0));
+      CHECK_THROWS_AS(graph.street(1, 0), std::invalid_argument);
     }
     // SUBCASE("make trafficlight") {
     //   GIVEN("A graph with a traffic light with no parameters") {
@@ -376,6 +371,81 @@ TEST_CASE("RoadNetwork") {
       }
     }
   }
+  //   SUBCASE("street and oppositeStreet") {
+  //     GIVEN("A RoadNetwork object with two streets") {
+  //       RoadNetwork graph{};
+  //       Street street{1, std::make_pair(0, 1), 1.};
+  //       Street opposite{2, std::make_pair(1, 0), 1.};
+  //       graph.addNDefaultNodes(2);
+  //       graph.addStreets(street, opposite);
+  //       WHEN("We search for a street") {
+  //         auto result = graph.street(0, 1);
+  //         THEN("The street is found and has correct values") {
+  //           CHECK(result);
+  //           const auto& road = *result;
+  //           CHECK_EQ(road->id(), 1);
+  //           CHECK_EQ(road->length(), 1.);
+  //           CHECK_EQ(road->capacity(), 1);
+  //         }
+  //       }
+  //       WHEN("We search for the opposite street") {
+  //         auto result = graph.street(1, 0);
+  //         THEN("The opposite street is found and has correct values") {
+  //           CHECK(result);
+  //           const auto& road = *result;
+  //           CHECK_EQ(road->id(), 2);
+  //           CHECK_EQ(road->length(), 1.);
+  //           CHECK_EQ(road->capacity(), 1);
+  //         }
+  //       }
+  //       WHEN("We search for a not existing street") {
+  //         auto result = graph.street(1, 2);
+  //         THEN("The street is not found") { CHECK_FALSE(result); }
+  //       }
+  //       WHEN("We search for the opposite of a not existing street") {
+  //         THEN("It throws an exception") { CHECK_EQ(graph.street(2, 1), nullptr); }
+  //       }
+  //     }
+  //   }
+
+  //   SUBCASE("adjustNodeCapacities and normalizeStreetCapacities") {
+  //     GIVEN("A graph composed of three streets with a different lane number") {
+  //       Street s1(0, std::make_pair(0, 1), 10., 30., 1);
+  //       Street s2(1, std::make_pair(1, 2), 40., 30., 2);
+  //       Street s3(2, std::make_pair(3, 1), 75., 30., 3);
+  //       Street s4(3, std::make_pair(1, 4), 55., 30., 1);
+  //       RoadNetwork graph{};
+  //       graph.addNDefaultNodes(5);
+  //       graph.addStreets(s1, s2, s3, s4);
+  //       WHEN("We adjust node capacities") {
+  //         graph.adjustNodeCapacities();
+  //         auto const& nodes = graph.nodes();
+  //         THEN("The node capacities are correct") {
+  //           CHECK_EQ(nodes.at(0)->capacity(), 1);
+  //           CHECK_EQ(nodes.at(1)->capacity(), 4);
+  //           CHECK_EQ(nodes.at(2)->capacity(), 2);
+  //           CHECK_EQ(nodes.at(3)->capacity(), 3);
+  //           CHECK_EQ(nodes.at(4)->capacity(), 1);
+  //         }
+  //         THEN("The transport capacities are correct") {
+  //           CHECK_EQ(nodes.at(0)->transportCapacity(), 1);
+  //           CHECK_EQ(nodes.at(1)->transportCapacity(), 3);
+  //           CHECK_EQ(nodes.at(2)->transportCapacity(), 1);
+  //           CHECK_EQ(nodes.at(3)->transportCapacity(), 3);
+  //           CHECK_EQ(nodes.at(4)->transportCapacity(), 1);
+  //         }
+  //       }
+  //       WHEN("We normalize street capacities") {
+  //         // graph.normalizeStreetCapacities();
+  //         THEN("The street capacities are correct") {
+  //           CHECK_EQ((*graph.street(0, 1))->capacity(), 2);
+  //           CHECK_EQ((*graph.street(1, 2))->capacity(), 16);
+  //           CHECK_EQ((*graph.street(3, 1))->capacity(), 45);
+  //           CHECK_EQ((*graph.street(1, 4))->capacity(), 11);
+  //         }
+  //       }
+  //     }
+  //   }
 }
 
 TEST_CASE("Dijkstra") {
@@ -492,7 +562,6 @@ TEST_CASE("Dijkstra") {
     Street s17(16, std::make_pair(6, 4), 2.);
     Street s18(17, std::make_pair(6, 5), 6.);
     RoadNetwork graph{};
-    graph.addNDefaultNodes(7);
     graph.addStreets(
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18);
     auto result = graph.shortestPath(0, 1);
@@ -558,7 +627,6 @@ TEST_CASE("Dijkstra") {
     Street s17(16, std::make_pair(4, 3), 6.);
     Street s18(17, std::make_pair(4, 5), 9.);
     RoadNetwork graph{};
-    graph.addNDefaultNodes(6);
     graph.addStreets(
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18);
     auto result = graph.shortestPath(0, 4);
@@ -574,7 +642,6 @@ TEST_CASE("Dijkstra") {
     Street s2(1, std::make_pair(0, 2), 6.);
     Street s3(2, std::make_pair(2, 0), 6.);
     RoadNetwork graph{};
-    graph.addNDefaultNodes(3);
     graph.addStreets(s1, s2, s3);
     auto result = graph.shortestPath(0, 1);
     CHECK_FALSE(result.has_value());
@@ -585,7 +652,6 @@ TEST_CASE("Dijkstra") {
     Street s2(1, std::make_pair(0, 2), 6.);
     Street s3(2, std::make_pair(2, 0), 6.);
     RoadNetwork graph{};
-    graph.addNDefaultNodes(3);
     graph.addStreets(s1, s2, s3);
     auto result = graph.shortestPath(3, 1);
     CHECK_FALSE(result.has_value());
@@ -596,102 +662,26 @@ TEST_CASE("Dijkstra") {
     Street s2(1, std::make_pair(0, 2), 6.);
     Street s3(2, std::make_pair(2, 0), 6.);
     RoadNetwork graph{};
-    graph.addNDefaultNodes(3);
     graph.addStreets(s1, s2, s3);
     auto result = graph.shortestPath(1, 3);
     CHECK_FALSE(result.has_value());
   }
 
-  SUBCASE("street and oppositeStreet") {
-    GIVEN("A RoadNetwork object with two streets") {
-      RoadNetwork graph{};
-      Street street{1, std::make_pair(0, 1), 1.};
-      Street opposite{2, std::make_pair(1, 0), 1.};
-      graph.addNDefaultNodes(2);
-      graph.addStreets(street, opposite);
-      WHEN("We search for a street") {
-        auto result = graph.street(0, 1);
-        THEN("The street is found and has correct values") {
-          CHECK(result);
-          const auto& road = *result;
-          CHECK_EQ(road->id(), 1);
-          CHECK_EQ(road->length(), 1.);
-          CHECK_EQ(road->capacity(), 1);
-        }
-      }
-      WHEN("We search for the opposite street") {
-        auto result = graph.street(1, 0);
-        THEN("The opposite street is found and has correct values") {
-          CHECK(result);
-          const auto& road = *result;
-          CHECK_EQ(road->id(), 2);
-          CHECK_EQ(road->length(), 1.);
-          CHECK_EQ(road->capacity(), 1);
-        }
-      }
-      WHEN("We search for a not existing street") {
-        auto result = graph.street(1, 2);
-        THEN("The street is not found") { CHECK_FALSE(result); }
-      }
-      WHEN("We search for the opposite of a not existing street") {
-        THEN("It throws an exception") { CHECK_EQ(graph.street(2, 1), nullptr); }
-      }
-    }
-  }
-
-  SUBCASE("equal length") {
+  SUBCASE("Case 10 - Equal Lengths") {
     RoadNetwork graph{};
     graph.importMatrix("./data/matrix.dat", false);
     // check correct import
-    CHECK_EQ(graph.adjacencyMatrix().n(), 120);
-    CHECK_EQ(graph.adjacencyMatrix().size(), 436);
+    CHECK_EQ(graph.nNodes(), 120);
+    CHECK_EQ(graph.nEdges(), 436);
     // check that the path exists
-    CHECK(graph.adjacencyMatrix().operator()(46, 58));
-    CHECK(graph.adjacencyMatrix().operator()(58, 70));
-    CHECK(graph.adjacencyMatrix().operator()(70, 82));
-    CHECK(graph.adjacencyMatrix().operator()(82, 94));
-    CHECK(graph.adjacencyMatrix().operator()(94, 106));
-    CHECK(graph.adjacencyMatrix().operator()(106, 118));
+    CHECK(graph.edge(46, 58));
+    CHECK(graph.edge(58, 70));
+    CHECK(graph.edge(70, 82));
+    CHECK(graph.edge(82, 94));
+    CHECK(graph.edge(94, 106));
+    CHECK(graph.edge(106, 118));
 
     auto result = graph.shortestPath(46, 118);
     CHECK(result.has_value());
-  }
-  SUBCASE("adjustNodeCapacities and normalizeStreetCapacities") {
-    GIVEN("A graph composed of three streets with a different lane number") {
-      Street s1(0, std::make_pair(0, 1), 10., 30., 1);
-      Street s2(1, std::make_pair(1, 2), 40., 30., 2);
-      Street s3(2, std::make_pair(3, 1), 75., 30., 3);
-      Street s4(3, std::make_pair(1, 4), 55., 30., 1);
-      RoadNetwork graph{};
-      graph.addNDefaultNodes(5);
-      graph.addStreets(s1, s2, s3, s4);
-      WHEN("We adjust node capacities") {
-        graph.adjustNodeCapacities();
-        auto const& nodes = graph.nodes();
-        THEN("The node capacities are correct") {
-          CHECK_EQ(nodes.at(0)->capacity(), 1);
-          CHECK_EQ(nodes.at(1)->capacity(), 4);
-          CHECK_EQ(nodes.at(2)->capacity(), 2);
-          CHECK_EQ(nodes.at(3)->capacity(), 3);
-          CHECK_EQ(nodes.at(4)->capacity(), 1);
-        }
-        THEN("The transport capacities are correct") {
-          CHECK_EQ(nodes.at(0)->transportCapacity(), 1);
-          CHECK_EQ(nodes.at(1)->transportCapacity(), 3);
-          CHECK_EQ(nodes.at(2)->transportCapacity(), 1);
-          CHECK_EQ(nodes.at(3)->transportCapacity(), 3);
-          CHECK_EQ(nodes.at(4)->transportCapacity(), 1);
-        }
-      }
-      WHEN("We normalize street capacities") {
-        // graph.normalizeStreetCapacities();
-        THEN("The street capacities are correct") {
-          CHECK_EQ((*graph.street(0, 1))->capacity(), 2);
-          CHECK_EQ((*graph.street(1, 2))->capacity(), 16);
-          CHECK_EQ((*graph.street(3, 1))->capacity(), 45);
-          CHECK_EQ((*graph.street(1, 4))->capacity(), 11);
-        }
-      }
-    }
   }
 }

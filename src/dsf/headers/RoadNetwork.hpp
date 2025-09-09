@@ -298,83 +298,84 @@ namespace dsf {
   std::optional<DijkstraResult> RoadNetwork::shortestPath(Id source,
                                                           Id destination,
                                                           Func getStreetWeight) const {
-    const Id sourceId{source};
-
-    std::unordered_set<Id> unvisitedNodes;
-    bool source_found{false};
-    bool dest_found{false};
-    for (auto const& [nodeId, pNode] : std::views::enumerate(m_nodes)) {
-      if (!source_found && nodeId == source) {
-        source_found = true;
-      }
-      if (!dest_found && nodeId == destination) {
-        dest_found = true;
-      }
-      unvisitedNodes.emplace(nodeId);
-    }
-    if (!source_found || !dest_found) {
+    // Check if source and destination nodes exist
+    if (m_mapNodeId.find(source) == m_mapNodeId.end() ||
+        m_mapNodeId.find(destination) == m_mapNodeId.end()) {
       return std::nullopt;
     }
 
-    const size_t n_nodes{m_nodes.size()};
-    auto adj{m_adjacencyMatrix};
-
+    // Use unordered_map for distances and previous nodes using original node IDs
+    std::unordered_map<Id, double> dist;
+    std::unordered_map<Id, Id> prev;
+    std::unordered_set<Id> unvisitedNodes;
     std::unordered_set<Id> visitedNodes;
-    std::vector<std::pair<Id, double>> dist(n_nodes);
-    std::for_each(dist.begin(), dist.end(), [count = 0](auto& element) mutable -> void {
-      element.first = count;
-      element.second = std::numeric_limits<double>::max();
-      ++count;
-    });
-    dist[source] = std::make_pair(source, 0.);
 
-    std::vector<std::pair<Id, double>> prev(n_nodes);
-    std::for_each(prev.begin(), prev.end(), [](auto& pair) -> void {
-      pair.first = std::numeric_limits<Id>::max();
-      pair.second = std::numeric_limits<double>::max();
-    });
-    prev[source].second = 0.;
-
-    while (unvisitedNodes.size() != 0) {
-      source = *std::min_element(unvisitedNodes.begin(),
-                                 unvisitedNodes.end(),
-                                 [&dist](const auto& a, const auto& b) -> bool {
-                                   return dist[a].second < dist[b].second;
-                                 });
-
-      unvisitedNodes.erase(source);
-      visitedNodes.emplace(source);
-      auto const& neighbors{adj.getRow(source)};
-      for (auto const& neighbour : neighbors) {
-        // if the node has already been visited, skip it
-        if (visitedNodes.find(neighbour) != visitedNodes.end()) {
-          continue;
-        }
-        double streetWeight = getStreetWeight(this, source, neighbour);
-        // if current path is shorter than the previous one, update the distance
-        if (streetWeight + dist[source].second < dist[neighbour].second) {
-          dist[neighbour].second = streetWeight + dist[source].second;
-          prev[neighbour] = std::make_pair(source, dist[neighbour].second);
-        }
-      }
-
-      adj.clearCol(source);
+    // Initialize distances and unvisited nodes using original node IDs
+    for (const auto& node : m_nodes) {
+      Id nodeId = node->id();
+      dist[nodeId] = std::numeric_limits<double>::max();
+      prev[nodeId] = std::numeric_limits<Id>::max();
+      unvisitedNodes.insert(nodeId);
     }
 
-    std::vector<Id> path{destination};
-    Id previous{destination};
-    while (true) {
-      previous = prev[previous].first;
-      if (previous == std::numeric_limits<Id>::max()) {
-        return std::nullopt;
-      }
-      path.push_back(previous);
-      if (previous == sourceId) {
+    // Set distance to source as 0
+    dist[source] = 0.0;
+
+    while (!unvisitedNodes.empty()) {
+      // Find unvisited node with minimum distance
+      Id currentNode = *std::min_element(
+          unvisitedNodes.begin(),
+          unvisitedNodes.end(),
+          [&dist](const Id& a, const Id& b) -> bool { return dist[a] < dist[b]; });
+
+      // If we reached the destination, we can stop
+      if (currentNode == destination) {
         break;
       }
+
+      // If the current node has infinite distance, there's no path
+      if (dist[currentNode] == std::numeric_limits<double>::max()) {
+        return std::nullopt;
+      }
+
+      unvisitedNodes.erase(currentNode);
+      visitedNodes.insert(currentNode);
+
+      // Get outgoing neighbors (nodes this node can reach)
+      auto const& neighbors = this->outputNeighbors(currentNode);
+      for (auto const& pNeighbor : neighbors) {
+        Id neighborId = pNeighbor->id();
+
+        // Skip if already visited
+        if (visitedNodes.find(neighborId) != visitedNodes.end()) {
+          continue;
+        }
+
+        double streetWeight = getStreetWeight(this, currentNode, neighborId);
+        double altDistance = dist[currentNode] + streetWeight;
+
+        // If we found a shorter path to the neighbor, update it
+        if (altDistance < dist[neighborId]) {
+          dist[neighborId] = altDistance;
+          prev[neighborId] = currentNode;
+        }
+      }
+    }
+
+    // Check if destination is reachable
+    if (dist[destination] == std::numeric_limits<double>::max()) {
+      return std::nullopt;
+    }
+
+    // Reconstruct path
+    std::vector<Id> path;
+    Id current = destination;
+    while (current != std::numeric_limits<Id>::max()) {
+      path.push_back(current);
+      current = prev[current];
     }
 
     std::reverse(path.begin(), path.end());
-    return DijkstraResult(path, prev[destination].second);
+    return DijkstraResult(path, dist[destination]);
   }
 };  // namespace dsf
