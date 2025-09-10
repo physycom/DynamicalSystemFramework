@@ -29,7 +29,6 @@ namespace dsf {
     Id m_id;
     std::optional<std::pair<double, double>> m_coords;
     std::string m_name;
-    std::optional<std::string> m_strId;
 
   public:
     /// @brief Construct a new Node object with capacity 1
@@ -66,7 +65,6 @@ namespace dsf {
     /// @param name The node's name
     inline void setName(const std::string& name) { m_name = name; }
 
-    inline void setStrId(const std::string& strId) { m_strId = strId; }
     /// @brief Get the node's id
     /// @return Id The node's id
     inline Id id() const { return m_id; }
@@ -78,8 +76,6 @@ namespace dsf {
     /// @brief Get the node's name
     /// @return std::string The node's name
     inline std::string const& name() const noexcept { return m_name; }
-
-    inline std::optional<std::string> const& strId() const noexcept { return m_strId; }
 
     virtual bool isStation() const noexcept { return false; }
   };

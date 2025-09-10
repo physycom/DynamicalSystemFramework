@@ -48,7 +48,6 @@ namespace dsf {
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
   class RoadNetwork : public Network<RoadJunction, Street> {
   private:
-    std::unordered_map<std::string, Id> m_nodeMapping;
     std::vector<Id> m_originNodes;
     std::vector<Id> m_destinationNodes;
     unsigned long long m_maxAgentCapacity;
@@ -102,7 +101,7 @@ namespace dsf {
     /// @details The file format is deduced from the file extension. Currently only .dsm files are supported.
     ///           The first input number is the number of nodes, followed by the coordinates of each node.
     ///           In the i-th row of the file, the (i - 1)-th node's coordinates are expected.
-    void importCoordinates(const std::string& fileName);
+    [[deprecated]] void importCoordinates(const std::string& fileName);
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
@@ -153,16 +152,17 @@ namespace dsf {
     /// @brief Export the graph's nodes to a csv-like file separated with ';'
     /// @param path The path to the file to export the nodes to
     /// @details The file format is csv-like, with the first line being the column names: id;lon;lat
-    void exportNodes(const std::string& fileName, bool const useExternalIds = false);
+    [[deprecated]] void exportNodes(const std::string& fileName);
     /// @brief Export the graph's edges to a csv-like file separated with ';'
     /// @param path The path to the file to export the edges to
     /// @details The file format is csv-like, with the first line being the column names: id;source_id;target_id;name;geometry
-    void exportEdges(const std::string& fileName, bool const useExternalIds = false);
+    [[deprecated]] void exportEdges(const std::string& fileName);
     /// @brief Export the graph's adjacency matrix to a file
     /// @param path The path to the file to export the adjacency matrix to (default: ./matrix.dsm)
     /// @param isAdj A boolean value indicating if the file contains the adjacency matrix or the distance matrix.
     /// @throws std::invalid_argument if the file is not found or invalid
-    void exportMatrix(std::string path = "./matrix.dsm", bool isAdj = true);
+    [[deprecated]] void exportMatrix(std::string path = "./matrix.dsm",
+                                     bool isAdj = true);
 
     template <typename T1, typename... Tn>
       requires is_node_v<std::remove_reference_t<T1>> &&
@@ -218,12 +218,6 @@ namespace dsf {
     /// @brief Get the maximum agent capacity
     /// @return unsigned long long The maximum agent capacity of the graph
     inline unsigned long long maxCapacity() const noexcept { return m_maxAgentCapacity; }
-
-    /// @brief Get the node mapping
-    /// @return std::unordered_map<std::string, Id> const& The node mapping
-    inline std::unordered_map<std::string, Id> const& nodeMapping() const noexcept {
-      return m_nodeMapping;
-    }
 
     /// @brief Get the origin nodes of the graph
     /// @return std::vector<Id> const& The origin nodes of the graph
