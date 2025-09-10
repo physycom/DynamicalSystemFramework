@@ -130,7 +130,7 @@ struct std::formatter<dsf::Agent> {
                                                    : std::to_string(agent.itineraryId());
     return std::format_to(ctx.out(),
                           "Agent (srcNode {} - it {}) spawn time {} - free time {}: {} "
-                          "-> {} ({} m/s - {} m)",
+                          "-> {} ({:.2f} m/s - {} m)",
                           agent.srcNodeId().value_or(-1),
                           strItinerary,
                           agent.spawnTime(),

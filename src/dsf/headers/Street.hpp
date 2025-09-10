@@ -222,17 +222,17 @@ struct std::formatter<dsf::Street> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
   auto format(const dsf::Street& street, FormatContext&& ctx) const {
-    return std::format_to(
-        ctx.out(),
-        "Street \"{}\" ({}: {} -> {}). {} m - {} m/s - {} lanes - {} agents ({} exiting)",
-        street.name(),
-        street.id(),
-        street.nodePair().first,
-        street.nodePair().second,
-        street.length(),
-        street.maxSpeed(),
-        street.nLanes(),
-        street.nAgents(),
-        street.nExitingAgents());
+    return std::format_to(ctx.out(),
+                          "Street \"{}\" ({}: {} -> {}). {} m - {:.2f} m/s - {} lanes - "
+                          "{} agents ({} exiting)",
+                          street.name(),
+                          street.id(),
+                          street.nodePair().first,
+                          street.nodePair().second,
+                          street.length(),
+                          street.maxSpeed(),
+                          street.nLanes(),
+                          street.nAgents(),
+                          street.nExitingAgents());
   }
 };
