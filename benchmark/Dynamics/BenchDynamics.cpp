@@ -15,7 +15,6 @@ int main() {
   RoadNetwork graph{};
   graph.importOSMNodes("../test/data/forlì_nodes.csv");
   graph.importOSMEdges("../test/data/forlì_edges.csv");
-  graph.buildAdj();
 
   Dynamics dynamics{graph};
   dynamics.setDestinationNodes({10, 42, 69, 121, 420, 690, 777, 999, 1020, 1212}, false);

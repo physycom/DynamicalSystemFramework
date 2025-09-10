@@ -77,7 +77,6 @@ int main() {
   tl4.setCycle(s34.id(), dsf::Direction::ANY, {81, 0});
 
   graph.addStreets(s01, s12, s23, s34);
-  graph.buildAdj();
   graph.adjustNodeCapacities();
   graph.makeSpireStreet(19);
   auto& spire = graph.edge<SpireStreet>(19);
