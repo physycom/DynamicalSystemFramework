@@ -11,6 +11,7 @@
 #include "Agent.hpp"
 #include "RoadJunction.hpp"
 
+#include <format>
 #include <map>
 #include <memory>
 #include <set>
@@ -94,6 +95,30 @@ namespace dsf {
     ///          since the last time this function was called. It also resets the counter.
     Size agentCounter();
 
+    Size nAgents() const { return m_agents.size(); }
+
     bool isIntersection() const noexcept final { return true; }
   };
 }  // namespace dsf
+
+template <>
+struct std::formatter<dsf::Intersection> {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+
+  template <typename FormatContext>
+  auto format(dsf::Intersection const& intersection, FormatContext&& ctx) {
+    return std::format_to(
+        ctx.out(),
+        "Intersection(id: {}, name: {}, capacity: {}, transportCapacity: {}, "
+        "nAgents: {}, coords: {})",
+        intersection.id(),
+        intersection.name(),
+        intersection.capacity(),
+        intersection.transportCapacity(),
+        intersection.nAgents(),
+        intersection.coords().has_value()
+            ? std::format(
+                  "({}, {})", intersection.coords()->first, intersection.coords()->second)
+            : "N/A");
+  }
+};

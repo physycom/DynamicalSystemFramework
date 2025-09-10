@@ -65,6 +65,8 @@ namespace dsf {
                std::constructible_from<TNode, TArgs...>)
     void addNode(TArgs&&... args);
 
+    template <typename TNode = node_t>
+      requires(std::is_base_of_v<node_t, TNode>)
     void addNDefaultNodes(size_t n);
 
     /// @brief Add an edge to the network
@@ -203,17 +205,18 @@ namespace dsf {
   template <typename TNode, typename... TArgs>
     requires(std::is_base_of_v<node_t, TNode> && std::constructible_from<TNode, TArgs...>)
   void Network<node_t, edge_t>::addNode(TArgs&&... args) {
-    // Extract first argument as node id
-    Id nodeId = std::get<0>(std::forward_as_tuple(args...));
+    m_mapNodeId[std::get<0>(std::forward_as_tuple(args...))] =
+        static_cast<Id>(m_nodes.size());
     m_nodes.push_back(std::make_unique<TNode>(std::forward<TArgs>(args)...));
-    m_mapNodeId[nodeId] = static_cast<Id>(m_nodes.size() - 1);
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  template <typename TNode>
+    requires(std::is_base_of_v<node_t, TNode>)
   void Network<node_t, edge_t>::addNDefaultNodes(size_t n) {
     auto const currentSize{m_nodes.size()};
     for (size_t i = 0; i < n; ++i) {
-      addNode(static_cast<Id>(currentSize + i));
+      addNode<TNode>(static_cast<Id>(currentSize + i));
     }
   }
   template <typename node_t, typename edge_t>
@@ -223,21 +226,14 @@ namespace dsf {
   void Network<node_t, edge_t>::addEdge(TArgs&&... args) {
     TEdge tmpEdge(std::forward<TArgs>(args)...);
     auto const& geometry{tmpEdge.geometry()};
-    auto it =
-        std::find_if(m_nodes.cbegin(), m_nodes.cend(), [&tmpEdge](auto const& node) {
-          return node->id() == tmpEdge.source();
-        });
-    if (it == m_nodes.cend()) {
+    if (!m_mapNodeId.contains(tmpEdge.source())) {
       if (!geometry.empty()) {
         addNode(tmpEdge.source(), geometry.front());
       } else {
         addNode(tmpEdge.source());
       }
     }
-    it = std::find_if(m_nodes.cbegin(), m_nodes.cend(), [&tmpEdge](auto const& node) {
-      return node->id() == tmpEdge.target();
-    });
-    if (it == m_nodes.cend()) {
+    if (!m_mapNodeId.contains(tmpEdge.target())) {
       if (!geometry.empty()) {
         addNode(tmpEdge.target(), geometry.back());
       } else {
@@ -305,7 +301,7 @@ namespace dsf {
     auto itLast = m_columnIndices.begin() + m_rowOffsets[row + 1];
     auto it = std::find(itFirst, itLast, col);
     if (it == itLast) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
+      throw std::out_of_range(Logger::buildExceptionMessage(
           std::format("Edge from node {} to node {} not found.", source, target)));
     }
     size_t const index = m_rowOffsets[row] + std::distance(itFirst, it);
@@ -317,7 +313,7 @@ namespace dsf {
   template <typename TNode>
     requires(std::is_base_of_v<node_t, TNode>)
   TNode& Network<node_t, edge_t>::node(Id nodeId) {
-    return dynamic_cast<TNode&>(*m_nodes.at(nodeId));
+    return dynamic_cast<TNode&>(*node(nodeId));
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)

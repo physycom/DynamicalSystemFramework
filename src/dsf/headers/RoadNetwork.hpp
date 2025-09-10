@@ -274,7 +274,7 @@ namespace dsf {
   template <typename T1>
     requires is_street_v<std::remove_reference_t<T1>>
   void RoadNetwork::addStreets(T1&& street) {
-    addEdge(std::move(street));
+    addStreet(std::move(street));
   }
 
   template <typename T1, typename... Tn>

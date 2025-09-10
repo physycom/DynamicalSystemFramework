@@ -51,7 +51,7 @@ TEST_CASE("RoadNetwork") {
     CHECK(graph.edge(1, 2));
     CHECK(graph.edge(2, 3));
     CHECK(graph.edge(3, 2));
-    CHECK_THROWS_AS(graph.edge(2, 1), std::invalid_argument);
+    CHECK_THROWS_AS(graph.edge(2, 1), std::out_of_range);
   }
 
   SUBCASE("Construction with addEdge") {
@@ -122,8 +122,8 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.edge(0, 3)->laneMapping()[0], dsf::Direction::ANY);
           CHECK_EQ(graph.edge(0, 3)->laneMapping()[1], dsf::Direction::ANY);
           CHECK_EQ(graph.edge(3, 0)->laneMapping().size(), 2);
-          CHECK_EQ(graph.edge(3, 0)->laneMapping()[0], dsf::Direction::STRAIGHT);
-          CHECK_EQ(graph.edge(3, 0)->laneMapping()[1], dsf::Direction::LEFT);
+          CHECK_EQ(graph.edge(3, 0)->laneMapping()[0], dsf::Direction::RIGHT);
+          CHECK_EQ(graph.edge(3, 0)->laneMapping()[1], dsf::Direction::STRAIGHT);
         }
       }
     }
@@ -294,44 +294,44 @@ TEST_CASE("RoadNetwork") {
       CHECK_EQ(street2->id(), 1);
       CHECK_EQ(street2->length(), 1.);
       CHECK_EQ(street2->capacity(), 1);
-      CHECK_THROWS_AS(graph.street(1, 0), std::invalid_argument);
+      CHECK_FALSE(graph.street(1, 0));
     }
-    // SUBCASE("make trafficlight") {
-    //   GIVEN("A graph with a traffic light with no parameters") {
-    //     Street s1{1, std::make_pair(0, 1), 30., 15., 3};
-    //     Street s2{11, std::make_pair(2, 1), 30., 15., 3};
-    //     Street s3{16, std::make_pair(3, 1), 30., 15., 1};
-    //     Street s4{21, std::make_pair(4, 1), 30., 15., 2};
-    //     RoadNetwork graph2;
-    //     graph2.addNDefaultNodes(5);
-    //     graph2.makeTrafficLight(1, 120);
-    //     graph2.addStreets(s1, s2, s3, s4);
-    //     for (auto const& pair : graph2.edges()) {
-    //       pair.second->setCapacity(2 * pair.second->nLanes());
-    //     }
-    //     WHEN("We auto-init Traffic Lights") {
-    //       graph2.initTrafficLights();
-    //       THEN("Parameters are correctly set") {
-    //         auto& tl{graph2.node<dsf::TrafficLight>(1)};
-    //         CHECK_EQ(tl.cycleTime(), 120);
-    //         auto const& cycles{tl.cycles()};
-    //         CHECK_EQ(cycles.size(), 4);
-    //         CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-    //         CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 26);
-    //         CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-    //         CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 53);
-    //         CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-    //         CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 26);
-    //         CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-    //         CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 53);
-    //         CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 40);
-    //         CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 80);
-    //         CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 40);
-    //         CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 80);
-    //       }
-    //     }
-    //   }
-    // }
+    SUBCASE("make trafficlight") {
+      GIVEN("A graph with a traffic light with no parameters") {
+        Street s1{1, std::make_pair(0, 1), 30., 15., 3};
+        Street s2{11, std::make_pair(2, 1), 30., 15., 3};
+        Street s3{16, std::make_pair(3, 1), 30., 15., 1};
+        Street s4{21, std::make_pair(4, 1), 30., 15., 2};
+        RoadNetwork graph2;
+        graph2.addNDefaultNodes(5);
+        graph2.makeTrafficLight(1, 120);
+        graph2.addStreets(s1, s2, s3, s4);
+        for (auto const& pStreet : graph2.edges()) {
+          pStreet->setCapacity(2 * pStreet->nLanes());
+        }
+        WHEN("We auto-init Traffic Lights") {
+          graph2.initTrafficLights();
+          THEN("Parameters are correctly set") {
+            auto& tl{graph2.node<dsf::TrafficLight>(1)};
+            CHECK_EQ(tl.cycleTime(), 120);
+            auto const& cycles{tl.cycles()};
+            CHECK_EQ(cycles.size(), 4);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 26);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 53);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 26);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 53);
+            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 40);
+            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 80);
+            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 40);
+            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 80);
+          }
+        }
+      }
+    }
     GIVEN("A graph object with two nodes and one street") {
       RoadNetwork graph{};
       graph.addStreet(Street{1, std::make_pair(0, 1)});
@@ -393,52 +393,50 @@ TEST_CASE("RoadNetwork") {
         }
       }
       WHEN("We search for a not existing street") {
-        THEN("The street is not found") { CHECK_THROWS(graph.street(1, 2)); }
+        THEN("The street is not found") { CHECK_FALSE(graph.street(1, 2)); }
       }
       WHEN("We search for the opposite of a not existing street") {
-        THEN("It throws an exception") { CHECK_THROWS(graph.street(2, 1)); }
+        THEN("It throws an exception") { CHECK_FALSE(graph.street(2, 1)); }
       }
     }
   }
 
-  //   SUBCASE("adjustNodeCapacities and normalizeStreetCapacities") {
-  //     GIVEN("A graph composed of three streets with a different lane number") {
-  //       Street s1(0, std::make_pair(0, 1), 10., 30., 1);
-  //       Street s2(1, std::make_pair(1, 2), 40., 30., 2);
-  //       Street s3(2, std::make_pair(3, 1), 75., 30., 3);
-  //       Street s4(3, std::make_pair(1, 4), 55., 30., 1);
-  //       RoadNetwork graph{};
-  //       graph.addNDefaultNodes(5);
-  //       graph.addStreets(s1, s2, s3, s4);
-  //       WHEN("We adjust node capacities") {
-  //         graph.adjustNodeCapacities();
-  //         auto const& nodes = graph.nodes();
-  //         THEN("The node capacities are correct") {
-  //           CHECK_EQ(nodes.at(0)->capacity(), 1);
-  //           CHECK_EQ(nodes.at(1)->capacity(), 4);
-  //           CHECK_EQ(nodes.at(2)->capacity(), 2);
-  //           CHECK_EQ(nodes.at(3)->capacity(), 3);
-  //           CHECK_EQ(nodes.at(4)->capacity(), 1);
-  //         }
-  //         THEN("The transport capacities are correct") {
-  //           CHECK_EQ(nodes.at(0)->transportCapacity(), 1);
-  //           CHECK_EQ(nodes.at(1)->transportCapacity(), 3);
-  //           CHECK_EQ(nodes.at(2)->transportCapacity(), 1);
-  //           CHECK_EQ(nodes.at(3)->transportCapacity(), 3);
-  //           CHECK_EQ(nodes.at(4)->transportCapacity(), 1);
-  //         }
-  //       }
-  //       WHEN("We normalize street capacities") {
-  //         // graph.normalizeStreetCapacities();
-  //         THEN("The street capacities are correct") {
-  //           CHECK_EQ((*graph.street(0, 1))->capacity(), 2);
-  //           CHECK_EQ((*graph.street(1, 2))->capacity(), 16);
-  //           CHECK_EQ((*graph.street(3, 1))->capacity(), 45);
-  //           CHECK_EQ((*graph.street(1, 4))->capacity(), 11);
-  //         }
-  //       }
-  //     }
-  //   }
+  SUBCASE("adjustNodeCapacities and normalizeStreetCapacities") {
+    GIVEN("A graph composed of three streets with a different lane number") {
+      Street s1(0, std::make_pair(0, 1), 10., 30., 1);
+      Street s2(1, std::make_pair(1, 2), 40., 30., 2);
+      Street s3(2, std::make_pair(3, 1), 75., 30., 3);
+      Street s4(3, std::make_pair(1, 4), 55., 30., 1);
+      RoadNetwork graph{};
+      graph.addStreets(s1, s2, s3, s4);
+      WHEN("We adjust node capacities") {
+        graph.adjustNodeCapacities();
+        THEN("The node capacities are correct") {
+          CHECK_EQ(graph.node(0)->capacity(), 1);
+          CHECK_EQ(graph.node(1)->capacity(), 4);
+          CHECK_EQ(graph.node(2)->capacity(), 2);
+          CHECK_EQ(graph.node(3)->capacity(), 3);
+          CHECK_EQ(graph.node(4)->capacity(), 1);
+        }
+        THEN("The transport capacities are correct") {
+          CHECK_EQ(graph.node(0)->transportCapacity(), 1);
+          CHECK_EQ(graph.node(1)->transportCapacity(), 3);
+          CHECK_EQ(graph.node(2)->transportCapacity(), 1);
+          CHECK_EQ(graph.node(3)->transportCapacity(), 3);
+          CHECK_EQ(graph.node(4)->transportCapacity(), 1);
+        }
+      }
+      WHEN("We normalize street capacities") {
+        // graph.normalizeStreetCapacities();
+        THEN("The street capacities are correct") {
+          CHECK_EQ(graph.edge(0, 1)->capacity(), 2);
+          CHECK_EQ(graph.edge(1, 2)->capacity(), 16);
+          CHECK_EQ(graph.edge(3, 1)->capacity(), 45);
+          CHECK_EQ(graph.edge(1, 4)->capacity(), 11);
+        }
+      }
+    }
+  }
 }
 
 TEST_CASE("Dijkstra") {

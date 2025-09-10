@@ -72,24 +72,6 @@ namespace dsf {
         }
       }
     }
-    const auto& node = this->graph().node(street->nodePair().second);
-    if (node->isIntersection()) {
-      auto& intersection = dynamic_cast<Intersection&>(*node);
-      for (auto const& [angle, pAgent] : intersection.agents()) {
-        if (pAgent->streetId().has_value() && pAgent->streetId().value() == streetId) {
-          meanSpeed += pAgent->speed();
-          ++n;
-        }
-      }
-    } else if (node->isRoundabout()) {
-      auto& roundabout = dynamic_cast<Roundabout&>(*node);
-      for (auto const& pAgent : roundabout.agents()) {
-        if (pAgent->streetId().has_value() && pAgent->streetId().value() == streetId) {
-          meanSpeed += pAgent->speed();
-          ++n;
-        }
-      }
-    }
     return meanSpeed / n;
   }
 
