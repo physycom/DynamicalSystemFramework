@@ -37,16 +37,16 @@ int main() {
   });
   b2.print<sb::microseconds>();
   Logger::info("Benchmarking AdjacencyMatrix::getCol");
-  b3.benchmark([&graph, &N]() -> void {
-    for (size_t i{0}; i < N; ++i) {
-      graph.inputNeighbors(i);
+  b3.benchmark([&graph]() -> void {
+    for (auto const& pNode : graph.nodes()) {
+      graph.inputNeighbors(pNode->id());
     }
   });
   b3.print<sb::microseconds>();
   Logger::info("Benchmarking AdjacencyMatrix::getRow");
-  b4.benchmark([&graph, &N]() -> void {
-    for (size_t i{0}; i < N; ++i) {
-      graph.outputNeighbors(i);
+  b4.benchmark([&graph]() -> void {
+    for (auto const& pNode : graph.nodes()) {
+      graph.outputNeighbors(pNode->id());
     }
   });
   b4.print<sb::microseconds>();

@@ -224,53 +224,50 @@ TEST_CASE("RoadNetwork") {
     SUBCASE("importOSMNodes and importOSMEdges") {
       GIVEN("A graph object") {
         RoadNetwork graph{};
-        // WHEN("We import nodes and edges from OSM") {
-        //   graph.importOSMNodes("./data/postua_nodes.csv");
-        //   graph.importOSMEdges("./data/postua_edges.csv");
-        //   std::ifstream fNodes{"./data/postua_nodes.csv"};
-        //   // get number of lines
-        //   std::string line;
-        //   int nNodes{-1};  // -1 because of the header
-        //   while (std::getline(fNodes, line)) {
-        //     ++nNodes;
-        //   }
-        //   fNodes.close();
-        //   std::ifstream fEdges{"./data/postua_edges.csv"};
-        //   int nEdges{-1};  // -1 because of the header
-        //   while (std::getline(fEdges, line)) {
-        //     ++nEdges;
-        //   }
-        //   fEdges.close();
-        //   THEN("Sizes are correct") {
-        //     CHECK_EQ(graph.nNodes(), nNodes);
-        //     CHECK_EQ(graph.nEdges(), nEdges);
-        //   }
-        // }
-        //     WHEN("We import many nodes and edges from OSM") {
-        //       graph.importOSMNodes("./data/forlì_nodes.csv");
-        //       graph.importOSMEdges("./data/forlì_edges.csv");
-        //       std::ifstream fNodes{"./data/forlì_nodes.csv"};
-        //       // get number of lines
-        //       std::string line;
-        //       int nNodes{-1};  // -1 because of the header
-        //       while (std::getline(fNodes, line)) {
-        //         ++nNodes;
-        //       }
-        //       fNodes.close();
-        //       std::ifstream fEdges{"./data/forlì_edges.csv"};
-        //       int nEdges{-1};  // -1 because of the header
-        //       while (std::getline(fEdges, line)) {
-        //         ++nEdges;
-        //       }
-        //       fEdges.close();
-        //       THEN("Sizes are correct") {
-        //         CHECK_EQ(graph.nNodes(), nNodes);
-        //         CHECK_EQ(graph.nEdges(), nEdges);
-        //       }
-        //       THEN("We are able to build the adjacency matrix") {
-        //         graph.buildAdj();
-        //         CHECK_EQ(graph.adjacencyMatrix().size(), nEdges);
-        //       }
+        WHEN("We import nodes and edges from OSM") {
+          graph.importOSMNodes("./data/postua_nodes.csv");
+          graph.importOSMEdges("./data/postua_edges.csv");
+          std::ifstream fNodes{"./data/postua_nodes.csv"};
+          // get number of lines
+          std::string line;
+          int nNodes{-1};  // -1 because of the header
+          while (std::getline(fNodes, line)) {
+            ++nNodes;
+          }
+          fNodes.close();
+          std::ifstream fEdges{"./data/postua_edges.csv"};
+          int nEdges{-1};  // -1 because of the header
+          while (std::getline(fEdges, line)) {
+            ++nEdges;
+          }
+          fEdges.close();
+          THEN("Sizes are correct") {
+            CHECK_EQ(graph.nNodes(), nNodes);
+            CHECK_EQ(graph.nEdges(), nEdges);
+          }
+        }
+        WHEN("We import many nodes and edges from OSM") {
+          graph.importOSMNodes("./data/forlì_nodes.csv");
+          graph.importOSMEdges("./data/forlì_edges.csv");
+          std::ifstream fNodes{"./data/forlì_nodes.csv"};
+          // get number of lines
+          std::string line;
+          int nNodes{-1};  // -1 because of the header
+          while (std::getline(fNodes, line)) {
+            ++nNodes;
+          }
+          fNodes.close();
+          std::ifstream fEdges{"./data/forlì_edges.csv"};
+          int nEdges{-1};  // -1 because of the header
+          while (std::getline(fEdges, line)) {
+            ++nEdges;
+          }
+          fEdges.close();
+          THEN("Sizes are correct") {
+            CHECK_EQ(graph.nNodes(), nNodes);
+            CHECK_EQ(graph.nEdges(), nEdges);
+          }
+        }
       }
     }
     SUBCASE("street") {

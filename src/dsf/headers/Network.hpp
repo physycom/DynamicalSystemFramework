@@ -254,9 +254,10 @@ namespace dsf {
     while (m_rowOffsets.size() <= m_n) {
       m_rowOffsets.push_back(m_rowOffsets.back());
     }
-    std::for_each(DSM_EXECUTION m_rowOffsets.begin() + sourceNodeId + 1,
-                  m_rowOffsets.end(),
-                  [](Id& x) { x++; });
+    std::transform(DSM_EXECUTION m_rowOffsets.begin() + sourceNodeId + 1,
+                   m_rowOffsets.end(),
+                   m_rowOffsets.begin() + sourceNodeId + 1,
+                   [](auto& x) { return x + 1; });
     auto csrOffset = m_rowOffsets[sourceNodeId + 1] - 1;
     m_columnIndices.insert(m_columnIndices.begin() + csrOffset, targetNodeId);
     m_edges.insert(m_edges.begin() + csrOffset,

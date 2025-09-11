@@ -15,19 +15,6 @@ namespace dsf {
   RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj)
       : Network{adj}, m_maxAgentCapacity{0} {}
 
-  RoadNetwork::RoadNetwork(
-      const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet)
-      : Network{AdjacencyMatrix(streetSet)} {
-    // for (auto& street : streetSet) {
-    //   m_edges.emplace(street.second->id(), street.second.get());
-
-    //   Id node1 = street.second->nodePair().first;
-    //   Id node2 = street.second->nodePair().second;
-    //   m_nodes.emplace(node1, std::make_unique<Intersection>(node1));
-    //   m_nodes.emplace(node2, std::make_unique<Intersection>(node2));
-    // }
-  }
-
   void RoadNetwork::initTrafficLights(Delay const minGreenTime) {
     for (auto& pNode : m_nodes) {
       if (!pNode->isTrafficLight()) {

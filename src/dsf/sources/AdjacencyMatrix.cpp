@@ -25,72 +25,6 @@ namespace dsf {
         m_rowIndices{},
         m_n{0} {}
   AdjacencyMatrix::AdjacencyMatrix(std::string const& fileName) { read(fileName); }
-  AdjacencyMatrix::AdjacencyMatrix(
-      const std::unordered_map<Id, std::unique_ptr<Street>>& streets)
-      : m_n{0} {
-    auto const size = streets.size();
-    std::vector<Id> rowSizes(size + 1, 0);  // CSR row counts
-    std::vector<Id> colSizes(size + 1, 0);  // CSC column counts
-    std::vector<Id> colIndexes(size);       // CSR column indices
-    std::vector<Id> rowIndexes(size);       // CSC row indices
-
-    // First pass: Count rows/columns and determine matrix dimensions
-    for (const auto& pair : streets) {
-      auto row = pair.second->source();
-      auto col = pair.second->target();
-
-      // Ensure valid row/col index size
-      if (row >= rowSizes.size()) {
-        rowSizes.resize(row + 2, 0);
-      }
-      if (col >= colSizes.size()) {
-        colSizes.resize(col + 2, 0);
-      }
-
-      assert(row + 1 < rowSizes.size());
-      assert(col + 1 < colSizes.size());
-
-      rowSizes[row + 1]++;  // CSR row counts
-      colSizes[col + 1]++;  // CSC column counts
-
-      // Track max row and column indices
-      m_n = std::max(m_n, static_cast<size_t>(row + 1));
-      m_n = std::max(m_n, static_cast<size_t>(col + 1));
-    }
-
-    // Compute row and column offsets using inclusive scan
-    std::vector<Id> tempRowOffsets(m_n + 1, 0);
-    std::vector<Id> tempColOffsets(m_n + 1, 0);
-    std::inclusive_scan(
-        rowSizes.begin(), rowSizes.begin() + m_n + 1, tempRowOffsets.begin());
-    std::inclusive_scan(
-        colSizes.begin(), colSizes.begin() + m_n + 1, tempColOffsets.begin());
-
-    m_rowOffsets = tempRowOffsets;  // CSR row offsets
-    m_colOffsets = tempColOffsets;  // CSC column offsets
-
-    // Second pass: Assign column indices (CSR) and row indices (CSC)
-    std::vector<Id> currentRowOffset = tempRowOffsets;
-    std::vector<Id> currentColOffset = tempColOffsets;
-    for (const auto& pair : streets) {
-      auto row = pair.second->source();
-      auto col = pair.second->target();
-
-      assert(row < currentRowOffset.size());
-      assert(col < currentColOffset.size());
-      assert(currentRowOffset[row] < colIndexes.size());
-      assert(currentColOffset[col] < rowIndexes.size());
-
-      colIndexes[currentRowOffset[row]] = col;  // Fill CSR column indices
-      rowIndexes[currentColOffset[col]] = row;  // Fill CSC row indices
-
-      ++currentRowOffset[row];
-      ++currentColOffset[col];
-    }
-
-    m_columnIndices = std::move(colIndexes);  // CSR column indices
-    m_rowIndices = std::move(rowIndexes);     // CSC row indices
-  }
   /*********************************************************************************
    * OPERATORS
    **********************************************************************************/
@@ -224,10 +158,11 @@ namespace dsf {
     const auto upperOffset = m_rowOffsets[row + 1];
     m_columnIndices.erase(m_columnIndices.begin() + lowerOffset,
                           m_columnIndices.begin() + upperOffset);
-    std::for_each(
-        m_rowOffsets.begin() + row + 1,
+    std::transform(
+        DSM_EXECUTION m_rowOffsets.begin() + row + 1,
         m_rowOffsets.end(),
-        [upperOffset, lowerOffset](auto& x) { x -= upperOffset - lowerOffset; });
+        m_rowOffsets.begin() + row + 1,
+        [upperOffset, lowerOffset](auto& x) { return x - (upperOffset - lowerOffset); });
 
     // CSC: Clear the corresponding rows from column offsets
     for (auto col = 0u; col < m_n; ++col) {
@@ -241,9 +176,10 @@ namespace dsf {
         // Remove row from rowIndices and update the rowOffsets
         m_rowIndices.erase(it);
         // Decrement the offsets for rows after the current row
-        std::for_each(m_colOffsets.begin() + col + 1,
-                      m_colOffsets.end(),
-                      [colUpperOffset, colLowerOffset](auto& x) { x--; });
+        std::transform(DSM_EXECUTION m_colOffsets.begin() + col + 1,
+                       m_colOffsets.end(),
+                       m_colOffsets.begin() + col + 1,
+                       [](auto& x) { return x - 1; });
       }
     }
   }
@@ -260,9 +196,10 @@ namespace dsf {
       if (it != m_columnIndices.begin() + upperOffset) {
         m_columnIndices.erase(it);
         // Decrement the offsets for rows after the current row
-        std::for_each(m_rowOffsets.begin() + row + 1,
-                      m_rowOffsets.end(),
-                      [upperOffset, lowerOffset](auto& x) { x--; });
+        std::transform(DSM_EXECUTION m_rowOffsets.begin() + row + 1,
+                       m_rowOffsets.end(),
+                       m_rowOffsets.begin() + row + 1,
+                       [](auto& x) { return x - 1; });
       }
     }
 
@@ -274,10 +211,11 @@ namespace dsf {
                        m_rowIndices.begin() + upperOffset);
 
     // Adjust column offsets accordingly
-    std::for_each(
-        m_colOffsets.begin() + col + 1,
+    std::transform(
+        DSM_EXECUTION m_colOffsets.begin() + col + 1,
         m_colOffsets.end(),
-        [upperOffset, lowerOffset](auto& x) { x -= upperOffset - lowerOffset; });
+        m_colOffsets.begin() + col + 1,
+        [upperOffset, lowerOffset](auto& x) { return x - (upperOffset - lowerOffset); });
   }
 
   std::vector<int> AdjacencyMatrix::getOutDegreeVector() const {

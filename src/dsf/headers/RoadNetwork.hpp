@@ -67,9 +67,6 @@ namespace dsf {
     /// @brief Construct a new RoadNetwork object
     /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
     RoadNetwork(AdjacencyMatrix const& adj);
-    /// @brief Construct a new RoadNetwork object
-    /// @param streetSet A map of streets representing the graph's streets
-    RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
 
     /// @brief Adjust the nodes' transport capacity
     /// @details The nodes' capacity is adjusted using the graph's streets transport capacity, which may vary basing on the number of lanes. The node capacity will be set to the sum of the incoming streets' transport capacity.
