@@ -49,9 +49,9 @@ cmake --install build
 ```
 
 ## Installation via Pybind11
-If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have Python and pybind11 installed:
+If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have doxygen installed to generate the docstrings:
 ```shell
-pip install pybind11
+sudo apt install doxygen
 ```
 
 Then, the installation is automatic via `pip`:

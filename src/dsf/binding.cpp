@@ -396,11 +396,11 @@ PYBIND11_MODULE(dsf, m) {
            pybind11::arg("reset") = false,
            pybind11::arg("separator") = ';',
            dsf::g_docstrings.at("dsf::RoadDynamics::saveOutputStreetCounts").c_str())
-      .def("saveTravelSpeeds",
-           &dsf::FirstOrderDynamics::saveTravelSpeeds,
+      .def("saveTravelData",
+           &dsf::FirstOrderDynamics::saveTravelData,
            pybind11::arg("filename"),
            pybind11::arg("reset") = false,
-           dsf::g_docstrings.at("dsf::RoadDynamics::saveTravelSpeeds").c_str())
+           dsf::g_docstrings.at("dsf::RoadDynamics::saveTravelData").c_str())
       .def("saveMacroscopicObservables",
            &dsf::FirstOrderDynamics::saveMacroscopicObservables,
            pybind11::arg("filename"),
