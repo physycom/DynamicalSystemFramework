@@ -139,9 +139,6 @@ PYBIND11_MODULE(dsf, m) {
            dsf::g_docstrings.at("dsf::RoadNetwork::RoadNetwork").c_str())
       .def(pybind11::init<const dsf::AdjacencyMatrix&>(),
            dsf::g_docstrings.at("dsf::RoadNetwork::RoadNetwork").c_str())
-      .def("buildAdj",
-           &dsf::RoadNetwork::buildAdj,
-           dsf::g_docstrings.at("dsf::RoadNetwork::buildAdj").c_str())
       .def("adjustNodeCapacities",
            &dsf::RoadNetwork::adjustNodeCapacities,
            dsf::g_docstrings.at("dsf::RoadNetwork::adjustNodeCapacities").c_str())
@@ -177,12 +174,10 @@ PYBIND11_MODULE(dsf, m) {
       .def("exportNodes",
            &dsf::RoadNetwork::exportNodes,
            pybind11::arg("fileName"),
-           pybind11::arg("useExternalIds") = false,
            dsf::g_docstrings.at("dsf::RoadNetwork::exportNodes").c_str())
       .def("exportEdges",
            &dsf::RoadNetwork::exportEdges,
            pybind11::arg("fileName"),
-           pybind11::arg("useExternalIds") = false,
            dsf::g_docstrings.at("dsf::RoadNetwork::exportEdges").c_str());
 
   pybind11::class_<dsf::Itinerary>(m, "Itinerary")
