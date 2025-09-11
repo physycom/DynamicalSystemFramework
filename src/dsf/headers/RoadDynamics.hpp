@@ -344,10 +344,15 @@ namespace dsf {
     void saveOutputStreetCounts(const std::string& filename,
                                 bool reset = false,
                                 char const separator = ';');
-    /// @brief Save the travel speeds of the agents in csv format
+    /// @brief Save the travel data of the agents in csv format.
+    /// @details The file contains the following columns:
+    /// - time: the time of the simulation
+    /// - distances: the travel distances of the agents
+    /// - times: the travel times of the agents
+    /// - speeds: the travel speeds of the agents
     /// @param filename The name of the file
     /// @param reset If true, the travel speeds are cleared after the computation
-    void saveTravelSpeeds(const std::string& filename, bool reset = false);
+    void saveTravelData(const std::string& filename, bool reset = false);
     /// @brief Save the main macroscopic observables in csv format
     /// @param filename The name of the file
     /// @param separator The separator character (default is ';')
@@ -2326,7 +2331,7 @@ namespace dsf {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveTravelSpeeds(const std::string& filename, bool reset) {
+  void RoadDynamics<delay_t>::saveTravelData(const std::string& filename, bool reset) {
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -2334,14 +2339,29 @@ namespace dsf {
     }
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
-      Logger::error(std::format("Error opening file \"{}\" for writing.", filename));
+      throw std::runtime_error(Logger::buildExceptionMessage(
+          "Error opening file \"" + filename + "\" for writing."));
     }
     if (bEmptyFile) {
-      file << "time;speeds" << std::endl;
+      file << "time;distances;times;speeds" << std::endl;
     }
     file << this->time() << ';';
     for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      file << std::fixed << std::setprecision(2) << it->first / it->second;
+      file << std::format("{:.2f}", it->first);
+      if (it != m_travelDTs.cend() - 1) {
+        file << ',';
+      }
+    }
+    file << ';';
+    for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
+      file << it->second;
+      if (it != m_travelDTs.cend() - 1) {
+        file << ',';
+      }
+    }
+    file << ';';
+    for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
+      file << std::format("{:.2f}", it->first / it->second);
       if (it != m_travelDTs.cend() - 1) {
         file << ',';
       }
