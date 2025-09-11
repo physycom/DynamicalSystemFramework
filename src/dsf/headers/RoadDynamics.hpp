@@ -406,31 +406,29 @@ namespace dsf {
     std::for_each(
         this->graph().edges().cbegin(),
         this->graph().edges().cend(),
-        [this](auto const& pEdge) {
-          m_turnCounts.emplace(pEdge->id(),
-                               std::array<unsigned long long, 4>{0, 0, 0, 0});
+        [this](auto const& pair) {
+          auto const& pEdge{pair.second};
+          auto const edgeId{pair.first};
+          m_turnCounts.emplace(edgeId, std::array<unsigned long long, 4>{0, 0, 0, 0});
           // fill turn mapping as [pair.first, [left street Id, straight street Id, right street Id, U self street Id]]
-          m_turnMapping.emplace(pEdge->id(), std::array<long, 4>{-1, -1, -1, -1});
+          m_turnMapping.emplace(edgeId, std::array<long, 4>{-1, -1, -1, -1});
           // Turn mappings
           const auto& srcNodeId = pEdge->target();
-          for (auto const& pTargetNode : this->graph().outputNeighbors(srcNodeId)) {
-            auto const previousStreetId =
-                this->graph().edge(srcNodeId, pTargetNode->id())->id();
-            auto const& delta{pEdge->deltaAngle(
-                this->graph().edge(srcNodeId, pTargetNode->id())->angle())};
+          for (auto const& outEdgeId : this->graph().node(srcNodeId)->outgoingEdges()) {
+            auto const& pStreet{this->graph().edge(outEdgeId)};
+            auto const previousStreetId = pStreet->id();
+            auto const& delta{pEdge->deltaAngle(pStreet->angle())};
             if (std::abs(delta) < std::numbers::pi) {
               if (delta < 0.) {
-                m_turnMapping[pEdge->id()][dsf::Direction::RIGHT] =
-                    previousStreetId;  // right
+                m_turnMapping[edgeId][dsf::Direction::RIGHT] = previousStreetId;  // right
               } else if (delta > 0.) {
-                m_turnMapping[pEdge->id()][dsf::Direction::LEFT] =
-                    previousStreetId;  // left
+                m_turnMapping[edgeId][dsf::Direction::LEFT] = previousStreetId;  // left
               } else {
-                m_turnMapping[pEdge->id()][dsf::Direction::STRAIGHT] =
+                m_turnMapping[edgeId][dsf::Direction::STRAIGHT] =
                     previousStreetId;  // straight
               }
             } else {
-              m_turnMapping[pEdge->id()][dsf::Direction::UTURN] = previousStreetId;  // U
+              m_turnMapping[edgeId][dsf::Direction::UTURN] = previousStreetId;  // U
             }
           }
         });
@@ -449,54 +447,46 @@ namespace dsf {
       }
     }
     auto const destinationID = pItinerary->destination();
-    std::vector<DijkstraResult> shortestPaths(this->graph().nNodes());
+    std::unordered_map<Id, DijkstraResult> shortestPaths(this->graph().nNodes());
 
-    // Use indexed range instead of enumerate view for TBB compatibility
-    tbb::parallel_for(
-        tbb::blocked_range<size_t>(0, this->graph().nNodes()),
-        [this, &shortestPaths, &destinationID](
-            const tbb::blocked_range<size_t>& range) -> void {
-          for (size_t nodeId = range.begin(); nodeId != range.end(); ++nodeId) {
-            if (nodeId == destinationID) {
-              shortestPaths[nodeId] = DijkstraResult{};
-            } else {
-              auto result =
-                  this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
-              if (result.has_value()) {
-                shortestPaths[nodeId] = *result;
-              } else {
-                Logger::warning(std::format(
-                    "No path found from node {} to node {}", nodeId, destinationID));
-                shortestPaths[nodeId] = DijkstraResult{};
-              }
-            }
-          }
-        });
+    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+      if (nodeId == destinationID) {
+        shortestPaths[pNode->id()] = DijkstraResult{};
+        continue;
+      }
+      auto result = this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
+      if (!result.has_value()) {
+        Logger::warning(
+            std::format("No path found from node {} to node {}", nodeId, destinationID));
+        shortestPaths[nodeId] = DijkstraResult{};
+        continue;
+      }
+      shortestPaths[nodeId] = *result;
+    }
     AdjacencyMatrix path;
     // cycle over the nodes
-    for (const auto& node : this->graph().nodes()) {
-      if (node->id() == destinationID) {
+    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
+      if (nodeId == destinationID) {
         continue;
       }
       // save the minimum distance between i and the destination
-      const auto minDistance{shortestPaths[node->id()].distance()};
+      const auto minDistance{shortestPaths[nodeId].distance()};
       if (minDistance < 0.) {
         continue;
       }
-      auto const& row{this->graph().outputNeighbors(node->id())};
-      for (const auto pNextNode : row) {
-        auto const& nextNodeId = pNextNode->id();
+      for (const auto outEdge : pNode->outgoingEdges()) {
+        auto const& nextNodeId = this->graph().edge(outEdge)->target();
         if (nextNodeId == destinationID) {
-          if (std::abs(m_weightFunction(&this->graph(), node->id(), nextNodeId) -
+          if (std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) -
                        minDistance) <
               m_weightTreshold)  // 1 meter tolerance between shortest paths
           {
-            path.insert(node->id(), nextNodeId);
+            path.insert(nodeId, nextNodeId);
           } else {
             Logger::debug(
                 std::format("Found a path from {} to {} which differs for more than {} "
                             "unit(s) from the shortest one.",
-                            node->id(),
+                            nodeId,
                             destinationID,
                             m_weightTreshold));
           }
@@ -508,20 +498,20 @@ namespace dsf {
         }
         if (std::find(shortestPaths[nextNodeId].path().cbegin(),
                       shortestPaths[nextNodeId].path().cend(),
-                      node->id()) != shortestPaths[nextNodeId].path().cend()) {
+                      nodeId) != shortestPaths[nextNodeId].path().cend()) {
           continue;
         }
         bool const bIsMinDistance{
-            std::abs(m_weightFunction(&this->graph(), node->id(), nextNodeId) + distance -
+            std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) + distance -
                      minDistance) <
             m_weightTreshold};  // 1 meter tolerance between shortest paths
         if (bIsMinDistance) {
-          path.insert(node->id(), nextNodeId);
+          path.insert(nodeId, nextNodeId);
         } else {
           Logger::debug(
               std::format("Found a path from {} to {} which differs for more than {} "
                           "unit(s) from the shortest one.",
-                          node->id(),
+                          nodeId,
                           destinationID,
                           m_weightTreshold));
         }
@@ -550,7 +540,14 @@ namespace dsf {
   Id RoadDynamics<delay_t>::m_nextStreetId(std::unique_ptr<Agent> const& pAgent,
                                            Id nodeId,
                                            std::optional<Id> streetId) {
-    auto possibleMoves = this->graph().outputNeighbors(nodeId);
+    // Store edge IDs and their corresponding target nodes
+    std::vector<Id> possibleEdgeIds;
+    std::vector<Id> possibleTargetNodes;
+
+    for (auto const outEdgeId : this->graph().node(nodeId)->outgoingEdges()) {
+      possibleEdgeIds.push_back(outEdgeId);
+      possibleTargetNodes.push_back(this->graph().edge(outEdgeId)->target());
+    }
 
     // Logger::debug(std::format("Is current agent random? {}", pAgent->isRandom()));
     // Logger::debug(
@@ -563,7 +560,7 @@ namespace dsf {
       forbiddenStreetIds = pStreet->forbiddenTurns();
       // Avoid U-TURNS, if possible
       if (!(this->graph().node(nodeId)->isRoundabout()) &&
-          (possibleMoves.size() > forbiddenStreetIds.size() + 1)) {
+          (possibleEdgeIds.size() > forbiddenStreetIds.size() + 1)) {
         auto const& pOppositeStreet{
             this->graph().street(pStreet->target(), pStreet->source())};
         if (pOppositeStreet) {
@@ -571,84 +568,88 @@ namespace dsf {
         }
       }
     }
-    // Exclude FORBIDDEN turns
+    // Exclude FORBIDDEN turns - remove by target node ID
     if (!forbiddenStreetIds.empty()) {
       Logger::debug(
           std::format("Excluding {} forbidden turns", forbiddenStreetIds.size()));
     }
     for (auto const& forbiddenStreetId : forbiddenStreetIds) {
-      auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
-      // if possible moves contains the forbidden street, remove it
-      auto it = std::find_if(possibleMoves.begin(),
-                             possibleMoves.end(),
-                             [&pForbiddenStreet](auto const& pNode) {
-                               return pNode->id() == pForbiddenStreet->target();
-                             });
-      if (it != possibleMoves.end()) {
-        possibleMoves.erase(it);
+      // Find and remove edges that lead to forbidden target nodes
+      for (auto it = possibleTargetNodes.begin(); it != possibleTargetNodes.end();) {
+        auto index = std::distance(possibleTargetNodes.begin(), it);
+        if (*it == forbiddenStreetId) {
+          possibleTargetNodes.erase(it);
+          possibleEdgeIds.erase(possibleEdgeIds.begin() + index);
+          break;  // Only remove first match
+        } else {
+          ++it;
+        }
       }
     }
 
     if (!pAgent->isRandom()) {
-      std::vector<Id> newPossibleMoves;
+      std::vector<Id> newPossibleTargets;
       std::uniform_real_distribution<double> uniformDist{0., 1.};
       if (!(this->itineraries().empty())) {
         if (!(m_errorProbability.has_value() &&
               uniformDist(this->m_generator) < m_errorProbability)) {
           const auto& it = this->itineraries().at(pAgent->itineraryId());
           if (it->destination() != nodeId) {
-            newPossibleMoves = it->path()->getRow(nodeId);
+            newPossibleTargets = it->path()->getRow(nodeId);
           }
         }
-        for (auto const& forbiddenStreetId : forbiddenStreetIds) {
-          auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
-          // if possible moves contains the forbidden street, remove it
-          auto it = std::find(newPossibleMoves.begin(),
-                              newPossibleMoves.end(),
-                              pForbiddenStreet->target());
-          if (it != newPossibleMoves.end()) {
-            newPossibleMoves.erase(it);
+        for (auto const& forbiddenNodeId : forbiddenStreetIds) {
+          // if possible moves contains the forbidden node, remove it
+          auto it = std::find(
+              newPossibleTargets.begin(), newPossibleTargets.end(), forbiddenNodeId);
+          if (it != newPossibleTargets.end()) {
+            newPossibleTargets.erase(it);
           }
         }
-        if (!newPossibleMoves.empty()) {
-          possibleMoves.clear();
-          for (auto const& newNodeId : newPossibleMoves) {
-            possibleMoves.push_back(this->graph().node(newNodeId).get());
+        if (!newPossibleTargets.empty()) {
+          // Filter possibleEdgeIds to only include those that lead to newPossibleTargets
+          std::vector<Id> filteredEdgeIds;
+          for (size_t i = 0; i < possibleTargetNodes.size(); ++i) {
+            if (std::find(newPossibleTargets.begin(),
+                          newPossibleTargets.end(),
+                          possibleTargetNodes[i]) != newPossibleTargets.end()) {
+              filteredEdgeIds.push_back(possibleEdgeIds[i]);
+            }
           }
+          possibleEdgeIds = std::move(filteredEdgeIds);
         }
       }
     } else if (!m_transitionMatrix.empty()) {
-      Logger::debug(std::format("Using transition matrix for node {}", nodeId));
-      auto transitionRow{m_transitionMatrix.row(nodeId)};
-      assert(!transitionRow.empty());
-      std::uniform_real_distribution<double> uniformDist{0., 1.};
-      auto const randomValue{uniformDist(this->m_generator)};
-      auto sum{0.};
-      Id nextNodeId{0};
-      for (auto const& [nnid, probability] : transitionRow) {
-        sum += probability;
-        nextNodeId = nnid;
-        if (randomValue < sum) {
-          // Do not care about uturns when using transition matrix
-          break;
-        }
-      }
-      return nodeId * this->graph().nNodes() + nextNodeId;
+      // Logger::debug(std::format("Using transition matrix for node {}", nodeId));
+      // auto transitionRow{m_transitionMatrix.row(nodeId)};
+      // assert(!transitionRow.empty());
+      // std::uniform_real_distribution<double> uniformDist{0., 1.};
+      // auto const randomValue{uniformDist(this->m_generator)};
+      // auto sum{0.};
+      // Id nextNodeId{0};
+      // for (auto const& [nnid, probability] : transitionRow) {
+      //   sum += probability;
+      //   nextNodeId = nnid;
+      //   if (randomValue < sum) {
+      //     // Do not care about uturns when using transition matrix
+      //     break;
+      //   }
+      // }
+      // return nodeId * this->graph().nNodes() + nextNodeId;
+      throw std::runtime_error("Transition matrix not implemented yet.");
     }
 
-    if (possibleMoves.empty()) {
+    if (possibleEdgeIds.empty()) {
       throw std::runtime_error(
           std::format("No possible moves for agent {} at node {}.", *pAgent, nodeId));
     }
 
-    if (possibleMoves.size() == 1) {
-      return this->graph().edge(nodeId, possibleMoves[0]->id())->id();
+    if (possibleEdgeIds.size() == 1) {
+      return possibleEdgeIds[0];
     }
     std::uniform_int_distribution<Size> moveDist{
-        0, static_cast<Size>(possibleMoves.size() - 1)};
-    return this->graph()
-        .edge(nodeId, possibleMoves[moveDist(this->m_generator)]->id())
-        ->id();
+        0, static_cast<Size>(possibleEdgeIds.size() - 1)};
+    return possibleEdgeIds[moveDist(this->m_generator)];
   }
 
   template <typename delay_t>
@@ -826,11 +827,9 @@ namespace dsf {
                                           ->turnDirection(pStreet->angle())};
             if (!intersection.streetPriorities().contains(pStreet->id())) {
               // I have to check if the agent has right of way
-              auto const& inNeighbours{
-                  this->graph().inputNeighbors(destinationNode->id())};
-              for (auto const& pSourceNode : inNeighbours) {
-                auto const& pStreetTemp{
-                    this->graph().edge(pSourceNode->id(), destinationNode->id())};
+              auto const& inNeighbours{destinationNode->ingoingEdges()};
+              for (auto const& inEdgeId : inNeighbours) {
+                auto const& pStreetTemp{this->graph().edge(inEdgeId)};
                 if (pStreetTemp->id() == pStreet->id()) {
                   continue;
                 }
@@ -1162,7 +1161,7 @@ namespace dsf {
         throw std::invalid_argument(Logger::buildExceptionMessage(
             std::format("The transition matrix row {} is empty", i)));
       }
-      auto const& arow{this->graph().outputNeighbors(i)};
+      auto const& arow{this->graph().node(i)->outgoingEdges()};
       if (trow.size() != arow.size()) {
         throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
             "The transition matrix row {} has size {} but the adjacency matrix row {} "
@@ -1250,12 +1249,12 @@ namespace dsf {
       while (true) {
         Size step = streetDist(this->m_generator);
         std::advance(streetIt, step);
-        if (!((*streetIt)->isFull())) {
+        if (!(streetIt->second->isFull())) {
           break;
         }
         streetIt = this->graph().edges().begin();
       }
-      auto const& street{*streetIt};
+      auto const& street{streetIt->second};
       this->addAgent(
           std::make_unique<Agent>(this->time(), itineraryId, street->source()));
       auto& pAgent{this->m_agents.back()};
@@ -1478,32 +1477,31 @@ namespace dsf {
     // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
     const size_t grainSize = std::max(size_t(1), numNodes / concurrency);
     this->m_taskArena.execute([&] {
-      tbb::parallel_for(
-          tbb::blocked_range<size_t>(0, numNodes, grainSize),
-          [&](const tbb::blocked_range<size_t>& range) {
-            for (size_t i = range.begin(); i != range.end(); ++i) {
-              auto const& pNode = nodes.at(i);
-              for (auto const& pSourceNode : this->graph().inputNeighbors(pNode->id())) {
-                auto const& pStreet{this->graph().edge(pSourceNode->id(), pNode->id())};
-                if (bUpdateData && pNode->isTrafficLight()) {
-                  if (!m_queuesAtTrafficLights.contains(pStreet->id())) {
-                    auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-                    assert(!tl.cycles().empty());
-                    for (auto const& [id, pair] : tl.cycles()) {
-                      for (auto const& [direction, cycle] : pair) {
-                        m_queuesAtTrafficLights[id].emplace(direction, 0.);
-                      }
-                    }
-                  }
-                  for (auto& [direction, value] :
-                       m_queuesAtTrafficLights.at(pStreet->id())) {
-                    value += pStreet->nExitingAgents(direction, true);
-                  }
-                }
-                m_evolveStreet(pStreet, reinsert_agents);
-              }
-            }
-          });
+      tbb::parallel_for(tbb::blocked_range<size_t>(0, numNodes, grainSize),
+                        [&](const tbb::blocked_range<size_t>& range) {
+                          for (size_t i = range.begin(); i != range.end(); ++i) {
+                            auto const& pNode = nodes.at(i);
+                            for (auto const& inEdgeId : pNode->ingoingEdges()) {
+                              auto const& pStreet{this->graph().edge(inEdgeId)};
+                              if (bUpdateData && pNode->isTrafficLight()) {
+                                if (!m_queuesAtTrafficLights.contains(pStreet->id())) {
+                                  auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+                                  assert(!tl.cycles().empty());
+                                  for (auto const& [id, pair] : tl.cycles()) {
+                                    for (auto const& [direction, cycle] : pair) {
+                                      m_queuesAtTrafficLights[id].emplace(direction, 0.);
+                                    }
+                                  }
+                                }
+                                for (auto& [direction, value] :
+                                     m_queuesAtTrafficLights.at(pStreet->id())) {
+                                  value += pStreet->nExitingAgents(direction, true);
+                                }
+                              }
+                              m_evolveStreet(pStreet, reinsert_agents);
+                            }
+                          }
+                        });
     });
     Logger::debug("Pre-nodes");
     // Move transport capacity agents from each node
@@ -1529,7 +1527,7 @@ namespace dsf {
       if (!pAgent->srcNodeId().has_value()) {
         auto nodeIt{this->graph().nodes().begin()};
         std::advance(nodeIt, nodeDist(this->m_generator));
-        pAgent->setSrcNodeId((*nodeIt)->id());
+        pAgent->setSrcNodeId(nodeIt->second->id());
       }
       auto const& pSourceNode{this->graph().node(*(pAgent->srcNodeId()))};
       // Logger::debug(std::format("Checking node {}", pAgent->srcNodeId().value()));
@@ -1579,20 +1577,19 @@ namespace dsf {
           this->time(),
           beta);
     }
-    for (auto const& pNode : this->graph().nodes()) {
+    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
       if (!pNode->isTrafficLight()) {
         continue;
       }
       auto& tl = dynamic_cast<TrafficLight&>(*pNode);
 
-      auto const& inNeighbours{this->graph().inputNeighbors(pNode->id())};
+      auto const& inNeighbours{pNode->ingoingEdges()};
 
       // Default is RIGHTANDSTRAIGHT - LEFT phases for both priority and non-priority
       std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
       bool isPrioritySinglePhase{false}, isNonPrioritySinglePhase{false};
 
-      for (const auto& pSourceNode : inNeighbours) {
-        auto const streetId = this->graph().edge(pSourceNode->id(), pNode->id())->id();
+      for (const auto& streetId : inNeighbours) {
         if (tl.cycles().at(streetId).contains(Direction::ANY)) {
           tl.streetPriorities().contains(streetId) ? isPrioritySinglePhase = true
                                                    : isNonPrioritySinglePhase = true;
@@ -1605,8 +1602,7 @@ namespace dsf {
         *logStream << std::format("\tFound a single phase for non-priority streets.\n");
       }
 
-      for (const auto& pSourceNode : inNeighbours) {
-        auto const streetId = this->graph().edge(pSourceNode->id(), pNode->id())->id();
+      for (const auto& streetId : inNeighbours) {
         for (auto const& [direction, tail] : m_queuesAtTrafficLights.at(streetId)) {
           if (tl.streetPriorities().contains(streetId)) {
             if (isPrioritySinglePhase) {
@@ -1969,21 +1965,23 @@ namespace dsf {
     if (optimizationType == TrafficLightOptimization::DOUBLE_TAIL) {
       // Try to synchronize congested traffic lights
       std::unordered_map<Id, double> densities;
-      for (auto const& pNode : this->graph().nodes()) {
+      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
         if (!pNode->isTrafficLight()) {
           continue;
         }
         double density{0.}, n{0.};
-        auto const& inNeighbours{this->graph().inputNeighbors(pNode->id())};
-        for (auto const& pSourceNode : inNeighbours) {
+        auto const& inNeighbours{pNode->ingoingEdges()};
+        for (auto const& inEdgeId : inNeighbours) {
+          auto const& pStreet{this->graph().edge(inEdgeId)};
+          auto const& pSourceNode{this->graph().node(pStreet->source())};
           if (!pSourceNode->isTrafficLight()) {
             continue;
           }
-          density += this->graph().edge(pSourceNode->id(), pNode->id())->density(true);
+          density += pStreet->density(true);
           ++n;
         }
         density /= n;
-        densities[pNode->id()] = density;
+        densities[nodeId] = density;
       }
       // Sort densities map from big to small values
       std::vector<std::pair<Id, double>> sortedDensities(densities.begin(),
@@ -1996,22 +1994,22 @@ namespace dsf {
       std::unordered_set<Id> optimizedNodes;
 
       for (auto const& [nodeId, density] : sortedDensities) {
-        auto const& inNeighbours{this->graph().inputNeighbors(nodeId)};
-        for (auto const& pSourceNode : inNeighbours) {
-          if (!densities.contains(pSourceNode->id()) ||
-              optimizedNodes.contains(pSourceNode->id())) {
+        auto const& inNeighbours{this->graph().node(nodeId)->ingoingEdges()};
+        for (auto const& inEdgeId : inNeighbours) {
+          auto const& pStreet{this->graph().edge(inEdgeId)};
+          auto const& sourceId{pStreet->source()};
+          if (!densities.contains(sourceId) || optimizedNodes.contains(sourceId)) {
             continue;
           }
-          auto const& neighbourDensity{densities.at(pSourceNode->id())};
+          auto const& neighbourDensity{densities.at(sourceId)};
           if (neighbourDensity < threshold * density) {
             continue;
           }
           // Try to green-wave the situation
-          auto& tl{dynamic_cast<TrafficLight&>(*this->graph().node(pSourceNode->id()))};
-          auto const& pStreet{this->graph().edge(pSourceNode->id(), nodeId)};
+          auto& tl{dynamic_cast<TrafficLight&>(*this->graph().node(sourceId))};
           tl.increasePhases(pStreet->length() /
                             (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
-          optimizedNodes.insert(pSourceNode->id());
+          optimizedNodes.insert(sourceId);
           if (logStream.has_value()) {
             *logStream << std::format("\nNew cycles for {}", tl);
           }
@@ -2137,8 +2135,8 @@ namespace dsf {
   Measurement<double> RoadDynamics<delay_t>::streetMeanSpeed() const {
     std::vector<double> speeds;
     speeds.reserve(this->graph().nEdges());
-    for (const auto& pStreet : this->graph().edges()) {
-      speeds.push_back(streetMeanSpeed(pStreet->id()));
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      speeds.push_back(streetMeanSpeed(streetId));
     }
     return Measurement<double>(speeds);
   }
@@ -2149,11 +2147,11 @@ namespace dsf {
                                                              bool above) const {
     std::vector<double> speeds;
     speeds.reserve(this->graph().nEdges());
-    for (const auto& pStreet : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       if (above && (pStreet->density(true) > threshold)) {
-        speeds.push_back(streetMeanSpeed(pStreet->id()));
+        speeds.push_back(streetMeanSpeed(streetId));
       } else if (!above && (pStreet->density(true) < threshold)) {
-        speeds.push_back(streetMeanSpeed(pStreet->id()));
+        speeds.push_back(streetMeanSpeed(streetId));
       }
     }
     return Measurement<double>(speeds);
@@ -2168,12 +2166,12 @@ namespace dsf {
     std::vector<double> densities;
     densities.reserve(this->graph().nEdges());
     if (normalized) {
-      for (const auto& pStreet : this->graph().edges()) {
+      for (const auto& [streetId, pStreet] : this->graph().edges()) {
         densities.push_back(pStreet->density(true));
       }
     } else {
       double sum{0.};
-      for (const auto& pStreet : this->graph().edges()) {
+      for (const auto& [streetId, pStreet] : this->graph().edges()) {
         densities.push_back(pStreet->density(false) * pStreet->length());
         sum += pStreet->length();
       }
@@ -2191,8 +2189,8 @@ namespace dsf {
   Measurement<double> RoadDynamics<delay_t>::streetMeanFlow() const {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
-    for (const auto& pStreet : this->graph().edges()) {
-      flows.push_back(pStreet->density() * this->streetMeanSpeed(pStreet->id()));
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
     }
     return Measurement<double>(flows);
   }
@@ -2203,11 +2201,11 @@ namespace dsf {
                                                             bool above) const {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
-    for (const auto& pStreet : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       if (above && (pStreet->density(true) > threshold)) {
-        flows.push_back(pStreet->density() * this->streetMeanSpeed(pStreet->id()));
+        flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
       } else if (!above && (pStreet->density(true) < threshold)) {
-        flows.push_back(pStreet->density() * this->streetMeanSpeed(pStreet->id()));
+        flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
       }
     }
     return Measurement<double>(flows);
@@ -2223,7 +2221,7 @@ namespace dsf {
     m_previousSpireTime = this->time();
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
-    for (const auto& pStreet : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       if (pStreet->isSpire()) {
         auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
         flows.push_back(static_cast<double>(spire.inputCounts(resetValue)) / deltaTime);
@@ -2242,7 +2240,7 @@ namespace dsf {
     m_previousSpireTime = this->time();
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
-    for (auto const& pStreet : this->graph().edges()) {
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
       if (pStreet->isSpire()) {
         auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
         flows.push_back(static_cast<double>(spire.outputCounts(resetValue)) / deltaTime);
@@ -2267,13 +2265,13 @@ namespace dsf {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& pStreet : this->graph().edges()) {
-        file << separator << pStreet->id();
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
+        file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
-    for (auto const& pStreet : this->graph().edges()) {
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
       // keep 2 decimal digits;
       file << separator << std::scientific << std::setprecision(2)
            << pStreet->density(normalized);
@@ -2297,13 +2295,13 @@ namespace dsf {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& pStreet : this->graph().edges()) {
-        file << separator << pStreet->id();
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
+        file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
-    for (auto const& pStreet : this->graph().edges()) {
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
         if (pStreet->isStochastic()) {
@@ -2333,16 +2331,16 @@ namespace dsf {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& pStreet : this->graph().edges()) {
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
         if (!pStreet->isSpire()) {
           continue;
         }
-        file << separator << pStreet->id();
+        file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
-    for (auto const& pStreet : this->graph().edges()) {
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
         if (pStreet->isStochastic()) {
@@ -2428,9 +2426,9 @@ namespace dsf {
       densities.reserve(this->graph().nEdges());
       flows.reserve(this->graph().nEdges());
       spireFlows.reserve(this->graph().nEdges());
-      for (auto const& pStreet : this->graph().edges()) {
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
         nAgents += pStreet->nAgents();
-        speeds.push_back(this->streetMeanSpeed(pStreet->id()));
+        speeds.push_back(this->streetMeanSpeed(streetId));
         densities.push_back(pStreet->density(true));
         flows.push_back(pStreet->density(true) * speeds.back());
         if (pStreet->isSpire()) {
@@ -2439,7 +2437,7 @@ namespace dsf {
                                (this->time() - m_previousSpireTime));
         }
       }
-      for (auto const& pNode : this->graph().nodes()) {
+      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
         if (pNode->isIntersection()) {
           auto& intersection = dynamic_cast<Intersection&>(*pNode);
           nAgents += intersection.agents().size();

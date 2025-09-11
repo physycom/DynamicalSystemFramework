@@ -12,23 +12,15 @@ namespace dsf {
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   class Network {
   protected:
-    std::vector<Id> m_rowOffsets;
-    std::vector<Id> m_columnIndices;
-    std::vector<std::unique_ptr<node_t>> m_nodes;
-    std::vector<std::unique_ptr<edge_t>> m_edges;
-    std::unordered_map<Id, Id> m_mapNodeId;
-    std::unordered_map<Id, Id> m_mapEdgeId;
-    size_t m_n;
+    std::unordered_map<Id, std::unique_ptr<node_t>> m_nodes;
+    std::unordered_map<Id, std::unique_ptr<edge_t>> m_edges;
 
     Id m_cantorHash(Id u, Id v) const;
     Id m_cantorHash(std::pair<Id, Id> const& idPair) const;
 
-    std::vector<const node_t*> m_inputNeighbors(Id internalNodeId) const;
-    std::vector<const node_t*> m_outputNeighbors(Id internalNodeId) const;
-
   public:
     /// @brief Construct a new empty Network object
-    Network() : m_n{0} { m_rowOffsets.push_back(0); }
+    Network() = default;
 
     /// @brief Construct a new Network object
     /// @param adj The adjacency matrix representing the network
@@ -36,18 +28,10 @@ namespace dsf {
 
     /// @brief Get the nodes as an unordered map
     /// @return std::unordered_map<Id, std::unique_ptr<node_t>> The nodes
-    std::vector<std::unique_ptr<node_t>> const& nodes() const;
+    std::unordered_map<Id, std::unique_ptr<node_t>> const& nodes() const;
     /// @brief Get the edges as an unordered map
     /// @return std::unordered_map<Id, std::unique_ptr<edge_t>> The edges
-    std::vector<std::unique_ptr<edge_t>> const& edges() const;
-    /// @brief Get the input neighbors of a node, which correspond to the adjacency matrix's column
-    /// @param nodeId The node's id
-    /// @return std::vector<const node_t*> The input neighbors
-    std::vector<const node_t*> inputNeighbors(Id nodeId) const;
-    /// @brief Get the output neighbors of a node, which correspond to the adjacency matrix's row
-    /// @param nodeId The node's id
-    /// @return std::vector<const node_t*> The output neighbors
-    std::vector<const node_t*> outputNeighbors(Id nodeId) const;
+    std::unordered_map<Id, std::unique_ptr<edge_t>> const& edges() const;
     /// @brief Get the number of nodes
     /// @return size_t The number of nodes
     size_t nNodes() const;
@@ -122,43 +106,10 @@ namespace dsf {
   Id Network<node_t, edge_t>::m_cantorHash(std::pair<Id, Id> const& idPair) const {
     return m_cantorHash(idPair.first, idPair.second);
   }
-  template <typename node_t, typename edge_t>
-    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  std::vector<const node_t*> Network<node_t, edge_t>::m_inputNeighbors(
-      Id internalNodeId) const {
-    std::vector<const node_t*> neighbors;
-    // Iterate through all nodes to find which ones point to internalNodeId
-    for (Id nodeIdx = 0; nodeIdx < m_rowOffsets.size() - 1; ++nodeIdx) {
-      auto const rowStart = m_rowOffsets[nodeIdx];
-      auto const rowEnd = m_rowOffsets[nodeIdx + 1];
-      // Check if this node has an edge to internalNodeId
-      for (auto csrIndex = rowStart; csrIndex < rowEnd; ++csrIndex) {
-        if (m_columnIndices[csrIndex] == internalNodeId) {
-          neighbors.push_back(m_nodes[nodeIdx].get());
-          break;  // Found the edge, no need to check other edges from this node
-        }
-      }
-    }
-    return neighbors;
-  }
-  template <typename node_t, typename edge_t>
-    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  std::vector<const node_t*> Network<node_t, edge_t>::m_outputNeighbors(
-      Id internalNodeId) const {
-    std::vector<const node_t*> neighbors;
-    auto const rowStart{m_rowOffsets[internalNodeId]};
-    auto const rowEnd{m_rowOffsets[internalNodeId + 1]};
-    for (auto csrIndex = rowStart; csrIndex < rowEnd; ++csrIndex) {
-      auto const targetId{m_columnIndices[csrIndex]};
-      neighbors.push_back(m_nodes[targetId].get());
-    }
-    return neighbors;
-  }
 
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  Network<node_t, edge_t>::Network(AdjacencyMatrix const& adj) : m_n{0} {
-    m_rowOffsets.push_back(0);
+  Network<node_t, edge_t>::Network(AdjacencyMatrix const& adj) {
     auto const& values{adj.elements()};
     // Add as many nodes as adj.n()
     addNDefaultNodes(adj.n());
@@ -169,24 +120,15 @@ namespace dsf {
 
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  std::vector<std::unique_ptr<node_t>> const& Network<node_t, edge_t>::nodes() const {
+  std::unordered_map<Id, std::unique_ptr<node_t>> const& Network<node_t, edge_t>::nodes()
+      const {
     return m_nodes;
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  std::vector<std::unique_ptr<edge_t>> const& Network<node_t, edge_t>::edges() const {
+  std::unordered_map<Id, std::unique_ptr<edge_t>> const& Network<node_t, edge_t>::edges()
+      const {
     return m_edges;
-  }
-
-  template <typename node_t, typename edge_t>
-    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  std::vector<const node_t*> Network<node_t, edge_t>::inputNeighbors(Id nodeId) const {
-    return m_inputNeighbors(m_mapNodeId.at(nodeId));
-  }
-  template <typename node_t, typename edge_t>
-    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  std::vector<const node_t*> Network<node_t, edge_t>::outputNeighbors(Id nodeId) const {
-    return m_outputNeighbors(m_mapNodeId.at(nodeId));
   }
 
   template <typename node_t, typename edge_t>
@@ -205,9 +147,13 @@ namespace dsf {
   template <typename TNode, typename... TArgs>
     requires(std::is_base_of_v<node_t, TNode> && std::constructible_from<TNode, TArgs...>)
   void Network<node_t, edge_t>::addNode(TArgs&&... args) {
-    m_mapNodeId[std::get<0>(std::forward_as_tuple(args...))] =
-        static_cast<Id>(m_nodes.size());
-    m_nodes.push_back(std::make_unique<TNode>(std::forward<TArgs>(args)...));
+    // Create unique_ptr directly with perfect forwarding
+    auto pNode = std::make_unique<TNode>(std::forward<TArgs>(args)...);
+    if (m_nodes.contains(pNode->id())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Node with id {} already exists in the network.", pNode->id())));
+    }
+    m_nodes[pNode->id()] = std::move(pNode);
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
@@ -225,88 +171,78 @@ namespace dsf {
     requires(std::is_base_of_v<edge_t, TEdge> && std::constructible_from<TEdge, TArgs...>)
   void Network<node_t, edge_t>::addEdge(TArgs&&... args) {
     TEdge tmpEdge(std::forward<TArgs>(args)...);
+    if (m_edges.contains(tmpEdge.id())) {
+      throw std::invalid_argument(Logger::buildExceptionMessage(
+          std::format("Edge with id {} already exists in the network.", tmpEdge.id())));
+    }
     auto const& geometry{tmpEdge.geometry()};
-    if (!m_mapNodeId.contains(tmpEdge.source())) {
+    auto const& sourceNodeId = tmpEdge.source();
+    auto const& targetNodeId = tmpEdge.target();
+
+    // Check if source node exists, add if not
+    if (!m_nodes.contains(sourceNodeId)) {
       if (!geometry.empty()) {
         addNode(tmpEdge.source(), geometry.front());
       } else {
         addNode(tmpEdge.source());
       }
     }
-    if (!m_mapNodeId.contains(tmpEdge.target())) {
+
+    // Check if target node exists, add if not
+    if (!m_nodes.contains(targetNodeId)) {
       if (!geometry.empty()) {
         addNode(tmpEdge.target(), geometry.back());
       } else {
         addNode(tmpEdge.target());
       }
     }
+
+    // Get fresh references to both nodes after all potential vector reallocations
+    auto const& sourceNode = node(sourceNodeId);
+    auto const& targetNode = node(targetNodeId);
+    sourceNode->addOutgoingEdge(tmpEdge.id());
+    targetNode->addIncomingEdge(tmpEdge.id());
     if (geometry.empty()) {
-      auto const& sourceNode{this->node(tmpEdge.source())};
-      auto const& targetNode{this->node(tmpEdge.target())};
       if (sourceNode->coords().has_value() && targetNode->coords().has_value()) {
         tmpEdge.setGeometry({sourceNode->coords().value(), targetNode->coords().value()});
       }
     }
-    auto const& sourceNodeId{m_mapNodeId.at(tmpEdge.source())};
-    auto const& targetNodeId{m_mapNodeId.at(tmpEdge.target())};
-    m_n = std::max(m_n, static_cast<size_t>(sourceNodeId + 1));
-    m_n = std::max(m_n, static_cast<size_t>(targetNodeId + 1));
-    while (m_rowOffsets.size() <= m_n) {
-      m_rowOffsets.push_back(m_rowOffsets.back());
-    }
-    std::transform(DSM_EXECUTION m_rowOffsets.begin() + sourceNodeId + 1,
-                   m_rowOffsets.end(),
-                   m_rowOffsets.begin() + sourceNodeId + 1,
-                   [](auto& x) { return x + 1; });
-    auto csrOffset = m_rowOffsets[sourceNodeId + 1] - 1;
-    m_columnIndices.insert(m_columnIndices.begin() + csrOffset, targetNodeId);
-    m_edges.insert(m_edges.begin() + csrOffset,
-                   std::make_unique<TEdge>(std::move(tmpEdge)));
-
-    // Update edge ID mapping
-    m_mapEdgeId[m_edges[csrOffset]->id()] = csrOffset;
-    // Update indices for edges that were shifted
-    for (size_t i = csrOffset + 1; i < m_edges.size(); ++i) {
-      m_mapEdgeId[m_edges[i]->id()] = i;
-    }
+    m_edges.emplace(tmpEdge.id(), std::make_unique<TEdge>(std::move(tmpEdge)));
   }
 
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<node_t> const& Network<node_t, edge_t>::node(Id nodeId) const {
-    return m_nodes[m_mapNodeId.at(nodeId)];
+    return m_nodes.at(nodeId);
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<node_t>& Network<node_t, edge_t>::node(Id nodeId) {
-    return m_nodes[m_mapNodeId.at(nodeId)];
+    return m_nodes.at(nodeId);
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<edge_t> const& Network<node_t, edge_t>::edge(Id edgeId) const {
-    return m_edges[m_mapEdgeId.at(edgeId)];
+    return m_edges.at(edgeId);
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<edge_t>& Network<node_t, edge_t>::edge(Id edgeId) {
-    return m_edges[m_mapEdgeId.at(edgeId)];
+    return m_edges.at(edgeId);
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<edge_t> const& Network<node_t, edge_t>::edge(Id source,
                                                                Id target) const {
-    auto const& row{m_mapNodeId.at(source)};
-    auto const& col{m_mapNodeId.at(target)};
-    assert(row + 1 < m_rowOffsets.size());
-    auto itFirst = m_columnIndices.begin() + m_rowOffsets[row];
-    auto itLast = m_columnIndices.begin() + m_rowOffsets[row + 1];
-    auto it = std::find(itFirst, itLast, col);
-    if (it == itLast) {
+    auto const it = std::find_if(
+        m_edges.cbegin(), m_edges.cend(), [source, target](auto const& pair) {
+          return pair.second->source() == source && pair.second->target() == target;
+        });
+    if (it == m_edges.cend()) {
       throw std::out_of_range(Logger::buildExceptionMessage(
-          std::format("Edge from node {} to node {} not found.", source, target)));
+          std::format("Edge with source {} and target {} not found.", source, target)));
     }
-    size_t const index = m_rowOffsets[row] + std::distance(itFirst, it);
-    return m_edges[index];
+    return it->second;
   }
 
   template <typename node_t, typename edge_t>
@@ -321,11 +257,6 @@ namespace dsf {
   template <typename TEdge>
     requires(std::is_base_of_v<edge_t, TEdge>)
   TEdge& Network<node_t, edge_t>::edge(Id edgeId) {
-    auto const it = m_mapEdgeId.find(edgeId);
-    if (it == m_mapEdgeId.end()) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Edge with id {} not found.", edgeId)));
-    }
-    return dynamic_cast<TEdge&>(*m_edges[it->second]);
+    return dynamic_cast<TEdge&>(*edge(edgeId));
   }
 }  // namespace dsf

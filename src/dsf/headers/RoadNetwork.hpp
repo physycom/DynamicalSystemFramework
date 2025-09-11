@@ -292,8 +292,13 @@ namespace dsf {
                                                           Id destination,
                                                           Func getStreetWeight) const {
     // Check if source and destination nodes exist
-    if (m_mapNodeId.find(source) == m_mapNodeId.end() ||
-        m_mapNodeId.find(destination) == m_mapNodeId.end()) {
+    auto const& nodes = this->nodes();
+    if (!std::any_of(nodes.cbegin(),
+                     nodes.cend(),
+                     [source](auto const& pair) { return pair.first == source; }) ||
+        !std::any_of(nodes.cbegin(), nodes.cend(), [destination](auto const& pair) {
+          return pair.first == destination;
+        })) {
       return std::nullopt;
     }
 
@@ -304,8 +309,7 @@ namespace dsf {
     std::unordered_set<Id> visitedNodes;
 
     // Initialize distances and unvisited nodes using original node IDs
-    for (const auto& node : m_nodes) {
-      Id nodeId = node->id();
+    for (auto const& [nodeId, node] : nodes) {
       dist[nodeId] = std::numeric_limits<double>::max();
       prev[nodeId] = std::numeric_limits<Id>::max();
       unvisitedNodes.insert(nodeId);
@@ -335,9 +339,9 @@ namespace dsf {
       visitedNodes.insert(currentNode);
 
       // Get outgoing neighbors (nodes this node can reach)
-      auto const& neighbors = this->outputNeighbors(currentNode);
-      for (auto const& pNeighbor : neighbors) {
-        Id neighborId = pNeighbor->id();
+      auto const& outEdges = node(currentNode)->outgoingEdges();
+      for (auto const& outEdgeId : outEdges) {
+        Id neighborId = edge(outEdgeId)->target();
 
         // Skip if already visited
         if (visitedNodes.find(neighborId) != visitedNodes.end()) {

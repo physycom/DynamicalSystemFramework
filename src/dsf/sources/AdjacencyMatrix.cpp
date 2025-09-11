@@ -159,7 +159,7 @@ namespace dsf {
     m_columnIndices.erase(m_columnIndices.begin() + lowerOffset,
                           m_columnIndices.begin() + upperOffset);
     std::transform(
-        DSM_EXECUTION m_rowOffsets.begin() + row + 1,
+        DSF_EXECUTION m_rowOffsets.begin() + row + 1,
         m_rowOffsets.end(),
         m_rowOffsets.begin() + row + 1,
         [upperOffset, lowerOffset](auto& x) { return x - (upperOffset - lowerOffset); });
@@ -176,7 +176,7 @@ namespace dsf {
         // Remove row from rowIndices and update the rowOffsets
         m_rowIndices.erase(it);
         // Decrement the offsets for rows after the current row
-        std::transform(DSM_EXECUTION m_colOffsets.begin() + col + 1,
+        std::transform(DSF_EXECUTION m_colOffsets.begin() + col + 1,
                        m_colOffsets.end(),
                        m_colOffsets.begin() + col + 1,
                        [](auto& x) { return x - 1; });
@@ -196,7 +196,7 @@ namespace dsf {
       if (it != m_columnIndices.begin() + upperOffset) {
         m_columnIndices.erase(it);
         // Decrement the offsets for rows after the current row
-        std::transform(DSM_EXECUTION m_rowOffsets.begin() + row + 1,
+        std::transform(DSF_EXECUTION m_rowOffsets.begin() + row + 1,
                        m_rowOffsets.end(),
                        m_rowOffsets.begin() + row + 1,
                        [](auto& x) { return x - 1; });
@@ -212,7 +212,7 @@ namespace dsf {
 
     // Adjust column offsets accordingly
     std::transform(
-        DSM_EXECUTION m_colOffsets.begin() + col + 1,
+        DSF_EXECUTION m_colOffsets.begin() + col + 1,
         m_colOffsets.end(),
         m_colOffsets.begin() + col + 1,
         [upperOffset, lowerOffset](auto& x) { return x - (upperOffset - lowerOffset); });

@@ -20,8 +20,8 @@ int main() {
     sm.insert(pEdge->source(), pEdge->target(), true);
   }
 
-  const int n_rep{1000};
-  Bench b1(n_rep), b2(n_rep), b3(n_rep), b4(n_rep);
+  const int n_rep{100};
+  Bench b1(n_rep), b2(n_rep), b3(n_rep), b4(n_rep), b5(n_rep);
   Logger::info("Benchmarking SparseMatrix::getCol");
   b1.benchmark([&sm, &N]() -> void {
     for (size_t i{0}; i < N; ++i) {
@@ -39,15 +39,22 @@ int main() {
   Logger::info("Benchmarking AdjacencyMatrix::getCol");
   b3.benchmark([&graph]() -> void {
     for (auto const& pNode : graph.nodes()) {
-      graph.inputNeighbors(pNode->id());
+      pNode->ingoingEdges();
     }
   });
   b3.print<sb::microseconds>();
   Logger::info("Benchmarking AdjacencyMatrix::getRow");
   b4.benchmark([&graph]() -> void {
     for (auto const& pNode : graph.nodes()) {
-      graph.outputNeighbors(pNode->id());
+      pNode->outgoingEdges();
     }
   });
   b4.print<sb::microseconds>();
+  Logger::info("Benchmarking AdjacencyMatrix::getRow");
+  b5.benchmark([&graph]() -> void {
+    for (auto const& pNode : graph.nodes()) {
+      auto const& pNodeCopy{graph.node(pNode->id())};
+    }
+  });
+  b5.print<sb::microseconds>();
 }

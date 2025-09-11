@@ -294,7 +294,7 @@ TEST_CASE("RoadNetwork") {
         graph2.addNDefaultNodes(5);
         graph2.makeTrafficLight(1, 120);
         graph2.addStreets(s1, s2, s3, s4);
-        for (auto const& pStreet : graph2.edges()) {
+        for (auto const& [streetId, pStreet] : graph2.edges()) {
           pStreet->setCapacity(2 * pStreet->nLanes());
         }
         WHEN("We auto-init Traffic Lights") {

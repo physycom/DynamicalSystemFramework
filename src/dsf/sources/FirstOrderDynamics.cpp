@@ -15,7 +15,7 @@ namespace dsf {
       Logger::error(std::format("The minimum speed rateo ({}) must be in [0, 1[", alpha));
     }
     double globMaxTimePenalty{0.};
-    for (const auto& pStreet : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       globMaxTimePenalty =
           std::max(globMaxTimePenalty,
                    std::ceil(pStreet->length() / ((1. - m_alpha) * pStreet->maxSpeed())));
@@ -81,8 +81,8 @@ namespace dsf {
     }
     std::vector<double> speeds;
     speeds.reserve(this->graph().edges().size());
-    for (const auto& pStreet : this->graph().edges()) {
-      speeds.push_back(this->streetMeanSpeed(pStreet->id()));
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      speeds.push_back(this->streetMeanSpeed(streetId));
     }
     return Measurement<double>(speeds);
   }
@@ -90,14 +90,14 @@ namespace dsf {
                                                           bool above) const {
     std::vector<double> speeds;
     speeds.reserve(this->graph().edges().size());
-    for (const auto& pStreet : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       if (above) {
         if (pStreet->density(true) > threshold) {
-          speeds.push_back(this->streetMeanSpeed(pStreet->id()));
+          speeds.push_back(this->streetMeanSpeed(streetId));
         }
       } else {
         if (pStreet->density(true) < threshold) {
-          speeds.push_back(this->streetMeanSpeed(pStreet->id()));
+          speeds.push_back(this->streetMeanSpeed(streetId));
         }
       }
     }

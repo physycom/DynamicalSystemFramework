@@ -165,8 +165,8 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(dynamics.graph().edge(1)->movingAgents().top()->itineraryId(), 1);
           CHECK_EQ(dynamics.graph().edge(3)->nAgents(), 1);
           CHECK_EQ(dynamics.graph().edge(3)->movingAgents().top()->itineraryId(), 2);
-          CHECK_EQ(dynamics.graph().edge(6)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(6)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(8)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(8)->movingAgents().top()->itineraryId(), 2);
 #endif
         }
       }
@@ -934,7 +934,7 @@ TEST_CASE("FirstOrderDynamics") {
     Street s4{3, std::make_pair(1, 4), 30., 15.};
     RoadNetwork graph2;
     graph2.addStreets(s1, s2, s3, s4);
-    for (const auto& pNode : graph2.nodes()) {
+    for (const auto& [id, pNode] : graph2.nodes()) {
       pNode->setCapacity(4);
       pNode->setTransportCapacity(4);
     }
@@ -1034,7 +1034,7 @@ TEST_CASE("FirstOrderDynamics") {
       }
       WHEN("We set street priorities and add agents") {
         nodeO.addStreetPriority(5);
-        nodeO.addStreetPriority(16);
+        nodeO.addStreetPriority(15);
         dynamics.addAgent(2, 1);
         dynamics.addAgent(2, 4);
         dynamics.evolve(false);

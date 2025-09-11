@@ -5,9 +5,9 @@
 #include <cstdint>
 #ifndef __APPLE__
 #include <execution>
-#define DSM_EXECUTION std::execution::par_unseq,
+#define DSF_EXECUTION std::execution::par_unseq,
 #else
-#define DSM_EXECUTION
+#define DSF_EXECUTION
 #endif
 #include <format>
 #include <string_view>
