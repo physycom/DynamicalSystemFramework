@@ -1241,21 +1241,24 @@ namespace dsf {
         std::advance(itineraryIt, itineraryDist(this->m_generator));
         itineraryId = itineraryIt->first;
       }
-      Id streetId{0};
-      do {
-        auto streetIt = this->graph().edges().begin();
+      auto streetIt = this->graph().edges().begin();
+      while (true) {
         Size step = streetDist(this->m_generator);
         std::advance(streetIt, step);
-        streetId = (*streetIt)->id();
-      } while (this->graph().edge(streetId)->isFull());
-      const auto& street{this->graph().edge(streetId)};
+        if (!((*streetIt)->isFull())) {
+          break;
+        }
+        streetIt = this->graph().edges().begin();
+      }
+      auto const& street{*streetIt};
       this->addAgent(
           std::make_unique<Agent>(this->time(), itineraryId, street->source()));
       auto& pAgent{this->m_agents.back()};
-      pAgent->setStreetId(streetId);
+      pAgent->setStreetId(street->id());
       this->setAgentSpeed(pAgent);
       pAgent->setFreeTime(this->time() + std::ceil(street->length() / pAgent->speed()));
       street->addAgent(std::move(pAgent));
+      this->m_agents.pop_back();
     }
   }
 
@@ -1515,7 +1518,7 @@ namespace dsf {
     // cycle over agents and update their times
     std::uniform_int_distribution<Id> nodeDist{
         0, static_cast<Id>(this->graph().nNodes() - 1)};
-    Logger::debug("Pre-agents");
+    Logger::debug(std::format("Processing {} agents", m_agents.size()));
     for (auto itAgent{m_agents.begin()}; itAgent != m_agents.end();) {
       auto& pAgent{*itAgent};
       if (!pAgent->srcNodeId().has_value()) {
@@ -1546,7 +1549,6 @@ namespace dsf {
             std::format("Skipping {} due to full input {}", *pAgent, *nextStreet));
         continue;
       }
-      assert(pSourceNode->id() == nextStreet->source());
       // Logger::debug("Adding agent on the source node");
       if (pSourceNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*pSourceNode);
@@ -1557,6 +1559,7 @@ namespace dsf {
       }
       itAgent = m_agents.erase(itAgent);
     }
+    Logger::debug(std::format("There are {} agents left in the list.", m_agents.size()));
     Dynamics<RoadNetwork>::m_evolve();
   }
 
