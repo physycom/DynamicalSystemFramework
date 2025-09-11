@@ -134,7 +134,7 @@ namespace dsf {
       // Check if this node has an edge to internalNodeId
       for (auto csrIndex = rowStart; csrIndex < rowEnd; ++csrIndex) {
         if (m_columnIndices[csrIndex] == internalNodeId) {
-          neighbors.push_back(m_nodes.at(nodeIdx).get());
+          neighbors.push_back(m_nodes[nodeIdx].get());
           break;  // Found the edge, no need to check other edges from this node
         }
       }
@@ -150,7 +150,7 @@ namespace dsf {
     auto const rowEnd{m_rowOffsets[internalNodeId + 1]};
     for (auto csrIndex = rowStart; csrIndex < rowEnd; ++csrIndex) {
       auto const targetId{m_columnIndices[csrIndex]};
-      neighbors.push_back(m_nodes.at(targetId).get());
+      neighbors.push_back(m_nodes[targetId].get());
     }
     return neighbors;
   }
@@ -274,22 +274,22 @@ namespace dsf {
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<node_t> const& Network<node_t, edge_t>::node(Id nodeId) const {
-    return m_nodes.at(m_mapNodeId.at(nodeId));
+    return m_nodes[m_mapNodeId.at(nodeId)];
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<node_t>& Network<node_t, edge_t>::node(Id nodeId) {
-    return m_nodes.at(m_mapNodeId.at(nodeId));
+    return m_nodes[m_mapNodeId.at(nodeId)];
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<edge_t> const& Network<node_t, edge_t>::edge(Id edgeId) const {
-    return m_edges.at(m_mapEdgeId.at(edgeId));
+    return m_edges[m_mapEdgeId.at(edgeId)];
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   std::unique_ptr<edge_t>& Network<node_t, edge_t>::edge(Id edgeId) {
-    return m_edges.at(m_mapEdgeId.at(edgeId));
+    return m_edges[m_mapEdgeId.at(edgeId)];
   }
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
@@ -306,7 +306,7 @@ namespace dsf {
           std::format("Edge from node {} to node {} not found.", source, target)));
     }
     size_t const index = m_rowOffsets[row] + std::distance(itFirst, it);
-    return m_edges.at(index);
+    return m_edges[index];
   }
 
   template <typename node_t, typename edge_t>
