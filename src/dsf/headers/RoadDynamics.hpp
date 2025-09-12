@@ -548,104 +548,78 @@ namespace dsf {
   Id RoadDynamics<delay_t>::m_nextStreetId(std::unique_ptr<Agent> const& pAgent,
                                            Id nodeId,
                                            std::optional<Id> streetId) {
-    // Store edge IDs and their corresponding target nodes
+    // Get outgoing edges directly - avoid storing targets separately
+    const auto& outgoingEdges = this->graph().node(nodeId)->outgoingEdges();
     std::vector<Id> possibleEdgeIds;
-    std::vector<Id> possibleTargetNodes;
+    possibleEdgeIds.reserve(outgoingEdges.size());  // Pre-allocate to avoid reallocations
 
-    for (auto const outEdgeId : this->graph().node(nodeId)->outgoingEdges()) {
-      possibleEdgeIds.push_back(outEdgeId);
-      possibleTargetNodes.push_back(this->graph().edge(outEdgeId)->target());
-    }
-
-    // Logger::debug(std::format("Is current agent random? {}", pAgent->isRandom()));
-    // Logger::debug(
-    //     std::format("Is transition matrix empty? {}", m_transitionMatrix.empty()));
-
-    std::set<Id> forbiddenStreetIds;
+    // Build forbidden target nodes set efficiently
+    std::unordered_set<Id> forbiddenTargetNodes;
     if (streetId.has_value()) {
-      // Logger::debug("Checking for forbidden turns");
       auto const& pStreet{this->graph().edge(*streetId)};
-      forbiddenStreetIds = pStreet->forbiddenTurns();
+      const auto& forbiddenTurns = pStreet->forbiddenTurns();
+      forbiddenTargetNodes.insert(forbiddenTurns.begin(), forbiddenTurns.end());
+
       // Avoid U-TURNS, if possible
       if (!(this->graph().node(nodeId)->isRoundabout()) &&
-          (possibleEdgeIds.size() > forbiddenStreetIds.size() + 1)) {
+          (outgoingEdges.size() > forbiddenTurns.size() + 1)) {
         auto const& pOppositeStreet{
             this->graph().street(pStreet->target(), pStreet->source())};
         if (pOppositeStreet) {
-          forbiddenStreetIds.insert(pOppositeStreet->get()->id());
-        }
-      }
-    }
-    // Exclude FORBIDDEN turns - remove by target node ID
-    if (!forbiddenStreetIds.empty()) {
-      Logger::debug([&] {
-        return std::format("Excluding {} forbidden turns", forbiddenStreetIds.size());
-      });
-    }
-    for (auto const& forbiddenStreetId : forbiddenStreetIds) {
-      // Find and remove edges that lead to forbidden target nodes
-      for (auto it = possibleTargetNodes.begin(); it != possibleTargetNodes.end();) {
-        auto index = std::distance(possibleTargetNodes.begin(), it);
-        if (*it == forbiddenStreetId) {
-          possibleTargetNodes.erase(it);
-          possibleEdgeIds.erase(possibleEdgeIds.begin() + index);
-          break;  // Only remove first match
-        } else {
-          ++it;
+          forbiddenTargetNodes.insert(pOppositeStreet->get()->id());
         }
       }
     }
 
-    if (!pAgent->isRandom()) {
-      std::vector<Id> newPossibleTargets;
+    // Log forbidden turns if any
+    if (!forbiddenTargetNodes.empty()) {
+      Logger::debug([&] {
+        return std::format("Excluding {} forbidden turns", forbiddenTargetNodes.size());
+      });
+    }
+
+    // For non-random agents, get allowed targets from itinerary
+    std::unordered_set<Id> allowedTargets;
+    bool hasItineraryConstraints = false;
+
+    if (!pAgent->isRandom() && !this->itineraries().empty()) {
       std::uniform_real_distribution<double> uniformDist{0., 1.};
-      if (!(this->itineraries().empty())) {
-        if (!(m_errorProbability.has_value() &&
-              uniformDist(this->m_generator) < m_errorProbability)) {
-          const auto& it = this->itineraries().at(pAgent->itineraryId());
-          if (it->destination() != nodeId) {
-            newPossibleTargets = it->path()->getRow(nodeId);
+      if (!(m_errorProbability.has_value() &&
+            uniformDist(this->m_generator) < m_errorProbability)) {
+        const auto& it = this->itineraries().at(pAgent->itineraryId());
+        if (it->destination() != nodeId) {
+          const auto pathTargets = it->path()->getRow(nodeId);
+          allowedTargets.insert(pathTargets.begin(), pathTargets.end());
+          hasItineraryConstraints = true;
+
+          // Remove forbidden nodes from allowed targets
+          for (const auto& forbiddenNodeId : forbiddenTargetNodes) {
+            allowedTargets.erase(forbiddenNodeId);
           }
-        }
-        for (auto const& forbiddenNodeId : forbiddenStreetIds) {
-          // if possible moves contains the forbidden node, remove it
-          auto it = std::find(
-              newPossibleTargets.begin(), newPossibleTargets.end(), forbiddenNodeId);
-          if (it != newPossibleTargets.end()) {
-            newPossibleTargets.erase(it);
-          }
-        }
-        if (!newPossibleTargets.empty()) {
-          // Filter possibleEdgeIds to only include those that lead to newPossibleTargets
-          std::vector<Id> filteredEdgeIds;
-          for (size_t i = 0; i < possibleTargetNodes.size(); ++i) {
-            if (std::find(newPossibleTargets.begin(),
-                          newPossibleTargets.end(),
-                          possibleTargetNodes[i]) != newPossibleTargets.end()) {
-              filteredEdgeIds.push_back(possibleEdgeIds[i]);
-            }
-          }
-          possibleEdgeIds = std::move(filteredEdgeIds);
         }
       }
     } else if (!m_transitionMatrix.empty()) {
-      // Logger::debug(std::format("Using transition matrix for node {}", nodeId));
-      // auto transitionRow{m_transitionMatrix.row(nodeId)};
-      // assert(!transitionRow.empty());
-      // std::uniform_real_distribution<double> uniformDist{0., 1.};
-      // auto const randomValue{uniformDist(this->m_generator)};
-      // auto sum{0.};
-      // Id nextNodeId{0};
-      // for (auto const& [nnid, probability] : transitionRow) {
-      //   sum += probability;
-      //   nextNodeId = nnid;
-      //   if (randomValue < sum) {
-      //     // Do not care about uturns when using transition matrix
-      //     break;
-      //   }
-      // }
-      // return nodeId * this->graph().nNodes() + nextNodeId;
       throw std::runtime_error("Transition matrix not implemented yet.");
+    }
+
+    // Single pass through outgoing edges with efficient filtering
+    for (const auto outEdgeId : outgoingEdges) {
+      const Id targetNode = this->graph().edge(outEdgeId)->target();
+
+      // Skip if target is forbidden
+      if (forbiddenTargetNodes.count(targetNode)) {
+        continue;
+      }
+
+      // For non-random agents with itinerary constraints
+      if (hasItineraryConstraints) {
+        if (allowedTargets.count(targetNode)) {
+          possibleEdgeIds.push_back(outEdgeId);
+        }
+      } else {
+        // For random agents or when no itinerary constraints apply
+        possibleEdgeIds.push_back(outEdgeId);
+      }
     }
 
     if (possibleEdgeIds.empty()) {
@@ -656,6 +630,7 @@ namespace dsf {
     if (possibleEdgeIds.size() == 1) {
       return possibleEdgeIds[0];
     }
+
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleEdgeIds.size() - 1)};
     return possibleEdgeIds[moveDist(this->m_generator)];

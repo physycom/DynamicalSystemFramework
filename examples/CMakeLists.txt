@@ -20,7 +20,7 @@ endif()
 set(EXECUTABLE_OUTPUT_PATH ../)
 
 # add as executable all cpp files into '.' folder
-file(GLOB SOURCES "*grado.cpp")
+file(GLOB SOURCES "*.cpp")
 file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
 
 # Loop through each source file and create an executable

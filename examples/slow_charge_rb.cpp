@@ -1,5 +1,6 @@
 #include "../src/dsf/dsf.hpp"
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -46,6 +47,7 @@ void printLoadingBar(int const i, int const n) {
 }
 
 int main(int argc, char** argv) {
+  auto const start = std::chrono::high_resolution_clock::now();
   if (argc != 5) {
     std::cerr << "Usage: " << argv[0]
               << " <SEED> <ERROR_PROBABILITY> <OUT_FOLDER_BASE> <INIT_NAGENTS>\n";
@@ -71,7 +73,7 @@ int main(int argc, char** argv) {
                                            BASE_OUT_FOLDER,
                                            ERROR_PROBABILITY,
                                            std::to_string(SEED))};  // output folder
-  const auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
+  constexpr auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
 
   // Clear output folder or create it if it doesn't exist
   if (!fs::exists(BASE_OUT_FOLDER)) {
@@ -106,18 +108,17 @@ int main(int argc, char** argv) {
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, true, SEED, 0.6};
-  Unit n{0};
+
   {
     std::vector<Unit> destinationNodes;
-    for (auto const& [nodeId, pNode] : graph.nodes()) {
+    for (auto const& [nodeId, pNode] : dynamics.graph().nodes()) {
       if (pNode->outgoingEdges().size() < 4) {
         destinationNodes.push_back(nodeId);
-        ++n;
       }
     }
     dynamics.setDestinationNodes(destinationNodes);
+    std::cout << "Number of exits: " << destinationNodes.size() << '\n';
   }
-  std::cout << "Number of exits: " << n << '\n';
 
   dynamics.setErrorProbability(0.05);
   dynamics.setPassageProbability(0.7707);
@@ -263,6 +264,10 @@ int main(int argc, char** argv) {
 #ifdef __APPLE__
   t.join();
 #endif
-
+  std::cout << "Total elapsed time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::high_resolution_clock::now() - start)
+                   .count()
+            << " milliseconds\n";
   return 0;
 }
