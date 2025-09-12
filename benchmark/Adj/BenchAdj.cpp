@@ -16,7 +16,7 @@ int main() {
   graph.importOSMEdges("../test/data/forlì_edges.csv");
   auto const N{graph.nNodes()};
   SparseMatrix<bool> sm;
-  for (const auto& pEdge : graph.edges()) {
+  for (const auto& [_, pEdge] : graph.edges()) {
     sm.insert(pEdge->source(), pEdge->target(), true);
   }
 
@@ -38,22 +38,22 @@ int main() {
   b2.print<sb::microseconds>();
   Logger::info("Benchmarking AdjacencyMatrix::getCol");
   b3.benchmark([&graph]() -> void {
-    for (auto const& pNode : graph.nodes()) {
-      pNode->ingoingEdges();
+    for (auto const& pair : graph.nodes()) {
+      pair.second->ingoingEdges();
     }
   });
   b3.print<sb::microseconds>();
   Logger::info("Benchmarking AdjacencyMatrix::getRow");
   b4.benchmark([&graph]() -> void {
-    for (auto const& pNode : graph.nodes()) {
-      pNode->outgoingEdges();
+    for (auto const& pair : graph.nodes()) {
+      pair.second->outgoingEdges();
     }
   });
   b4.print<sb::microseconds>();
   Logger::info("Benchmarking AdjacencyMatrix::getRow");
   b5.benchmark([&graph]() -> void {
-    for (auto const& pNode : graph.nodes()) {
-      auto const& pNodeCopy{graph.node(pNode->id())};
+    for (auto const& pair : graph.nodes()) {
+      auto const& pNodeCopy{graph.node(pair.first)};
     }
   });
   b5.print<sb::microseconds>();

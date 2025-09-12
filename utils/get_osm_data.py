@@ -258,11 +258,7 @@ if __name__ == "__main__":
             gdf_edges = gdf_edges[
                 ["osmid", "u", "v", "length", "lanes", "highway", "maxspeed", "name"]
             ]
-    # if osmid is a list, keep the first element
-    for index, row in gdf_edges.iterrows():
-        old_list = ast.literal_eval(str(row["osmid"]))
-        if isinstance(old_list, list):
-            gdf_edges.loc[index, "osmid"] = old_list[0]
+    gdf_edges["osmid"] = range(1, len(gdf_edges) + 1)
     if parser.allow_duplicates:
         N_DUPLICATES = 0
     else:

@@ -156,10 +156,10 @@ TEST_CASE("FirstOrderDynamics") {
 #ifdef __APPLE__
           CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
           CHECK_EQ(dynamics.graph().edge(1)->movingAgents().top()->itineraryId(), 2);
-          CHECK_EQ(dynamics.graph().edge(3)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(3)->movingAgents().top()->itineraryId(), 1);
           CHECK_EQ(dynamics.graph().edge(6)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(6)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(6)->movingAgents().top()->itineraryId(), 1);
+          CHECK_EQ(dynamics.graph().edge(8)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(8)->movingAgents().top()->itineraryId(), 2);
 #else
           CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
           CHECK_EQ(dynamics.graph().edge(1)->movingAgents().top()->itineraryId(), 1);

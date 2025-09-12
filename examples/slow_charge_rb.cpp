@@ -97,8 +97,8 @@ int main(int argc, char** argv) {
     graph.makeRoundabout(i);
   }
   std::cout << "Making every street a spire...\n";
-  for (const auto& pStreet : graph.edges()) {
-    graph.makeSpireStreet(pStreet->id());
+  for (const auto& [streetId, pStreet] : graph.edges()) {
+    graph.makeSpireStreet(streetId);
   }
   graph.adjustNodeCapacities();
   std::cout << "Done." << std::endl;
@@ -109,9 +109,9 @@ int main(int argc, char** argv) {
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
-    for (auto const& pNode : graph.nodes()) {
-      if (graph.outputNeighbors(pNode->id()).size() < 4) {
-        destinationNodes.push_back(pNode->id());
+    for (auto const& [nodeId, pNode] : graph.nodes()) {
+      if (pNode->outgoingEdges().size() < 4) {
+        destinationNodes.push_back(nodeId);
         ++n;
       }
     }
@@ -148,9 +148,9 @@ int main(int argc, char** argv) {
   std::ofstream inSpires(OUT_FOLDER + "in_spires.csv");
   outSpires << "time";
   inSpires << "time";
-  for (const auto& pStreet : dynamics.graph().edges()) {
-    outSpires << ';' << pStreet->id();
-    inSpires << ';' << pStreet->id();
+  for (const auto& [streetId, pStreet] : dynamics.graph().edges()) {
+    outSpires << ';' << streetId;
+    inSpires << ';' << streetId;
   }
   outSpires << '\n';
   inSpires << '\n';
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
 #ifdef PRINT_OUT_SPIRES
       outSpires << dynamics.time();
       inSpires << dynamics.time();
-      for (const auto& pStreet : dynamics.graph().edges()) {
+      for (const auto& [streetId, pStreet] : dynamics.graph().edges()) {
         auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
         outSpires << ';' << spire.outputCounts(false);
         inSpires << ';' << spire.inputCounts(false);

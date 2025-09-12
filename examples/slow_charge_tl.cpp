@@ -151,8 +151,8 @@ int main(int argc, char** argv) {
     graph.makeTrafficLight(i, 120);
   }
   std::cout << "Making every street a spire...\n";
-  for (const auto& pStreet : graph.edges()) {
-    graph.makeSpireStreet(pStreet->id());
+  for (const auto& pair : graph.edges()) {
+    graph.makeSpireStreet(pair.first);
   }
   // create gaussian random number generator
   std::random_device rd;
@@ -163,27 +163,27 @@ int main(int argc, char** argv) {
   auto random = [&d, &gen]() { return std::round(d(gen)); };
   std::cout << "Setting traffic light parameters..." << '\n';
   graph.adjustNodeCapacities();
-  for (const auto& pNode : graph.nodes()) {
+  for (const auto& [nodeId, pNode] : graph.nodes()) {
     auto& tl = dynamic_cast<TrafficLight&>(*pNode);
     double value = -1.;
     while (value < 0.) {
       value = random();
     }
-    const auto& col = graph.inputNeighbors(pNode->id());
+    const auto& col = pNode->ingoingEdges();
     std::set<Unit> streets;
     const auto& refLat = pNode->coords().value().first;
-    for (const auto& pInputNode : col) {
-      const auto& lat = pInputNode->coords().value().first;
+    for (const auto& inEdgeId : col) {
+      auto const& pEdge{graph.edge(inEdgeId)};
+      const auto& lat = pEdge->geometry().front().first;
       // std::cout << "Lat: " << lat << " RefLat: " << refLat << '\n';
       if (lat == refLat) {
-        streets.emplace(graph.edge(pInputNode->id(), pNode->id())->id());
+        streets.emplace(inEdgeId);
       }
     }
     for (auto const& streetId : streets) {
       tl.setCycle(streetId, dsf::Direction::ANY, {static_cast<dsf::Delay>(value), 0});
     }
-    for (const auto& pInputNode : col) {
-      auto const streetId = graph.edge(pInputNode->id(), pNode->id())->id();
+    for (const auto& streetId : col) {
       if (!streets.contains(streetId)) {
         tl.setComplementaryCycle(streetId, *streets.begin());
       }
@@ -202,8 +202,8 @@ int main(int argc, char** argv) {
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
-    for (auto const& pNode : graph.nodes()) {
-      if (graph.outputNeighbors(pNode->id()).size() < 4) {
+    for (auto const& [nodeId, pNode] : graph.nodes()) {
+      if (pNode->outgoingEdges().size() < 4) {
         destinationNodes.push_back(pNode->id());
         ++n;
       }
@@ -244,9 +244,9 @@ int main(int argc, char** argv) {
   std::ofstream inSpires(OUT_FOLDER + "in_spires.csv");
   outSpires << "time";
   inSpires << "time";
-  for (const auto& pStreet : dynamics.graph().edges()) {
-    outSpires << ';' << pStreet->id();
-    inSpires << ';' << pStreet->id();
+  for (const auto& pair : dynamics.graph().edges()) {
+    outSpires << ';' << pair.first;
+    inSpires << ';' << pair.first;
   }
   outSpires << '\n';
   inSpires << '\n';
@@ -314,8 +314,8 @@ int main(int argc, char** argv) {
 #ifdef PRINT_OUT_SPIRES
       outSpires << dynamics.time();
       inSpires << dynamics.time();
-      for (const auto& pStreet : dynamics.graph().edges()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
+      for (const auto& pair : dynamics.graph().edges()) {
+        auto& spire = dynamic_cast<SpireStreet&>(*pair.second);
         outSpires << ';' << spire.outputCounts(false);
         inSpires << ';' << spire.inputCounts(false);
       }

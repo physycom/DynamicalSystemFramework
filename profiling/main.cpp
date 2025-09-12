@@ -18,12 +18,12 @@ int main() {
   graph.importMatrix("../test/data/rawMatrix.dat", false);
   std::cout << "Number of nodes: " << graph.nNodes() << '\n'
             << "Number of streets: " << graph.nEdges() << '\n';
-  for (auto const& pStreet : graph.edges()) {
-    pStreet->setCapacity(100);
-    pStreet->setMaxSpeed(10.);
+  for (auto const& pair : graph.edges()) {
+    pair.second->setCapacity(100);
+    pair.second->setMaxSpeed(10.);
   }
-  for (auto const& pNode : graph.nodes()) {
-    pNode->setCapacity(10);
+  for (auto const& pair : graph.nodes()) {
+    pair.second->setCapacity(10);
   }
   std::cout << "Done.\n";
 
