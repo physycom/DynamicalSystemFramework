@@ -13,14 +13,14 @@ find_package(TBB REQUIRED CONFIG)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -O0 -g -fsanitize=address")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-  string(APPEND CMAKE_CXX_FLAGS "-Ofast -march=native -flto=auto")
+  string(APPEND CMAKE_CXX_FLAGS "-Ofast -march=native -flto=auto -pg")
 endif()
 
 # Set the folder for the executable
 set(EXECUTABLE_OUTPUT_PATH ../)
 
 # add as executable all cpp files into '.' folder
-file(GLOB SOURCES "*.cpp")
+file(GLOB SOURCES "*grado.cpp")
 file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
 
 # Loop through each source file and create an executable

@@ -3,11 +3,13 @@
 #include "Typedef.hpp"
 
 #include <format>
+#include <functional>
 #include <iostream>
 #include <source_location>
 #include <stdexcept>
 #include <string>
 #include <set>
+#include <type_traits>
 
 static inline std::string buildMessage(const std::string& type,
                                        const std::string& message,
@@ -52,6 +54,14 @@ namespace dsf {
     static void debug(
         const std::string& message,
         const std::source_location& location = std::source_location::current());
+    /// @brief Log a debug message with lazy evaluation (callable)
+    /// @tparam Func A callable returning std::string or convertible
+    template <typename Func>
+      requires std::is_invocable_v<Func> &&
+               std::is_convertible_v<std::invoke_result_t<Func>, std::string>
+    static void debug(
+        Func&& msgFunc,
+        const std::source_location& location = std::source_location::current());
     /// @brief Log an info message on std::clog
     /// @param message The message
     /// @param location The location of the message. Default is the current location
@@ -64,6 +74,14 @@ namespace dsf {
     static void warning(
         const std::string& message,
         const std::source_location& location = std::source_location::current());
+    /// @brief Log a warning message with lazy evaluation (callable)
+    /// @tparam Func A callable returning std::string or convertible
+    template <typename Func>
+      requires std::is_invocable_v<Func> &&
+               std::is_convertible_v<std::invoke_result_t<Func>, std::string>
+    static void warning(
+        Func&& msgFunc,
+        const std::source_location& location = std::source_location::current());
     /// @brief Log an error message and throw an exception of the given type with the message
     /// @tparam ExceptionType The type of exception to throw
     /// @param message The message
@@ -71,6 +89,15 @@ namespace dsf {
     template <typename ExceptionType = std::runtime_error>
     static void error(
         const std::string& message,
+        const std::source_location& location = std::source_location::current());
+    /// @brief Log an error message with lazy evaluation and throw an exception
+    /// @tparam ExceptionType The type of exception to throw
+    /// @tparam Func A callable returning std::string or convertible
+    template <typename ExceptionType = std::runtime_error, typename Func>
+      requires std::is_invocable_v<Func> &&
+               std::is_convertible_v<std::invoke_result_t<Func>, std::string>
+    static void error(
+        Func&& msgFunc,
         const std::source_location& location = std::source_location::current());
   };
 }  // namespace dsf
@@ -84,5 +111,29 @@ namespace dsf {
         buildMessage("\033[1;31mERROR", message, location, m_verbose) + "\033[1;0m\n";
     std::cerr << fullMessage;
     throw ExceptionType(fullMessage);
+  }
+  template <typename Func>
+    requires std::is_invocable_v<Func> &&
+             std::is_convertible_v<std::invoke_result_t<Func>, std::string>
+  inline void Logger::debug(Func&& msgFunc, const std::source_location& location) {
+    if (m_logLevel > log_level_t::DEBUG) {
+      return;
+    }
+    debug(msgFunc(), location);
+  }
+  template <typename Func>
+    requires std::is_invocable_v<Func> &&
+             std::is_convertible_v<std::invoke_result_t<Func>, std::string>
+  inline void Logger::warning(Func&& msgFunc, const std::source_location& location) {
+    if (m_logLevel > log_level_t::WARNING) {
+      return;
+    }
+    warning(msgFunc(), location);
+  }
+  template <typename ExceptionType, typename Func>
+    requires std::is_invocable_v<Func> &&
+             std::is_convertible_v<std::invoke_result_t<Func>, std::string>
+  inline void Logger::error(Func&& msgFunc, const std::source_location& location) {
+    error<ExceptionType>(msgFunc(), location);
   }
 }  // namespace dsf

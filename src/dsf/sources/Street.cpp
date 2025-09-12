@@ -59,10 +59,12 @@ namespace dsf {
           strLaneMapping +=
               std::format("{} - ", directionToString[static_cast<size_t>(item)]);
         });
-    Logger::debug(std::format("New lane mapping for street {} -> {} is: {}",
-                              m_nodePair.first,
-                              m_nodePair.second,
-                              strLaneMapping));
+    Logger::debug([&] {
+      return std::format("New lane mapping for street {} -> {} is: {}",
+                         m_nodePair.first,
+                         m_nodePair.second,
+                         strLaneMapping);
+    });
   }
   void Street::setQueue(dsf::queue<std::unique_ptr<Agent>> queue, size_t index) {
     assert(index < m_exitQueues.size());
@@ -71,7 +73,7 @@ namespace dsf {
 
   void Street::addAgent(std::unique_ptr<Agent> pAgent) {
     assert(!isFull());
-    Logger::debug(std::format("Adding {} on {}", *pAgent, *this));
+    Logger::debug([&] { return std::format("Adding {} on {}", *pAgent, *this); });
     m_movingAgents.push(std::move(pAgent));
   }
   void Street::enqueue(size_t const& queueId) {

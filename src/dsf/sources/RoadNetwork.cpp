@@ -98,7 +98,9 @@ namespace dsf {
           }
         }
         for (auto const& [name, count] : counts) {
-          Logger::debug(std::format("Street name {} has {} occurrences", name, count));
+          Logger::debug([&] {
+            return std::format("Street name {} has {} occurrences", name, count);
+          });
         }
         for (auto const& [streetId, name] : streetNames) {
           if (!name.empty() && counts.at(name) > 1) {
@@ -172,11 +174,13 @@ namespace dsf {
             capNoPriority += normCap;
           }
         }
-        Logger::debug(
-            std::format("Capacities for Traffic Light {}: priority {} no priority {}",
-                        pNode->id(),
-                        capPriority,
-                        capNoPriority));
+        Logger::debug([&] {
+          return std::format(
+              "Capacities for Traffic Light {}: priority {} no priority {}",
+              pNode->id(),
+              capPriority,
+              capNoPriority);
+        });
         greenTimes = std::make_pair(static_cast<Delay>(capPriority * tl.cycleTime()),
                                     static_cast<Delay>(capNoPriority * tl.cycleTime()));
       }
@@ -198,11 +202,13 @@ namespace dsf {
           phase = greenTime;
           greenTime = greenTimes.second;
         }
-        Logger::debug(
-            std::format("Setting cycle for street {} with green time {} and phase {}",
-                        streetId,
-                        greenTime,
-                        phase));
+        Logger::debug([&] {
+          return std::format(
+              "Setting cycle for street {} with green time {} and phase {}",
+              streetId,
+              greenTime,
+              phase);
+        });
         switch (nLane) {
           case 3:
             tl.setCycle(streetId,
@@ -295,14 +301,18 @@ namespace dsf {
                                                 pInStreet->target()));
                       allowedTurns.emplace(Direction::STRAIGHT);
                     } else if (deltaAngle < 0.) {
-                      Logger::debug(std::format("Street {} -> {} can turn RIGHT",
-                                                pInStreet->source(),
-                                                pInStreet->target()));
+                      Logger::debug([&] {
+                        return std::format("Street {} -> {} can turn RIGHT",
+                                           pInStreet->source(),
+                                           pInStreet->target());
+                      });
                       allowedTurns.emplace(Direction::RIGHT);
                     } else if (deltaAngle > 0.) {
-                      Logger::debug(std::format("Street {} -> {} can turn LEFT",
-                                                pInStreet->source(),
-                                                pInStreet->target()));
+                      Logger::debug([&] {
+                        return std::format("Street {} -> {} can turn LEFT",
+                                           pInStreet->source(),
+                                           pInStreet->target());
+                      });
                       allowedTurns.emplace(Direction::LEFT);
                     }
                   }
@@ -326,11 +336,13 @@ namespace dsf {
                 if (cycles.contains(pInStreet->id())) {
                   if (cycles.size() == static_cast<size_t>(nLanes)) {
                     // Replace with the traffic light cycles
-                    Logger::debug(
-                        std::format("Using traffic light {} cycles for street {} -> {}",
-                                    tl.id(),
-                                    pInStreet->source(),
-                                    pInStreet->target()));
+                    Logger::debug([&] {
+                      return std::format(
+                          "Using traffic light {} cycles for street {} -> {}",
+                          tl.id(),
+                          pInStreet->source(),
+                          pInStreet->target());
+                    });
                     auto const& cycle{cycles.at(pInStreet->id())};
                     allowedTurns.clear();
                     for (auto const& [direction, cycle] : cycle) {
@@ -598,11 +610,13 @@ namespace dsf {
             makeRoundabout(it->first);
           }
         } else {
-          Logger::warning(
-              std::format("Node with id {} not found. Skipping coordinates ({}, {}).",
-                          nodeId,
-                          dLat,
-                          dLon));
+          Logger::warning([&] {
+            return std::format(
+                "Node with id {} not found. Skipping coordinates ({}, {}).",
+                nodeId,
+                dLat,
+                dLon);
+          });
         }
       }
     } else {
@@ -649,12 +663,15 @@ namespace dsf {
           addNode<Intersection>(nodeIndex,
                                 std::make_pair(std::stod(lat), std::stod(lon)));
           if (highway.find("destination") != std::string::npos) {
-            Logger::debug(
-                std::format("Setting node {} as a destination node", nodeIndex));
+            Logger::debug([&] {
+              return std::format("Setting node {} as a destination node", nodeIndex);
+            });
             m_destinationNodes.push_back(nodeIndex);
           }
           if (highway.find("origin") != std::string::npos) {
-            Logger::debug(std::format("Setting node {} as an origin node", nodeIndex));
+            Logger::debug([&] {
+              return std::format("Setting node {} as an origin node", nodeIndex);
+            });
             m_originNodes.push_back(nodeIndex);
           }
         }
@@ -662,7 +679,8 @@ namespace dsf {
     } else {
       Logger::error(std::format("File extension ({}) not supported", fileExt));
     }
-    Logger::debug(std::format("Successfully imported {} nodes", nNodes()));
+    Logger::debug(
+        [&] { return std::format("Successfully imported {} nodes", nNodes()); });
   }
 
   void RoadNetwork::importOSMEdges(const std::string& fileName) {
@@ -732,11 +750,13 @@ namespace dsf {
       try {
         iLanes = std::stoi(lanes);
         if (iLanes < 1) {
-          Logger::warning(std::format(
-              "Invalid number of lanes {} for edge {}->{}. Defaulting to 1 lane.",
-              iLanes,
-              sourceId,
-              targetId));
+          Logger::warning([&] {
+            return std::format(
+                "Invalid number of lanes {} for edge {}->{}. Defaulting to 1 lane.",
+                iLanes,
+                sourceId,
+                targetId);
+          });
           ++iLanes;  // Ensure at least 1 lane
         }
       } catch (const std::invalid_argument& e) {
@@ -777,11 +797,13 @@ namespace dsf {
             dLon = std::stod(lon);
             dLat = std::stod(lat);
           } catch (const std::invalid_argument& e) {
-            Logger::error(std::format("Invalid coordinates ({}, {}) for edge {}->{}",
-                                      lon,
-                                      lat,
-                                      sourceId,
-                                      targetId));
+            Logger::error([&] {
+              return std::format("Invalid coordinates ({}, {}) for edge {}->{}",
+                                 lon,
+                                 lat,
+                                 sourceId,
+                                 targetId);
+            });
           }
           // Note: The original code stored as (lat, lon) based on your comment.
           coords.emplace_back(dLon, dLat);
@@ -846,7 +868,8 @@ namespace dsf {
     //   }
     // }
 
-    Logger::debug(std::format("Successfully imported {} edges", nEdges()));
+    Logger::debug(
+        [&] { return std::format("Successfully imported {} edges", nEdges()); });
   }
   void RoadNetwork::importTrafficLights(const std::string& fileName) {
     std::ifstream file{fileName};
@@ -1020,8 +1043,9 @@ namespace dsf {
     auto const& geometry{street.geometry()};
     auto const& nodes{this->nodes()};
     if (!nodes.contains(street.source())) {
-      Logger::debug(
-          std::format("Node with id {} not found, adding default", street.source()));
+      Logger::debug([&] {
+        return std::format("Node with id {} not found, adding default", street.source());
+      });
       if (!geometry.empty()) {
         addNode<Intersection>(street.source(), geometry.front());
       } else {
@@ -1029,8 +1053,9 @@ namespace dsf {
       }
     }
     if (!nodes.contains(street.target())) {
-      Logger::debug(
-          std::format("Node with id {} not found, adding default", street.target()));
+      Logger::debug([&] {
+        return std::format("Node with id {} not found, adding default", street.target());
+      });
       if (!geometry.empty()) {
         addNode<Intersection>(street.target(), geometry.back());
       } else {
