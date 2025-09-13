@@ -2412,8 +2412,9 @@ namespace dsf {
       file << "time;distances;times;speeds" << std::endl;
     }
     file << this->time() << ';';
+    file << std::fixed << std::setprecision(2);
     for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      file << std::format("{:.2f}", it->first);
+      file << it->first;
       if (it != m_travelDTs.cend() - 1) {
         file << ',';
       }
@@ -2427,7 +2428,7 @@ namespace dsf {
     }
     file << ';';
     for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      file << std::format("{:.2f}", it->first / it->second);
+      file << (it->first / it->second);
       if (it != m_travelDTs.cend() - 1) {
         file << ',';
       }
