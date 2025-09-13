@@ -285,19 +285,12 @@ TEST_CASE("FirstOrderDynamics") {
             "correctly "
             "formed") {
           CHECK_EQ(dynamics.itineraries().size(), 1);
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(0, 1));
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(1, 2));
-          CHECK_FALSE(dynamics.itineraries().at(0)->path()->operator()(0, 2));
-          for (auto const& it : dynamics.itineraries()) {
-            auto const& path = it.second->path();
-            for (uint16_t i{0}; i < path->n(); ++i) {
-              if (i == it.second->destination()) {
-                CHECK_FALSE(path->getRow(i).size());
-              } else {
-                CHECK(path->getRow(i).size());
-              }
-            }
-          }
+          CHECK_EQ(dynamics.itineraries().at(0)->path().size(), 2);
+          CHECK_EQ(dynamics.itineraries().at(0)->path().at(0).size(), 1);
+          CHECK(dynamics.itineraries().at(0)->path().at(0)[0] == 1);
+          CHECK_EQ(dynamics.itineraries().at(0)->path().at(1).size(), 1);
+          CHECK(dynamics.itineraries().at(0)->path().at(1)[0] == 2);
+          CHECK_FALSE(dynamics.itineraries().at(0)->path().at(0)[0] == 2);
         }
       }
     }
@@ -316,15 +309,19 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.updatePaths();
         THEN("The itinerary is correct, excluding paths passing in the same node twice") {
           auto const& path = dynamics.itineraries().at(3)->path();
-          CHECK_EQ(path->size(), 5);
-          CHECK_EQ(path->n(), 6);
-          CHECK(path->operator()(0, 1));
-          CHECK(path->operator()(1, 2));
-          CHECK(path->operator()(2, 3));
-          CHECK_FALSE(path->operator()(1, 4));
-          CHECK(path->operator()(4, 1));
-          CHECK_FALSE(path->operator()(4, 5));
-          CHECK(path->operator()(5, 4));
+          CHECK_EQ(path.size(), 5);
+          CHECK_EQ(path.at(0).size(), 1);
+          CHECK(path.at(0)[0] == 1);
+          CHECK_EQ(path.at(1).size(), 1);
+          CHECK(path.at(1)[0] == 2);
+          CHECK_EQ(path.at(2).size(), 1);
+          CHECK(path.at(2)[0] == 3);
+          CHECK_FALSE(path.at(1)[0] == 4);
+          CHECK_EQ(path.at(4).size(), 1);
+          CHECK(path.at(4)[0] == 1);
+          CHECK_FALSE(path.at(4)[0] == 5);
+          CHECK_EQ(path.at(5).size(), 1);
+          CHECK(path.at(5)[0] == 4);
         }
       }
     }
@@ -340,13 +337,19 @@ TEST_CASE("FirstOrderDynamics") {
       dynamics.addItinerary(2, 118);
       dynamics.addItinerary(3, 118);
       dynamics.updatePaths();
-      for (auto const& it : dynamics.itineraries()) {
-        auto const& path = it.second->path();
-        for (uint16_t i{0}; i < path->n(); ++i) {
-          if (i == it.second->destination()) {
-            CHECK_FALSE(path->getRow(i).size());
-          } else {
-            CHECK(path->getRow(i).size());
+      WHEN("We update the paths") {
+        dynamics.updatePaths();
+        THEN("The paths are updated and correctly formed") {
+          CHECK_EQ(dynamics.itineraries().size(), 4);
+          for (auto const& it : dynamics.itineraries()) {
+            auto const& path = it.second->path();
+            for (uint16_t i{0}; i < path.size(); ++i) {
+              if (i == it.second->destination()) {
+                CHECK_FALSE(path.contains(i));
+              } else {
+                CHECK(path.contains(i));
+              }
+            }
           }
         }
       }
@@ -364,23 +367,17 @@ TEST_CASE("FirstOrderDynamics") {
       WHEN("We update the paths") {
         dynamics.updatePaths();
         THEN("The path is updated and correctly formed") {
+          auto const& path{dynamics.itineraries().at(0)->path()};
           CHECK_EQ(dynamics.itineraries().size(), 1);
-          CHECK_EQ(dynamics.itineraries().at(0)->path()->size(), 4);
-          CHECK_EQ(dynamics.itineraries().at(0)->path()->n(), 4);
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(0, 1));
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(1, 2));
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(0, 3));
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(3, 2));
-          for (auto const& it : dynamics.itineraries()) {
-            auto const& path = it.second->path();
-            for (uint16_t i{0}; i < path->n(); ++i) {
-              if (i == it.second->destination()) {
-                CHECK_FALSE(path->getRow(i).size());
-              } else {
-                CHECK(path->getRow(i).size());
-              }
-            }
-          }
+          CHECK_EQ(path.size(), 3);
+          CHECK_EQ(path.at(0).size(), 2);
+          CHECK_EQ(path.at(0)[0], 1);
+          CHECK_EQ(path.at(0)[1], 3);
+          CHECK_EQ(path.at(1).size(), 1);
+          CHECK_EQ(path.at(1)[0], 2);
+          CHECK_EQ(path.at(3).size(), 1);
+          CHECK_EQ(path.at(3)[0], 2);
+          CHECK_FALSE(path.contains(2));
         }
       }
     }
@@ -401,22 +398,12 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.updatePaths();
         THEN("The path is updated and correctly formed") {
           CHECK_EQ(dynamics.itineraries().size(), 1);
-          CHECK_EQ(dynamics.itineraries().at(0)->path()->size(), 4);
-          CHECK_EQ(dynamics.itineraries().at(0)->path()->n(), 4);
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(0, 1));
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(1, 2));
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(0, 3));
-          CHECK(dynamics.itineraries().at(0)->path()->operator()(3, 2));
-          for (auto const& it : dynamics.itineraries()) {
-            auto const& path = it.second->path();
-            for (uint16_t i{0}; i < path->n(); ++i) {
-              if (i == it.second->destination()) {
-                CHECK_FALSE(path->getRow(i).size());
-              } else {
-                CHECK(path->getRow(i).size());
-              }
-            }
-          }
+          CHECK_EQ(dynamics.itineraries().at(0)->path().size(), 3);
+          CHECK(dynamics.itineraries().at(0)->path().at(0)[0] == 1);
+          CHECK(dynamics.itineraries().at(0)->path().at(1)[0] == 2);
+          CHECK(dynamics.itineraries().at(0)->path().at(0)[1] == 3);
+          CHECK(dynamics.itineraries().at(0)->path().at(3)[0] == 2);
+          CHECK_FALSE(dynamics.itineraries().at(0)->path().contains(2));
         }
       }
     }

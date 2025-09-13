@@ -32,7 +32,6 @@
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
 #include "RoadNetwork.hpp"
-#include "SparseMatrix.hpp"
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
@@ -47,7 +46,6 @@ namespace dsf {
     std::vector<Id> m_nodeIndices;
     std::vector<std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
-    SparseMatrix<double> m_transitionMatrix;
     Size m_nAgents;
 
   protected:
@@ -126,11 +124,6 @@ namespace dsf {
     void setPassageProbability(double passageProbability);
 
     void setWeightFunction(std::string const& strWeightFunction);
-    /// @brief Set the transition matrix
-    /// @param transitionMatrix The transition matrix
-    /// @throw std::invalid_argument If some lines of the transition matrix are empty or if they differ from the adjacency matrix
-    /// @details The transition matrix is a sparse matrix representing the transition probabilities between the nodes
-    void setTransitionMatrix(const SparseMatrix<double>& transitionMatrix);
     /// @brief Set the force priorities flag
     /// @param forcePriorities The flag
     /// @details If true, if an agent cannot move to the next street, the whole node is skipped
@@ -252,11 +245,6 @@ namespace dsf {
     inline const std::unordered_map<Id, std::unique_ptr<Itinerary>>& itineraries()
         const noexcept {
       return m_itineraries;
-    }
-    /// @brief Get the transition matrix
-    /// @return const SparseMatrix<double>&, The transition matrix
-    inline const SparseMatrix<double>& transitionMatrix() const noexcept {
-      return m_transitionMatrix;
     }
     /// @brief Get the agents
     /// @return const std::unordered_map<Id, Agent<Id>>&, The agents
@@ -442,9 +430,9 @@ namespace dsf {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_updatePath(std::unique_ptr<Itinerary> const& pItinerary) {
     if (m_bCacheEnabled) {
-      auto const& file = std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
+      auto const& file = std::format("{}{}.ity", g_cacheFolder, pItinerary->id());
       if (std::filesystem::exists(file)) {
-        pItinerary->setPath(AdjacencyMatrix(file));
+        pItinerary->load(file);
         Logger::debug([&] {
           return std::format("Loaded cached path for itinerary {}", pItinerary->id());
         });
@@ -468,7 +456,7 @@ namespace dsf {
       }
       shortestPaths[nodeId] = *result;
     }
-    AdjacencyMatrix path;
+    std::unordered_map<Id, std::vector<Id>> path;
     // cycle over the nodes
     for (const auto& [nodeId, pNode] : this->graph().nodes()) {
       if (nodeId == destinationID) {
@@ -486,7 +474,7 @@ namespace dsf {
                        minDistance) <
               m_weightTreshold)  // 1 meter tolerance between shortest paths
           {
-            path.insert(nodeId, nextNodeId);
+            path[nodeId].push_back(nextNodeId);
           } else {
             Logger::debug([&] {
               return std::format(
@@ -513,7 +501,7 @@ namespace dsf {
                      minDistance) <
             m_weightTreshold};  // 1 meter tolerance between shortest paths
         if (bIsMinDistance) {
-          path.insert(nodeId, nextNodeId);
+          path[nodeId].push_back(nextNodeId);
         } else {
           Logger::debug([&] {
             return std::format(
@@ -539,8 +527,7 @@ namespace dsf {
 
     pItinerary->setPath(path);
     if (m_bCacheEnabled) {
-      pItinerary->path()->save(
-          std::format("{}it{}.adj", g_cacheFolder, pItinerary->id()));
+      pItinerary->save(std::format("{}{}.ity", g_cacheFolder, pItinerary->id()));
       Logger::debug([&] {
         return std::format("Saved path in cache for itinerary {}", pItinerary->id());
       });
@@ -592,7 +579,7 @@ namespace dsf {
             uniformDist(this->m_generator) < m_errorProbability)) {
         const auto& it = this->itineraries().at(pAgent->itineraryId());
         if (it->destination() != nodeId) {
-          const auto pathTargets = it->path()->getRow(nodeId);
+          const auto pathTargets = it->path().at(nodeId);
           allowedTargets.insert(pathTargets.begin(), pathTargets.end());
           hasItineraryConstraints = true;
 
@@ -602,8 +589,6 @@ namespace dsf {
           }
         }
       }
-    } else if (!m_transitionMatrix.empty()) {
-      throw std::runtime_error("Transition matrix not implemented yet.");
     }
 
     // Single pass through outgoing edges with efficient filtering
@@ -1221,38 +1206,6 @@ namespace dsf {
     }
     this->updatePaths();
   }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::setTransitionMatrix(
-      const SparseMatrix<double>& transitionMatrix) {
-    if (transitionMatrix.n() != this->graph().nNodes()) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
-          "The transition matrix must have size {}x{} but given size is {}x{}",
-          this->graph().nNodes(),
-          this->graph().nNodes(),
-          transitionMatrix.n(),
-          transitionMatrix.n())));
-    }
-    for (auto i{0}; i < transitionMatrix.n(); ++i) {
-      auto const& trow{transitionMatrix.row(i)};
-      if (trow.empty()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(
-            std::format("The transition matrix row {} is empty", i)));
-      }
-      auto const& arow{this->graph().node(i)->outgoingEdges()};
-      if (trow.size() != arow.size()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
-            "The transition matrix row {} has size {} but the adjacency matrix row {} "
-            "has size {}",
-            i,
-            trow.size(),
-            i,
-            arow.size())));
-      }
-    }
-    m_transitionMatrix = transitionMatrix;
-    m_transitionMatrix.normalize();
-  }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
@@ -1429,7 +1382,7 @@ namespace dsf {
         std::size_t n_emptyRows = 0;
         for (const auto& [id, weight] : dst_weights) {
           // if the node is at a minimum distance from the destination, skip it
-          if (this->itineraries().at(id)->path()->getRow(srcId).empty()) {
+          if (!this->itineraries().at(id)->path().contains(srcId)) {
             ++n_emptyRows;
             continue;
           }
