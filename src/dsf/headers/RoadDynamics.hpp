@@ -44,6 +44,7 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   class RoadDynamics : public Dynamics<RoadNetwork> {
+    std::vector<Id> m_nodeIndices;
     std::vector<std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
     SparseMatrix<double> m_transitionMatrix;
@@ -95,7 +96,7 @@ namespace dsf {
     /// @brief Evolve the agents.
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
-    // void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
+    void m_evolveAgents();
 
     void m_trafficlightSingleTailOptimizer(double const& beta,
                                            std::optional<std::ofstream>& logStream);
@@ -399,8 +400,11 @@ namespace dsf {
       }
       Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
     }
-    for (const auto& nodeId : this->graph().destinationNodes()) {
-      this->addItinerary(nodeId, nodeId);
+    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+      m_nodeIndices.push_back(nodeId);
+    }
+    for (auto const& nodeId : this->graph().destinationNodes()) {
+      m_itineraries.emplace(nodeId, std::make_unique<Itinerary>(nodeId, nodeId));
     }
     // updatePaths();
     std::for_each(
@@ -724,26 +728,22 @@ namespace dsf {
     auto const& transportCapacity{pStreet->transportCapacity()};
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     for (auto i = 0; i < std::ceil(transportCapacity); ++i) {
-      auto dRandomValue{uniformDist(this->m_generator)};
       if (pStreet->isStochastic() &&
-          dRandomValue > dynamic_cast<StochasticStreet&>(*pStreet).flowRate()) {
+          uniformDist(this->m_generator) >
+              dynamic_cast<StochasticStreet&>(*pStreet).flowRate()) {
         Logger::debug([&] {
-          return std::format("Skipping due to flow rate {:.2f} < random value {:.2f}",
-                             dynamic_cast<StochasticStreet&>(*pStreet).flowRate(),
-                             dRandomValue);
+          return std::format("Skipping due to flow rate {:.2f} < random value",
+                             dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
         });
         continue;
       }
-      dRandomValue = uniformDist(this->m_generator);
       if (i == std::ceil(transportCapacity) - 1) {
         double integral;
         double fractional = std::modf(transportCapacity, &integral);
-        if (fractional != 0. && dRandomValue > fractional) {
+        if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
           Logger::debug([&] {
             return std::format(
-                "Skipping due to fractional capacity {:.2f} < random value {:.2f}",
-                fractional,
-                dRandomValue);
+                "Skipping due to fractional capacity {:.2f} < random value", fractional);
           });
           continue;
         }
@@ -1133,12 +1133,58 @@ namespace dsf {
       }
     }
   }
-
-  // template <typename delay_t>
-  //   requires(is_numeric_v<delay_t>)
-  // void RoadDynamics<delay_t>::m_evolveAgent(std::unique_ptr<Agent> const& pAgent) {
-  //   // The "cost" of enqueuing is one time unit, so we consider it as passed
-  // }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_evolveAgents() {
+    std::uniform_int_distribution<Id> nodeDist{
+        0, static_cast<Id>(this->graph().nNodes() - 1)};
+    Logger::debug([&] { return std::format("Processing {} agents", m_agents.size()); });
+    for (auto itAgent{m_agents.begin()}; itAgent != m_agents.end();) {
+      auto& pAgent{*itAgent};
+      if (!pAgent->srcNodeId().has_value()) {
+        auto nodeIt{this->graph().nodes().begin()};
+        std::advance(nodeIt, nodeDist(this->m_generator));
+        pAgent->setSrcNodeId(nodeIt->second->id());
+      }
+      auto const& pSourceNode{this->graph().node(*(pAgent->srcNodeId()))};
+      // Logger::debug(std::format("Checking node {}", pAgent->srcNodeId().value()));
+      if (pSourceNode->isFull()) {
+        Logger::debug([&] {
+          return std::format("Skipping {} due to full source {}", *pAgent, *pSourceNode);
+        });
+        ++itAgent;
+        continue;
+      }
+      if (!pAgent->nextStreetId().has_value()) {
+        Logger::debug("No next street id, generating a random one");
+        pAgent->setNextStreetId(
+            this->m_nextStreetId(pAgent, pSourceNode->id(), pAgent->streetId()));
+      }
+      // Logger::debug(
+      //     std::format("Checking next street {}", pAgent->nextStreetId().value()));
+      auto const& nextStreet{
+          this->graph().edge(pAgent->nextStreetId().value())};  // next street
+      if (nextStreet->isFull()) {
+        ++itAgent;
+        Logger::debug([&] {
+          return std::format("Skipping {} due to full input {}", *pAgent, *nextStreet);
+        });
+        continue;
+      }
+      // Logger::debug("Adding agent on the source node");
+      if (pSourceNode->isIntersection()) {
+        auto& intersection = dynamic_cast<Intersection&>(*pSourceNode);
+        intersection.addAgent(0., std::move(pAgent));
+      } else if (pSourceNode->isRoundabout()) {
+        auto& roundabout = dynamic_cast<Roundabout&>(*pSourceNode);
+        roundabout.enqueue(std::move(pAgent));
+      }
+      itAgent = m_agents.erase(itAgent);
+    }
+    Logger::debug([&] {
+      return std::format("There are {} agents left in the list.", m_agents.size());
+    });
+  }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
@@ -1498,14 +1544,6 @@ namespace dsf {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Itinerary with id {} already exists.", itinerary->id())));
     }
-    // auto const& it = std::find_if(
-    //     m_itineraries.cbegin(), m_itineraries.cend(), [&itinerary](auto const& pair) {
-    //       return pair.second->destination() == itinerary->destination();
-    //     });
-    // if (it == m_itineraries.cend()) {
-    //   throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
-    //       "Destination node with id {} not found", itinerary->destination())));
-    // }
     m_itineraries.emplace(itinerary->id(), std::move(itinerary));
   }
 
@@ -1517,37 +1555,36 @@ namespace dsf {
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->time() % m_dataUpdatePeriod.value() == 0;
     auto const numNodes{this->graph().nNodes()};
-    const auto& nodes =
-        this->graph().nodes();  // assuming a container with contiguous indices
+
     const unsigned int concurrency = std::thread::hardware_concurrency();
     // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
     const size_t grainSize = std::max(size_t(1), numNodes / concurrency);
     this->m_taskArena.execute([&] {
-      tbb::parallel_for(tbb::blocked_range<size_t>(0, numNodes, grainSize),
-                        [&](const tbb::blocked_range<size_t>& range) {
-                          for (size_t i = range.begin(); i != range.end(); ++i) {
-                            auto const& pNode = nodes.at(i);
-                            for (auto const& inEdgeId : pNode->ingoingEdges()) {
-                              auto const& pStreet{this->graph().edge(inEdgeId)};
-                              if (bUpdateData && pNode->isTrafficLight()) {
-                                if (!m_queuesAtTrafficLights.contains(pStreet->id())) {
-                                  auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-                                  assert(!tl.cycles().empty());
-                                  for (auto const& [id, pair] : tl.cycles()) {
-                                    for (auto const& [direction, cycle] : pair) {
-                                      m_queuesAtTrafficLights[id].emplace(direction, 0.);
-                                    }
-                                  }
-                                }
-                                for (auto& [direction, value] :
-                                     m_queuesAtTrafficLights.at(pStreet->id())) {
-                                  value += pStreet->nExitingAgents(direction, true);
-                                }
-                              }
-                              m_evolveStreet(pStreet, reinsert_agents);
-                            }
-                          }
-                        });
+      tbb::parallel_for(
+          tbb::blocked_range<size_t>(0, numNodes, grainSize),
+          [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i != range.end(); ++i) {
+              auto const& pNode = this->graph().node(m_nodeIndices[i]);
+              for (auto const& inEdgeId : pNode->ingoingEdges()) {
+                auto const& pStreet{this->graph().edge(inEdgeId)};
+                if (bUpdateData && pNode->isTrafficLight()) {
+                  if (!m_queuesAtTrafficLights.contains(inEdgeId)) {
+                    auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+                    assert(!tl.cycles().empty());
+                    for (auto const& [id, pair] : tl.cycles()) {
+                      for (auto const& [direction, cycle] : pair) {
+                        m_queuesAtTrafficLights[id].emplace(direction, 0.);
+                      }
+                    }
+                  }
+                  for (auto& [direction, value] : m_queuesAtTrafficLights.at(inEdgeId)) {
+                    value += pStreet->nExitingAgents(direction, true);
+                  }
+                }
+                m_evolveStreet(pStreet, reinsert_agents);
+              }
+            }
+          });
     });
     Logger::debug("Pre-nodes");
     // Move transport capacity agents from each node
@@ -1555,7 +1592,7 @@ namespace dsf {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, numNodes, grainSize),
                         [&](const tbb::blocked_range<size_t>& range) {
                           for (size_t i = range.begin(); i != range.end(); ++i) {
-                            const auto& pNode = nodes.at(i);
+                            const auto& pNode = this->graph().node(m_nodeIndices[i]);
                             m_evolveNode(pNode);
                             if (pNode->isTrafficLight()) {
                               auto& tl = dynamic_cast<TrafficLight&>(*pNode);
@@ -1564,55 +1601,8 @@ namespace dsf {
                           }
                         });
     });
+    this->m_evolveAgents();
     // cycle over agents and update their times
-    std::uniform_int_distribution<Id> nodeDist{
-        0, static_cast<Id>(this->graph().nNodes() - 1)};
-    Logger::debug([&] { return std::format("Processing {} agents", m_agents.size()); });
-    for (auto itAgent{m_agents.begin()}; itAgent != m_agents.end();) {
-      auto& pAgent{*itAgent};
-      if (!pAgent->srcNodeId().has_value()) {
-        auto nodeIt{this->graph().nodes().begin()};
-        std::advance(nodeIt, nodeDist(this->m_generator));
-        pAgent->setSrcNodeId(nodeIt->second->id());
-      }
-      auto const& pSourceNode{this->graph().node(*(pAgent->srcNodeId()))};
-      // Logger::debug(std::format("Checking node {}", pAgent->srcNodeId().value()));
-      if (pSourceNode->isFull()) {
-        Logger::debug([&] {
-          return std::format("Skipping {} due to full source {}", *pAgent, *pSourceNode);
-        });
-        ++itAgent;
-        continue;
-      }
-      if (!pAgent->nextStreetId().has_value()) {
-        Logger::debug("No next street id, generating a random one");
-        pAgent->setNextStreetId(
-            this->m_nextStreetId(pAgent, pSourceNode->id(), pAgent->streetId()));
-      }
-      // Logger::debug(
-      //     std::format("Checking next street {}", pAgent->nextStreetId().value()));
-      auto const& nextStreet{
-          this->graph().edge(pAgent->nextStreetId().value())};  // next street
-      if (nextStreet->isFull()) {
-        ++itAgent;
-        Logger::debug([&] {
-          return std::format("Skipping {} due to full input {}", *pAgent, *nextStreet);
-        });
-        continue;
-      }
-      // Logger::debug("Adding agent on the source node");
-      if (pSourceNode->isIntersection()) {
-        auto& intersection = dynamic_cast<Intersection&>(*pSourceNode);
-        intersection.addAgent(0., std::move(pAgent));
-      } else if (pSourceNode->isRoundabout()) {
-        auto& roundabout = dynamic_cast<Roundabout&>(*pSourceNode);
-        roundabout.enqueue(std::move(pAgent));
-      }
-      itAgent = m_agents.erase(itAgent);
-    }
-    Logger::debug([&] {
-      return std::format("There are {} agents left in the list.", m_agents.size());
-    });
     Dynamics<RoadNetwork>::m_evolve();
   }
 
