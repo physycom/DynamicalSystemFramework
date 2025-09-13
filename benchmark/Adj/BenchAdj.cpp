@@ -12,8 +12,8 @@ using Bench = sb::Bench<long long int>;
 
 int main() {
   RoadNetwork graph{};
-  graph.importOSMNodes("../test/data/forlì_nodes.csv");
-  graph.importOSMEdges("../test/data/forlì_edges.csv");
+  graph.importOSMNodes("../test/data/postua_nodes.csv");
+  graph.importOSMEdges("../test/data/postua_edges.csv");
   auto const N{graph.nNodes()};
   SparseMatrix<bool> sm;
   for (const auto& [_, pEdge] : graph.edges()) {
