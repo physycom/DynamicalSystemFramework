@@ -14,25 +14,29 @@ int main() {
   RoadNetwork graph{};
   graph.importOSMNodes("../test/data/postua_nodes.csv");
   graph.importOSMEdges("../test/data/postua_edges.csv");
-  auto const N{graph.nNodes()};
   SparseMatrix<bool> sm;
   for (const auto& [_, pEdge] : graph.edges()) {
     sm.insert(pEdge->source(), pEdge->target(), true);
   }
+  std::vector<Id> nodeIndices;
+  nodeIndices.reserve(graph.nNodes());
+  for (const auto& [nodeId, _] : graph.nodes()) {
+    nodeIndices.push_back(nodeId);
+  }
 
   const int n_rep{100};
-  Bench b1(n_rep), b2(n_rep), b3(n_rep), b4(n_rep), b5(n_rep);
+  Bench b1(n_rep), b2(n_rep), b3(n_rep), b4(n_rep);
   Logger::info("Benchmarking SparseMatrix::getCol");
-  b1.benchmark([&sm, &N]() -> void {
-    for (size_t i{0}; i < N; ++i) {
-      sm.col(i);
+  b1.benchmark([&sm, &nodeIndices]() -> void {
+    for (auto const& nodeId : nodeIndices) {
+      sm.col(nodeId);
     }
   });
   b1.print<sb::microseconds>();
   Logger::info("Benchmarking SparseMatrix::getRow");
-  b2.benchmark([&sm, &N]() -> void {
-    for (size_t i{0}; i < N; ++i) {
-      sm.row(i);
+  b2.benchmark([&sm, &nodeIndices]() -> void {
+    for (auto const& nodeId : nodeIndices) {
+      sm.row(nodeId);
     }
   });
   b2.print<sb::microseconds>();
@@ -50,11 +54,4 @@ int main() {
     }
   });
   b4.print<sb::microseconds>();
-  Logger::info("Benchmarking AdjacencyMatrix::getRow");
-  b5.benchmark([&graph]() -> void {
-    for (auto const& pair : graph.nodes()) {
-      auto const& pNodeCopy{graph.node(pair.first)};
-    }
-  });
-  b5.print<sb::microseconds>();
 }

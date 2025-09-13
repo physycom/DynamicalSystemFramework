@@ -128,22 +128,6 @@ namespace dsf {
     return elements;
   }
 
-  size_t AdjacencyMatrix::elementIndex(Id row, Id col) const {
-    if (row >= m_n || col >= m_n) {
-      throw std::out_of_range(Logger::buildExceptionMessage(
-          std::format("Row or column index out of range. (row: {}, col: {})", row, col)));
-    }
-    auto itFirst = m_columnIndices.begin() + m_rowOffsets[row];
-    auto itLast = m_columnIndices.begin() + m_rowOffsets[row + 1];
-    auto it = std::find(itFirst, itLast, col);
-    if (it == itLast) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Element ({}, {}) not found.", row, col)));
-    }
-    size_t const index = m_rowOffsets[row] + std::distance(itFirst, it);
-    return index;
-  }
-
   void AdjacencyMatrix::clear() {
     m_rowOffsets = std::vector<Id>(1, 0);
     m_colOffsets = std::vector<Id>(1, 0);
