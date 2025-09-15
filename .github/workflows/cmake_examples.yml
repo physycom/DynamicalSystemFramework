@@ -23,9 +23,9 @@ jobs:
       run: |
         if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
           sudo apt update
-          sudo apt install libtbb-dev binutils
+          sudo apt install libtbb-dev libfmt-dev libspdlog-dev binutils
         elif [ ${{ matrix.os }} == 'macos-latest' ]; then
-          brew install tbb
+          brew install tbb fmt spdlog
         fi       
 
     - uses: actions/checkout@v4

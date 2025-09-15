@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(TBB REQUIRED CONFIG)
+find_package(fmt REQUIRED)
+find_package(spdlog REQUIRED)
 
 # Set the C++ flags
 string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -Os")
@@ -20,10 +22,10 @@ file(GLOB SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
 # Define the executable
 add_executable(prof.out main.cpp ${SOURCES})
 target_include_directories(prof.out PRIVATE ../src/)
-target_link_libraries(prof.out PRIVATE TBB::tbb)
+target_link_libraries(prof.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog)
 target_compile_options(prof.out PRIVATE -pg)
 target_link_options(prof.out PRIVATE -pg)
 add_executable(mem.out main.cpp ${SOURCES})
 target_include_directories(mem.out PRIVATE ../src/)
-target_link_libraries(mem.out PRIVATE TBB::tbb)
+target_link_libraries(mem.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog)
 add_executable(parse_massif.out parse_massif.cpp)

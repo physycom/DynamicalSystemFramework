@@ -18,7 +18,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Install tools manually
-      run: sudo apt install lcov gcovr libtbb-dev
+      run: sudo apt install lcov gcovr libtbb-dev libfmt-dev libspdlog-dev
     
     - uses: actions/checkout@v4
 

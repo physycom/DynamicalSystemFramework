@@ -2,7 +2,7 @@
 #include "../headers/Street.hpp"
 
 #include <algorithm>
-#include <cassert>
+#include <spdlog/spdlog.h>
 
 namespace dsf {
   Street::Street(Id id,
@@ -59,12 +59,10 @@ namespace dsf {
           strLaneMapping +=
               std::format("{} - ", directionToString[static_cast<size_t>(item)]);
         });
-    Logger::debug([&] {
-      return std::format("New lane mapping for street {} -> {} is: {}",
-                         m_nodePair.first,
-                         m_nodePair.second,
-                         strLaneMapping);
-    });
+    spdlog::debug("New lane mapping for street {} -> {} is: {}",
+                  m_nodePair.first,
+                  m_nodePair.second,
+                  strLaneMapping);
   }
   void Street::setQueue(dsf::queue<std::unique_ptr<Agent>> queue, size_t index) {
     assert(index < m_exitQueues.size());
@@ -73,21 +71,18 @@ namespace dsf {
 
   void Street::addAgent(std::unique_ptr<Agent> pAgent) {
     assert(!isFull());
-    Logger::debug([&] { return std::format("Adding {} on {}", *pAgent, *this); });
+    spdlog::debug("Adding {} on {}", *pAgent, *this);
     m_movingAgents.push(std::move(pAgent));
   }
   void Street::enqueue(size_t const& queueId) {
     assert(!m_movingAgents.empty());
     m_movingAgents.top()->incrementDistance(m_length);
-    // Logger::debug("Pusing into queue");
     m_exitQueues[queueId].push(
         std::move(const_cast<std::unique_ptr<Agent>&>(m_movingAgents.top())));
     m_movingAgents.pop();
-    // Logger::debug("Popped from moving queue");
   }
   std::unique_ptr<Agent> Street::dequeue(size_t index) {
     assert(!m_exitQueues[index].empty());
-    // Logger::debug("Dequeueing from queue");
     auto pAgent{std::move(m_exitQueues[index].front())};
     m_exitQueues[index].pop();
     return pAgent;
@@ -95,11 +90,9 @@ namespace dsf {
 
   int Street::nAgents() const {
     auto nAgents{static_cast<int>(m_movingAgents.size())};
-    // Logger::debug(std::format("Number of moving agents street {}: {}", id(), nAgents));
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }
-    // Logger::debug(std::format("Number of agents street {}: {}", id(), nAgents));
     return nAgents;
   }
 
@@ -171,7 +164,8 @@ namespace dsf {
   }
   void StochasticStreet::setFlowRate(double const flowRate) {
     if (flowRate < 0. || flowRate > 1.) {
-      Logger::error(std::format("Flow rate ({}) must be in [0, 1]", flowRate));
+      throw std::invalid_argument(
+          std::format("Flow rate ({}) must be in [0, 1]", flowRate));
     }
     m_flowRate = flowRate;
   }

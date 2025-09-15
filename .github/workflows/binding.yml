@@ -1,0 +1,232 @@
+name: Test Python Bindings Installation
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  test-binding-installation:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest] # , windows-latest --- IGNORE ---
+        python-version: ["3.8", "3.10", "3.12"]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt update
+        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev doxygen
+
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install cmake tbb spdlog doxygen
+        echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include:$(brew --prefix fmt)/include:$(brew --prefix spdlog)/include" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib" >> $GITHUB_ENV
+
+    - name: Install system dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        choco install doxygen.install
+        # Install vcpkg for spdlog and tbb on Windows
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
+        .\vcpkg install spdlog:x64-windows tbb:x64-windows
+        echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
+
+    - name: Upgrade pip and install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install wheel setuptools
+
+    - name: Install package with pip
+      run: |
+        python -m pip install .
+
+    - name: Verify installation - Import test
+      run: |
+        python -c "import dsf; print('DSF import successful')"
+
+    - name: Verify installation - Basic functionality test
+      run: |
+        python -c "
+        import dsf
+        print('DSF version info available')
+        # Try to access basic functionality if available
+        try:
+            # Test basic module access
+            print('Available DSF attributes:', [attr for attr in dir(dsf) if not attr.startswith('_')])
+        except Exception as e:
+            print(f'Note: Could not access all DSF attributes: {e}')
+        print('Basic DSF functionality test passed')
+        "
+
+    - name: Test stub files generation
+      run: |
+        python -c "
+        import os
+        # Check if stub files were generated
+        if os.path.exists('dsf.pyi'):
+            print('Stub files found: dsf.pyi exists')
+            with open('dsf.pyi', 'r') as f:
+                content = f.read()
+                if content.strip():
+                    print('Stub file contains content')
+                else:
+                    print('Warning: Stub file is empty')
+        else:
+            print('Note: Stub files not found (may be expected)')
+        "
+
+    - name: Test installation in virtual environment
+      run: |
+        python -m venv test_env
+        
+        # Activate virtual environment (platform-specific)
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          source test_env/Scripts/activate
+        else
+          source test_env/bin/activate
+        fi
+        
+        # Install in virtual environment
+        python -m pip install --upgrade pip
+        python -m pip install .
+        
+        # Test import in virtual environment
+        python -c "import dsf; print('DSF import successful in virtual environment')"
+        
+        # Deactivate virtual environment
+        deactivate
+      shell: bash
+
+    - name: Test editable installation
+      run: |
+        # Test editable installation
+        python -m pip uninstall -y dsf
+        python -m pip install -e .
+        python -c "import dsf; print('DSF editable installation successful')"
+
+    - name: Verify package metadata
+      run: |
+        python -c "
+        import pkg_resources
+        try:
+            dist = pkg_resources.get_distribution('dsf')
+            print(f'Package name: {dist.project_name}')
+            print(f'Package version: {dist.version}')
+            print(f'Package location: {dist.location}')
+        except pkg_resources.DistributionNotFound:
+            print('Warning: Package metadata not found')
+        "
+
+    - name: Clean installation test
+      run: |
+        # Test clean uninstall and reinstall
+        python -m pip uninstall -y dsf
+        
+        # Move to a different directory to avoid importing from source
+        mkdir -p /tmp/clean_test
+        cd /tmp/clean_test
+        
+        python -c "
+        try:
+            import dsf
+            print('ERROR: DSF should not be importable after uninstall')
+            exit(1)
+        except ImportError:
+            print('SUCCESS: DSF correctly uninstalled')
+        "
+        
+        # Go back to source directory and reinstall
+        cd ${{ github.workspace }}
+        python -m pip install .
+        python -c "import dsf; print('DSF reinstallation successful')"
+
+    - name: Test with requirements.txt (if exists)
+      run: |
+        if [ -f requirements.txt ]; then
+          echo "Installing requirements.txt dependencies..."
+          python -m pip install -r requirements.txt
+          python -c "import dsf; print('DSF works with requirements.txt dependencies')"
+        else
+          echo "No requirements.txt found, skipping this test"
+        fi
+      shell: bash
+
+  test-binding-development:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev doxygen
+
+    - name: Install development dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install wheel setuptools pybind11-stubgen
+        python -m pip install build twine  # For testing package building
+
+    - name: Test package building
+      run: |
+        python -m build
+        echo "Package building successful"
+        ls -la dist/
+
+    - name: Test wheel installation
+      run: |
+        # Install from wheel
+        python -m pip install dist/*.whl
+        python -c "import dsf; print('DSF wheel installation successful')"
+
+    - name: Verify package structure
+      run: |
+        python -c "
+        import dsf
+        import inspect
+        import os
+        
+        # Get the module file location
+        module_file = inspect.getfile(dsf)
+        print(f'DSF module location: {module_file}')
+        
+        # Check if it's a compiled extension
+        if module_file.endswith(('.so', '.pyd', '.dll')):
+            print('SUCCESS: DSF is properly compiled as a binary extension')
+        else:
+            print('INFO: DSF module type:', type(dsf))
+        
+        # List available attributes
+        attrs = [attr for attr in dir(dsf) if not attr.startswith('_')]
+        print(f'Available DSF attributes ({len(attrs)}): {attrs}')
+        "

@@ -11,7 +11,6 @@
 #pragma once
 
 #include "Itinerary.hpp"
-#include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
 #include <cassert>
@@ -22,6 +21,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include <fmt/format.h>
 
 namespace dsf {
   /// @brief The Agent class represents an agent in the network.
@@ -87,40 +88,42 @@ namespace dsf {
 
     /// @brief Get the agent's spawn time
     /// @return The agent's spawn time
-    Time const& spawnTime() const;
+    inline Time const& spawnTime() const noexcept { return m_spawnTime; };
     /// @brief Get the agent's free time
     /// @return The agent's free time
-    Time const& freeTime() const;
+    inline Time const& freeTime() const noexcept { return m_freeTime; };
     /// @brief Get the agent's id
     /// @return The agent's id
-    Id id() const;
+    inline Id id() const noexcept { return m_id; };
     /// @brief Get the agent's itinerary
     /// @return The agent's itinerary
+    /// @throw std::logic_error if the agent is a random agent
     Id itineraryId() const;
     /// @brief Get the agent's trip
     /// @return The agent's trip
-    std::vector<Id> const& trip() const;
+    inline std::vector<Id> const& trip() const noexcept { return m_trip; };
     /// @brief Get the id of the street currently occupied by the agent
     /// @return The id of the street currently occupied by the agent
-    std::optional<Id> streetId() const;
+    inline std::optional<Id> streetId() const noexcept { return m_streetId; };
     /// @brief Get the id of the source node of the agent
     /// @return The id of the source node of the agent
-    std::optional<Id> srcNodeId() const;
+    inline std::optional<Id> srcNodeId() const noexcept { return m_srcNodeId; };
     /// @brief Get the id of the next street
     /// @return The id of the next street
-    std::optional<Id> nextStreetId() const;
+    inline std::optional<Id> nextStreetId() const noexcept { return m_nextStreetId; };
     /// @brief Get the agent's speed
     /// @return The agent's speed
-    double speed() const;
+    inline double speed() const noexcept { return m_speed; };
     /// @brief Get the agent's travelled distance
     /// @return The agent's travelled distance
-    double distance() const;
+    inline double distance() const noexcept { return m_distance; };
     /// @brief Return true if the agent is a random agent
     /// @return True if the agent is a random agent, false otherwise
-    bool isRandom() const;
+    inline bool isRandom() const noexcept { return m_trip.empty(); };
   };
 };  // namespace dsf
 
+// Specialization of std::formatter for dsf::Agent
 template <>
 struct std::formatter<dsf::Agent> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
@@ -129,6 +132,31 @@ struct std::formatter<dsf::Agent> {
     auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
                                                    : std::to_string(agent.itineraryId());
     return std::format_to(
+        ctx.out(),
+        "Agent(id: {}, streetId: {}, srcNodeId: {}, nextStreetId: {}, "
+        "itineraryId: {}, speed: {:.2f} m/s, distance: {:.2f} m, "
+        "spawnTime: {}, freeTime: {})",
+        agent.id(),
+        agent.streetId().has_value() ? std::to_string(agent.streetId().value()) : "N/A",
+        agent.srcNodeId().has_value() ? std::to_string(agent.srcNodeId().value()) : "N/A",
+        agent.nextStreetId().has_value() ? std::to_string(agent.nextStreetId().value())
+                                         : "N/A",
+        strItinerary,
+        agent.speed(),
+        agent.distance(),
+        agent.spawnTime(),
+        agent.freeTime());
+  }
+};
+// Specialization of fmt::formatter for dsf::Agent
+template <>
+struct fmt::formatter<dsf::Agent> {
+  constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(const dsf::Agent& agent, FormatContext& ctx) const {
+    auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
+                                                   : std::to_string(agent.itineraryId());
+    return fmt::format_to(
         ctx.out(),
         "Agent(id: {}, streetId: {}, srcNodeId: {}, nextStreetId: {}, "
         "itineraryId: {}, speed: {:.2f} m/s, distance: {:.2f} m, "

@@ -1,7 +1,6 @@
 #include "./headers/AdjacencyMatrix.hpp"
 #include "./headers/RoadNetwork.hpp"
 #include "./headers/FirstOrderDynamics.hpp"
-#include "./utility/Logger.hpp"
 
 #include "./.docstrings.hpp"
 
@@ -9,19 +8,13 @@
 #include <pybind11/stl.h>         // Changed to include all stl type casters
 #include <pybind11/functional.h>  // For std::function support
 
+#include <spdlog/spdlog.h>  // For logging functionality
+
 PYBIND11_MODULE(dsf, m) {
   m.doc() = "Python bindings for the DSM library";
 
   // Create type aliases for better stub generation
   using WeightFunction = std::function<double(const dsf::RoadNetwork*, dsf::Id, dsf::Id)>;
-
-  // Bind log_level_t enum
-  pybind11::enum_<dsf::log_level_t>(m, "LogLevel")
-      .value("DEBUG", dsf::log_level_t::DEBUG)
-      .value("WARNING", dsf::log_level_t::WARNING)
-      .value("INFO", dsf::log_level_t::INFO)
-      .value("ERROR", dsf::log_level_t::ERROR)
-      .export_values();
 
   // Bind TrafficLightOptimization enum
   pybind11::enum_<dsf::TrafficLightOptimization>(m, "TrafficLightOptimization")
@@ -29,32 +22,25 @@ PYBIND11_MODULE(dsf, m) {
       .value("DOUBLE_TAIL", dsf::TrafficLightOptimization::DOUBLE_TAIL)
       .export_values();
 
-  // Bind Logger class
-  pybind11::class_<dsf::Logger>(m, "Logger")
-      .def_static("setVerbose", &dsf::Logger::setVerbose, pybind11::arg("verbose"))
-      .def_static("setLogLevel", &dsf::Logger::setLogLevel, pybind11::arg("logLevel"))
-      .def_static(
-          "buildExceptionMessage",
-          [](const std::string& message) {
-            return dsf::Logger::buildExceptionMessage(message);
-          },
-          pybind11::arg("message"))
-      .def_static(
-          "debug",
-          [](const std::string& message) { dsf::Logger::debug(message); },
-          pybind11::arg("message"))
-      .def_static(
-          "info",
-          [](const std::string& message) { dsf::Logger::info(message); },
-          pybind11::arg("message"))
-      .def_static(
-          "warning",
-          [](const std::string& message) { dsf::Logger::warning(message); },
-          pybind11::arg("message"))
-      .def_static(
-          "error",
-          [](const std::string& message) { dsf::Logger::error(message); },
-          pybind11::arg("message"));
+  // Bind spdlog log level enum
+  pybind11::enum_<spdlog::level::level_enum>(m, "LogLevel")
+      .value("TRACE", spdlog::level::trace)
+      .value("DEBUG", spdlog::level::debug)
+      .value("INFO", spdlog::level::info)
+      .value("WARN", spdlog::level::warn)
+      .value("ERROR", spdlog::level::err)
+      .value("CRITICAL", spdlog::level::critical)
+      .value("OFF", spdlog::level::off)
+      .export_values();
+
+  // Bind spdlog logging functions
+  m.def("set_log_level",
+        &spdlog::set_level,
+        pybind11::arg("level"),
+        "Set the global log level for spdlog");
+
+  m.def("get_log_level", &spdlog::get_level, "Get the current global log level");
+
   pybind11::class_<dsf::Measurement<double>>(m, "Measurement")
       .def(pybind11::init<double, double>(),
            pybind11::arg("mean"),

@@ -112,10 +112,6 @@ namespace dsf {
     ///          the green time of the existing cycle. The phase is the total cycle time minus the
     ///          green time of the existing cycle, plus the phase of the existing cycle.
     void setComplementaryCycle(Id const streetId, Id const existingCycle);
-    /// @brief Move a cycle from one street to another
-    /// @param oldStreetId Id, the old street id
-    /// @param newStreetId Id, the new street id
-    void moveCycle(Id const oldStreetId, Id const newStreetId);
     /// @brief Increase the phase times of the traffic light cycles
     /// @param phase Delay, the amount of time to increase the phase for each cycle
     void increasePhases(Delay const phase);

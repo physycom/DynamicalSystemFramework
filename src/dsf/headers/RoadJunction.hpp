@@ -5,6 +5,7 @@
 #include "../utility/Typedef.hpp"
 
 #include <format>
+#include <fmt/format.h>
 
 namespace dsf {
   class RoadJunction : public Node {
@@ -48,12 +49,32 @@ namespace dsf {
   };
 }  // namespace dsf
 
+// Specialization of std::formatter for dsf::RoadJunction
 template <>
 struct std::formatter<dsf::RoadJunction> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
   auto format(dsf::RoadJunction const& junction, FormatContext&& ctx) const {
     return std::format_to(
+        ctx.out(),
+        "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
+        "{}, coords: {})",
+        junction.id(),
+        junction.name(),
+        junction.capacity(),
+        junction.transportCapacity(),
+        junction.coords().has_value()
+            ? std::format("({}, {})", junction.coords()->first, junction.coords()->second)
+            : "N/A");
+  }
+};
+// Specialization of fmt::formatter for dsf::RoadJunction
+template <>
+struct fmt::formatter<dsf::RoadJunction> {
+  constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(dsf::RoadJunction const& junction, FormatContext& ctx) const {
+    return fmt::format_to(
         ctx.out(),
         "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
         "{}, coords: {})",

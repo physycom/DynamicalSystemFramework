@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include "Network.hpp"
+#include "../utility/Typedef.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <concepts>
@@ -26,10 +29,6 @@
 #include <functional>
 
 #include <tbb/tbb.h>
-
-#include "Network.hpp"
-#include "../utility/Logger.hpp"
-#include "../utility/Typedef.hpp"
 
 namespace dsf {
   /// @brief The Measurement struct represents the mean of a quantity and its standard deviation

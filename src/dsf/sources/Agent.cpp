@@ -1,7 +1,5 @@
 #include "../headers/Agent.hpp"
 
-#include <format>
-
 namespace dsf {
   Agent::Agent(Time const& spawnTime,
                std::optional<Id> itineraryId,
@@ -43,7 +41,8 @@ namespace dsf {
   void Agent::setNextStreetId(Id nextStreetId) { m_nextStreetId = nextStreetId; }
   void Agent::setSpeed(double speed) {
     if (speed < 0.) {
-      Logger::error(std::format("Speed ({}) of agent {} must be positive", speed, m_id));
+      throw std::invalid_argument(
+          std::format("Speed ({}) of agent {} must be positive", speed, m_id));
     }
     m_speed = speed;
   }
@@ -51,7 +50,7 @@ namespace dsf {
 
   void Agent::incrementDistance(double distance) {
     if (distance < 0) {
-      Logger::error(std::format(
+      throw std::invalid_argument(std::format(
           "Distance travelled ({}) by agent {} must be positive", distance, m_id));
     }
     m_distance += distance;
@@ -70,18 +69,11 @@ namespace dsf {
     m_itineraryIdx = 0;
   }
 
-  Time const& Agent::spawnTime() const { return m_spawnTime; }
-  Time const& Agent::freeTime() const { return m_freeTime; }
-  Id Agent::id() const { return m_id; }
   Id Agent::itineraryId() const {
-    assert(m_itineraryIdx < m_trip.size());
+    if (isRandom()) {
+      throw std::logic_error(
+          std::format("Agent {} is a random agent and has no itinerary", m_id));
+    }
     return m_trip[m_itineraryIdx];
   }
-  std::vector<Id> const& Agent::trip() const { return m_trip; }
-  std::optional<Id> Agent::streetId() const { return m_streetId; }
-  std::optional<Id> Agent::srcNodeId() const { return m_srcNodeId; }
-  std::optional<Id> Agent::nextStreetId() const { return m_nextStreetId; }
-  double Agent::speed() const { return m_speed; }
-  double Agent::distance() const { return m_distance; }
-  bool Agent::isRandom() const { return m_trip.empty(); }
 }  // namespace dsf

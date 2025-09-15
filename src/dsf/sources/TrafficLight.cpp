@@ -4,6 +4,8 @@
 #include <numeric>
 #include <stdexcept>
 
+#include <spdlog/spdlog.h>
+
 namespace dsf {
   bool TrafficLightCycle::isGreen(Delay const cycleTime, Delay const counter) const {
     auto const greenStart = m_phase % cycleTime;
@@ -24,14 +26,16 @@ namespace dsf {
                               Direction direction,
                               TrafficLightCycle const& cycle) {
     if ((cycle.greenTime() > m_cycleTime)) {
-      Logger::error(std::format("Green time ({}) must not exceed the cycle time ({}).",
-                                cycle.greenTime(),
-                                m_cycleTime));
+      throw std::invalid_argument(
+          std::format("Green time ({}) must not exceed the cycle time ({}).",
+                      cycle.greenTime(),
+                      m_cycleTime));
     }
     if (!(cycle.phase() < m_cycleTime)) {
-      Logger::error(std::format("Phase ({}) must be less than the cycle time ({}).",
-                                cycle.phase(),
-                                m_cycleTime));
+      throw std::invalid_argument(
+          std::format("Phase ({}) must be less than the cycle time ({}).",
+                      cycle.phase(),
+                      m_cycleTime));
     }
     m_cycles[streetId].emplace(direction, cycle);
   }
@@ -43,27 +47,22 @@ namespace dsf {
 
   void TrafficLight::setComplementaryCycle(Id const streetId, Id const existingCycle) {
     if (m_cycles.contains(streetId)) {
-      throw std::invalid_argument(
-          Logger::buildExceptionMessage("Street id already exists."));
+      throw std::invalid_argument(std::format(
+          "Street with id {} already has a cycle in traffic light with id {}.",
+          streetId,
+          m_id));
     }
     if (!m_cycles.contains(existingCycle)) {
-      throw std::invalid_argument(Logger::buildExceptionMessage("Cycle does not exist."));
+      throw std::invalid_argument(std::format(
+          "Existing cycle with id {} does not exist in traffic light with id {}.",
+          existingCycle,
+          m_id));
     }
     m_cycles.emplace(streetId, m_cycles.at(existingCycle));
     for (auto& [direction, cycle] : m_cycles.at(streetId)) {
       cycle = TrafficLightCycle(m_cycleTime - cycle.greenTime(),
                                 cycle.phase() + m_cycleTime - cycle.greenTime());
     }
-  }
-
-  void TrafficLight::moveCycle(Id const oldStreetId, Id const newStreetId) {
-    if (!m_cycles.contains(oldStreetId)) {
-      throw std::invalid_argument(
-          Logger::buildExceptionMessage("Old street id does not exist."));
-    }
-    auto handler{m_cycles.extract(oldStreetId)};
-    handler.key() = newStreetId;
-    m_cycles.insert(std::move(handler));
   }
 
   TrafficLight& TrafficLight::operator++() {
@@ -114,8 +113,8 @@ namespace dsf {
 
   bool TrafficLight::isGreen(Id const streetId, Direction direction) const {
     if (!m_cycles.contains(streetId)) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Street id {} is not valid for node {}.", streetId, id())));
+      throw std::invalid_argument(
+          std::format("Street id {} is not valid for node {}.", streetId, id()));
     }
     if (!m_cycles.at(streetId).contains(direction)) {
       if (m_cycles.at(streetId).contains(Direction::ANY)) {
@@ -155,10 +154,10 @@ namespace dsf {
             }
             break;
           default:
-            Logger::warning(std::format(
+            spdlog::warn(
                 "Street {} has ...ANDSTRAIGHT phase but Traffic Light {} doesn't.",
                 streetId,
-                m_id));
+                m_id);
         }
       }
     }
