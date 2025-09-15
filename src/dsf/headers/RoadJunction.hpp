@@ -75,7 +75,7 @@ struct fmt::formatter<dsf::RoadJunction> {
   template <typename FormatContext>
   auto format(dsf::RoadJunction const& junction, FormatContext& ctx) const {
     return fmt::format_to(
-        ctx.out(), 
+        ctx.out(),
         "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
         "{}, coords: {})",
         junction.id(),

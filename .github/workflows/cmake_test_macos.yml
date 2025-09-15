@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - name: Install tools manually
-      run: brew install tbb
+      run: brew install tbb fmt spdlog
 
     - uses: actions/checkout@v4
 

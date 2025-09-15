@@ -2,6 +2,8 @@
 [![Latest Release](https://img.shields.io/github/v/release/physycom/DynamicalSystemFramework)](https://github.com/physycom/DynamicalSystemFramework/releases/latest)
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![TBB](https://img.shields.io/badge/TBB-C%2B%2B20%2F23-blue.svg)](https://github.com/oneapi-src/oneTBB)
+[![FMT](https://img.shields.io/badge/fmt-C%2B%2B20%2F23-blue.svg)](https://github.com/fmtlib/fmt)
+[![SPDLOG](https://img.shields.io/badge/spdlog-C%2B%2B20%2F23-blue.svg)](https://github.com/gabime/spdlog)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
 
 The aim of this project is to rework the original [Traffic Flow Dynamics Model](https://github.com/Grufoony/TrafficFlowDynamicsModel).
@@ -17,14 +19,14 @@ This rework consists of a full code rewriting, in order to implement more featur
 
 ## Requirements
 
-The project requires `C++20` or greater, `cmake` and `tbb`.
+The project requires `C++20` or greater, `cmake`, `tbb` and `spdlog` (with `fmt`).
 To install requirements on Ubuntu:
 ```shell
-sudo apt install libtbb-dev cmake
+sudo apt install libtbb-dev libfmt-dev libspdlog-dev cmake
 ```
 To install requirements on macOS:
 ```shell
-brew install tbb cmake
+brew install tbb fmt spdlog cmake
 ```
 
 Utilities are written in python. To install their dependencies:

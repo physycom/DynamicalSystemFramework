@@ -6,6 +6,9 @@
 
 #pragma once
 
+#include "../utility/queue.hpp"
+#include "../utility/Typedef.hpp"
+
 #include <functional>
 #include <utility>
 #include <stdexcept>
@@ -15,10 +18,6 @@
 #include <format>
 #include <cassert>
 #include <string>
-
-#include "../utility/Logger.hpp"
-#include "../utility/queue.hpp"
-#include "../utility/Typedef.hpp"
 
 namespace dsf {
   /// @brief The Node class represents the concept of a node in the network.
@@ -73,23 +72,25 @@ namespace dsf {
     /// @param name The node's name
     inline void setName(const std::string& name) noexcept { m_name = name; }
 
-    inline void addIncomingEdge(Id edgeId) {
-      // if (std::find(m_ingoingEdges.cbegin(), m_ingoingEdges.cend(), edgeId) !=
-      //     m_ingoingEdges.cend()) {
-      //   throw std::invalid_argument(Logger::buildExceptionMessage(
-      //       std::format("Edge with id {} already exists in the incoming edges of node with id {}.",
-      //                   edgeId, m_id)));
-      // }
+    inline void addIngoingEdge(Id edgeId) {
+      if (std::find(m_ingoingEdges.cbegin(), m_ingoingEdges.cend(), edgeId) !=
+          m_ingoingEdges.cend()) {
+        throw std::invalid_argument(std::format(
+            "Edge with id {} already exists in the incoming edges of node with id {}.",
+            edgeId,
+            m_id));
+      }
       m_ingoingEdges.push_back(edgeId);
     }
 
     inline void addOutgoingEdge(Id edgeId) {
-      // if (std::find(m_outgoingEdges.cbegin(), m_outgoingEdges.cend(), edgeId) !=
-      //     m_outgoingEdges.cend()) {
-      //   throw std::invalid_argument(Logger::buildExceptionMessage(
-      //       std::format("Edge with id {} already exists in the outgoing edges of node with id {}.",
-      //                   edgeId, m_id)));
-      // }
+      if (std::find(m_outgoingEdges.cbegin(), m_outgoingEdges.cend(), edgeId) !=
+          m_outgoingEdges.cend()) {
+        throw std::invalid_argument(std::format(
+            "Edge with id {} already exists in the outgoing edges of node with id {}.",
+            edgeId,
+            m_id));
+      }
       m_outgoingEdges.push_back(edgeId);
     }
 

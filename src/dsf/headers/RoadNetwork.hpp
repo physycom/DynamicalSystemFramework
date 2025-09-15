@@ -9,6 +9,20 @@
 
 #pragma once
 
+#include "AdjacencyMatrix.hpp"
+#include "DijkstraWeights.hpp"
+#include "Network.hpp"
+#include "RoadJunction.hpp"
+#include "Intersection.hpp"
+#include "TrafficLight.hpp"
+#include "Roundabout.hpp"
+#include "Station.hpp"
+#include "Street.hpp"
+#include "../utility/DijkstraResult.hpp"
+#include "../utility/Typedef.hpp"
+#include "../utility/TypeTraits/is_node.hpp"
+#include "../utility/TypeTraits/is_street.hpp"
+
 #include <algorithm>
 #include <concepts>
 #include <limits>
@@ -25,21 +39,6 @@
 #include <sstream>
 #include <cassert>
 #include <format>
-
-#include "AdjacencyMatrix.hpp"
-#include "DijkstraWeights.hpp"
-#include "Network.hpp"
-#include "RoadJunction.hpp"
-#include "Intersection.hpp"
-#include "TrafficLight.hpp"
-#include "Roundabout.hpp"
-#include "Station.hpp"
-#include "Street.hpp"
-#include "../utility/DijkstraResult.hpp"
-#include "../utility/Logger.hpp"
-#include "../utility/Typedef.hpp"
-#include "../utility/TypeTraits/is_node.hpp"
-#include "../utility/TypeTraits/is_street.hpp"
 
 namespace dsf {
 

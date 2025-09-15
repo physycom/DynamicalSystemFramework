@@ -150,8 +150,8 @@ namespace dsf {
     // Create unique_ptr directly with perfect forwarding
     auto pNode = std::make_unique<TNode>(std::forward<TArgs>(args)...);
     if (m_nodes.contains(pNode->id())) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Node with id {} already exists in the network.", pNode->id())));
+      throw std::invalid_argument(
+          std::format("Node with id {} already exists in the network.", pNode->id()));
     }
     m_nodes[pNode->id()] = std::move(pNode);
   }
@@ -172,8 +172,8 @@ namespace dsf {
   void Network<node_t, edge_t>::addEdge(TArgs&&... args) {
     TEdge tmpEdge(std::forward<TArgs>(args)...);
     if (m_edges.contains(tmpEdge.id())) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Edge with id {} already exists in the network.", tmpEdge.id())));
+      throw std::invalid_argument(
+          std::format("Edge with id {} already exists in the network.", tmpEdge.id()));
     }
     auto const& geometry{tmpEdge.geometry()};
     auto const& sourceNodeId = tmpEdge.source();
@@ -201,7 +201,7 @@ namespace dsf {
     auto const& sourceNode = node(sourceNodeId);
     auto const& targetNode = node(targetNodeId);
     sourceNode->addOutgoingEdge(tmpEdge.id());
-    targetNode->addIncomingEdge(tmpEdge.id());
+    targetNode->addIngoingEdge(tmpEdge.id());
     if (geometry.empty()) {
       if (sourceNode->coords().has_value() && targetNode->coords().has_value()) {
         tmpEdge.setGeometry({sourceNode->coords().value(), targetNode->coords().value()});
@@ -239,8 +239,8 @@ namespace dsf {
           return pair.second->source() == source && pair.second->target() == target;
         });
     if (it == m_edges.cend()) {
-      throw std::out_of_range(Logger::buildExceptionMessage(
-          std::format("Edge with source {} and target {} not found.", source, target)));
+      throw std::out_of_range(
+          std::format("Edge with source {} and target {} not found.", source, target));
     }
     return it->second;
   }

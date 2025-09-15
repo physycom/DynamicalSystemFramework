@@ -1,6 +1,5 @@
 
 #include "../headers/Itinerary.hpp"
-#include "../utility/Logger.hpp"
 
 #include <fstream>
 #include <stdexcept>
@@ -12,8 +11,7 @@ namespace dsf {
     // Open binary file
     std::ifstream inFile{fileName, std::ios::binary};
     if (!inFile.is_open()) {
-      throw std::runtime_error(Logger::buildExceptionMessage(
-          std::format("Could not open file: {}", fileName)));
+      throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
     }
     // Load the m_path variable from the file
     inFile.read(reinterpret_cast<char*>(&m_destination), sizeof(Id));
@@ -47,8 +45,7 @@ namespace dsf {
     // Open binary file
     std::ofstream outFile{fileName, std::ios::binary};
     if (!outFile.is_open()) {
-      throw std::runtime_error(Logger::buildExceptionMessage(
-          std::format("Could not open file: {}", fileName)));
+      throw std::runtime_error("Error opening file \"" + fileName + "\" for writing.");
     }
     outFile.write(reinterpret_cast<const char*>(&m_destination), sizeof(Id));
     // Save the m_path variable in the file

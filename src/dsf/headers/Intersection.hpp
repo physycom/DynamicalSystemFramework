@@ -73,10 +73,10 @@ namespace dsf {
     void addStreetPriority(Id streetId) {
       auto const& it{std::find(m_ingoingEdges.cbegin(), m_ingoingEdges.cend(), streetId)};
       if (it == m_ingoingEdges.cend()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
+        throw std::invalid_argument(std::format(
             "Street with id {} is not ingoing edge of intersection with id {}.",
             streetId,
-            m_id)));
+            m_id));
       }
       m_streetPriorities.emplace(streetId);
     }

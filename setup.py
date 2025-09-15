@@ -78,6 +78,30 @@ class CMakeBuild(build_ext):
             "-DBUILD_PYTHON_BINDINGS=ON",
         ]
 
+        # Add macOS-specific CMake prefix paths for Homebrew dependencies
+        if platform.system() == "Darwin":  # macOS
+            try:
+                tbb_prefix = subprocess.check_output(
+                    ["brew", "--prefix", "tbb"], text=True
+                ).strip()
+                fmt_prefix = subprocess.check_output(
+                    ["brew", "--prefix", "fmt"], text=True
+                ).strip()
+                spdlog_prefix = subprocess.check_output(
+                    ["brew", "--prefix", "spdlog"], text=True
+                ).strip()
+
+                cmake_prefix_path = f"{tbb_prefix};{fmt_prefix};{spdlog_prefix}"
+                cmake_args.append(f"-DCMAKE_PREFIX_PATH={cmake_prefix_path}")
+                print(f"Added macOS Homebrew prefix paths: {cmake_prefix_path}")
+
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                print(
+                    "Warning: Could not determine Homebrew prefix paths. Make sure Homebrew is installed and dependencies are available."
+                )
+                # Fallback to common Homebrew paths
+                cmake_args.append("-DCMAKE_PREFIX_PATH=/opt/homebrew;/usr/local")
+
         build_args = []
 
         # Use Ninja if available in the current environment, otherwise use Unix Makefiles

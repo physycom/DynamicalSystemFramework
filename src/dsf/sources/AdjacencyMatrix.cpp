@@ -1,11 +1,12 @@
 
 #include "../headers/AdjacencyMatrix.hpp"
-#include "../utility/Logger.hpp"
-#include <tbb/parallel_for_each.h>
 
 #include <cassert>
 #include <fstream>
 #include <iostream>
+
+#include <tbb/parallel_for_each.h>
+#include <spdlog/spdlog.h>
 
 namespace dsf {
 
@@ -91,8 +92,8 @@ namespace dsf {
 
   std::vector<Id> AdjacencyMatrix::getRow(Id row) const {
     if (row + 1 >= m_rowOffsets.size()) {
-      throw std::out_of_range(Logger::buildExceptionMessage(
-          std::format("Row index {} out of range [0, {}[.", row, m_n - 1)));
+      throw std::out_of_range(
+          std::format("Row index {} out of range [0, {}[.", row, m_n - 1));
     }
     const auto lowerOffset = m_rowOffsets[row];
     const auto upperOffset = m_rowOffsets[row + 1];
@@ -218,7 +219,7 @@ namespace dsf {
   void AdjacencyMatrix::read(std::string const& fileName) {
     std::ifstream inStream(fileName, std::ios::binary);
     if (!inStream.is_open()) {
-      Logger::error(std::format("Could not open file {} for reading.", fileName));
+      throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
     }
     inStream.read(reinterpret_cast<char*>(&m_n), sizeof(size_t));
     m_rowOffsets.resize(m_n + 1);
@@ -256,7 +257,7 @@ namespace dsf {
   void AdjacencyMatrix::save(std::string const& fileName) const {
     std::ofstream outStream(fileName, std::ios::binary);
     if (!outStream.is_open()) {
-      Logger::error(std::format("Could not open file {} for writing.", fileName));
+      throw std::runtime_error("Error opening file \"" + fileName + "\" for writing.");
     }
     outStream.write(reinterpret_cast<const char*>(&m_n), sizeof(size_t));
     outStream.write(reinterpret_cast<const char*>(m_rowOffsets.data()),

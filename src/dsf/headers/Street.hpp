@@ -8,6 +8,13 @@
 
 #pragma once
 
+#include "Agent.hpp"
+#include "Road.hpp"
+#include "Sensors.hpp"
+#include "../utility/TypeTraits/is_numeric.hpp"
+#include "../utility/queue.hpp"
+#include "../utility/Typedef.hpp"
+
 #include <optional>
 #include <queue>
 #include <type_traits>
@@ -21,14 +28,6 @@
 #include <vector>
 
 #include <fmt/format.h>
-
-#include "Agent.hpp"
-#include "Road.hpp"
-#include "Sensors.hpp"
-#include "../utility/TypeTraits/is_numeric.hpp"
-#include "../utility/queue.hpp"
-#include "../utility/Logger.hpp"
-#include "../utility/Typedef.hpp"
 
 namespace dsf {
 
@@ -247,7 +246,8 @@ struct fmt::formatter<dsf::Street> {
   constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
   auto format(const dsf::Street& street, FormatContext& ctx) const {
-    auto const& name = street.name().empty() ? std::string() : fmt::format(" \"{}\"", street.name());
+    auto const& name =
+        street.name().empty() ? std::string() : fmt::format(" \"{}\"", street.name());
     return fmt::format_to(ctx.out(),
                           "Street(id: {}{}, from {} to {}, length: {} m, max speed: "
                           "{:.2f} m/s, lanes: {}, agents: {}, n enqueued: {})",

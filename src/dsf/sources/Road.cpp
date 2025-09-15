@@ -1,5 +1,4 @@
 #include "../headers/Road.hpp"
-#include "../headers/../utility/Logger.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -30,21 +29,22 @@ namespace dsf {
         m_name{std::move(name)},
         m_priority{nLanes * 100} {
     if (!(length > 0.)) {
-      Logger::error(std::format("The road length ({}) must be greater than 0.", length));
+      throw std::invalid_argument(
+          std::format("The length of a road ({}) must be greater than 0.", length));
     }
     if (!(maxSpeed > 0.)) {
-      Logger::error(std::format(
+      throw std::invalid_argument(std::format(
           "The maximum speed of a road ({}) must be greater than 0.", maxSpeed));
     }
     if (nLanes < 1) {
-      Logger::error(std::format(
+      throw std::invalid_argument(std::format(
           "The number of lanes of a road ({}) must be greater than 0.", nLanes));
     }
   }
   void Road::setMeanVehicleLength(double meanVehicleLength) {
     if (!(meanVehicleLength > 0.)) {
-      Logger::error(std::format("The mean vehicle length ({}) must be greater than 0.",
-                                meanVehicleLength));
+      throw std::invalid_argument(std::format(
+          "The mean vehicle length ({}) must be greater than 0.", meanVehicleLength));
     }
     m_meanVehicleLength = meanVehicleLength;
   }
@@ -56,9 +56,9 @@ namespace dsf {
   }
 
   void Road::setMaxSpeed(double speed) {
-    if (speed < 0.) {
-      Logger::error(
-          std::format("The maximum speed of a road ({}) cannot be negative.", speed));
+    if (speed <= 0.) {
+      throw std::invalid_argument(
+          std::format("The maximum speed of a road ({}) must be greater than 0.", speed));
     }
     m_maxSpeed = speed;
   }
