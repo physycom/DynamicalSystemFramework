@@ -1,113 +1,24 @@
 #include "../headers/RoadNetwork.hpp"
 
 #include <algorithm>
+#include <ranges>
+
+#include <spdlog/spdlog.h>
 
 namespace dsf {
-  void RoadNetwork::m_addMissingNodes(Id const nodeId) {
-    auto const srcNodeId{m_edges.at(nodeId)->source()};
-    auto const dstNodeId{m_edges.at(nodeId)->target()};
-    if (srcNodeId < m_adjacencyMatrix.n() && dstNodeId < m_adjacencyMatrix.n()) {
-      if (!m_adjacencyMatrix.contains(srcNodeId, dstNodeId)) {
-        m_adjacencyMatrix.insert(srcNodeId, dstNodeId);
-      }
-    } else {
-      m_adjacencyMatrix.insert(srcNodeId, dstNodeId);
-    }
-    if (!m_nodes.contains(srcNodeId)) {
-      m_nodes.emplace(srcNodeId, std::make_unique<Intersection>(srcNodeId));
-    }
-    if (!m_nodes.contains(dstNodeId)) {
-      m_nodes.emplace(dstNodeId, std::make_unique<Intersection>(dstNodeId));
+  void RoadNetwork::m_updateMaxAgentCapacity() {
+    m_maxAgentCapacity = 0;
+    for (auto const& [_, pStreet] : this->edges()) {
+      m_maxAgentCapacity += pStreet->capacity();
     }
   }
-  RoadNetwork::RoadNetwork()
-      : Network{AdjacencyMatrix()},
-        m_maxAgentCapacity{std::numeric_limits<unsigned long long>::max()} {}
+  RoadNetwork::RoadNetwork() : Network{AdjacencyMatrix()}, m_maxAgentCapacity{0} {}
 
   RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj)
-      : Network{adj},
-        m_maxAgentCapacity{std::numeric_limits<unsigned long long>::max()} {}
-
-  RoadNetwork::RoadNetwork(
-      const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet)
-      : Network{AdjacencyMatrix(streetSet)} {
-    // for (auto& street : streetSet) {
-    //   m_edges.emplace(street.second->id(), street.second.get());
-
-    //   Id node1 = street.second->nodePair().first;
-    //   Id node2 = street.second->nodePair().second;
-    //   m_nodes.emplace(node1, std::make_unique<Intersection>(node1));
-    //   m_nodes.emplace(node2, std::make_unique<Intersection>(node2));
-    // }
-
-    // buildAdj();
-  }
-
-  void RoadNetwork::m_reassignIds() {
-    // not sure about this, might need a bit more work
-    auto const oldStreetSet{std::move(m_edges)};
-    auto const N{nNodes()};
-    std::unordered_map<Id, Id> newStreetIds;
-    for (auto& [streetId, street] : oldStreetSet) {
-      const auto srcId{street->source()};
-      const auto dstId{street->target()};
-      const auto newStreetId{static_cast<Id>(srcId * N + dstId)};
-      auto const strId(street->strId());
-      assert(!m_edges.contains(newStreetId));
-      street->resetId(newStreetId);
-      if (street->isSpire() && street->isStochastic()) {
-        addEdge(std::move(dynamic_cast<StochasticSpireStreet&>(*street)));
-      } else if (street->isStochastic()) {
-        addEdge(std::move(dynamic_cast<StochasticStreet&>(*street)));
-      } else if (street->isSpire()) {
-        addEdge(std::move(dynamic_cast<SpireStreet&>(*street)));
-      } else {
-        addEdge(std::move(*street));
-      }
-      if (strId.has_value()) {
-        // If the street has a string id, we need to set it again
-        // because the street id is changed
-        m_edges.at(newStreetId)->setStrId(strId.value());
-      }
-      newStreetIds.emplace(streetId, newStreetId);
-    }
-    std::for_each(
-        m_edges.cbegin(), m_edges.cend(), [this, &newStreetIds](auto const& pair) {
-          auto const& pStreet{pair.second};
-          auto const& forbiddenTurns{pStreet->forbiddenTurns()};
-          if (forbiddenTurns.empty()) {
-            return;
-          }
-          std::set<Id> newForbiddenTurns;
-          for (auto const& streetId : forbiddenTurns) {
-            newForbiddenTurns.insert(newStreetIds.at(streetId));
-          }
-          pStreet->setForbiddenTurns(newForbiddenTurns);
-        });
-    for (const auto& [nodeId, node] : m_nodes) {
-      // This is probably not the best way to do this
-      if (node->isIntersection()) {
-        auto& intersection = dynamic_cast<Intersection&>(*node);
-        const auto& oldStreetPriorities{intersection.streetPriorities()};
-        std::set<Id> newStreetPriorities;
-        for (const auto streetId : oldStreetPriorities) {
-          newStreetPriorities.emplace(newStreetIds.at(streetId));
-        }
-        intersection.setStreetPriorities(newStreetPriorities);
-      }
-      if (node->isTrafficLight()) {
-        auto& trafficLight = static_cast<TrafficLight&>(*node);
-        std::unordered_map<Id, std::unordered_map<Direction, TrafficLightCycle>> newCycles;
-        for (auto const& [streetId, cycles] : trafficLight.cycles()) {
-          newCycles.emplace(newStreetIds.at(streetId), std::move(cycles));
-        }
-        trafficLight.setCycles(newCycles);
-      }
-    }
-  }
+      : Network{adj}, m_maxAgentCapacity{0} {}
 
   void RoadNetwork::initTrafficLights(Delay const minGreenTime) {
-    for (auto const& [id, pNode] : m_nodes) {
+    for (auto& [_, pNode] : m_nodes) {
       if (!pNode->isTrafficLight()) {
         continue;
       }
@@ -115,7 +26,7 @@ namespace dsf {
       if (!tl.streetPriorities().empty() || !tl.cycles().empty()) {
         continue;
       }
-      auto const& inNeighbours = m_adjacencyMatrix.getCol(id);
+      auto const& inNeighbours = pNode->ingoingEdges();
       std::map<Id, int, std::greater<int>> capacities;
       std::unordered_map<Id, double> streetAngles;
       std::unordered_map<Id, double> maxSpeeds;
@@ -124,35 +35,34 @@ namespace dsf {
       double higherSpeed{0.}, lowerSpeed{std::numeric_limits<double>::max()};
       int higherNLanes{0}, lowerNLanes{std::numeric_limits<int>::max()};
       if (inNeighbours.size() < 3) {
-        Logger::warning(std::format(
-            "Not enough in neighbours {} for Traffic Light {}", inNeighbours.size(), id));
+        spdlog::warn("Not enough in neighbours {} for Traffic Light {}",
+                     inNeighbours.size(),
+                     pNode->id());
         // Replace with a normal intersection
         auto const& coordinates{pNode->coords()};
         if (coordinates.has_value()) {
-          m_nodes[id] = std::make_unique<Intersection>(id, *coordinates);
+          pNode = std::make_unique<Intersection>(pNode->id(), *coordinates);
         } else {
-          m_nodes[id] = std::make_unique<Intersection>(id);
+          pNode = std::make_unique<Intersection>(pNode->id());
         }
         continue;
       }
-      for (auto const& inId : inNeighbours) {
-        auto const streetId{inId * nNodes() + id};
-        auto const& pStreet{m_edges.at(streetId)};
+      for (auto const& edgeId : inNeighbours) {
+        auto const& pStreet{edge(edgeId)};
 
         double const speed{pStreet->maxSpeed()};
         int const nLan{pStreet->nLanes()};
         auto const cap{pStreet->capacity()};
-        // Logger::debug(std::format("Street {} with capacity {}", streetId, cap));
-        capacities.emplace(streetId, cap);
+        capacities.emplace(pStreet->id(), cap);
         auto angle{pStreet->angle()};
         if (angle < 0.) {
           angle += 2 * std::numbers::pi;
         }
-        streetAngles.emplace(streetId, angle);
+        streetAngles.emplace(pStreet->id(), angle);
 
-        maxSpeeds.emplace(streetId, speed);
-        nLanes.emplace(streetId, nLan);
-        streetNames.emplace(streetId, pStreet->name());
+        maxSpeeds.emplace(pStreet->id(), speed);
+        nLanes.emplace(pStreet->id(), nLan);
+        streetNames.emplace(pStreet->id(), pStreet->name());
 
         higherSpeed = std::max(higherSpeed, speed);
         lowerSpeed = std::min(lowerSpeed, speed);
@@ -188,8 +98,11 @@ namespace dsf {
             ++counts.at(name);
           }
         }
-        for (auto const& [name, count] : counts) {
-          Logger::debug(std::format("Street name {} has {} occurrences", name, count));
+        // Check if spdlog is in debug mode
+        if (spdlog::get_level() <= spdlog::level::debug) {
+          for (auto const& [name, count] : counts) {
+            spdlog::debug("Street name {} has {} occurrences", name, count);
+          }
         }
         for (auto const& [streetId, name] : streetNames) {
           if (!name.empty() && counts.at(name) > 1) {
@@ -232,8 +145,7 @@ namespace dsf {
         }
       }
       if (tl.streetPriorities().empty()) {
-        Logger::warning(
-            std::format("Failed to auto-init Traffic Light {} - going random", id));
+        spdlog::warn("Failed to auto-init Traffic Light {} - going random", pNode->id());
         // Assign first and third keys of capacity map
         auto it = capacities.begin();
         auto const& firstKey = it->first;
@@ -263,11 +175,10 @@ namespace dsf {
             capNoPriority += normCap;
           }
         }
-        Logger::debug(
-            std::format("Capacities for Traffic Light {}: priority {} no priority {}",
-                        id,
-                        capPriority,
-                        capNoPriority));
+        spdlog::debug("Capacities for Traffic Light {}: priority {} no priority {}",
+                      pNode->id(),
+                      capPriority,
+                      capNoPriority);
         greenTimes = std::make_pair(static_cast<Delay>(capPriority * tl.cycleTime()),
                                     static_cast<Delay>(capNoPriority * tl.cycleTime()));
       }
@@ -280,8 +191,8 @@ namespace dsf {
         greenTimes.second = minGreenTime;
         greenTimes.first = tl.cycleTime() - minGreenTime;
       }
-      std::for_each(inNeighbours.begin(), inNeighbours.end(), [&](Id const inId) {
-        auto const streetId{inId * nNodes() + id};
+      std::for_each(inNeighbours.begin(), inNeighbours.end(), [&](auto const& edgeId) {
+        auto const streetId{this->edge(edgeId)->id()};
         auto const nLane{nLanes.at(streetId)};
         Delay greenTime{greenTimes.first};
         Delay phase{0};
@@ -289,11 +200,10 @@ namespace dsf {
           phase = greenTime;
           greenTime = greenTimes.second;
         }
-        Logger::debug(
-            std::format("Setting cycle for street {} with green time {} and phase {}",
-                        streetId,
-                        greenTime,
-                        phase));
+        spdlog::debug("Setting cycle for street {} with green time {} and phase {}",
+                      streetId,
+                      greenTime,
+                      phase);
         switch (nLane) {
           case 3:
             tl.setCycle(streetId,
@@ -315,29 +225,29 @@ namespace dsf {
     }
   }
   void RoadNetwork::autoMapStreetLanes() {
-    std::for_each(m_nodes.cbegin(), m_nodes.cend(), [this](auto const& pair) {
-      auto const& inNeighbours{m_adjacencyMatrix.getCol(pair.first)};
-      auto const& outNeighbours{m_adjacencyMatrix.getRow(pair.first)};
+    auto const& nodes = this->nodes();
+    std::for_each(nodes.cbegin(), nodes.cend(), [this](auto const& pair) {
+      auto const& pNode{pair.second};
+      auto const& inNeighbours{pNode->ingoingEdges()};
+      auto const& outNeighbours{pNode->outgoingEdges()};
       int maxPriority{0};
+      std::for_each(inNeighbours.cbegin(),
+                    inNeighbours.cend(),
+                    [this, &pNode, &maxPriority](auto const& edgeId) {
+                      auto const& pStreet{this->edge(edgeId)};
+                      maxPriority = std::max(maxPriority, pStreet->priority());
+                    });
+      std::for_each(outNeighbours.cbegin(),
+                    outNeighbours.cend(),
+                    [this, &pNode, &maxPriority](auto const& edgeId) {
+                      auto const& pStreet{this->edge(edgeId)};
+                      maxPriority = std::max(maxPriority, pStreet->priority());
+                    });
       std::for_each(
           inNeighbours.cbegin(),
           inNeighbours.cend(),
-          [this, &pair, &maxPriority](auto const& inNodeId) {
-            auto const& pStreet{m_edges.at(inNodeId * m_nodes.size() + pair.first)};
-            maxPriority = std::max(maxPriority, pStreet->priority());
-          });
-      std::for_each(
-          outNeighbours.cbegin(),
-          outNeighbours.cend(),
-          [this, &pair, &maxPriority](auto const& outNodeId) {
-            auto const& pStreet{m_edges.at(pair.first * m_nodes.size() + outNodeId)};
-            maxPriority = std::max(maxPriority, pStreet->priority());
-          });
-      std::for_each(
-          inNeighbours.cbegin(),
-          inNeighbours.cend(),
-          [this, &pair, &outNeighbours, &maxPriority](auto const& inNodeId) {
-            auto const& pInStreet{m_edges.at(inNodeId * m_nodes.size() + pair.first)};
+          [this, &pNode, &outNeighbours, &maxPriority](auto const& edgeId) {
+            auto const& pInStreet{this->edge(edgeId)};
             auto const nLanes{pInStreet->nLanes()};
             if (nLanes == 1) {
               return;
@@ -346,16 +256,16 @@ namespace dsf {
             std::for_each(
                 outNeighbours.cbegin(),
                 outNeighbours.cend(),
-                [this, &pair, &pInStreet, &allowedTurns, &maxPriority](
-                    auto const& outNodeId) {
-                  auto const& pOutStreet{
-                      m_edges.at(pair.first * m_nodes.size() + outNodeId)};
+                [this, &pNode, &pInStreet, &allowedTurns, &maxPriority](
+                    auto const& edgeId) {
+                  auto const& pOutStreet{this->edge(edgeId)};
                   if (pOutStreet->target() == pInStreet->source() ||
                       pInStreet->forbiddenTurns().contains(pOutStreet->id())) {
                     return;
                   }
                   auto const deltaAngle{pOutStreet->deltaAngle(pInStreet->angle())};
-                  auto const& outOppositeStreet{this->street(pair.first, outNodeId)};
+                  auto const& outOppositeStreet{
+                      this->street(pOutStreet->target(), pOutStreet->source())};
                   if (!outOppositeStreet) {
                     return;
                   }
@@ -363,8 +273,7 @@ namespace dsf {
                   if (((pInStreet->priority() == maxPriority) ==
                        (outOppositeStreet->get()->priority() == maxPriority)) &&
                       !allowedTurns.contains(Direction::STRAIGHT)) {
-                    Logger::debug(
-                        std::format("Street {} prioritized STRAIGHT", pInStreet->id()));
+                    spdlog::debug("Street {} prioritized STRAIGHT", pInStreet->id());
                     if (allowedTurns.contains(Direction::STRAIGHT) &&
                         !allowedTurns.contains(Direction::RIGHT)) {
                       allowedTurns.emplace(Direction::RIGHT);
@@ -381,19 +290,19 @@ namespace dsf {
                     //                           pOutStreet->angle()));
                     // Logger::debug(std::format("Delta: {}", deltaAngle));
                     if (std::abs(deltaAngle) < std::numbers::pi / 8) {
-                      Logger::debug(std::format("Street {} -> {} can turn STRAIGHT",
-                                                pInStreet->source(),
-                                                pInStreet->target()));
+                      spdlog::debug("Street {} -> {} can turn STRAIGHT",
+                                    pInStreet->source(),
+                                    pInStreet->target());
                       allowedTurns.emplace(Direction::STRAIGHT);
                     } else if (deltaAngle < 0.) {
-                      Logger::debug(std::format("Street {} -> {} can turn RIGHT",
-                                                pInStreet->source(),
-                                                pInStreet->target()));
+                      spdlog::debug("Street {} -> {} can turn RIGHT",
+                                    pInStreet->source(),
+                                    pInStreet->target());
                       allowedTurns.emplace(Direction::RIGHT);
                     } else if (deltaAngle > 0.) {
-                      Logger::debug(std::format("Street {} -> {} can turn LEFT",
-                                                pInStreet->source(),
-                                                pInStreet->target()));
+                      spdlog::debug("Street {} -> {} can turn LEFT",
+                                    pInStreet->source(),
+                                    pInStreet->target());
                       allowedTurns.emplace(Direction::LEFT);
                     }
                   }
@@ -411,17 +320,16 @@ namespace dsf {
             }
             // If allowedTurns contains all RIGHT, STRAIGHT and LEFT, transform RIGHT into RIGHTANDSTRAIGHT
             if (allowedTurns.size() > static_cast<size_t>(nLanes)) {
-              if (pair.second->isTrafficLight()) {
-                auto& tl = static_cast<TrafficLight&>(*pair.second);
+              if (pNode->isTrafficLight()) {
+                auto& tl = static_cast<TrafficLight&>(*pNode);
                 auto const& cycles{tl.cycles()};
                 if (cycles.contains(pInStreet->id())) {
                   if (cycles.size() == static_cast<size_t>(nLanes)) {
                     // Replace with the traffic light cycles
-                    Logger::debug(
-                        std::format("Using traffic light {} cycles for street {} -> {}",
-                                    tl.id(),
-                                    pInStreet->source(),
-                                    pInStreet->target()));
+                    spdlog::debug("Using traffic light {} cycles for street {} -> {}",
+                                  tl.id(),
+                                  pInStreet->source(),
+                                  pInStreet->target());
                     auto const& cycle{cycles.at(pInStreet->id())};
                     allowedTurns.clear();
                     for (auto const& [direction, cycle] : cycle) {
@@ -471,8 +379,8 @@ namespace dsf {
                 if (allowedTurns.contains(Direction::STRAIGHT) &&
                     allowedTurns.contains(Direction::RIGHT) &&
                     allowedTurns.contains(Direction::LEFT)) {
-                  if (pair.second->isTrafficLight()) {
-                    auto& tl = static_cast<TrafficLight&>(*pair.second);
+                  if (pNode->isTrafficLight()) {
+                    auto& tl = static_cast<TrafficLight&>(*pNode);
                     auto const& cycles{tl.cycles()};
                     if (cycles.contains(pInStreet->id())) {
                       auto const& cycle{cycles.at(pInStreet->id())};
@@ -531,43 +439,18 @@ namespace dsf {
     });
   }
 
-  void RoadNetwork::buildAdj() {
-    // find max values in streets node pairs
-    m_maxAgentCapacity = 0;
-    for (auto const& [streetId, pStreet] : m_edges) {
-      m_maxAgentCapacity += pStreet->capacity();
-      if (pStreet->geometry().empty()) {
-        std::vector<std::pair<double, double>> coords;
-        auto pair{m_nodes.at(pStreet->source())->coords()};
-        if (pair.has_value()) {
-          coords.emplace_back(pair.value().second, pair.value().first);
-        }
-        pair = m_nodes.at(pStreet->target())->coords();
-        if (pair.has_value()) {
-          coords.emplace_back(pair.value().second, pair.value().first);
-        }
-        pStreet->setGeometry(coords);
-      }
-    }
-    this->m_reassignIds();
-  }
-
   void RoadNetwork::adjustNodeCapacities() {
     double value;
-    for (Id nodeId = 0; nodeId < m_nodes.size(); ++nodeId) {
+    for (auto const& [_, pNode] : nodes()) {
       value = 0.;
-      auto const N{nNodes()};
-      for (const auto& sourceId : m_adjacencyMatrix.getCol(nodeId)) {
-        auto const streetId{sourceId * N + nodeId};
-        auto const& pStreet{m_edges.at(streetId)};
+      for (auto const& edgeId : pNode->ingoingEdges()) {
+        auto const& pStreet{this->edge(edgeId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
-      auto const& pNode{m_nodes.at(nodeId)};
       pNode->setCapacity(value);
       value = 0.;
-      for (const auto& targetId : m_adjacencyMatrix.getRow(nodeId)) {
-        auto const streetId{nodeId * N + targetId};
-        auto const& pStreet{m_edges.at(streetId)};
+      for (auto const& edgeId : pNode->outgoingEdges()) {
+        auto const& pStreet{this->edge(edgeId)};
         value += pStreet->nLanes() * pStreet->transportCapacity();
       }
       pNode->setTransportCapacity(value == 0. ? 1. : value);
@@ -585,16 +468,15 @@ namespace dsf {
     if (fileExt == "dsf") {
       std::ifstream file{fileName};
       if (!file.is_open()) {
-        throw std::invalid_argument(
-            Logger::buildExceptionMessage("Cannot find file: " + fileName));
+        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
       }
       Size rows, cols;
       file >> rows >> cols;
       if (rows != cols) {
-        throw std::invalid_argument(
-            Logger::buildExceptionMessage("Adjacency matrix must be square"));
+        throw std::invalid_argument("Adjacency matrix must be square");
       }
       Size n{rows};
+      addNDefaultNodes<Intersection>(n);
       // each line has 2 elements
       while (!file.eof()) {
         Id index;
@@ -602,68 +484,55 @@ namespace dsf {
         file >> index >> val;
         const auto srcId{static_cast<Id>(index / n)};
         const auto dstId{static_cast<Id>(index % n)};
-        if (!m_nodes.contains(srcId)) {
-          m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
-        }
-        if (!m_nodes.contains(dstId)) {
-          m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
-        }
-        assert(index == srcId * n + dstId);
         if (isAdj) {
-          addEdge(index, std::make_pair(srcId, dstId));
+          addStreet(Street(index, std::make_pair(srcId, dstId)));
         } else {
-          addEdge(index, std::make_pair(srcId, dstId), val);
+          addStreet(Street(index, std::make_pair(srcId, dstId), val));
         }
-        m_edges.at(index)->setMaxSpeed(defaultSpeed);
+        edge(index)->setMaxSpeed(defaultSpeed);
       }
     } else {
       // default case: read the file as a matrix with the first two elements being the number of rows and columns and
       // the following elements being the matrix elements
       std::ifstream file{fileName};
       if (!file.is_open()) {
-        throw std::invalid_argument(
-            Logger::buildExceptionMessage("Cannot find file: " + fileName));
+        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
       }
       Size rows, cols;
       file >> rows >> cols;
       if (rows != cols) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(
+        throw std::invalid_argument(
             "Adjacency matrix must be square. Rows: " + std::to_string(rows) +
-            " Cols: " + std::to_string(cols)));
+            " Cols: " + std::to_string(cols));
       }
       Size n{rows};
+      addNDefaultNodes<Intersection>(n);
       if (n * n > std::numeric_limits<Id>::max()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(
-            "Matrix size is too large for the current type of Id."));
+        throw std::invalid_argument(
+            "Matrix size is too large for the current type of Id.");
       }
       Id index{0};
       while (!file.eof()) {
         double value;
         file >> value;
         if (value < 0) {
-          throw std::invalid_argument(Logger::buildExceptionMessage(
-              "Adjacency matrix elements must be positive"));
+          throw std::invalid_argument(
+              std::format("Element at index {} is negative ({}).", index, value));
         }
         if (value > 0) {
           const auto srcId{static_cast<Id>(index / n)};
           const auto dstId{static_cast<Id>(index % n)};
-          if (!m_nodes.contains(srcId)) {
-            m_nodes.emplace(srcId, std::make_unique<Intersection>(srcId));
-          }
-          if (!m_nodes.contains(dstId)) {
-            m_nodes.emplace(dstId, std::make_unique<Intersection>(dstId));
-          }
-          assert(index == srcId * n + dstId);
           if (isAdj) {
-            addEdge(index, std::make_pair(srcId, dstId));
+            addStreet(Street(index, std::make_pair(srcId, dstId)));
           } else {
-            addEdge(index, std::make_pair(srcId, dstId), value);
+            addStreet(Street(index, std::make_pair(srcId, dstId), value));
           }
-          m_edges.at(index)->setMaxSpeed(defaultSpeed);
+          edge(index)->setMaxSpeed(defaultSpeed);
         }
         ++index;
       }
     }
+    this->m_updateMaxAgentCapacity();
   }
 
   void RoadNetwork::importCoordinates(const std::string& fileName) {
@@ -671,35 +540,33 @@ namespace dsf {
     if (fileExt == "dsf") {
       // first input number is the number of nodes
       std::ifstream file{fileName};
-      assert((void("Coordinates file not found."), file.is_open()));
+      if (!file.is_open()) {
+        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
+      }
       Size n;
       file >> n;
-      if (n < m_nodes.size()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(
-            "Number of node cordinates in file is too small."));
+      if (n < this->nNodes()) {
+        throw std::invalid_argument("Number of node coordinates in file is too small.");
       }
       double lat, lon;
       for (Size i{0}; i < n; ++i) {
         file >> lon >> lat;
-        auto const& it{m_nodes.find(i)};
-        if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(lon, lat));
-        } else {
-          Logger::warning(std::format("Node with id {} not found.", i));
+        try {
+          node(i)->setCoords(std::make_pair(lon, lat));
+        } catch (...) {
+          spdlog::warn(std::format("Node with id {} not found.", i));
         }
       }
     } else if (fileExt == "csv") {
       std::ifstream ifs{fileName};
       if (!ifs.is_open()) {
-        throw std::invalid_argument(
-            Logger::buildExceptionMessage("Cannot find file: " + fileName));
+        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
       }
       // Check if the first line is nodeId;lat;lon
       std::string line;
       std::getline(ifs, line);
       if (line != "id;lat;lon;type") {
-        throw std::invalid_argument(
-            Logger::buildExceptionMessage("Invalid file format."));
+        throw std::invalid_argument("Invalid file format.");
       }
       double dLat, dLon;
       while (!ifs.eof()) {
@@ -715,29 +582,38 @@ namespace dsf {
         std::getline(iss, type, '\n');
         dLon = lon == "Nan" ? 0. : std::stod(lon);
         dLat = lat == "Nan" ? 0. : std::stod(lat);
-        auto const& it{m_nodes.find(std::stoul(nodeId))};
-        if (it != m_nodes.cend()) {
-          it->second->setCoords(std::make_pair(dLat, dLon));
-          if (type == "traffic_light" && !it->second->isTrafficLight()) {
+        auto const& nodes{this->nodes()};
+        auto it = nodes.find(std::stoul(nodeId));
+        if (it != nodes.cend()) {
+          auto const& pNode{it->second};
+          pNode->setCoords(std::make_pair(dLat, dLon));
+          if (type == "traffic_light" && !pNode->isTrafficLight()) {
             makeTrafficLight(it->first, 60);
-          } else if (type == "roundabout" && !it->second->isRoundabout()) {
+          } else if (type == "roundabout" && !pNode->isRoundabout()) {
             makeRoundabout(it->first);
           }
         } else {
-          Logger::warning(
-              std::format("Node with id {} not found. Skipping coordinates ({}, {}).",
-                          nodeId,
-                          dLat,
-                          dLon));
+          spdlog::warn("Node with id {} not found. Skipping coordinates ({}, {}).",
+                       nodeId,
+                       dLat,
+                       dLon);
         }
       }
     } else {
       throw std::invalid_argument(
-          Logger::buildExceptionMessage("File extension not supported."));
+          std::format("File extension ({}) not supported", fileExt));
+    }
+    for (auto const& [_, pEdge] : edges()) {
+      auto const& pSourceNode{node(pEdge->source())};
+      auto const& pTargetNode{node(pEdge->target())};
+      pEdge->setGeometry(std::vector<std::pair<double, double>>{
+          *(pSourceNode->coords()), *(pTargetNode->coords())});
     }
   }
 
-  void RoadNetwork::importGeoJSON(const std::string& fileName, std::unordered_map<std::string, std::string> const& fields) {
+  void RoadNetwork::importGeoJSON(
+      const std::string& fileName,
+      std::unordered_map<std::string, std::string> const& fields) {
     std::ifstream file{fileName};
     if (!file.is_open()) {
       throw std::invalid_argument(
@@ -748,22 +624,22 @@ namespace dsf {
     file >> root;
     for (const auto& feature : root["features"]) {
       const auto& edge_properties = feature["properties"];
-      
+
       std::vector<std::pair<double, double>> geometry;
       for (const auto& coord : feature["geometry"]["coordinates"]) {
         geometry.emplace_back(coord[1].asDouble(), coord[0].asDouble());
       }
 
       auto const& src_node_id{edge_properties["u"].asUInt64()};
-      auto const src_node_coords{std::make_pair(geometry.front().first, geometry.front().second)};
+      auto const src_node_coords{
+          std::make_pair(geometry.front().first, geometry.front().second)};
       auto const& dst_node_id{edge_properties["v"].asUInt64()};
       auto const& edge_id{edge_properties["osmid"].asUInt64()};
       auto const& edge_length{edge_properties["length"].asDouble()};
       auto const& edge_maxspeed{edge_properties["maxspeed"].asDouble()};
       auto const& edge_lanes{edge_properties["lanes"].asUInt()};
-      
+
       auto const& name{edge_properties.get("name", "").asString()};
-      
 
       addEdge<Street>(edge_id,
                       std::make_pair(src_node_id, dst_node_id),
@@ -776,16 +652,14 @@ namespace dsf {
   }
 
   void RoadNetwork::importOSMNodes(const std::string& fileName) {
-    std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
+    std::string fileExt = fileName.substr(fileName.find_last_of('.') + 1);
     if (fileExt == "csv") {
       std::ifstream file{fileName};
       if (!file.is_open()) {
-        throw std::invalid_argument(
-            Logger::buildExceptionMessage("Cannot find file: " + fileName));
+        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
       }
       std::string line;
       std::getline(file, line);  // skip first line
-      Id nodeIndex{0};
       while (!file.eof()) {
         std::getline(file, line);
         if (line.empty()) {
@@ -798,6 +672,7 @@ namespace dsf {
         std::getline(iss, lon, ';');
         std::getline(iss, lat, ';');
         std::getline(iss, highway, ';');
+        auto const nodeIndex{std::stoul(id)};
         if (highway.find("traffic_signals") != std::string::npos) {
           addNode<TrafficLight>(
               nodeIndex, 120, std::make_pair(std::stod(lat), std::stod(lon)));
@@ -807,32 +682,27 @@ namespace dsf {
           addNode<Intersection>(nodeIndex,
                                 std::make_pair(std::stod(lat), std::stod(lon)));
           if (highway.find("destination") != std::string::npos) {
-            Logger::debug(
-                std::format("Setting node {} as a destination node", nodeIndex));
+            spdlog::debug("Setting node {} as a destination node", nodeIndex);
             m_destinationNodes.push_back(nodeIndex);
           }
           if (highway.find("origin") != std::string::npos) {
-            Logger::debug(std::format("Setting node {} as an origin node", nodeIndex));
+            spdlog::debug("Setting node {} as an origin node", nodeIndex);
             m_originNodes.push_back(nodeIndex);
           }
         }
-        m_nodeMapping.emplace(std::make_pair(id, nodeIndex));
-        m_nodes.at(nodeIndex)->setStrId(id);
-        ++nodeIndex;
       }
     } else {
-      Logger::error(std::format("File extension ({}) not supported", fileExt));
+      throw std::invalid_argument(
+          std::format("File extension ({}) not supported", fileExt));
     }
-    Logger::debug(std::format("Successfully imported {} nodes", nNodes()));
+    spdlog::debug("Successfully imported {} nodes", nNodes());
   }
 
   void RoadNetwork::importOSMEdges(const std::string& fileName) {
     std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
-    auto const nNodes{m_nodes.size()};
     std::ifstream file{fileName};
     if (!file.is_open()) {
-      throw std::invalid_argument(
-          Logger::buildExceptionMessage(std::format("File \'{}\' not found", fileName)));
+      throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
     }
     std::unordered_map<Id, std::string> mapForbiddenTurns;
     std::string line;
@@ -843,12 +713,12 @@ namespace dsf {
         continue;
       }
       std::istringstream iss{line};
-      std::string id, sourceId, targetId, length, lanes, highway, maxspeed, name,
+      std::string id, strSourceId, strTargetId, length, lanes, highway, maxspeed, name,
           geometry, forbiddenTurns, coilcode, customWeight;
       // id;sourceId;targetId;length;highway;maxspeed;name;geometry;forbiddenTurns;coilcode;customWeight
       std::getline(iss, id, ';');
-      std::getline(iss, sourceId, ';');
-      std::getline(iss, targetId, ';');
+      std::getline(iss, strSourceId, ';');
+      std::getline(iss, strTargetId, ';');
       std::getline(iss, length, ';');
       std::getline(iss, lanes, ';');
       std::getline(iss, highway, ';');
@@ -858,6 +728,14 @@ namespace dsf {
       std::getline(iss, forbiddenTurns, ';');
       std::getline(iss, coilcode, ';');
       std::getline(iss, customWeight, '\n');
+      Id sourceId, targetId;
+      try {
+        sourceId = std::stoul(strSourceId);
+        targetId = std::stoul(strTargetId);
+      } catch (std::invalid_argument const& e) {
+        throw std::invalid_argument(std::format(
+            "Invalid source or target ids {} - {}", strSourceId, strTargetId));
+      }
       if (lanes.empty()) {
         lanes = "1";  // Default to 1 lane if no value is provided
       } else {
@@ -867,26 +745,12 @@ namespace dsf {
           lanes = "1";  // Default to 1 lane if lanes is invalid
         }
       }
-      if (!m_nodeMapping.contains(sourceId)) {
-        Logger::error(std::format("Node with id {} not found.", sourceId));
-      }
-      if (!m_nodeMapping.contains(targetId)) {
-        Logger::error(std::format("Node with id {} not found.", targetId));
-      }
-      if (sourceId == targetId) {
-        Logger::warning(
-            std::format("Self loop detected: {}->{}. Skipping.", sourceId, targetId));
-        continue;
-      }
 
-      auto const srcId{m_nodeMapping.at(sourceId)};
-      auto const dstId{m_nodeMapping.at(targetId)};
       auto dLength{0.};
       try {
         dLength = std::stod(length);
       } catch (const std::invalid_argument& e) {
-        Logger::error(
-            std::format("Invalid length {} for edge {}->{}", length, srcId, dstId));
+        spdlog::error("Invalid length {} for edge {}->{}", length, sourceId, targetId);
         continue;
       }
       auto dMaxSpeed{0.};
@@ -899,11 +763,11 @@ namespace dsf {
       try {
         iLanes = std::stoi(lanes);
         if (iLanes < 1) {
-          Logger::warning(std::format(
+          spdlog::warn(
               "Invalid number of lanes {} for edge {}->{}. Defaulting to 1 lane.",
               iLanes,
-              srcId,
-              dstId));
+              sourceId,
+              targetId);
           ++iLanes;  // Ensure at least 1 lane
         }
       } catch (const std::invalid_argument& e) {
@@ -944,92 +808,81 @@ namespace dsf {
             dLon = std::stod(lon);
             dLat = std::stod(lat);
           } catch (const std::invalid_argument& e) {
-            Logger::error(std::format(
-                "Invalid coordinates ({}, {}) for edge {}->{}", lon, lat, srcId, dstId));
+            spdlog::error("Invalid coordinates ({}, {}) for edge {}->{}",
+                          lon,
+                          lat,
+                          sourceId,
+                          targetId);
           }
           // Note: The original code stored as (lat, lon) based on your comment.
           coords.emplace_back(dLon, dLat);
         }
       } else {
-        coords.emplace_back(m_nodes.at(srcId)->coords().value());
-        coords.emplace_back(m_nodes.at(dstId)->coords().value());
+        coords.emplace_back(node(sourceId)->coords().value());
+        coords.emplace_back(node(targetId)->coords().value());
       }
-      if (static_cast<unsigned long long>(srcId * nNodes + dstId) >
-          std::numeric_limits<Id>::max()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(
-            std::format("Street id {}->{} would too large for the current type of Id.",
-                        srcId,
-                        dstId)));
+      Id streetId;
+      try {
+        streetId = std::stoul(id);
+      } catch (...) {
+        throw std::invalid_argument(std::format("Invalid edge id {}", id));
       }
-      Id streetId = srcId * nNodes + dstId;
-      addEdge<Street>(streetId,
-                      std::make_pair(srcId, dstId),
-                      dLength,
-                      dMaxSpeed / 3.6,
-                      iLanes,
-                      name,
-                      coords);
-      // Always set strId for all edges
-      m_edges.at(streetId)->setStrId(id);
-      if (!coilcode.empty()) {
-        makeSpireStreet(streetId);
-        auto& coil = edge<SpireStreet>(streetId);
-        try {
-          auto const coilId{static_cast<Id>(std::stoul(coilcode))};
-          coil.setCode(coilId);
-        } catch (const std::invalid_argument& e) {
-          Logger::warning(std::format(
-              "Invalid coil code {} for edge {}->{}", coilcode, srcId, dstId));
-        }
-      }
-      if (!customWeight.empty()) {
-        try {
-          auto const weight{std::stod(customWeight)};
-          m_edges.at(streetId)->setWeight(weight);
-        } catch (const std::invalid_argument& e) {
-          Logger::warning(std::format(
-              "Invalid custom weight {} for edge {}->{}", customWeight, srcId, dstId));
-        }
-      }
+      addStreet(Street(streetId,
+                       std::make_pair(sourceId, targetId),
+                       dLength,
+                       dMaxSpeed / 3.6,
+                       iLanes,
+                       name,
+                       coords));
+      // if (!coilcode.empty()) {
+      //   makeSpireStreet(streetId);
+      //   auto& coil = edge<SpireStreet>(streetId);
+      //   try {
+      //     auto const coilId{static_cast<Id>(std::stoul(coilcode))};
+      //     coil.setCode(coilId);
+      //   } catch (const std::invalid_argument& e) {
+      //     Logger::warning(
+      //         std::format("Invalid coil code {} for {}", coilcode, *edge(streetId)));
+      //   }
+      // }
+      // if (!customWeight.empty()) {
+      //   try {
+      //     auto const weight{std::stod(customWeight)};
+      //     edge(streetId)->setWeight(weight);
+      //   } catch (const std::invalid_argument& e) {
+      //     Logger::warning(std::format(
+      //         "Invalid custom weight {} for {}", customWeight, *edge(streetId)));
+      //   }
+      // }
     }
+    this->m_nodes.rehash(this->nNodes());
+    this->m_edges.rehash(this->nEdges());
     // Parse forbidden turns
-    for (auto const& [streetId, forbiddenTurns] : mapForbiddenTurns) {
-      auto const& pStreet{m_edges.at(streetId)};
-      std::istringstream iss{forbiddenTurns};
-      std::string pair;
-      while (std::getline(iss, pair, ',')) {
-        // Decompose pair = sourceId-targetId
-        std::istringstream pairStream(pair);
-        std::string strSourceId, strTargetId;
-        std::getline(pairStream, strSourceId, '-');
-        // targetId is the remaining part
-        std::getline(pairStream, strTargetId);
+    // for (auto const& [streetId, forbiddenTurns] : mapForbiddenTurns) {
+    //   auto const& pStreet{edge(streetId)};
+    //   std::istringstream iss{forbiddenTurns};
+    //   std::string pair;
+    //   while (std::getline(iss, pair, ',')) {
+    //     // Decompose pair = sourceId-targetId
+    //     std::istringstream pairStream(pair);
+    //     std::string strSourceId, strTargetId;
+    //     std::getline(pairStream, strSourceId, '-');
+    //     // targetId is the remaining part
+    //     std::getline(pairStream, strTargetId);
 
-        Id sourceId{0}, targetId{0};
-        try {
-          sourceId = m_nodeMapping.at(strSourceId);
-          targetId = m_nodeMapping.at(strTargetId);
-        } catch (const std::out_of_range& e) {
-          Logger::warning(
-              std::format("Invalid forbidden turn {}->{} for street {}. Skipping.",
-                          strSourceId,
-                          strTargetId,
-                          streetId));
-          continue;
-        }
+    //     Id const sourceId{std::stoul(strSourceId)};
+    //     Id const targetId{std::stoul(strTargetId)};
 
-        auto const forbiddenStreetId{sourceId * nNodes + targetId};
-        pStreet->addForbiddenTurn(forbiddenStreetId);
-      }
-    }
+    //     pStreet->addForbiddenTurn(edge(sourceId, targetId)->id());
+    //   }
+    // }
 
-    Logger::debug(std::format("Successfully imported {} edges", nEdges()));
+    spdlog::debug("Successfully imported {} edges", nEdges());
   }
   void RoadNetwork::importTrafficLights(const std::string& fileName) {
     std::ifstream file{fileName};
     if (!file.is_open()) {
-      throw std::invalid_argument(
-          Logger::buildExceptionMessage("Cannot find file: " + fileName));
+      throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
     }
     std::unordered_map<Id, Delay> storedGreenTimes;
     std::string line;
@@ -1048,14 +901,13 @@ namespace dsf {
 
       auto const cycleTime{static_cast<Delay>(std::stoul(strCycleTime))};
       // Cast node(id) to traffic light
-      auto& pNode{m_nodes.at(m_nodeMapping.at(strId))};
+      auto& pNode{node(std::stoul(strId))};
       if (!pNode->isTrafficLight()) {
         pNode = std::make_unique<TrafficLight>(
             pNode->id(), cycleTime, pNode->coords().value());
       }
       auto& tl = static_cast<TrafficLight&>(*pNode);
-      auto const srcId{m_nodeMapping.at(streetSource)};
-      auto const streetId{srcId * m_nodes.size() + pNode->id()};
+      auto const streetId{edge(std::stoul(streetSource), pNode->id())->id()};
       auto const greenTime{static_cast<Delay>(std::stoul(strGT))};
       if (!storedGreenTimes.contains(pNode->id())) {
         storedGreenTimes.emplace(pNode->id(), greenTime);
@@ -1071,19 +923,15 @@ namespace dsf {
     }
   }
 
-  void RoadNetwork::exportNodes(std::string const& path, bool const useExternalIds) {
+  void RoadNetwork::exportNodes(std::string const& path) {
     // assert that path ends with ".csv"
     assert((void("Only csv export is supported."),
             path.substr(path.find_last_of(".")) == ".csv"));
     std::ofstream file{path};
     // Column names
     file << "id;lat;lon;type\n";
-    for (auto const& [nodeId, pNode] : m_nodes) {
-      if (useExternalIds) {
-        file << pNode->strId().value_or(std::to_string(nodeId)) << ';';
-      } else {
-        file << nodeId << ';';
-      }
+    for (auto const& [id, pNode] : nodes()) {
+      file << id << ';';
       if (pNode->coords().has_value()) {
         file << pNode->coords().value().first << ';' << pNode->coords().value().second;
       } else {
@@ -1091,10 +939,10 @@ namespace dsf {
       }
       bool const bIsOrigin{std::find(m_originNodes.begin(),
                                      m_originNodes.end(),
-                                     nodeId) != m_originNodes.end()};
+                                     pNode->id()) != m_originNodes.end()};
       bool const bIsDestination{std::find(m_destinationNodes.begin(),
                                           m_destinationNodes.end(),
-                                          nodeId) != m_destinationNodes.end()};
+                                          pNode->id()) != m_destinationNodes.end()};
       if (pNode->isTrafficLight()) {
         file << ";traffic_light";
       } else if (pNode->isRoundabout()) {
@@ -1112,7 +960,7 @@ namespace dsf {
     }
     file.close();
   }
-  void RoadNetwork::exportEdges(std::string const& path, bool const useExternalIds) {
+  void RoadNetwork::exportEdges(std::string const& path) {
     // assert that path ends with ".csv"
     assert((void("Only csv export is supported."),
             path.substr(path.find_last_of(".")) == ".csv"));
@@ -1120,15 +968,7 @@ namespace dsf {
     // Column names
     file << "id;source_id;target_id;length;nlanes;capacity;name;coil_code;geometry\n";
     for (auto const& [streetId, pStreet] : m_edges) {
-      if (useExternalIds) {
-        auto const& pSrcNode{m_nodes.at(pStreet->source())};
-        auto const& pTargetNode{m_nodes.at(pStreet->target())};
-        file << pStreet->strId().value_or("N/A") << ';'
-             << pSrcNode->strId().value_or("N/A") << ';'
-             << pTargetNode->strId().value_or("N/A") << ';';
-      } else {
-        file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';';
-      }
+      file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';';
       file << pStreet->length() << ';' << pStreet->nLanes() << ';' << pStreet->capacity()
            << ';' << pStreet->name() << ';';
       if (pStreet->isSpire()) {
@@ -1155,48 +995,47 @@ namespace dsf {
   void RoadNetwork::exportMatrix(std::string path, bool isAdj) {
     std::ofstream file{path};
     if (!file.is_open()) {
-      throw std::invalid_argument(
-          Logger::buildExceptionMessage("Cannot open file: " + path));
+      throw std::runtime_error("Error opening file \"" + path + "\" for writing.");
     }
-    auto const N{m_adjacencyMatrix.n()};
+    auto const N{nNodes()};
     file << N << '\t' << N;
     if (isAdj) {
-      for (const auto& [source, target] : m_adjacencyMatrix.elements()) {
-        file << '\n' << source * N + target << '\t' << 1;
-      }
+      std::for_each(m_edges.cbegin(), m_edges.cend(), [&N, &file](auto const& pair) {
+        file << '\n' << pair.second->source() * N + pair.second->target() << '\t' << 1;
+      });
     } else {
-      for (const auto& [id, street] : m_edges) {
-        file << '\n' << id << '\t' << street->length();
-      }
+      std::for_each(m_edges.cbegin(), m_edges.cend(), [&N, &file](auto const& pair) {
+        file << '\n' << pair.second->id() << '\t' << pair.second->length();
+      });
     }
   }
 
   TrafficLight& RoadNetwork::makeTrafficLight(Id const nodeId,
                                               Delay const cycleTime,
                                               Delay const counter) {
-    auto& pNode = m_nodes.at(nodeId);
+    auto& pNode = node(nodeId);
     pNode = std::make_unique<TrafficLight>(*pNode, cycleTime, counter);
     return node<TrafficLight>(nodeId);
   }
 
   Roundabout& RoadNetwork::makeRoundabout(Id nodeId) {
-    auto& pNode = m_nodes.at(nodeId);
+    auto& pNode = node(nodeId);
     pNode = std::make_unique<Roundabout>(*pNode);
     return node<Roundabout>(nodeId);
   }
 
   Station& RoadNetwork::makeStation(Id nodeId, const unsigned int managementTime) {
-    auto& pNode = m_nodes.at(nodeId);
+    auto& pNode = node(nodeId);
     pNode = std::make_unique<Station>(*pNode, managementTime);
     return node<Station>(nodeId);
   }
   void RoadNetwork::makeStochasticStreet(Id streetId, double const flowRate) {
-    auto& pStreet = m_edges.at(streetId);
+    auto& pStreet = edge(streetId);
     pStreet = std::unique_ptr<StochasticStreet>(
         new StochasticStreet(std::move(*pStreet), flowRate));
   }
   void RoadNetwork::makeSpireStreet(Id streetId) {
-    auto& pStreet = m_edges.at(streetId);
+    auto& pStreet = edge(streetId);
     if (pStreet->isStochastic()) {
       pStreet = std::unique_ptr<StochasticSpireStreet>(new StochasticSpireStreet(
           std::move(*pStreet), dynamic_cast<StochasticStreet&>(*pStreet).flowRate()));
@@ -1205,38 +1044,35 @@ namespace dsf {
     pStreet = std::unique_ptr<SpireStreet>(new SpireStreet(std::move(*pStreet)));
   }
 
-  void RoadNetwork::addStreet(Street&& street) { addEdge<Street>(std::move(street)); }
-
-  const std::unique_ptr<Street>* RoadNetwork::street(Id source, Id destination) const {
-    auto streetIt = std::find_if(m_edges.begin(),
-                                 m_edges.end(),
-                                 [source, destination](const auto& street) -> bool {
-                                   return street.second->source() == source &&
-                                          street.second->target() == destination;
-                                 });
-    if (streetIt == m_edges.end()) {
-      return nullptr;
+  void RoadNetwork::addStreet(Street&& street) {
+    m_maxAgentCapacity += street.capacity();
+    auto const& geometry{street.geometry()};
+    auto const& nodes{this->nodes()};
+    if (!nodes.contains(street.source())) {
+      spdlog::debug("Node with id {} not found, adding default", street.source());
+      if (!geometry.empty()) {
+        addNode<Intersection>(street.source(), geometry.front());
+      } else {
+        addNode<Intersection>(street.source());
+      }
     }
-    Size n = m_nodes.size();
-    auto id1 = streetIt->first;
-    auto id2 = source * n + destination;
-    assert(id1 == id2);
-    // if (id1 != id2) {
-    //   std::cout << "node size: " << n << std::endl;
-    //   std::cout << "Street id: " << id1 << std::endl;
-    //   std::cout << "Nodes: " << id2 << std::endl;
-    // }
-    return &(streetIt->second);
+    if (!nodes.contains(street.target())) {
+      spdlog::debug("Node with id {} not found, adding default", street.target());
+      if (!geometry.empty()) {
+        addNode<Intersection>(street.target(), geometry.back());
+      } else {
+        addNode<Intersection>(street.target());
+      }
+    }
+    addEdge<Street>(std::move(street));
   }
 
-  const std::unique_ptr<Street>* RoadNetwork::oppositeStreet(Id streetId) const {
-    if (!m_edges.contains(streetId)) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Street with id {} does not exist: maybe it has changed "
-                      "id once called buildAdj.",
-                      streetId)));
+  const std::unique_ptr<Street>* RoadNetwork::street(Id source, Id destination) const {
+    // Get the iterator at id m_cantorPairingHashing(source, destination)
+    try {
+      return &(edge(source, destination));
+    } catch (const std::out_of_range& e) {
+      return nullptr;
     }
-    const auto& nodePair = m_edges.at(streetId)->nodePair();
-    return this->street(nodePair.second, nodePair.first);
   }
 };  // namespace dsf

@@ -16,16 +16,14 @@ int main() {
   RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
   graph.importMatrix("../test/data/rawMatrix.dat", false);
-  std::cout << "Number of nodes: " << graph.nodes().size() << '\n'
-            << "Number of streets: " << graph.edges().size() << '\n';
-  for (auto& streetPair : graph.edges()) {
-    auto& street = streetPair.second;
-    street->setCapacity(100);
-    street->setMaxSpeed(10.);
+  std::cout << "Number of nodes: " << graph.nNodes() << '\n'
+            << "Number of streets: " << graph.nEdges() << '\n';
+  for (auto const& pair : graph.edges()) {
+    pair.second->setCapacity(100);
+    pair.second->setMaxSpeed(10.);
   }
-  for (auto& nodePair : graph.nodes()) {
-    auto& node = nodePair.second;
-    node->setCapacity(10);
+  for (auto const& pair : graph.nodes()) {
+    pair.second->setCapacity(10);
   }
   std::cout << "Done.\n";
 

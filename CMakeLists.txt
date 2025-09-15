@@ -24,6 +24,8 @@ if (CMAKE_BUILD_TYPE MATCHES "Release")
 endif()
 
 find_package(TBB REQUIRED CONFIG)
+find_package(fmt REQUIRED)
+find_package(spdlog REQUIRED)
 
 # FetchContent for jsoncpp
 include(FetchContent)
@@ -41,8 +43,7 @@ target_include_directories(dsf PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/headers>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(dsf PRIVATE TBB::tbb)
-target_link_libraries(dsf PRIVATE jsoncpp_lib)
+target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog jsoncpp_lib)
 
 install(TARGETS dsf
         EXPORT dsfConfig

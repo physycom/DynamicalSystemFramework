@@ -8,6 +8,13 @@
 
 #pragma once
 
+#include "Agent.hpp"
+#include "Road.hpp"
+#include "Sensors.hpp"
+#include "../utility/TypeTraits/is_numeric.hpp"
+#include "../utility/queue.hpp"
+#include "../utility/Typedef.hpp"
+
 #include <optional>
 #include <queue>
 #include <type_traits>
@@ -20,13 +27,7 @@
 #include <string>
 #include <vector>
 
-#include "Agent.hpp"
-#include "Road.hpp"
-#include "Sensors.hpp"
-#include "../utility/TypeTraits/is_numeric.hpp"
-#include "../utility/queue.hpp"
-#include "../utility/Logger.hpp"
-#include "../utility/Typedef.hpp"
+#include <fmt/format.h>
 
 namespace dsf {
 
@@ -217,22 +218,47 @@ namespace dsf {
 
 };  // namespace dsf
 
+// Specialization of std::formatter for dsf::Street
 template <>
 struct std::formatter<dsf::Street> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
   auto format(const dsf::Street& street, FormatContext&& ctx) const {
-    return std::format_to(
-        ctx.out(),
-        "Street \"{}\" ({}: {} -> {}). {} m - {} m/s - {} lanes - {} agents ({} exiting)",
-        street.name(),
-        street.id(),
-        street.nodePair().first,
-        street.nodePair().second,
-        street.length(),
-        street.maxSpeed(),
-        street.nLanes(),
-        street.nAgents(),
-        street.nExitingAgents());
+    auto const& name =
+        street.name().empty() ? std::string() : std::format(" \"{}\"", street.name());
+    return std::format_to(ctx.out(),
+                          "Street(id: {}{}, from {} to {}, length: {} m, max speed: "
+                          "{:.2f} m/s, lanes: {}, agents: {}, n enqueued: {})",
+                          street.id(),
+                          name,
+                          street.nodePair().first,
+                          street.nodePair().second,
+                          street.length(),
+                          street.maxSpeed(),
+                          street.nLanes(),
+                          street.nAgents(),
+                          street.nExitingAgents());
+  }
+};
+// Specialization of fmt::formatter for dsf::Street
+template <>
+struct fmt::formatter<dsf::Street> {
+  constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(const dsf::Street& street, FormatContext& ctx) const {
+    auto const& name =
+        street.name().empty() ? std::string() : fmt::format(" \"{}\"", street.name());
+    return fmt::format_to(ctx.out(),
+                          "Street(id: {}{}, from {} to {}, length: {} m, max speed: "
+                          "{:.2f} m/s, lanes: {}, agents: {}, n enqueued: {})",
+                          street.id(),
+                          name,
+                          street.nodePair().first,
+                          street.nodePair().second,
+                          street.length(),
+                          street.maxSpeed(),
+                          street.nLanes(),
+                          street.nAgents(),
+                          street.nExitingAgents());
   }
 };

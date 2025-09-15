@@ -258,6 +258,7 @@ if __name__ == "__main__":
             gdf_edges = gdf_edges[
                 ["osmid", "u", "v", "length", "lanes", "highway", "maxspeed", "name"]
             ]
+    gdf_edges["osmid"] = range(1, len(gdf_edges) + 1)
     if parser.allow_duplicates:
         N_DUPLICATES = 0
     else:

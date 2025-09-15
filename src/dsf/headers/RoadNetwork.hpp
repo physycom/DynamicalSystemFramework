@@ -9,6 +9,20 @@
 
 #pragma once
 
+#include "AdjacencyMatrix.hpp"
+#include "DijkstraWeights.hpp"
+#include "Network.hpp"
+#include "RoadJunction.hpp"
+#include "Intersection.hpp"
+#include "TrafficLight.hpp"
+#include "Roundabout.hpp"
+#include "Station.hpp"
+#include "Street.hpp"
+#include "../utility/DijkstraResult.hpp"
+#include "../utility/Typedef.hpp"
+#include "../utility/TypeTraits/is_node.hpp"
+#include "../utility/TypeTraits/is_street.hpp"
+
 #include <algorithm>
 #include <concepts>
 #include <limits>
@@ -28,28 +42,12 @@
 
 #include <json/json.h>
 
-#include "AdjacencyMatrix.hpp"
-#include "DijkstraWeights.hpp"
-#include "Network.hpp"
-#include "RoadJunction.hpp"
-#include "Intersection.hpp"
-#include "TrafficLight.hpp"
-#include "Roundabout.hpp"
-#include "Station.hpp"
-#include "Street.hpp"
-#include "../utility/DijkstraResult.hpp"
-#include "../utility/Logger.hpp"
-#include "../utility/Typedef.hpp"
-#include "../utility/TypeTraits/is_node.hpp"
-#include "../utility/TypeTraits/is_street.hpp"
-
 namespace dsf {
   /// @brief The RoadNetwork class represents a graph in the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
   class RoadNetwork : public Network<RoadJunction, Street> {
   private:
-    std::unordered_map<std::string, Id> m_nodeMapping;
     std::vector<Id> m_originNodes;
     std::vector<Id> m_destinationNodes;
     unsigned long long m_maxAgentCapacity;
@@ -62,22 +60,14 @@ namespace dsf {
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
 
-    void m_addMissingNodes(Id const nodeId) final;
+    void m_updateMaxAgentCapacity();
 
   public:
     RoadNetwork();
     /// @brief Construct a new RoadNetwork object
     /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
     RoadNetwork(AdjacencyMatrix const& adj);
-    /// @brief Construct a new RoadNetwork object
-    /// @param streetSet A map of streets representing the graph's streets
-    RoadNetwork(const std::unordered_map<Id, std::unique_ptr<Street>>& streetSet);
 
-    /// @brief Build the graph's adjacency matrix and computes max capacity
-    /// @details The adjacency matrix is built using the graph's streets and nodes. N.B.: The street ids
-    /// are reassigned using the max node id, i.e. newStreetId = srcId * n + dstId, where n is the max node id.
-    /// Moreover, street angles and geometries are set using the nodes' coordinates.
-    void buildAdj();
     /// @brief Adjust the nodes' transport capacity
     /// @details The nodes' capacity is adjusted using the graph's streets transport capacity, which may vary basing on the number of lanes. The node capacity will be set to the sum of the incoming streets' transport capacity.
     void adjustNodeCapacities();
@@ -108,9 +98,10 @@ namespace dsf {
     /// @details The file format is deduced from the file extension. Currently only .dsm files are supported.
     ///           The first input number is the number of nodes, followed by the coordinates of each node.
     ///           In the i-th row of the file, the (i - 1)-th node's coordinates are expected.
-    void importCoordinates(const std::string& fileName);
+    [[deprecated]] void importCoordinates(const std::string& fileName);
 
-    void importGeoJSON(const std::string& fileName, std::unordered_map<std::string, std::string> const& fields);
+    void importGeoJSON(const std::string& fileName,
+                       std::unordered_map<std::string, std::string> const& fields);
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
@@ -161,16 +152,17 @@ namespace dsf {
     /// @brief Export the graph's nodes to a csv-like file separated with ';'
     /// @param path The path to the file to export the nodes to
     /// @details The file format is csv-like, with the first line being the column names: id;lon;lat
-    void exportNodes(const std::string& fileName, bool const useExternalIds = false);
+    [[deprecated]] void exportNodes(const std::string& fileName);
     /// @brief Export the graph's edges to a csv-like file separated with ';'
     /// @param path The path to the file to export the edges to
     /// @details The file format is csv-like, with the first line being the column names: id;source_id;target_id;name;geometry
-    void exportEdges(const std::string& fileName, bool const useExternalIds = false);
+    [[deprecated]] void exportEdges(const std::string& fileName);
     /// @brief Export the graph's adjacency matrix to a file
     /// @param path The path to the file to export the adjacency matrix to (default: ./matrix.dsm)
     /// @param isAdj A boolean value indicating if the file contains the adjacency matrix or the distance matrix.
     /// @throws std::invalid_argument if the file is not found or invalid
-    void exportMatrix(std::string path = "./matrix.dsm", bool isAdj = true);
+    [[deprecated]] void exportMatrix(std::string path = "./matrix.dsm",
+                                     bool isAdj = true);
 
     template <typename T1, typename... Tn>
       requires is_node_v<std::remove_reference_t<T1>> &&
@@ -222,21 +214,10 @@ namespace dsf {
     /// @param destination The destination node
     /// @return A std::unique_ptr to the street if it exists, nullptr otherwise
     const std::unique_ptr<Street>* street(Id source, Id destination) const;
-    /// @brief Get the opposite street of a street in the graph
-    /// @param streetId The id of the street
-    /// @throws std::invalid_argument if the street does not exist
-    /// @return A std::unique_ptr to the street if it exists, nullptr otherwise
-    const std::unique_ptr<Street>* oppositeStreet(Id streetId) const;
 
     /// @brief Get the maximum agent capacity
     /// @return unsigned long long The maximum agent capacity of the graph
     inline unsigned long long maxCapacity() const noexcept { return m_maxAgentCapacity; }
-
-    /// @brief Get the node mapping
-    /// @return std::unordered_map<std::string, Id> const& The node mapping
-    inline std::unordered_map<std::string, Id> const& nodeMapping() const noexcept {
-      return m_nodeMapping;
-    }
 
     /// @brief Get the origin nodes of the graph
     /// @return std::vector<Id> const& The origin nodes of the graph
@@ -287,11 +268,7 @@ namespace dsf {
   template <typename T1>
     requires is_street_v<std::remove_reference_t<T1>>
   void RoadNetwork::addStreets(T1&& street) {
-    if (m_edges.contains(street.id())) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(
-          std::format("Street with id {} already exists.", street.id())));
-    }
-    addEdge(std::move(street));
+    addStreet(std::move(street));
   }
 
   template <typename T1, typename... Tn>
@@ -317,86 +294,88 @@ namespace dsf {
   std::optional<DijkstraResult> RoadNetwork::shortestPath(Id source,
                                                           Id destination,
                                                           Func getStreetWeight) const {
-    const Id sourceId{source};
-
-    std::unordered_set<Id> unvisitedNodes;
-    bool source_found{false};
-    bool dest_found{false};
-    std::for_each(m_nodes.begin(),
-                  m_nodes.end(),
-                  [&unvisitedNodes, &source_found, &dest_found, source, destination](
-                      const auto& node) -> void {
-                    if (!source_found && node.first == source) {
-                      source_found = true;
-                    }
-                    if (!dest_found && node.first == destination) {
-                      dest_found = true;
-                    }
-                    unvisitedNodes.emplace(node.first);
-                  });
-    if (!source_found || !dest_found) {
+    // Check if source and destination nodes exist
+    auto const& nodes = this->nodes();
+    if (!std::any_of(nodes.cbegin(),
+                     nodes.cend(),
+                     [source](auto const& pair) { return pair.first == source; }) ||
+        !std::any_of(nodes.cbegin(), nodes.cend(), [destination](auto const& pair) {
+          return pair.first == destination;
+        })) {
       return std::nullopt;
     }
 
-    const size_t n_nodes{m_nodes.size()};
-    auto adj{m_adjacencyMatrix};
-
+    // Use unordered_map for distances and previous nodes using original node IDs
+    std::unordered_map<Id, double> dist;
+    std::unordered_map<Id, Id> prev;
+    std::unordered_set<Id> unvisitedNodes;
     std::unordered_set<Id> visitedNodes;
-    std::vector<std::pair<Id, double>> dist(n_nodes);
-    std::for_each(dist.begin(), dist.end(), [count = 0](auto& element) mutable -> void {
-      element.first = count;
-      element.second = std::numeric_limits<double>::max();
-      ++count;
-    });
-    dist[source] = std::make_pair(source, 0.);
 
-    std::vector<std::pair<Id, double>> prev(n_nodes);
-    std::for_each(prev.begin(), prev.end(), [](auto& pair) -> void {
-      pair.first = std::numeric_limits<Id>::max();
-      pair.second = std::numeric_limits<double>::max();
-    });
-    prev[source].second = 0.;
-
-    while (unvisitedNodes.size() != 0) {
-      source = *std::min_element(unvisitedNodes.begin(),
-                                 unvisitedNodes.end(),
-                                 [&dist](const auto& a, const auto& b) -> bool {
-                                   return dist[a].second < dist[b].second;
-                                 });
-
-      unvisitedNodes.erase(source);
-      visitedNodes.emplace(source);
-      auto const& neighbors{adj.getRow(source)};
-      for (auto const& neighbour : neighbors) {
-        // if the node has already been visited, skip it
-        if (visitedNodes.find(neighbour) != visitedNodes.end()) {
-          continue;
-        }
-        double streetWeight = getStreetWeight(this, source, neighbour);
-        // if current path is shorter than the previous one, update the distance
-        if (streetWeight + dist[source].second < dist[neighbour].second) {
-          dist[neighbour].second = streetWeight + dist[source].second;
-          prev[neighbour] = std::make_pair(source, dist[neighbour].second);
-        }
-      }
-
-      adj.clearCol(source);
+    // Initialize distances and unvisited nodes using original node IDs
+    for (auto const& [nodeId, node] : nodes) {
+      dist[nodeId] = std::numeric_limits<double>::max();
+      prev[nodeId] = std::numeric_limits<Id>::max();
+      unvisitedNodes.insert(nodeId);
     }
 
-    std::vector<Id> path{destination};
-    Id previous{destination};
-    while (true) {
-      previous = prev[previous].first;
-      if (previous == std::numeric_limits<Id>::max()) {
-        return std::nullopt;
-      }
-      path.push_back(previous);
-      if (previous == sourceId) {
+    // Set distance to source as 0
+    dist[source] = 0.0;
+
+    while (!unvisitedNodes.empty()) {
+      // Find unvisited node with minimum distance
+      Id currentNode = *std::min_element(
+          unvisitedNodes.begin(),
+          unvisitedNodes.end(),
+          [&dist](const Id& a, const Id& b) -> bool { return dist[a] < dist[b]; });
+
+      // If we reached the destination, we can stop
+      if (currentNode == destination) {
         break;
       }
+
+      // If the current node has infinite distance, there's no path
+      if (dist[currentNode] == std::numeric_limits<double>::max()) {
+        return std::nullopt;
+      }
+
+      unvisitedNodes.erase(currentNode);
+      visitedNodes.insert(currentNode);
+
+      // Get outgoing neighbors (nodes this node can reach)
+      auto const& outEdges = node(currentNode)->outgoingEdges();
+      for (auto const& outEdgeId : outEdges) {
+        Id neighborId = edge(outEdgeId)->target();
+
+        // Skip if already visited
+        if (visitedNodes.find(neighborId) != visitedNodes.end()) {
+          continue;
+        }
+
+        double streetWeight = getStreetWeight(this, currentNode, neighborId);
+        double altDistance = dist[currentNode] + streetWeight;
+
+        // If we found a shorter path to the neighbor, update it
+        if (altDistance < dist[neighborId]) {
+          dist[neighborId] = altDistance;
+          prev[neighborId] = currentNode;
+        }
+      }
+    }
+
+    // Check if destination is reachable
+    if (dist[destination] == std::numeric_limits<double>::max()) {
+      return std::nullopt;
+    }
+
+    // Reconstruct path
+    std::vector<Id> path;
+    Id current = destination;
+    while (current != std::numeric_limits<Id>::max()) {
+      path.push_back(current);
+      current = prev[current];
     }
 
     std::reverse(path.begin(), path.end());
-    return DijkstraResult(path, prev[destination].second);
+    return DijkstraResult(path, dist[destination]);
   }
 };  // namespace dsf

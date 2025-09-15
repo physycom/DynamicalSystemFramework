@@ -12,20 +12,21 @@ namespace dsf {
         m_alpha{alpha},
         m_speedFluctuationSTD{0.} {
     if (alpha < 0. || alpha > 1.) {
-      Logger::error(std::format("The minimum speed rateo ({}) must be in [0, 1[", alpha));
+      throw std::invalid_argument(
+          std::format("The minimum speed ratio ({}) must be in [0, 1[", alpha));
     }
     double globMaxTimePenalty{0.};
-    for (const auto& [streetId, street] : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       globMaxTimePenalty =
           std::max(globMaxTimePenalty,
-                   std::ceil(street->length() / ((1. - m_alpha) * street->maxSpeed())));
+                   std::ceil(pStreet->length() / ((1. - m_alpha) * pStreet->maxSpeed())));
     }
     if (globMaxTimePenalty > static_cast<double>(std::numeric_limits<Delay>::max())) {
-      throw std::overflow_error(Logger::buildExceptionMessage(
+      throw std::overflow_error(
           std::format("The maximum time penalty ({}) is greater than the "
                       "maximum value of delay_t ({})",
                       globMaxTimePenalty,
-                      std::numeric_limits<Delay>::max())));
+                      std::numeric_limits<Delay>::max()));
     }
   }
 
@@ -42,7 +43,7 @@ namespace dsf {
 
   void FirstOrderDynamics::setSpeedFluctuationSTD(double speedFluctuationSTD) {
     if (speedFluctuationSTD < 0.) {
-      Logger::error(
+      throw std::invalid_argument(
           std::format("The speed fluctuation standard deviation ({}) must be positive",
                       speedFluctuationSTD));
     }
@@ -72,24 +73,6 @@ namespace dsf {
         }
       }
     }
-    const auto& node = this->graph().node(street->nodePair().second);
-    if (node->isIntersection()) {
-      auto& intersection = dynamic_cast<Intersection&>(*node);
-      for (auto const& [angle, pAgent] : intersection.agents()) {
-        if (pAgent->streetId().has_value() && pAgent->streetId().value() == streetId) {
-          meanSpeed += pAgent->speed();
-          ++n;
-        }
-      }
-    } else if (node->isRoundabout()) {
-      auto& roundabout = dynamic_cast<Roundabout&>(*node);
-      for (auto const& pAgent : roundabout.agents()) {
-        if (pAgent->streetId().has_value() && pAgent->streetId().value() == streetId) {
-          meanSpeed += pAgent->speed();
-          ++n;
-        }
-      }
-    }
     return meanSpeed / n;
   }
 
@@ -99,7 +82,7 @@ namespace dsf {
     }
     std::vector<double> speeds;
     speeds.reserve(this->graph().edges().size());
-    for (const auto& [streetId, street] : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       speeds.push_back(this->streetMeanSpeed(streetId));
     }
     return Measurement<double>(speeds);
@@ -108,13 +91,13 @@ namespace dsf {
                                                           bool above) const {
     std::vector<double> speeds;
     speeds.reserve(this->graph().edges().size());
-    for (const auto& [streetId, street] : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       if (above) {
-        if (street->density(true) > threshold) {
+        if (pStreet->density(true) > threshold) {
           speeds.push_back(this->streetMeanSpeed(streetId));
         }
       } else {
-        if (street->density(true) < threshold) {
+        if (pStreet->density(true) < threshold) {
           speeds.push_back(this->streetMeanSpeed(streetId));
         }
       }

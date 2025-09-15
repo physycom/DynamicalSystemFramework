@@ -30,12 +30,12 @@ jobs:
     - name: Install TBB (MacOS & Ubuntu)
       run: |
         if [[ "$RUNNER_OS" == "macOS" ]]; then
-          brew install tbb
-          echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$(brew --prefix tbb)/lib" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib" >> $GITHUB_ENV
+          brew install tbb fmt spdlog
+          echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include:$(brew --prefix fmt)/include:$(brew --prefix spdlog)/include" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib" >> $GITHUB_ENV
         elif [[ "$RUNNER_OS" == "Linux" ]]; then
-          sudo apt update && sudo apt install -y libtbb-dev
+          sudo apt update && sudo apt install -y libtbb-dev libfmt-dev libspdlog-dev
         fi
 
     - name: Initialize CodeQL
@@ -47,7 +47,7 @@ jobs:
       run: |
         mkdir -p build && cd build
         if [[ "$RUNNER_OS" == "macOS" ]]; then
-          cmake .. -DCMAKE_PREFIX_PATH=$(brew --prefix tbb)
+          cmake .. -DCMAKE_PREFIX_PATH="$(brew --prefix tbb);$(brew --prefix fmt);$(brew --prefix spdlog)"
         else
           cmake ..
         fi

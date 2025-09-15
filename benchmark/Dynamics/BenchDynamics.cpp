@@ -15,10 +15,23 @@ int main() {
   RoadNetwork graph{};
   graph.importOSMNodes("../test/data/forlì_nodes.csv");
   graph.importOSMEdges("../test/data/forlì_edges.csv");
-  graph.buildAdj();
 
   Dynamics dynamics{graph};
-  dynamics.setDestinationNodes({10, 42, 69, 121, 420, 690, 777, 999, 1020, 1212}, false);
+  // Take 10 random keys from nodes map
+  {
+    std::vector<dsf::Id> nodeIds;
+    nodeIds.reserve(dynamics.graph().nNodes());
+    for (const auto& pair : dynamics.graph().nodes()) {
+      nodeIds.push_back(pair.first);
+    }
+    std::vector<dsf::Id> randomNodeIds;
+    std::sample(nodeIds.begin(),
+                nodeIds.end(),
+                std::back_inserter(randomNodeIds),
+                10,
+                std::mt19937{std::random_device{}()});
+    dynamics.setDestinationNodes(randomNodeIds, false);
+  }
 
   const int n_rep{1};
   Bench b1(n_rep);

@@ -4,12 +4,7 @@
 #include <stdexcept>
 
 namespace dsf {
-  Roundabout::Roundabout(const RoadJunction& node) : RoadJunction{node.id()} {
-    if (node.coords().has_value()) {
-      this->setCoords(node.coords().value());
-    }
-    this->setCapacity(node.capacity());
-  }
+  Roundabout::Roundabout(const RoadJunction& node) : RoadJunction{node} {}
 
   void Roundabout::enqueue(std::unique_ptr<Agent> pAgent) {
     assert(!isFull());

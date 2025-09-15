@@ -7,17 +7,16 @@
 namespace dsf {
   void Intersection::setCapacity(Size capacity) {
     if (capacity < m_agents.size()) {
-      throw std::runtime_error(Logger::buildExceptionMessage(std::format(
+      throw std::logic_error(std::format(
           "Intersection capacity ({}) is smaller than the current queue size ({}).",
           capacity,
-          m_agents.size())));
+          m_agents.size()));
     }
     RoadJunction::setCapacity(capacity);
   }
 
   void Intersection::addAgent(double angle, std::unique_ptr<Agent> pAgent) {
     assert(!isFull());
-    // Logger::debug(std::format("Agente nell'intersezione {}", this->id()));
     auto iAngle{static_cast<int16_t>(angle * 100)};
     m_agents.emplace(iAngle, std::move(pAgent));
     ++m_agentCounter;

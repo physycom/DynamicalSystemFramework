@@ -19,6 +19,8 @@
 #endif
 #include <atomic>
 
+#include <spdlog/spdlog.h>
+
 std::atomic<unsigned int> progress{0};
 
 using Unit = unsigned int;
@@ -77,13 +79,12 @@ int main() {
   tl4.setCycle(s34.id(), dsf::Direction::ANY, {81, 0});
 
   graph.addStreets(s01, s12, s23, s34);
-  graph.buildAdj();
   graph.adjustNodeCapacities();
   graph.makeSpireStreet(19);
   auto& spire = graph.edge<SpireStreet>(19);
 
-  dsf::Logger::info(std::format("Intersections: {}", graph.nNodes()));
-  dsf::Logger::info(std::format("Streets: {}", graph.nEdges()));
+  spdlog::info("Intersections: {}", graph.nNodes());
+  spdlog::info("Streets: {}", graph.nEdges());
 
   // Create the dynamics
   Dynamics dynamics{graph, false, 69, 0.6};

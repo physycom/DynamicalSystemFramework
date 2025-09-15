@@ -174,7 +174,7 @@ TEST_CASE("Street") {
     Street street{1, std::make_pair(0, 1), 3.5};
     CHECK_EQ(street.angle(), 0);
     street.setGeometry(std::vector<std::pair<double, double>>{{1, 0}, {0, 1}});
-    CHECK_EQ(street.angle(), 3 * std::numbers::pi / 4);
+    CHECK_EQ(street.angle(), 7 * std::numbers::pi / 4);
   }
 }
 

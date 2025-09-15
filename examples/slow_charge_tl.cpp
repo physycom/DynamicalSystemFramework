@@ -95,7 +95,6 @@ int main(int argc, char** argv) {
   graph.importMatrix(IN_MATRIX, false);
   graph.importCoordinates(IN_COORDS);
   std::cout << "Setting street parameters..." << '\n';
-  graph.buildAdj();
 
   // graph.addStreet(Street(100002, std::make_pair(0, 108)));
   // graph.addStreet(Street(100003, std::make_pair(108, 0)));
@@ -152,16 +151,9 @@ int main(int argc, char** argv) {
     graph.makeTrafficLight(i, 120);
   }
   std::cout << "Making every street a spire...\n";
-  for (const auto& [id, street] : graph.edges()) {
-    graph.makeSpireStreet(id);
+  for (const auto& pair : graph.edges()) {
+    graph.makeSpireStreet(pair.first);
   }
-  // check isSpire for each street
-  for (const auto& [id, street] : graph.edges()) {
-    if (!street->isSpire()) {
-      std::cerr << "Street " << id << " is not a spire.\n";
-    }
-  }
-  auto const degreeVector = graph.adjacencyMatrix().getOutDegreeVector();
   // create gaussian random number generator
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -170,29 +162,28 @@ int main(int argc, char** argv) {
   std::array<uint8_t, 2> sda{0, 0};
   auto random = [&d, &gen]() { return std::round(d(gen)); };
   std::cout << "Setting traffic light parameters..." << '\n';
-  for (const auto& [nodeId, node] : graph.nodes()) {
-    auto& tl = dynamic_cast<TrafficLight&>(*node);
-    tl.setCapacity(degreeVector[nodeId]);
-    tl.setTransportCapacity(degreeVector[nodeId]);
+  graph.adjustNodeCapacities();
+  for (const auto& [nodeId, pNode] : graph.nodes()) {
+    auto& tl = dynamic_cast<TrafficLight&>(*pNode);
     double value = -1.;
     while (value < 0.) {
       value = random();
     }
-    const auto& col = graph.adjacencyMatrix().getCol(nodeId);
+    const auto& col = pNode->ingoingEdges();
     std::set<Unit> streets;
-    const auto& refLat = node->coords().value().first;
-    for (const auto& id : col) {
-      const auto& lat = graph.node(id)->coords().value().first;
+    const auto& refLat = pNode->coords().value().first;
+    for (const auto& inEdgeId : col) {
+      auto const& pEdge{graph.edge(inEdgeId)};
+      const auto& lat = pEdge->geometry().front().first;
       // std::cout << "Lat: " << lat << " RefLat: " << refLat << '\n';
       if (lat == refLat) {
-        streets.emplace(id * graph.nNodes() + nodeId);
+        streets.emplace(inEdgeId);
       }
     }
     for (auto const& streetId : streets) {
       tl.setCycle(streetId, dsf::Direction::ANY, {static_cast<dsf::Delay>(value), 0});
     }
-    for (const auto& sourceId : col) {
-      auto const streetId = sourceId * graph.nNodes() + nodeId;
+    for (const auto& streetId : col) {
       if (!streets.contains(streetId)) {
         tl.setComplementaryCycle(streetId, *streets.begin());
       }
@@ -208,13 +199,12 @@ int main(int argc, char** argv) {
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, true, SEED, 0.6};
-  auto const& adj{dynamics.graph().adjacencyMatrix()};
   Unit n{0};
   {
     std::vector<Unit> destinationNodes;
-    for (auto nodeId{0}; nodeId < adj.n(); ++nodeId) {
-      if (degreeVector[nodeId] < 4) {
-        destinationNodes.push_back(nodeId);
+    for (auto const& [nodeId, pNode] : graph.nodes()) {
+      if (pNode->outgoingEdges().size() < 4) {
+        destinationNodes.push_back(pNode->id());
         ++n;
       }
     }
@@ -233,14 +223,6 @@ int main(int argc, char** argv) {
 
   std::cout << "Done." << std::endl;
   std::cout << "Running simulation...\n";
-#ifdef PRINT_DENSITIES
-  std::ofstream streetDensity(OUT_FOLDER + "densities.csv");
-  streetDensity << "time";
-  for (const auto& [id, street] : dynamics.graph().edges()) {
-    streetDensity << ';' << id;
-  }
-  streetDensity << '\n';
-#endif
 #ifdef PRINT_FLOWS
   std::ofstream streetFlow(OUT_FOLDER + "flows.csv");
   streetFlow << "time";
@@ -262,9 +244,9 @@ int main(int argc, char** argv) {
   std::ofstream inSpires(OUT_FOLDER + "in_spires.csv");
   outSpires << "time";
   inSpires << "time";
-  for (const auto& [id, street] : dynamics.graph().edges()) {
-    outSpires << ';' << id;
-    inSpires << ';' << id;
+  for (const auto& pair : dynamics.graph().edges()) {
+    outSpires << ';' << pair.first;
+    inSpires << ';' << pair.first;
   }
   outSpires << '\n';
   inSpires << '\n';
@@ -332,8 +314,8 @@ int main(int argc, char** argv) {
 #ifdef PRINT_OUT_SPIRES
       outSpires << dynamics.time();
       inSpires << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().edges()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*street);
+      for (const auto& pair : dynamics.graph().edges()) {
+        auto& spire = dynamic_cast<SpireStreet&>(*pair.second);
         outSpires << ';' << spire.outputCounts(false);
         inSpires << ';' << spire.inputCounts(false);
       }
@@ -377,11 +359,7 @@ int main(int argc, char** argv) {
     }
     if (dynamics.time() % 10 == 0) {
 #ifdef PRINT_DENSITIES
-      streetDensity << dynamics.time();
-      for (const auto& [id, street] : dynamics.graph().edges()) {
-        streetDensity << ';' << street->density();
-      }
-      streetDensity << std::endl;
+      dynamics.saveStreetDensities(OUT_FOLDER + "densities.csv", true);
 #endif
 #ifdef PRINT_FLOWS
       streetFlow << ';' << dynamics.time();
@@ -410,9 +388,6 @@ int main(int argc, char** argv) {
     }
     ++progress;
   }
-#ifdef PRINT_DENSITIES
-  streetDensity.close();
-#endif
 #ifdef PRINT_FLOWS
   streetFlow.close();
 #endif
