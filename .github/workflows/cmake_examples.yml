@@ -23,10 +23,10 @@ jobs:
       run: |
         if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
           sudo apt update
-          sudo apt install libtbb-dev
+          sudo apt install libtbb-dev binutils
         elif [ ${{ matrix.os }} == 'macos-latest' ]; then
           brew install tbb
-        fi
+        fi       
 
     - uses: actions/checkout@v4
 
