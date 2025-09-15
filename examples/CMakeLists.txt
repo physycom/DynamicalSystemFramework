@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(TBB REQUIRED CONFIG)
+find_package(fmt REQUIRED)
+find_package(spdlog REQUIRED)
 
 # Set the C++ flags
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -20,7 +22,7 @@ endif()
 set(EXECUTABLE_OUTPUT_PATH ../)
 
 # add as executable all cpp files into '.' folder
-file(GLOB SOURCES "*.cpp")
+file(GLOB SOURCES "*rb.cpp")
 file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
 
 # Loop through each source file and create an executable
@@ -28,5 +30,5 @@ foreach(SOURCE ${SOURCES})
     get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
 	add_executable(${EXE_NAME}.out ${SOURCE} ${SRC_SOURCES})
     target_include_directories(${EXE_NAME}.out PRIVATE ../src/dsf/headers/ ../src/dsf/utility/TypeTraits/)
-    target_link_libraries(${EXE_NAME}.out PRIVATE TBB::tbb)
+    target_link_libraries(${EXE_NAME}.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog)
 endforeach()
