@@ -5,10 +5,11 @@
 #include <cstdint>
 #ifndef __APPLE__
 #include <execution>
-#define DSM_EXECUTION std::execution::par_unseq,
+#define DSF_EXECUTION std::execution::par_unseq,
 #else
-#define DSM_EXECUTION
+#define DSF_EXECUTION
 #endif
+#include <format>
 #include <string_view>
 
 namespace dsf {
@@ -43,3 +44,13 @@ namespace dsf {
   enum log_level_t : uint8_t { DEBUG = 0, WARNING = 1, INFO = 2, ERROR = 3 };
 
 };  // namespace dsf
+
+template <>
+struct std::formatter<dsf::Direction> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(dsf::Direction const& direction, FormatContext& ctx) {
+    return std::format_to(
+        ctx.out(), "{}", dsf::directionToString[static_cast<size_t>(direction)]);
+  }
+};

@@ -131,17 +131,21 @@ struct std::formatter<dsf::Agent> {
   auto format(const dsf::Agent& agent, FormatContext&& ctx) const {
     auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
                                                    : std::to_string(agent.itineraryId());
-    return std::format_to(ctx.out(),
-                          "Agent (srcNode {} - it {}) spawn time {} - free time {}: {} "
-                          "-> {} ({} m/s - {} m)",
-                          agent.srcNodeId().value_or(-1),
-                          strItinerary,
-                          agent.spawnTime(),
-                          agent.freeTime(),
-                          agent.streetId().value_or(-1),
-                          agent.nextStreetId().value_or(-1),
-                          agent.speed(),
-                          agent.distance());
+    return std::format_to(
+        ctx.out(),
+        "Agent(id: {}, streetId: {}, srcNodeId: {}, nextStreetId: {}, "
+        "itineraryId: {}, speed: {:.2f} m/s, distance: {:.2f} m, "
+        "spawnTime: {}, freeTime: {})",
+        agent.id(),
+        agent.streetId().has_value() ? std::to_string(agent.streetId().value()) : "N/A",
+        agent.srcNodeId().has_value() ? std::to_string(agent.srcNodeId().value()) : "N/A",
+        agent.nextStreetId().has_value() ? std::to_string(agent.nextStreetId().value())
+                                         : "N/A",
+        strItinerary,
+        agent.speed(),
+        agent.distance(),
+        agent.spawnTime(),
+        agent.freeTime());
   }
 };
 // Specialization of fmt::formatter for dsf::Agent
