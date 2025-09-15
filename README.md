@@ -19,14 +19,14 @@ This rework consists of a full code rewriting, in order to implement more featur
 
 ## Requirements
 
-The project requires `C++20` or greater, `cmake`, `tbb` and `spdlog` (with `fmt`).
+The project requires `C++20` or greater, `cmake`, `tbb` `jsoncpp`, and `spdlog` (with `fmt`).
 To install requirements on Ubuntu:
 ```shell
-sudo apt install libtbb-dev libfmt-dev libspdlog-dev cmake
+sudo apt install libtbb-dev libfmt-dev libjsoncpp-dev libspdlog-dev cmake
 ```
 To install requirements on macOS:
 ```shell
-brew install tbb fmt spdlog cmake
+brew install tbb fmt jsoncpp spdlog cmake
 ```
 
 Utilities are written in python. To install their dependencies:

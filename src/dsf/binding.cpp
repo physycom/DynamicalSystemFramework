@@ -149,14 +149,14 @@ PYBIND11_MODULE(dsf, m) {
            &dsf::RoadNetwork::importGeoJSON,
            pybind11::arg("fileName"))
           //  dsf::g_docstrings.at("dsf::RoadNetwork::importGeoJSON").c_str())
-      .def("importOSMNodes",
-           &dsf::RoadNetwork::importOSMNodes,
+      .def("importNodes",
+           &dsf::RoadNetwork::importNodes,
            pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::RoadNetwork::importOSMNodes").c_str())
-      .def("importOSMEdges",
-           &dsf::RoadNetwork::importOSMEdges,
+           dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
+      .def("importEdges",
+           &dsf::RoadNetwork::importEdges,
            pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::RoadNetwork::importOSMEdges").c_str())
+           dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,
            pybind11::arg("fileName"),

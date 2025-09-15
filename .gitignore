@@ -29,6 +29,7 @@ temp*
 examples/sctl*
 examples/scrb*
 examples/*.csv
+examples/*.txt
 
 # Utils generated files
 utils/*.csv

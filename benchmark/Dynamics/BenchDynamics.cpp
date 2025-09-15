@@ -13,8 +13,8 @@ using Bench = sb::Bench<long long int>;
 
 int main() {
   RoadNetwork graph{};
-  graph.importOSMNodes("../test/data/forlì_nodes.csv");
-  graph.importOSMEdges("../test/data/forlì_edges.csv");
+  graph.importNodes("../test/data/forlì_nodes.csv");
+  graph.importEdges("../test/data/forlì_edges.csv");
 
   Dynamics dynamics{graph};
   // Take 10 random keys from nodes map

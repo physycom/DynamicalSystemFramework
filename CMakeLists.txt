@@ -26,15 +26,7 @@ endif()
 find_package(TBB REQUIRED CONFIG)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
-
-# FetchContent for jsoncpp
-include(FetchContent)
-FetchContent_Declare(
-    jsoncpp
-    GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp.git
-    GIT_TAG        1.9.6
-)
-FetchContent_MakeAvailable(jsoncpp)
+find_package(jsoncpp REQUIRED)
 
 file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp")
 

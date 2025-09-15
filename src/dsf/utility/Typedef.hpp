@@ -41,6 +41,9 @@ namespace dsf {
     FRECCIAROSSA = 6,  // Frecciarossa
     ES = 7,            // Eurostar
   };
+  enum class FileExt : std::size_t { CSV, JSON, GEOJSON };
+  std::unordered_map<std::string, FileExt> const fileExtMap{
+      {"csv", FileExt::CSV}, {"json", FileExt::JSON}, {"geojson", FileExt::GEOJSON}};
 
 };  // namespace dsf
 
