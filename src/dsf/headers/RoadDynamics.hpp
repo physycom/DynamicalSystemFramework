@@ -32,7 +32,6 @@
 #include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
 #include "RoadNetwork.hpp"
-#include "SparseMatrix.hpp"
 #include "../utility/Logger.hpp"
 #include "../utility/Typedef.hpp"
 
@@ -44,9 +43,10 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   class RoadDynamics : public Dynamics<RoadNetwork> {
+    std::vector<Id> m_nodeIndices;
     std::vector<std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
-    SparseMatrix<double> m_transitionMatrix;
+    Size m_nAgents;
 
   protected:
     std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
@@ -94,7 +94,7 @@ namespace dsf {
     /// @brief Evolve the agents.
     /// @details Puts all new agents on a street, if possible, decrements all delays
     /// and increments all travel times.
-    // void m_evolveAgent(std::unique_ptr<Agent> const& pAgent);
+    void m_evolveAgents();
 
     void m_trafficlightSingleTailOptimizer(double const& beta,
                                            std::optional<std::ofstream>& logStream);
@@ -124,11 +124,6 @@ namespace dsf {
     void setPassageProbability(double passageProbability);
 
     void setWeightFunction(std::string const& strWeightFunction);
-    /// @brief Set the transition matrix
-    /// @param transitionMatrix The transition matrix
-    /// @throw std::invalid_argument If some lines of the transition matrix are empty or if they differ from the adjacency matrix
-    /// @details The transition matrix is a sparse matrix representing the transition probabilities between the nodes
-    void setTransitionMatrix(const SparseMatrix<double>& transitionMatrix);
     /// @brief Set the force priorities flag
     /// @param forcePriorities The flag
     /// @details If true, if an agent cannot move to the next street, the whole node is skipped
@@ -251,11 +246,6 @@ namespace dsf {
         const noexcept {
       return m_itineraries;
     }
-    /// @brief Get the transition matrix
-    /// @return const SparseMatrix<double>&, The transition matrix
-    inline const SparseMatrix<double>& transitionMatrix() const noexcept {
-      return m_transitionMatrix;
-    }
     /// @brief Get the agents
     /// @return const std::unordered_map<Id, Agent<Id>>&, The agents
     inline const std::vector<std::unique_ptr<Agent>>& agents() const noexcept {
@@ -263,7 +253,7 @@ namespace dsf {
     }
     /// @brief Get the number of agents currently in the simulation
     /// @return Size The number of agents
-    size_t nAgents() const;
+    Size nAgents() const;
 
     /// @brief Get the mean travel time of the agents in \f$s\f$
     /// @param clearData If true, the travel times are cleared after the computation
@@ -381,6 +371,7 @@ namespace dsf {
       std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
       double weightTreshold)
       : Dynamics<RoadNetwork>(graph, seed),
+        m_nAgents{0},
         m_previousOptimizationTime{0},
         m_previousSpireTime{0},
         m_weightFunction{weightFunction},
@@ -397,36 +388,39 @@ namespace dsf {
       }
       Logger::info(std::format("Cache enabled (default folder is {})", g_cacheFolder));
     }
-    for (const auto& nodeId : this->graph().destinationNodes()) {
-      this->addItinerary(nodeId, nodeId);
+    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+      m_nodeIndices.push_back(nodeId);
+    }
+    for (auto const& nodeId : this->graph().destinationNodes()) {
+      m_itineraries.emplace(nodeId, std::make_unique<Itinerary>(nodeId, nodeId));
     }
     // updatePaths();
     std::for_each(
-        DSM_EXECUTION this->graph().edges().cbegin(),
+        this->graph().edges().cbegin(),
         this->graph().edges().cend(),
         [this](auto const& pair) {
-          m_turnCounts.emplace(pair.first, std::array<unsigned long long, 4>{0, 0, 0, 0});
+          auto const& pEdge{pair.second};
+          auto const edgeId{pair.first};
+          m_turnCounts.emplace(edgeId, std::array<unsigned long long, 4>{0, 0, 0, 0});
           // fill turn mapping as [pair.first, [left street Id, straight street Id, right street Id, U self street Id]]
-          m_turnMapping.emplace(pair.first, std::array<long, 4>{-1, -1, -1, -1});
+          m_turnMapping.emplace(edgeId, std::array<long, 4>{-1, -1, -1, -1});
           // Turn mappings
-          const auto& srcNodeId = pair.second->target();
-          for (const auto& targetId : this->graph().adjacencyMatrix().getRow(srcNodeId)) {
-            auto const previousStreetId = srcNodeId * this->graph().nNodes() + targetId;
-            auto const& delta{
-                pair.second->deltaAngle(this->graph().edge(previousStreetId)->angle())};
+          const auto& srcNodeId = pEdge->target();
+          for (auto const& outEdgeId : this->graph().node(srcNodeId)->outgoingEdges()) {
+            auto const& pStreet{this->graph().edge(outEdgeId)};
+            auto const previousStreetId = pStreet->id();
+            auto const& delta{pEdge->deltaAngle(pStreet->angle())};
             if (std::abs(delta) < std::numbers::pi) {
               if (delta < 0.) {
-                m_turnMapping[pair.first][dsf::Direction::RIGHT] =
-                    previousStreetId;  // right
+                m_turnMapping[edgeId][dsf::Direction::RIGHT] = previousStreetId;  // right
               } else if (delta > 0.) {
-                m_turnMapping[pair.first][dsf::Direction::LEFT] =
-                    previousStreetId;  // left
+                m_turnMapping[edgeId][dsf::Direction::LEFT] = previousStreetId;  // left
               } else {
-                m_turnMapping[pair.first][dsf::Direction::STRAIGHT] =
+                m_turnMapping[edgeId][dsf::Direction::STRAIGHT] =
                     previousStreetId;  // straight
               }
             } else {
-              m_turnMapping[pair.first][dsf::Direction::UTURN] = previousStreetId;  // U
+              m_turnMapping[edgeId][dsf::Direction::UTURN] = previousStreetId;  // U
             }
           }
         });
@@ -436,38 +430,35 @@ namespace dsf {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_updatePath(std::unique_ptr<Itinerary> const& pItinerary) {
     if (m_bCacheEnabled) {
-      auto const& file = std::format("{}it{}.adj", g_cacheFolder, pItinerary->id());
+      auto const& file = std::format("{}{}.ity", g_cacheFolder, pItinerary->id());
       if (std::filesystem::exists(file)) {
-        pItinerary->setPath(AdjacencyMatrix(file));
-        Logger::debug(
-            std::format("Loaded cached path for itinerary {}", pItinerary->id()));
+        pItinerary->load(file);
+        Logger::debug([&] {
+          return std::format("Loaded cached path for itinerary {}", pItinerary->id());
+        });
         return;
       }
     }
     auto const destinationID = pItinerary->destination();
-    std::vector<DijkstraResult> shortestPaths(this->graph().nNodes());
-    tbb::parallel_for_each(
-        this->graph().nodes().cbegin(),
-        this->graph().nodes().cend(),
-        [this, &shortestPaths, &destinationID](auto const& it) -> void {
-          auto const nodeId{it.first};
-          if (nodeId == destinationID) {
-            shortestPaths[nodeId] = DijkstraResult{};
-          } else {
-            auto result =
-                this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
-            if (result.has_value()) {
-              shortestPaths[nodeId] = *result;
-            } else {
-              Logger::warning(std::format(
-                  "No path found from node {} to node {}", nodeId, destinationID));
-              shortestPaths[nodeId] = DijkstraResult{};
-            }
-          }
-        });
-    AdjacencyMatrix path;
+    std::unordered_map<Id, DijkstraResult> shortestPaths(this->graph().nNodes());
+
+    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
+      if (nodeId == destinationID) {
+        shortestPaths[pNode->id()] = DijkstraResult{};
+        continue;
+      }
+      auto result = this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
+      if (!result.has_value()) {
+        Logger::warning(
+            std::format("No path found from node {} to node {}", nodeId, destinationID));
+        shortestPaths[nodeId] = DijkstraResult{};
+        continue;
+      }
+      shortestPaths[nodeId] = *result;
+    }
+    std::unordered_map<Id, std::vector<Id>> path;
     // cycle over the nodes
-    for (const auto& [nodeId, node] : this->graph().nodes()) {
+    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
       if (nodeId == destinationID) {
         continue;
       }
@@ -476,21 +467,23 @@ namespace dsf {
       if (minDistance < 0.) {
         continue;
       }
-      auto const& row{this->graph().adjacencyMatrix().getRow(nodeId)};
-      for (const auto nextNodeId : row) {
+      for (const auto outEdge : pNode->outgoingEdges()) {
+        auto const& nextNodeId = this->graph().edge(outEdge)->target();
         if (nextNodeId == destinationID) {
           if (std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) -
                        minDistance) <
               m_weightTreshold)  // 1 meter tolerance between shortest paths
           {
-            path.insert(nodeId, nextNodeId);
+            path[nodeId].push_back(nextNodeId);
           } else {
-            Logger::debug(
-                std::format("Found a path from {} to {} which differs for more than {} "
-                            "unit(s) from the shortest one.",
-                            nodeId,
-                            destinationID,
-                            m_weightTreshold));
+            Logger::debug([&] {
+              return std::format(
+                  "Found a path from {} to {} which differs for more than {} "
+                  "unit(s) from the shortest one.",
+                  nodeId,
+                  destinationID,
+                  m_weightTreshold);
+            });
           }
           continue;
         }
@@ -508,32 +501,36 @@ namespace dsf {
                      minDistance) <
             m_weightTreshold};  // 1 meter tolerance between shortest paths
         if (bIsMinDistance) {
-          path.insert(nodeId, nextNodeId);
+          path[nodeId].push_back(nextNodeId);
         } else {
-          Logger::debug(
-              std::format("Found a path from {} to {} which differs for more than {} "
-                          "unit(s) from the shortest one.",
-                          nodeId,
-                          destinationID,
-                          m_weightTreshold));
+          Logger::debug([&] {
+            return std::format(
+                "Found a path from {} to {} which differs for more than {} "
+                "unit(s) from the shortest one.",
+                nodeId,
+                destinationID,
+                m_weightTreshold);
+          });
         }
       }
     }
 
     if (path.empty()) {
-      Logger::error(
-          std::format("Path with id {} and destination {} is empty. Please check the "
-                      "adjacency matrix.",
-                      pItinerary->id(),
-                      pItinerary->destination()));
+      Logger::error([&] {
+        return std::format(
+            "Path with id {} and destination {} is empty. Please check the "
+            "adjacency matrix.",
+            pItinerary->id(),
+            pItinerary->destination());
+      });
     }
 
     pItinerary->setPath(path);
     if (m_bCacheEnabled) {
-      pItinerary->path()->save(
-          std::format("{}it{}.adj", g_cacheFolder, pItinerary->id()));
-      Logger::debug(
-          std::format("Saved path in cache for itinerary {}", pItinerary->id()));
+      pItinerary->save(std::format("{}{}.ity", g_cacheFolder, pItinerary->id()));
+      Logger::debug([&] {
+        return std::format("Saved path in cache for itinerary {}", pItinerary->id());
+      });
     }
   }
 
@@ -542,93 +539,90 @@ namespace dsf {
   Id RoadDynamics<delay_t>::m_nextStreetId(std::unique_ptr<Agent> const& pAgent,
                                            Id nodeId,
                                            std::optional<Id> streetId) {
-    auto possibleMoves = this->graph().adjacencyMatrix().getRow(nodeId);
+    // Get outgoing edges directly - avoid storing targets separately
+    const auto& outgoingEdges = this->graph().node(nodeId)->outgoingEdges();
+    std::vector<Id> possibleEdgeIds;
+    possibleEdgeIds.reserve(outgoingEdges.size());  // Pre-allocate to avoid reallocations
 
-    // Logger::debug(std::format("Is current agent random? {}", pAgent->isRandom()));
-    // Logger::debug(
-    //     std::format("Is transition matrix empty? {}", m_transitionMatrix.empty()));
-
-    std::set<Id> forbiddenStreetIds;
+    // Build forbidden target nodes set efficiently
+    std::unordered_set<Id> forbiddenTargetNodes;
     if (streetId.has_value()) {
-      // Logger::debug("Checking for forbidden turns");
       auto const& pStreet{this->graph().edge(*streetId)};
-      forbiddenStreetIds = pStreet->forbiddenTurns();
+      const auto& forbiddenTurns = pStreet->forbiddenTurns();
+      forbiddenTargetNodes.insert(forbiddenTurns.begin(), forbiddenTurns.end());
+
       // Avoid U-TURNS, if possible
       if (!(this->graph().node(nodeId)->isRoundabout()) &&
-          (possibleMoves.size() > forbiddenStreetIds.size() + 1)) {
-        auto const& pOppositeStreet{this->graph().oppositeStreet(*streetId)};
+          (outgoingEdges.size() > forbiddenTurns.size() + 1)) {
+        auto const& pOppositeStreet{
+            this->graph().street(pStreet->target(), pStreet->source())};
         if (pOppositeStreet) {
-          forbiddenStreetIds.insert(pOppositeStreet->get()->id());
+          forbiddenTargetNodes.insert(pOppositeStreet->get()->id());
         }
-      }
-    }
-    // Exclude FORBIDDEN turns
-    Logger::debug(std::format("Excluding {} forbidden turns", forbiddenStreetIds.size()));
-    for (auto const& forbiddenStreetId : forbiddenStreetIds) {
-      auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
-      // if possible moves contains the forbidden street, remove it
-      auto it = std::find(
-          possibleMoves.begin(), possibleMoves.end(), pForbiddenStreet->target());
-      if (it != possibleMoves.end()) {
-        possibleMoves.erase(it);
       }
     }
 
-    if (!pAgent->isRandom()) {
-      std::vector<Id> newPossibleMoves;
-      std::uniform_real_distribution<double> uniformDist{0., 1.};
-      if (!(this->itineraries().empty())) {
-        if (!(m_errorProbability.has_value() &&
-              uniformDist(this->m_generator) < m_errorProbability)) {
-          const auto& it = this->itineraries().at(pAgent->itineraryId());
-          if (it->destination() != nodeId) {
-            newPossibleMoves = it->path()->getRow(nodeId);
-          }
-        }
-        for (auto const& forbiddenStreetId : forbiddenStreetIds) {
-          auto const& pForbiddenStreet{this->graph().edge(forbiddenStreetId)};
-          // if possible moves contains the forbidden street, remove it
-          auto it = std::find(newPossibleMoves.begin(),
-                              newPossibleMoves.end(),
-                              pForbiddenStreet->target());
-          if (it != newPossibleMoves.end()) {
-            newPossibleMoves.erase(it);
-          }
-        }
-        if (!newPossibleMoves.empty()) {
-          possibleMoves = newPossibleMoves;
-        }
-      }
-    } else if (!m_transitionMatrix.empty()) {
-      Logger::debug(std::format("Using transition matrix for node {}", nodeId));
-      auto transitionRow{m_transitionMatrix.row(nodeId)};
-      assert(!transitionRow.empty());
-      std::uniform_real_distribution<double> uniformDist{0., 1.};
-      auto const randomValue{uniformDist(this->m_generator)};
-      auto sum{0.};
-      Id nextNodeId{0};
-      for (auto const& [nnid, probability] : transitionRow) {
-        sum += probability;
-        nextNodeId = nnid;
-        if (randomValue < sum) {
-          // Do not care about uturns when using transition matrix
-          break;
-        }
-      }
-      return nodeId * this->graph().nNodes() + nextNodeId;
+    // Log forbidden turns if any
+    if (!forbiddenTargetNodes.empty()) {
+      Logger::debug([&] {
+        return std::format("Excluding {} forbidden turns", forbiddenTargetNodes.size());
+      });
     }
 
-    if (possibleMoves.empty()) {
+    // For non-random agents, get allowed targets from itinerary
+    std::unordered_set<Id> allowedTargets;
+    bool hasItineraryConstraints = false;
+
+    if (!pAgent->isRandom() && !this->itineraries().empty()) {
+      std::uniform_real_distribution<double> uniformDist{0., 1.};
+      if (!(m_errorProbability.has_value() &&
+            uniformDist(this->m_generator) < m_errorProbability)) {
+        const auto& it = this->itineraries().at(pAgent->itineraryId());
+        if (it->destination() != nodeId) {
+          const auto pathTargets = it->path().at(nodeId);
+          allowedTargets.insert(pathTargets.begin(), pathTargets.end());
+          hasItineraryConstraints = true;
+
+          // Remove forbidden nodes from allowed targets
+          for (const auto& forbiddenNodeId : forbiddenTargetNodes) {
+            allowedTargets.erase(forbiddenNodeId);
+          }
+        }
+      }
+    }
+
+    // Single pass through outgoing edges with efficient filtering
+    for (const auto outEdgeId : outgoingEdges) {
+      const Id targetNode = this->graph().edge(outEdgeId)->target();
+
+      // Skip if target is forbidden
+      if (forbiddenTargetNodes.count(targetNode)) {
+        continue;
+      }
+
+      // For non-random agents with itinerary constraints
+      if (hasItineraryConstraints) {
+        if (allowedTargets.count(targetNode)) {
+          possibleEdgeIds.push_back(outEdgeId);
+        }
+      } else {
+        // For random agents or when no itinerary constraints apply
+        possibleEdgeIds.push_back(outEdgeId);
+      }
+    }
+
+    if (possibleEdgeIds.empty()) {
       throw std::runtime_error(
           std::format("No possible moves for agent {} at node {}.", *pAgent, nodeId));
     }
 
-    if (possibleMoves.size() == 1) {
-      return nodeId * this->graph().nNodes() + possibleMoves[0];
+    if (possibleEdgeIds.size() == 1) {
+      return possibleEdgeIds[0];
     }
+
     std::uniform_int_distribution<Size> moveDist{
-        0, static_cast<Size>(possibleMoves.size() - 1)};
-    return nodeId * this->graph().nNodes() + possibleMoves[moveDist(this->m_generator)];
+        0, static_cast<Size>(possibleEdgeIds.size() - 1)};
+    return possibleEdgeIds[moveDist(this->m_generator)];
   }
 
   template <typename delay_t>
@@ -720,14 +714,22 @@ namespace dsf {
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     for (auto i = 0; i < std::ceil(transportCapacity); ++i) {
       if (pStreet->isStochastic() &&
-          (uniformDist(this->m_generator) >
-           dynamic_cast<StochasticStreet&>(*pStreet).flowRate())) {
+          uniformDist(this->m_generator) >
+              dynamic_cast<StochasticStreet&>(*pStreet).flowRate()) {
+        Logger::debug([&] {
+          return std::format("Skipping due to flow rate {:.2f} < random value",
+                             dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
+        });
         continue;
       }
       if (i == std::ceil(transportCapacity) - 1) {
         double integral;
         double fractional = std::modf(transportCapacity, &integral);
         if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
+          Logger::debug([&] {
+            return std::format(
+                "Skipping due to fractional capacity {:.2f} < random value", fractional);
+          });
           continue;
         }
       }
@@ -738,9 +740,11 @@ namespace dsf {
         // Logger::debug("Taking temp agent");
         auto const& pAgentTemp{pStreet->queue(queueIndex).front()};
         if (pAgentTemp->freeTime() > this->time()) {
-          Logger::debug(std::format("Skipping due to time {} < free time {}",
-                                    this->time(),
-                                    pAgentTemp->freeTime()));
+          Logger::debug([&] {
+            return std::format("Skipping due to time {} < free time {}",
+                               this->time(),
+                               pAgentTemp->freeTime());
+          });
           continue;
         }
         bool overtimed{false};
@@ -748,24 +752,32 @@ namespace dsf {
           auto const timeDiff{this->time() - pAgentTemp->freeTime()};
           if (timeDiff > 120) {
             overtimed = true;
-            Logger::warning(
-                std::format("Time {} - {} currently on {} ({} turn - Traffic Light? {}), "
-                            "has been still for more than 120 seconds ({} seconds)",
-                            this->time(),
-                            *pAgentTemp,
-                            *pStreet,
-                            directionToString.at(pStreet->laneMapping().at(queueIndex)),
-                            this->graph().node(pStreet->target())->isTrafficLight(),
-                            timeDiff));
+            Logger::warning([&] {
+              return std::format(
+                  "Time {} - {} currently on {} ({} turn - Traffic Light? {}), "
+                  "has been still for more than 120 seconds ({} seconds)",
+                  this->time(),
+                  *pAgentTemp,
+                  *pStreet,
+                  directionToString.at(pStreet->laneMapping().at(queueIndex)),
+                  this->graph().node(pStreet->target())->isTrafficLight(),
+                  timeDiff);
+            });
           }
         }
         pAgentTemp->setSpeed(0.);
         const auto& destinationNode{this->graph().node(pStreet->target())};
         if (destinationNode->isFull()) {
           if (overtimed) {
-            Logger::warning("Skipping due to space");
+            Logger::warning([&] {
+              return std::format("Skipping due to full destination node {}",
+                                 *destinationNode);
+            });
           } else {
-            Logger::debug("Skipping due to space");
+            Logger::debug([&] {
+              return std::format("Skipping due to space at destination node {}",
+                                 *destinationNode);
+            });
           }
           continue;
         }
@@ -773,45 +785,51 @@ namespace dsf {
           auto& tl = dynamic_cast<TrafficLight&>(*destinationNode);
           auto const direction{pStreet->laneMapping().at(queueIndex)};
           if (!tl.isGreen(pStreet->id(), direction)) {
-            Logger::debug(
-                std::format("Skipping due to red light on street {} and direction {}",
-                            pStreet->id(),
-                            directionToString.at(direction)));
+            Logger::debug([&] {
+              return std::format(
+                  "Skipping due to red light on street {} and direction {}",
+                  pStreet->id(),
+                  directionToString.at(direction));
+            });
             continue;
           }
-          Logger::debug(std::format("Green light on street {} and direction {}",
-                                    pStreet->id(),
-                                    directionToString.at(direction)));
+          Logger::debug([&] {
+            return std::format("Green light on street {} and direction {}",
+                               pStreet->id(),
+                               directionToString.at(direction));
+          });
         } else if (destinationNode->isIntersection() &&
                    pAgentTemp->nextStreetId().has_value()) {
           auto& intersection = static_cast<Intersection&>(*destinationNode);
           bool bCanPass{true};
           if (!intersection.streetPriorities().empty()) {
-            Logger::debug(std::format("Checking priorities for street {} -> {}",
-                                      pStreet->source(),
-                                      pStreet->target()));
+            Logger::debug([&] {
+              return std::format("Checking priorities for street {} -> {}",
+                                 pStreet->source(),
+                                 pStreet->target());
+            });
             auto const& thisDirection{this->graph()
                                           .edge(pAgentTemp->nextStreetId().value())
                                           ->turnDirection(pStreet->angle())};
             if (!intersection.streetPriorities().contains(pStreet->id())) {
               // I have to check if the agent has right of way
-              auto const& inNeighbours{
-                  this->graph().adjacencyMatrix().getCol(destinationNode->id())};
-              for (auto const& sourceId : inNeighbours) {
-                auto const& streetId{sourceId * this->graph().nNodes() +
-                                     destinationNode->id()};
-                if (streetId == pStreet->id()) {
+              auto const& inNeighbours{destinationNode->ingoingEdges()};
+              for (auto const& inEdgeId : inNeighbours) {
+                auto const& pStreetTemp{this->graph().edge(inEdgeId)};
+                if (pStreetTemp->id() == pStreet->id()) {
                   continue;
                 }
-                auto const& pStreetTemp{this->graph().edge(streetId)};
                 if (pStreetTemp->nExitingAgents() == 0) {
                   continue;
                 }
-                if (intersection.streetPriorities().contains(streetId)) {
-                  Logger::debug(std::format(
-                      "Skipping agent emission from street {} -> {} due to right of way.",
-                      pStreet->source(),
-                      pStreet->target()));
+                if (intersection.streetPriorities().contains(pStreetTemp->id())) {
+                  Logger::debug([&] {
+                    return std::format(
+                        "Skipping agent emission from street {} -> {} due to right of "
+                        "way.",
+                        pStreet->source(),
+                        pStreet->target());
+                  });
                   bCanPass = false;
                   break;
                 } else if (thisDirection >= Direction::LEFT) {
@@ -833,11 +851,14 @@ namespace dsf {
                                                 .edge(pAgentTemp2->streetId().value())
                                                 ->angle())};
                     if (otherDirection < Direction::LEFT) {
-                      Logger::debug(std::format(
-                          "Skipping agent emission from street {} -> {} due to right of "
-                          "way with other agents.",
-                          pStreet->source(),
-                          pStreet->target()));
+                      Logger::debug([&] {
+                        return std::format(
+                            "Skipping agent emission from street {} -> {} due to right "
+                            "of "
+                            "way with other agents.",
+                            pStreet->source(),
+                            pStreet->target());
+                      });
                       bCanPass = false;
                       break;
                     }
@@ -866,11 +887,13 @@ namespace dsf {
                                               .edge(pAgentTemp2->streetId().value())
                                               ->angle())};
                   if (otherDirection < thisDirection) {
-                    Logger::debug(std::format(
-                        "Skipping agent emission from street {} -> {} due to right of "
-                        "way with other agents.",
-                        pStreet->source(),
-                        pStreet->target()));
+                    Logger::debug([&] {
+                      return std::format(
+                          "Skipping agent emission from street {} -> {} due to right of "
+                          "way with other agents.",
+                          pStreet->source(),
+                          pStreet->target());
+                    });
                     bCanPass = false;
                     break;
                   }
@@ -879,17 +902,21 @@ namespace dsf {
             }
           }
           if (!bCanPass) {
-            Logger::debug(std::format(
-                "Skipping agent emission from street {} -> {} due to right of way.",
-                pStreet->source(),
-                pStreet->target()));
-            if (overtimed) {
-              Logger::warning(std::format(
-                  "Skipping agent emission from street {} -> {} due to right of way "
-                  "and overtimed agent {}",
+            Logger::debug([&] {
+              return std::format(
+                  "Skipping agent emission from street {} -> {} due to right of way.",
                   pStreet->source(),
-                  pStreet->target(),
-                  pAgentTemp->id()));
+                  pStreet->target());
+            });
+            if (overtimed) {
+              Logger::warning([&] {
+                return std::format(
+                    "Skipping agent emission from street {} -> {} due to right of way "
+                    "and overtimed agent {}",
+                    pStreet->source(),
+                    pStreet->target(),
+                    pAgentTemp->id());
+              });
             }
             continue;
           }
@@ -900,18 +927,22 @@ namespace dsf {
           if (pAgentTemp->isRandom()) {
             bArrived = true;
           } else {
-            Logger::debug(
-                std::format("Skipping agent emission from street {} -> {} due to passage "
-                            "probability",
-                            pStreet->source(),
-                            pStreet->target()));
-            if (overtimed) {
-              Logger::warning(std::format(
+            Logger::debug([&] {
+              return std::format(
                   "Skipping agent emission from street {} -> {} due to passage "
-                  "probability and overtimed agent {}",
+                  "probability",
                   pStreet->source(),
-                  pStreet->target(),
-                  pAgentTemp->id()));
+                  pStreet->target());
+            });
+            if (overtimed) {
+              Logger::warning([&] {
+                return std::format(
+                    "Skipping agent emission from street {} -> {} due to passage "
+                    "probability and overtimed agent {}",
+                    pStreet->source(),
+                    pStreet->target(),
+                    pAgentTemp->id());
+              });
             }
             continue;
           }
@@ -920,9 +951,11 @@ namespace dsf {
           if (destinationNode->id() ==
               this->itineraries().at(pAgentTemp->itineraryId())->destination()) {
             bArrived = true;
-            Logger::debug(std::format("Agent {} has arrived at destination node {}",
-                                      pAgentTemp->id(),
-                                      destinationNode->id()));
+            Logger::debug([&] {
+              return std::format("Agent {} has arrived at destination node {}",
+                                 pAgentTemp->id(),
+                                 destinationNode->id());
+            });
           }
         } else {
           if (pAgentTemp->distance() >= m_maxTravelDistance) {
@@ -934,9 +967,14 @@ namespace dsf {
         }
         if (bArrived) {
           auto pAgent{pStreet->dequeue(queueIndex)};
+          Logger::debug([&] {
+            return std::format(
+                "{} has arrived at destination node {}", *pAgent, destinationNode->id());
+          });
           m_travelDTs.push_back(
               {pAgent->distance(),
                static_cast<double>(this->time() - pAgent->spawnTime())});
+          --m_nAgents;
           if (reinsert_agents) {
             // reset Agent's values
             pAgent->reset(this->time());
@@ -945,24 +983,28 @@ namespace dsf {
           continue;
         }
         if (!pAgentTemp->streetId().has_value()) {
-          Logger::error(std::format("{} has no street id", *pAgentTemp));
+          Logger::error([&] { return std::format("{} has no street id", *pAgentTemp); });
         }
         auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
         if (nextStreet->isFull()) {
           if (overtimed) {
-            Logger::warning(
-                std::format("Skipping agent emission from street {} -> {} due to full "
-                            "next street: {}",
-                            pStreet->source(),
-                            pStreet->target(),
-                            *nextStreet));
+            Logger::warning([&] {
+              return std::format(
+                  "Skipping agent emission from street {} -> {} due to full "
+                  "next street: {}",
+                  pStreet->source(),
+                  pStreet->target(),
+                  *nextStreet);
+            });
           } else {
-            Logger::debug(
-                std::format("Skipping agent emission from street {} -> {} due to full "
-                            "next street: {}",
-                            pStreet->source(),
-                            pStreet->target(),
-                            *nextStreet));
+            Logger::debug([&] {
+              return std::format(
+                  "Skipping agent emission from street {} -> {} due to full "
+                  "next street: {}",
+                  pStreet->source(),
+                  pStreet->target(),
+                  *nextStreet);
+            });
           }
           continue;
         }
@@ -991,29 +1033,30 @@ namespace dsf {
         double integral;
         double fractional = std::modf(transportCapacity, &integral);
         if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
-          Logger::debug(
-              std::format("Skipping dequeue from node {} due to transport capacity {}",
-                          pNode->id(),
-                          transportCapacity));
+          Logger::debug([&] {
+            return std::format(
+                "Skipping dequeue from node {} due to transport capacity {}",
+                pNode->id(),
+                transportCapacity);
+          });
           return;
         }
       }
       if (pNode->isIntersection()) {
         auto& intersection = dynamic_cast<Intersection&>(*pNode);
         if (intersection.agents().empty()) {
-          Logger::debug(std::format("No agents on node {}", pNode->id()));
           return;
         }
         for (auto it{intersection.agents().begin()}; it != intersection.agents().end();) {
           auto& pAgent{it->second};
           auto const& nextStreet{this->graph().edge(pAgent->nextStreetId().value())};
           if (nextStreet->isFull()) {
-            Logger::debug(std::format("Next street is full: {}", *nextStreet));
+            Logger::debug(
+                [&] { return std::format("Next street is full: {}", *nextStreet); });
             if (m_forcePriorities) {
-              Logger::debug(
-                  std::format("Forcing priority from intersection {} on street {}",
-                              pNode->id(),
-                              nextStreet->id()));
+              Logger::debug([&] {
+                return std::format("Forcing priority from {} on {}", *pNode, *nextStreet);
+              });
               return;
             }
             ++it;
@@ -1023,13 +1066,15 @@ namespace dsf {
           this->setAgentSpeed(pAgent);
           pAgent->setFreeTime(this->time() +
                               std::ceil(nextStreet->length() / pAgent->speed()));
-          Logger::debug(std::format(
-              "An agent at time {} has been dequeued from intersection {} and "
-              "enqueued on street {}: {}",
-              this->time(),
-              pNode->id(),
-              nextStreet->id(),
-              *pAgent));
+          Logger::debug([&] {
+            return std::format(
+                "{} at time {} has been dequeued from intersection {} and "
+                "enqueued on street {}.",
+                *pAgent,
+                this->time(),
+                pNode->id(),
+                nextStreet->id());
+          });
           nextStreet->addAgent(std::move(pAgent));
           it = intersection.agents().erase(it);
           break;
@@ -1057,13 +1102,15 @@ namespace dsf {
           this->setAgentSpeed(pAgent);
           pAgent->setFreeTime(this->time() +
                               std::ceil(nextStreet->length() / pAgent->speed()));
-          Logger::debug(
-              std::format("An agent at time {} has been dequeued from roundabout {} and "
-                          "enqueued on street {}: {}",
-                          this->time(),
-                          pNode->id(),
-                          nextStreet->id(),
-                          *pAgent));
+          Logger::debug([&] {
+            return std::format(
+                "An agent at time {} has been dequeued from roundabout {} and "
+                "enqueued on street {}: {}",
+                this->time(),
+                pNode->id(),
+                nextStreet->id(),
+                *pAgent);
+          });
           nextStreet->addAgent(std::move(pAgent));
         } else {
           return;
@@ -1071,12 +1118,58 @@ namespace dsf {
       }
     }
   }
-
-  // template <typename delay_t>
-  //   requires(is_numeric_v<delay_t>)
-  // void RoadDynamics<delay_t>::m_evolveAgent(std::unique_ptr<Agent> const& pAgent) {
-  //   // The "cost" of enqueuing is one time unit, so we consider it as passed
-  // }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_evolveAgents() {
+    std::uniform_int_distribution<Id> nodeDist{
+        0, static_cast<Id>(this->graph().nNodes() - 1)};
+    Logger::debug([&] { return std::format("Processing {} agents", m_agents.size()); });
+    for (auto itAgent{m_agents.begin()}; itAgent != m_agents.end();) {
+      auto& pAgent{*itAgent};
+      if (!pAgent->srcNodeId().has_value()) {
+        auto nodeIt{this->graph().nodes().begin()};
+        std::advance(nodeIt, nodeDist(this->m_generator));
+        pAgent->setSrcNodeId(nodeIt->second->id());
+      }
+      auto const& pSourceNode{this->graph().node(*(pAgent->srcNodeId()))};
+      // Logger::debug(std::format("Checking node {}", pAgent->srcNodeId().value()));
+      if (pSourceNode->isFull()) {
+        Logger::debug([&] {
+          return std::format("Skipping {} due to full source {}", *pAgent, *pSourceNode);
+        });
+        ++itAgent;
+        continue;
+      }
+      if (!pAgent->nextStreetId().has_value()) {
+        Logger::debug("No next street id, generating a random one");
+        pAgent->setNextStreetId(
+            this->m_nextStreetId(pAgent, pSourceNode->id(), pAgent->streetId()));
+      }
+      // Logger::debug(
+      //     std::format("Checking next street {}", pAgent->nextStreetId().value()));
+      auto const& nextStreet{
+          this->graph().edge(pAgent->nextStreetId().value())};  // next street
+      if (nextStreet->isFull()) {
+        ++itAgent;
+        Logger::debug([&] {
+          return std::format("Skipping {} due to full input {}", *pAgent, *nextStreet);
+        });
+        continue;
+      }
+      // Logger::debug("Adding agent on the source node");
+      if (pSourceNode->isIntersection()) {
+        auto& intersection = dynamic_cast<Intersection&>(*pSourceNode);
+        intersection.addAgent(0., std::move(pAgent));
+      } else if (pSourceNode->isRoundabout()) {
+        auto& roundabout = dynamic_cast<Roundabout&>(*pSourceNode);
+        roundabout.enqueue(std::move(pAgent));
+      }
+      itAgent = m_agents.erase(itAgent);
+    }
+    Logger::debug([&] {
+      return std::format("There are {} agents left in the list.", m_agents.size());
+    });
+  }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
@@ -1106,43 +1199,12 @@ namespace dsf {
     } else if (strWeightFunction == "weight") {
       m_weightFunction = weight_functions::streetWeight;
     } else {
-      Logger::warning(
-          std::format("Invalid weigth function name ({}). Keeping the previous one.",
-                      strWeightFunction));
+      Logger::warning([&] {
+        return std::format("Invalid weigth function name ({}). Keeping the previous one.",
+                           strWeightFunction);
+      });
     }
     this->updatePaths();
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::setTransitionMatrix(
-      const SparseMatrix<double>& transitionMatrix) {
-    if (transitionMatrix.n() != this->graph().nNodes()) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
-          "The transition matrix must have size {}x{} but given size is {}x{}",
-          this->graph().nNodes(),
-          this->graph().nNodes(),
-          transitionMatrix.n(),
-          transitionMatrix.n())));
-    }
-    for (auto i{0}; i < transitionMatrix.n(); ++i) {
-      auto const& trow{transitionMatrix.row(i)};
-      if (trow.empty()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(
-            std::format("The transition matrix row {} is empty", i)));
-      }
-      auto const& arow{this->graph().adjacencyMatrix().getRow(i)};
-      if (trow.size() != arow.size()) {
-        throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
-            "The transition matrix row {} has size {} but the adjacency matrix row {} "
-            "has size {}",
-            i,
-            trow.size(),
-            i,
-            arow.size())));
-      }
-    }
-    m_transitionMatrix = transitionMatrix;
-    m_transitionMatrix.normalize();
   }
 
   template <typename delay_t>
@@ -1200,12 +1262,14 @@ namespace dsf {
     std::uniform_int_distribution<Size> streetDist{
         0, static_cast<Size>(this->graph().nEdges() - 1)};
     if (this->nAgents() + nAgents > this->graph().maxCapacity()) {
-      Logger::error<std::overflow_error>(
-          std::format("Cannot add {} agents. The graph has currently {} with a maximum "
-                      "capacity of {}.",
-                      nAgents,
-                      this->nAgents(),
-                      this->graph().maxCapacity()));
+      Logger::error<std::overflow_error>([&] {
+        return std::format(
+            "Cannot add {} agents. The graph has currently {} with a maximum "
+            "capacity of {}.",
+            nAgents,
+            this->nAgents(),
+            this->graph().maxCapacity());
+      });
       return;
     }
     for (Size i{0}; i < nAgents; ++i) {
@@ -1214,19 +1278,24 @@ namespace dsf {
         std::advance(itineraryIt, itineraryDist(this->m_generator));
         itineraryId = itineraryIt->first;
       }
-      Id streetId{0};
-      do {
-        auto streetIt = this->graph().edges().begin();
+      auto streetIt = this->graph().edges().begin();
+      while (true) {
         Size step = streetDist(this->m_generator);
         std::advance(streetIt, step);
-        streetId = streetIt->first;
-      } while (this->graph().edge(streetId)->isFull());
-      const auto& street{this->graph().edge(streetId)};
-      auto pAgent{std::make_unique<Agent>(this->time(), itineraryId, street->source())};
-      pAgent->setStreetId(streetId);
+        if (!(streetIt->second->isFull())) {
+          break;
+        }
+        streetIt = this->graph().edges().begin();
+      }
+      auto const& street{streetIt->second};
+      this->addAgent(
+          std::make_unique<Agent>(this->time(), itineraryId, street->source()));
+      auto& pAgent{this->m_agents.back()};
+      pAgent->setStreetId(street->id());
       this->setAgentSpeed(pAgent);
       pAgent->setFreeTime(this->time() + std::ceil(street->length() / pAgent->speed()));
       street->addAgent(std::move(pAgent));
+      this->m_agents.pop_back();
     }
   }
 
@@ -1242,11 +1311,13 @@ namespace dsf {
       const std::variant<std::monostate, size_t, double> minNodeDistance) {
     auto const& nSources{src_weights.size()};
     auto const& nDestinations{dst_weights.size()};
-    Logger::debug(
-        std::format("Init addAgentsRandomly for {} agents from {} nodes to {} nodes.",
-                    nAgents,
-                    nSources,
-                    dst_weights.size()));
+    Logger::debug([&] {
+      return std::format(
+          "Init addAgentsRandomly for {} agents from {} nodes to {} nodes.",
+          nAgents,
+          nSources,
+          dst_weights.size());
+    });
     if (nSources == 1 && nDestinations == 1 &&
         src_weights.begin()->first == dst_weights.begin()->first) {
       throw std::invalid_argument(Logger::buildExceptionMessage(
@@ -1277,7 +1348,9 @@ namespace dsf {
         })};
     std::uniform_real_distribution<double> srcUniformDist{0., srcSum};
     std::uniform_real_distribution<double> dstUniformDist{0., dstSum};
-    Logger::debug(std::format("Adding {} agents at time {}.", nAgents, this->time()));
+    Logger::debug([&] {
+      return std::format("Adding {} agents at time {}.", nAgents, this->time());
+    });
     while (nAgents > 0) {
       Id srcId{0}, dstId{0};
       if (nDestinations == 1) {
@@ -1296,8 +1369,10 @@ namespace dsf {
           }
         }
       }
-      Logger::debug(std::format(
-          "Exiting first while loop with srcId = {} and dstId = {}", srcId, dstId));
+      Logger::debug([&] {
+        return std::format(
+            "Exiting first while loop with srcId = {} and dstId = {}", srcId, dstId);
+      });
       if (nSources > 1) {
         dstId = srcId;
       }
@@ -1307,7 +1382,7 @@ namespace dsf {
         std::size_t n_emptyRows = 0;
         for (const auto& [id, weight] : dst_weights) {
           // if the node is at a minimum distance from the destination, skip it
-          if (this->itineraries().at(id)->path()->getRow(srcId).empty()) {
+          if (!this->itineraries().at(id)->path().contains(srcId)) {
             ++n_emptyRows;
             continue;
           }
@@ -1323,11 +1398,13 @@ namespace dsf {
                     .shortestPath(srcId, id, weight_functions::streetLength)
                     .value()
                     .distance() < minDistance) {
-              Logger::debug(
-                  std::format("Skipping node {} because the distance from the source "
-                              "is less than {}",
-                              id,
-                              minDistance));
+              Logger::debug([&] {
+                return std::format(
+                    "Skipping node {} because the distance from the source "
+                    "is less than {}",
+                    id,
+                    minDistance);
+              });
               continue;
             }
           }
@@ -1345,8 +1422,10 @@ namespace dsf {
           return;
         }
       }
-      Logger::debug(std::format(
-          "Exiting second while loop with srcId = {} and dstId = {}", srcId, dstId));
+      Logger::debug([&] {
+        return std::format(
+            "Exiting second while loop with srcId = {} and dstId = {}", srcId, dstId);
+      });
       // find the itinerary with the given destination as destination
       auto itineraryIt{std::find_if(this->itineraries().cbegin(),
                                     this->itineraries().cend(),
@@ -1354,7 +1433,9 @@ namespace dsf {
                                       return itinerary.second->destination() == dstId;
                                     })};
       if (itineraryIt == this->itineraries().cend()) {
-        Logger::error(std::format("Itinerary with destination {} not found.", dstId));
+        Logger::error([&] {
+          return std::format("Itinerary with destination {} not found.", dstId);
+        });
       }
       this->addAgent(itineraryIt->first, srcId);
       --nAgents;
@@ -1379,6 +1460,8 @@ namespace dsf {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent> pAgent) {
     m_agents.push_back(std::move(pAgent));
+    ++m_nAgents;
+    Logger::debug([&] { return std::format("Added {}", *m_agents.back()); });
   }
 
   template <typename delay_t>
@@ -1414,55 +1497,47 @@ namespace dsf {
       throw std::invalid_argument(Logger::buildExceptionMessage(
           std::format("Itinerary with id {} already exists.", itinerary->id())));
     }
-    if (!this->graph().nodes().contains(itinerary->destination())) {
-      throw std::invalid_argument(Logger::buildExceptionMessage(std::format(
-          "Destination node with id {} not found", itinerary->destination())));
-    }
     m_itineraries.emplace(itinerary->id(), std::move(itinerary));
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::evolve(bool reinsert_agents) {
-    Logger::debug(std::format("Init evolve at time {}", this->time()));
+    Logger::debug([&] { return std::format("Init evolve at time {}", this->time()); });
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData =
         m_dataUpdatePeriod.has_value() && this->time() % m_dataUpdatePeriod.value() == 0;
-    auto const N{this->graph().nNodes()};
     auto const numNodes{this->graph().nNodes()};
-    const auto& nodes =
-        this->graph().nodes();  // assuming a container with contiguous indices
+
     const unsigned int concurrency = std::thread::hardware_concurrency();
     // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
     const size_t grainSize = std::max(size_t(1), numNodes / concurrency);
     this->m_taskArena.execute([&] {
-      tbb::parallel_for(tbb::blocked_range<size_t>(0, numNodes, grainSize),
-                        [&](const tbb::blocked_range<size_t>& range) {
-                          for (size_t i = range.begin(); i != range.end(); ++i) {
-                            auto const& pNode = nodes.at(i);
-                            for (auto const& sourceId :
-                                 this->graph().adjacencyMatrix().getCol(pNode->id())) {
-                              auto const streetId{sourceId * N + pNode->id()};
-                              auto const& pStreet{this->graph().edge(streetId)};
-                              if (bUpdateData && pNode->isTrafficLight()) {
-                                if (!m_queuesAtTrafficLights.contains(pStreet->id())) {
-                                  auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-                                  assert(!tl.cycles().empty());
-                                  for (auto const& [id, pair] : tl.cycles()) {
-                                    for (auto const& [direction, cycle] : pair) {
-                                      m_queuesAtTrafficLights[id].emplace(direction, 0.);
-                                    }
-                                  }
-                                }
-                                for (auto& [direction, value] :
-                                     m_queuesAtTrafficLights.at(pStreet->id())) {
-                                  value += pStreet->nExitingAgents(direction, true);
-                                }
-                              }
-                              m_evolveStreet(pStreet, reinsert_agents);
-                            }
-                          }
-                        });
+      tbb::parallel_for(
+          tbb::blocked_range<size_t>(0, numNodes, grainSize),
+          [&](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i != range.end(); ++i) {
+              auto const& pNode = this->graph().node(m_nodeIndices[i]);
+              for (auto const& inEdgeId : pNode->ingoingEdges()) {
+                auto const& pStreet{this->graph().edge(inEdgeId)};
+                if (bUpdateData && pNode->isTrafficLight()) {
+                  if (!m_queuesAtTrafficLights.contains(inEdgeId)) {
+                    auto& tl = dynamic_cast<TrafficLight&>(*pNode);
+                    assert(!tl.cycles().empty());
+                    for (auto const& [id, pair] : tl.cycles()) {
+                      for (auto const& [direction, cycle] : pair) {
+                        m_queuesAtTrafficLights[id].emplace(direction, 0.);
+                      }
+                    }
+                  }
+                  for (auto& [direction, value] : m_queuesAtTrafficLights.at(inEdgeId)) {
+                    value += pStreet->nExitingAgents(direction, true);
+                  }
+                }
+                m_evolveStreet(pStreet, reinsert_agents);
+              }
+            }
+          });
     });
     Logger::debug("Pre-nodes");
     // Move transport capacity agents from each node
@@ -1470,7 +1545,7 @@ namespace dsf {
       tbb::parallel_for(tbb::blocked_range<size_t>(0, numNodes, grainSize),
                         [&](const tbb::blocked_range<size_t>& range) {
                           for (size_t i = range.begin(); i != range.end(); ++i) {
-                            const auto& pNode = nodes.at(i);
+                            const auto& pNode = this->graph().node(m_nodeIndices[i]);
                             m_evolveNode(pNode);
                             if (pNode->isTrafficLight()) {
                               auto& tl = dynamic_cast<TrafficLight&>(*pNode);
@@ -1479,48 +1554,8 @@ namespace dsf {
                           }
                         });
     });
+    this->m_evolveAgents();
     // cycle over agents and update their times
-    std::uniform_int_distribution<Id> nodeDist{
-        0, static_cast<Id>(this->graph().nNodes() - 1)};
-    Logger::debug("Pre-agents");
-    for (auto itAgent{m_agents.begin()}; itAgent != m_agents.end();) {
-      auto& pAgent{*itAgent};
-      if (!pAgent->srcNodeId().has_value()) {
-        Logger::debug("No source node id, generating a random one");
-        pAgent->setSrcNodeId(nodeDist(this->m_generator));
-      }
-      Logger::debug(std::format("Checking node {}", pAgent->srcNodeId().value()));
-      auto const& srcNode{this->graph().node(pAgent->srcNodeId().value())};
-      if (srcNode->isFull()) {
-        ++itAgent;
-        continue;
-      }
-      if (!pAgent->nextStreetId().has_value()) {
-        Logger::debug("No next street id, generating a random one");
-        pAgent->setNextStreetId(
-            this->m_nextStreetId(pAgent, srcNode->id(), pAgent->streetId()));
-      }
-      // Logger::debug(
-      //     std::format("Checking next street {}", pAgent->nextStreetId().value()));
-      auto const& nextStreet{
-          this->graph().edge(pAgent->nextStreetId().value())};  // next street
-      if (nextStreet->isFull()) {
-        ++itAgent;
-        Logger::debug(std::format(
-            "Skipping agent {} due to full input street {}", *pAgent, *nextStreet));
-        continue;
-      }
-      assert(srcNode->id() == nextStreet->source());
-      // Logger::debug("Adding agent on the source node");
-      if (srcNode->isIntersection()) {
-        auto& intersection = dynamic_cast<Intersection&>(*srcNode);
-        intersection.addAgent(0., std::move(pAgent));
-      } else if (srcNode->isRoundabout()) {
-        auto& roundabout = dynamic_cast<Roundabout&>(*srcNode);
-        roundabout.enqueue(std::move(pAgent));
-      }
-      itAgent = m_agents.erase(itAgent);
-    }
     Dynamics<RoadNetwork>::m_evolve();
   }
 
@@ -1541,28 +1576,26 @@ namespace dsf {
       }
       auto& tl = dynamic_cast<TrafficLight&>(*pNode);
 
-      auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
+      auto const& inNeighbours{pNode->ingoingEdges()};
 
       // Default is RIGHTANDSTRAIGHT - LEFT phases for both priority and non-priority
       std::array<double, 2> inputPrioritySum{0., 0.}, inputNonPrioritySum{0., 0.};
       bool isPrioritySinglePhase{false}, isNonPrioritySinglePhase{false};
 
-      for (const auto& sourceId : inNeighbours) {
-        auto const streetId = sourceId * this->graph().nNodes() + nodeId;
+      for (const auto& streetId : inNeighbours) {
         if (tl.cycles().at(streetId).contains(Direction::ANY)) {
           tl.streetPriorities().contains(streetId) ? isPrioritySinglePhase = true
                                                    : isNonPrioritySinglePhase = true;
         }
       }
       if (isPrioritySinglePhase && logStream.has_value()) {
-        *logStream << std::format("\tFound a single phase for priority streets.\n");
+        *logStream << "\tFound a single phase for priority streets.\n";
       }
       if (isNonPrioritySinglePhase && logStream.has_value()) {
-        *logStream << std::format("\tFound a single phase for non-priority streets.\n");
+        *logStream << "\tFound a single phase for non-priority streets.\n";
       }
 
-      for (const auto& sourceId : inNeighbours) {
-        auto const streetId = sourceId * this->graph().nNodes() + nodeId;
+      for (const auto& streetId : inNeighbours) {
         for (auto const& [direction, tail] : m_queuesAtTrafficLights.at(streetId)) {
           if (tl.streetPriorities().contains(streetId)) {
             if (isPrioritySinglePhase) {
@@ -1918,7 +1951,8 @@ namespace dsf {
     if (!logFile.empty()) {
       logStream.emplace(logFile, std::ios::app);
       if (!logStream->is_open()) {
-        Logger::error(std::format("Could not open log file: {}", logFile));
+        Logger::error(
+            [&] { return std::format("Could not open log file: {}", logFile); });
       }
     }
     this->m_trafficlightSingleTailOptimizer(percentage, logStream);
@@ -1930,14 +1964,14 @@ namespace dsf {
           continue;
         }
         double density{0.}, n{0.};
-        auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
-        for (auto const& sourceId : inNeighbours) {
-          if (!this->graph().node(sourceId)->isTrafficLight()) {
+        auto const& inNeighbours{pNode->ingoingEdges()};
+        for (auto const& inEdgeId : inNeighbours) {
+          auto const& pStreet{this->graph().edge(inEdgeId)};
+          auto const& pSourceNode{this->graph().node(pStreet->source())};
+          if (!pSourceNode->isTrafficLight()) {
             continue;
           }
-          density += this->graph()
-                         .edge(sourceId * this->graph().nNodes() + nodeId)
-                         ->density(true);
+          density += pStreet->density(true);
           ++n;
         }
         density /= n;
@@ -1954,8 +1988,10 @@ namespace dsf {
       std::unordered_set<Id> optimizedNodes;
 
       for (auto const& [nodeId, density] : sortedDensities) {
-        auto const& inNeighbours{this->graph().adjacencyMatrix().getCol(nodeId)};
-        for (auto const& sourceId : inNeighbours) {
+        auto const& inNeighbours{this->graph().node(nodeId)->ingoingEdges()};
+        for (auto const& inEdgeId : inNeighbours) {
+          auto const& pStreet{this->graph().edge(inEdgeId)};
+          auto const& sourceId{pStreet->source()};
           if (!densities.contains(sourceId) || optimizedNodes.contains(sourceId)) {
             continue;
           }
@@ -1964,9 +2000,7 @@ namespace dsf {
             continue;
           }
           // Try to green-wave the situation
-          auto& tl{static_cast<TrafficLight&>(*(this->graph().node(sourceId)))};
-          auto const& pStreet{
-              this->graph().edge(sourceId * this->graph().nNodes() + nodeId)};
+          auto& tl{dynamic_cast<TrafficLight&>(*this->graph().node(sourceId))};
           tl.increasePhases(pStreet->length() /
                             (pStreet->maxSpeed() * (1. - 0.6 * pStreet->density(true))));
           optimizedNodes.insert(sourceId);
@@ -1990,24 +2024,8 @@ namespace dsf {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  size_t RoadDynamics<delay_t>::nAgents() const {
-    auto nAgents{m_agents.size()};
-    // Logger::debug(std::format("Number of agents: {}", nAgents));
-    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
-      if (pNode->isIntersection()) {
-        auto& intersection = dynamic_cast<Intersection&>(*pNode);
-        nAgents += intersection.agents().size();
-      } else if (pNode->isRoundabout()) {
-        auto& roundabout = dynamic_cast<Roundabout&>(*pNode);
-        nAgents += roundabout.agents().size();
-      }
-      // Logger::debug(std::format("Number of agents: {}", nAgents));
-    }
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      nAgents += pStreet->nAgents();
-    }
-    // Logger::debug(std::format("Number of agents: {}", nAgents));
-    return nAgents;
+  Size RoadDynamics<delay_t>::nAgents() const {
+    return m_nAgents;
   }
 
   template <typename delay_t>
@@ -2028,15 +2046,16 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::meanTravelDistance(bool clearData) {
+    if (m_travelDTs.empty()) {
+      return Measurement(0., 0.);
+    }
     std::vector<double> travelDistances;
-    if (!m_travelDTs.empty()) {
-      travelDistances.reserve(m_travelDTs.size());
-      for (auto const& [distance, time] : m_travelDTs) {
-        travelDistances.push_back(distance);
-      }
-      if (clearData) {
-        m_travelDTs.clear();
-      }
+    travelDistances.reserve(m_travelDTs.size());
+    for (auto const& [distance, time] : m_travelDTs) {
+      travelDistances.push_back(distance);
+    }
+    if (clearData) {
+      m_travelDTs.clear();
     }
     return Measurement<double>(travelDistances);
   }
@@ -2110,7 +2129,7 @@ namespace dsf {
   Measurement<double> RoadDynamics<delay_t>::streetMeanSpeed() const {
     std::vector<double> speeds;
     speeds.reserve(this->graph().nEdges());
-    for (const auto& [streetId, street] : this->graph().edges()) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
       speeds.push_back(streetMeanSpeed(streetId));
     }
     return Measurement<double>(speeds);
@@ -2122,10 +2141,10 @@ namespace dsf {
                                                              bool above) const {
     std::vector<double> speeds;
     speeds.reserve(this->graph().nEdges());
-    for (const auto& [streetId, street] : this->graph().edges()) {
-      if (above && (street->density(true) > threshold)) {
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      if (above && (pStreet->density(true) > threshold)) {
         speeds.push_back(streetMeanSpeed(streetId));
-      } else if (!above && (street->density(true) < threshold)) {
+      } else if (!above && (pStreet->density(true) < threshold)) {
         speeds.push_back(streetMeanSpeed(streetId));
       }
     }
@@ -2141,14 +2160,14 @@ namespace dsf {
     std::vector<double> densities;
     densities.reserve(this->graph().nEdges());
     if (normalized) {
-      for (const auto& [streetId, street] : this->graph().edges()) {
-        densities.push_back(street->density(true));
+      for (const auto& [streetId, pStreet] : this->graph().edges()) {
+        densities.push_back(pStreet->density(true));
       }
     } else {
       double sum{0.};
-      for (const auto& [streetId, street] : this->graph().edges()) {
-        densities.push_back(street->density(false) * street->length());
-        sum += street->length();
+      for (const auto& [streetId, pStreet] : this->graph().edges()) {
+        densities.push_back(pStreet->density(false) * pStreet->length());
+        sum += pStreet->length();
       }
       if (sum == 0) {
         return Measurement(0., 0.);
@@ -2164,8 +2183,8 @@ namespace dsf {
   Measurement<double> RoadDynamics<delay_t>::streetMeanFlow() const {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
-    for (const auto& [streetId, street] : this->graph().edges()) {
-      flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
     }
     return Measurement<double>(flows);
   }
@@ -2176,11 +2195,11 @@ namespace dsf {
                                                             bool above) const {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
-    for (const auto& [streetId, street] : this->graph().edges()) {
-      if (above && (street->density(true) > threshold)) {
-        flows.push_back(street->density() * this->streetMeanSpeed(streetId));
-      } else if (!above && (street->density(true) < threshold)) {
-        flows.push_back(street->density() * this->streetMeanSpeed(streetId));
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      if (above && (pStreet->density(true) > threshold)) {
+        flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
+      } else if (!above && (pStreet->density(true) < threshold)) {
+        flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
       }
     }
     return Measurement<double>(flows);
@@ -2196,9 +2215,9 @@ namespace dsf {
     m_previousSpireTime = this->time();
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
-    for (const auto& [streetId, street] : this->graph().edges()) {
-      if (street->isSpire()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*street);
+    for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      if (pStreet->isSpire()) {
+        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
         flows.push_back(static_cast<double>(spire.inputCounts(resetValue)) / deltaTime);
       }
     }
@@ -2215,9 +2234,9 @@ namespace dsf {
     m_previousSpireTime = this->time();
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
-    for (auto const& [streetId, street] : this->graph().edges()) {
-      if (street->isSpire()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*street);
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
+      if (pStreet->isSpire()) {
+        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
         flows.push_back(static_cast<double>(spire.outputCounts(resetValue)) / deltaTime);
       }
     }
@@ -2240,13 +2259,13 @@ namespace dsf {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& [streetId, _] : this->graph().edges()) {
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
         file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
-    for (auto const& [_, pStreet] : this->graph().edges()) {
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
       // keep 2 decimal digits;
       file << separator << std::scientific << std::setprecision(2)
            << pStreet->density(normalized);
@@ -2270,13 +2289,13 @@ namespace dsf {
     }
     if (bEmptyFile) {
       file << "time";
-      for (auto const& [streetId, _] : this->graph().edges()) {
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
         file << separator << streetId;
       }
       file << std::endl;
     }
     file << this->time();
-    for (auto const& [_, pStreet] : this->graph().edges()) {
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
         if (pStreet->isStochastic()) {
@@ -2315,7 +2334,7 @@ namespace dsf {
       file << std::endl;
     }
     file << this->time();
-    for (auto const& [_, pStreet] : this->graph().edges()) {
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
         if (pStreet->isStochastic()) {
@@ -2346,8 +2365,9 @@ namespace dsf {
       file << "time;distances;times;speeds" << std::endl;
     }
     file << this->time() << ';';
+    file << std::fixed << std::setprecision(2);
     for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      file << std::format("{:.2f}", it->first);
+      file << it->first;
       if (it != m_travelDTs.cend() - 1) {
         file << ',';
       }
@@ -2361,7 +2381,7 @@ namespace dsf {
     }
     file << ';';
     for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      file << std::format("{:.2f}", it->first / it->second);
+      file << (it->first / it->second);
       if (it != m_travelDTs.cend() - 1) {
         file << ',';
       }
@@ -2401,13 +2421,13 @@ namespace dsf {
       densities.reserve(this->graph().nEdges());
       flows.reserve(this->graph().nEdges());
       spireFlows.reserve(this->graph().nEdges());
-      for (auto const& [streetId, street] : this->graph().edges()) {
-        nAgents += street->nAgents();
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
+        nAgents += pStreet->nAgents();
         speeds.push_back(this->streetMeanSpeed(streetId));
-        densities.push_back(street->density(true));
-        flows.push_back(street->density(true) * speeds.back());
-        if (street->isSpire()) {
-          auto& spire = dynamic_cast<SpireStreet&>(*street);
+        densities.push_back(pStreet->density(true));
+        flows.push_back(pStreet->density(true) * speeds.back());
+        if (pStreet->isSpire()) {
+          auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
           spireFlows.push_back(static_cast<double>(spire.inputCounts(true)) /
                                (this->time() - m_previousSpireTime));
         }

@@ -13,7 +13,7 @@ find_package(TBB REQUIRED CONFIG)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -O0 -g -fsanitize=address")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-  string(APPEND CMAKE_CXX_FLAGS "-O3 -fsanitize=address")
+  string(APPEND CMAKE_CXX_FLAGS "-Ofast -march=native -flto=auto -pg")
 endif()
 
 # Set the folder for the executable

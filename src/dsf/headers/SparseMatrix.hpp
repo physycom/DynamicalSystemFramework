@@ -172,7 +172,7 @@ namespace dsf {
     assert(row + 1 < m_rowOffsets.size());
 
     // Increase row offsets for rows after the inserted row
-    std::for_each(DSM_EXECUTION m_rowOffsets.begin() + row + 1,
+    std::for_each(DSF_EXECUTION m_rowOffsets.begin() + row + 1,
                   m_rowOffsets.end(),
                   [](Id& x) { x++; });
 
@@ -190,7 +190,7 @@ namespace dsf {
       for (Id row = 0; row + 1 < m_rowOffsets.size(); ++row) {
         auto lowerOffset = m_rowOffsets[row];
         auto upperOffset = m_rowOffsets[row + 1];
-        auto const sum = std::reduce(DSM_EXECUTION m_values.begin() + lowerOffset,
+        auto const sum = std::reduce(DSF_EXECUTION m_values.begin() + lowerOffset,
                                      m_values.begin() + upperOffset,
                                      static_cast<T>(0));
         if (sum != static_cast<T>(0)) {

@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "AdjacencyMatrix.hpp"
 #include "../utility/Typedef.hpp"
 
 #include <concepts>
@@ -16,16 +15,17 @@
 #include <string>
 #include <format>
 #include <memory>
+#include <unordered_map>
+#include <vector>
 
 namespace dsf {
-  class AdjacencyMatrix;
   /// @brief The Itinerary class represents an itinerary in the network.
   /// @tparam Id The type of the itinerary's id. It must be an unsigned integral type.
   class Itinerary {
   private:
     Id m_id;
     Id m_destination;
-    std::unique_ptr<AdjacencyMatrix> m_path;
+    std::unordered_map<Id, std::vector<Id>> m_path;
 
   public:
     /// @brief Construct a new Itinerary object
@@ -39,10 +39,11 @@ namespace dsf {
     Itinerary(const Itinerary&) = delete;
     Itinerary& operator=(const Itinerary&) = delete;
 
+    void load(const std::string& fileName);
+
     /// @brief Set the itinerary's path
     /// @param path An adjacency matrix made by a SparseMatrix representing the itinerary's path
-    /// @throw std::invalid_argument, if the itinerary's source or destination is not in the path's
-    void setPath(AdjacencyMatrix path);
+    void setPath(std::unordered_map<Id, std::vector<Id>> path);
 
     /// @brief Get the itinerary's id
     /// @return Id, The itinerary's id
@@ -51,7 +52,9 @@ namespace dsf {
     /// @return Id, The itinerary's destination
     Id destination() const;
     /// @brief Get the itinerary's path
-    /// @return AdjacencyMatrix An adjacency matrix representing the itinerary's path
-    std::unique_ptr<AdjacencyMatrix> const& path() const;
+    /// @return std::unordered_map<Id, std::vector<Id>> const&, The itinerary's path
+    std::unordered_map<Id, std::vector<Id>> const& path() const;
+
+    void save(const std::string& fileName) const;
   };
 };  // namespace dsf

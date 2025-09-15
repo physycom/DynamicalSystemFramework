@@ -4,6 +4,8 @@
 
 #include "../utility/Typedef.hpp"
 
+#include <format>
+
 namespace dsf {
   class RoadJunction : public Node {
     Size m_capacity;
@@ -45,3 +47,22 @@ namespace dsf {
     virtual bool isRoundabout() const noexcept;
   };
 }  // namespace dsf
+
+template <>
+struct std::formatter<dsf::RoadJunction> {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(dsf::RoadJunction const& junction, FormatContext&& ctx) const {
+    return std::format_to(
+        ctx.out(),
+        "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
+        "{}, coords: {})",
+        junction.id(),
+        junction.name(),
+        junction.capacity(),
+        junction.transportCapacity(),
+        junction.coords().has_value()
+            ? std::format("({}, {})", junction.coords()->first, junction.coords()->second)
+            : "N/A");
+  }
+};

@@ -1,5 +1,5 @@
 id;source_id;target_id;length;nlanes;capacity;name;coil_code;geometry
-8;2;2;5;1;1;;;LINESTRING(0 2,0 2)
-6;2;0;5;1;1;;;LINESTRING(0 2,0 0)
-3;1;0;5;1;1;;;LINESTRING(0 1,0 0)
-1;0;1;5;1;1;;;LINESTRING(0 0,0 1)
+1;0;1;5;1;1;;;LINESTRING(0 0,1 0)
+3;1;0;5;1;1;;;LINESTRING(1 0,0 0)
+6;2;0;5;1;1;;;LINESTRING(2 0,0 0)
+8;2;2;5;1;1;;;LINESTRING(2 0,2 0)

@@ -15,7 +15,6 @@ namespace dsf {
     double m_transportCapacity;
     std::optional<double> m_weight;
     double m_angle;
-    std::optional<std::string> m_strId;
 
     void m_setAngle(std::pair<double, double> srcNodeCoordinates,
                     std::pair<double, double> dstNodeCoordinates);
@@ -44,7 +43,6 @@ namespace dsf {
     void setTransportCapacity(double capacity);
     void setGeometry(std::vector<std::pair<double, double>> geometry);
     void setWeight(double const weight);
-    inline void setStrId(std::string const& strId) { m_strId = strId; }
 
     /// @brief Get the edge's id
     /// @return Id The edge's id
@@ -73,8 +71,6 @@ namespace dsf {
     /// @brief Get the edge's weight
     /// @return double The edge's weight
     double weight() const;
-
-    inline std::optional<std::string> const& strId() const noexcept { return m_strId; }
 
     virtual bool isFull() const = 0;
 

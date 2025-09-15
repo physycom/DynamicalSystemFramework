@@ -7,7 +7,6 @@
 #include <memory>
 #include <numeric>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "../headers/Street.hpp"
@@ -50,9 +49,6 @@ namespace dsf {
     /// @brief Construct a new AdjacencyMatrix object using the @ref read method
     /// @param fileName The name of the file containing the adjacency matrix
     AdjacencyMatrix(std::string const& fileName);
-    /// @brief Construct a new AdjacencyMatrix object using the streets of the network
-    /// @param streets An std::unordered_map containing the streets of the network
-    AdjacencyMatrix(const std::unordered_map<Id, std::unique_ptr<Street>>& streets);
 
     bool operator==(const AdjacencyMatrix& other) const;
     /// @brief Get the link at the specified row and column

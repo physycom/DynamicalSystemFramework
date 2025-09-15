@@ -32,8 +32,8 @@ namespace dsf {
   void Edge::m_setAngle(std::pair<double, double> srcNodeCoordinates,
                         std::pair<double, double> dstNodeCoordinates) {
     // N.B.: lat, lon <==> y, x
-    double const dx{dstNodeCoordinates.first - srcNodeCoordinates.first};
-    double const dy{dstNodeCoordinates.second - srcNodeCoordinates.second};
+    double const dy{dstNodeCoordinates.first - srcNodeCoordinates.first};
+    double const dx{dstNodeCoordinates.second - srcNodeCoordinates.second};
     m_angle = std::atan2(dy, dx);
     if (m_angle < 0.) {
       m_angle += 2 * std::numbers::pi;
