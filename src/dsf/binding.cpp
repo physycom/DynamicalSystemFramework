@@ -145,18 +145,36 @@ PYBIND11_MODULE(dsf, m) {
            &dsf::RoadNetwork::importCoordinates,
            pybind11::arg("fileName"),
            dsf::g_docstrings.at("dsf::RoadNetwork::importCoordinates").c_str())
-      .def("importGeoJSON",
-           &dsf::RoadNetwork::importGeoJSON,
-           pybind11::arg("fileName"))
-          //  dsf::g_docstrings.at("dsf::RoadNetwork::importGeoJSON").c_str())
-      .def("importNodes",
-           &dsf::RoadNetwork::importNodes,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
-      .def("importEdges",
-           &dsf::RoadNetwork::importEdges,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
+      .def(
+          "importNodes",
+          [](dsf::RoadNetwork& self, const std::string& fileName) {
+            self.importNodes(fileName, ';');
+          },
+          pybind11::arg("fileName"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
+      .def(
+          "importNodes",
+          [](dsf::RoadNetwork& self, const std::string& fileName, char separator) {
+            self.importNodes(fileName, separator);
+          },
+          pybind11::arg("fileName"),
+          pybind11::arg("separator"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
+      .def(
+          "importEdges",
+          [](dsf::RoadNetwork& self, const std::string& fileName) {
+            self.importEdges(fileName, ';');
+          },
+          pybind11::arg("fileName"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
+      .def(
+          "importEdges",
+          [](dsf::RoadNetwork& self, const std::string& fileName, char separator) {
+            self.importEdges(fileName, separator);
+          },
+          pybind11::arg("fileName"),
+          pybind11::arg("separator"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,
            pybind11::arg("fileName"),
