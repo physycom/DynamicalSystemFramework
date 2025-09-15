@@ -125,6 +125,12 @@ PYBIND11_MODULE(dsf, m) {
            dsf::g_docstrings.at("dsf::RoadNetwork::RoadNetwork").c_str())
       .def(pybind11::init<const dsf::AdjacencyMatrix&>(),
            dsf::g_docstrings.at("dsf::RoadNetwork::RoadNetwork").c_str())
+      .def("nNodes",
+           &dsf::RoadNetwork::nNodes,
+           dsf::g_docstrings.at("dsf::Network::nNodes").c_str())
+      .def("nEdges",
+           &dsf::RoadNetwork::nEdges,
+           dsf::g_docstrings.at("dsf::Network::nEdges").c_str())
       .def("adjustNodeCapacities",
            &dsf::RoadNetwork::adjustNodeCapacities,
            dsf::g_docstrings.at("dsf::RoadNetwork::adjustNodeCapacities").c_str())
