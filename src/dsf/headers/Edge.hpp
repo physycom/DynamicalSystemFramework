@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -77,3 +78,16 @@ namespace dsf {
     double deltaAngle(double const previousEdgeAngle) const;
   };
 };  // namespace dsf
+
+template <>
+struct std::formatter<dsf::Edge> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(const dsf::Edge& edge, FormatContext&& ctx) const {
+    return std::format_to(ctx.out(),
+                          "Edge(id={}, source={}, target={})",
+                          edge.id(),
+                          edge.source(),
+                          edge.target());
+  }
+};
