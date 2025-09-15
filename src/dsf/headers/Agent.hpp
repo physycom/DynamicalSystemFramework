@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include <fmt/format.h>
+
 namespace dsf {
   /// @brief The Agent class represents an agent in the network.
   class Agent {
@@ -121,6 +123,7 @@ namespace dsf {
   };
 };  // namespace dsf
 
+// Specialization of std::formatter for dsf::Agent
 template <>
 struct std::formatter<dsf::Agent> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
@@ -139,5 +142,30 @@ struct std::formatter<dsf::Agent> {
                           agent.nextStreetId().value_or(-1),
                           agent.speed(),
                           agent.distance());
+  }
+};
+// Specialization of fmt::formatter for dsf::Agent
+template <>
+struct fmt::formatter<dsf::Agent> {
+  constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(const dsf::Agent& agent, FormatContext& ctx) const {
+    auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
+                                                   : std::to_string(agent.itineraryId());
+    return fmt::format_to(
+        ctx.out(),
+        "Agent(id: {}, streetId: {}, srcNodeId: {}, nextStreetId: {}, "
+        "itineraryId: {}, speed: {:.2f} m/s, distance: {:.2f} m, "
+        "spawnTime: {}, freeTime: {})",
+        agent.id(),
+        agent.streetId().has_value() ? std::to_string(agent.streetId().value()) : "N/A",
+        agent.srcNodeId().has_value() ? std::to_string(agent.srcNodeId().value()) : "N/A",
+        agent.nextStreetId().has_value() ? std::to_string(agent.nextStreetId().value())
+                                         : "N/A",
+        strItinerary,
+        agent.speed(),
+        agent.distance(),
+        agent.spawnTime(),
+        agent.freeTime());
   }
 };
