@@ -231,23 +231,24 @@ namespace dsf {
       }
 
       auto const& src_node_id{edge_properties["u"].asUInt64()};
-      auto const src_node_coords{
-          std::make_pair(geometry.front().first, geometry.front().second)};
       auto const& dst_node_id{edge_properties["v"].asUInt64()};
       auto const& edge_id{edge_properties["osmid"].asUInt64()};
       auto const& edge_length{edge_properties["length"].asDouble()};
-      auto const& edge_maxspeed{edge_properties["maxspeed"].asDouble()};
-      auto const& edge_lanes{edge_properties["lanes"].asUInt()};
+      auto const& edge_maxspeed{std::stod(edge_properties["maxspeed"].isNull()
+                                              ? "50"
+                                              : edge_properties["maxspeed"].asString()) /
+                                3.6};
+      auto edge_lanes{edge_properties.get("lanes", 1).asUInt()};
 
       auto const& name{edge_properties.get("name", "").asString()};
 
-      addEdge<Street>(edge_id,
-                      std::make_pair(src_node_id, dst_node_id),
-                      edge_length,
-                      edge_maxspeed,
-                      edge_lanes,
-                      name,
-                      geometry);
+      addStreet(Street(edge_id,
+                       std::make_pair(src_node_id, dst_node_id),
+                       edge_length,
+                       edge_maxspeed,
+                       edge_lanes,
+                       name,
+                       geometry));
     }
   }
 

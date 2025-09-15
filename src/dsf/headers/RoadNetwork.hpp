@@ -336,6 +336,7 @@ namespace dsf {
       case FileExt::JSON:
         spdlog::debug("Importing nodes from JSON file: {}", fileName);
         this->m_jsonEdgesImporter(file);
+        break;
       default:
         throw std::invalid_argument(
             std::format("File extension ({}) not supported", fileExt));
