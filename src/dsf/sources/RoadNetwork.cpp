@@ -177,26 +177,24 @@ namespace dsf {
                        iLanes,
                        name,
                        coords));
-      // if (!coilcode.empty()) {
-      //   makeSpireStreet(streetId);
-      //   auto& coil = edge<SpireStreet>(streetId);
-      //   try {
-      //     auto const coilId{static_cast<Id>(std::stoul(coilcode))};
-      //     coil.setCode(coilId);
-      //   } catch (const std::invalid_argument& e) {
-      //     Logger::warning(
-      //         std::format("Invalid coil code {} for {}", coilcode, *edge(streetId)));
-      //   }
-      // }
-      // if (!customWeight.empty()) {
-      //   try {
-      //     auto const weight{std::stod(customWeight)};
-      //     edge(streetId)->setWeight(weight);
-      //   } catch (const std::invalid_argument& e) {
-      //     Logger::warning(std::format(
-      //         "Invalid custom weight {} for {}", customWeight, *edge(streetId)));
-      //   }
-      // }
+      if (!coilcode.empty()) {
+        makeSpireStreet(streetId);
+        auto& coil = edge<SpireStreet>(streetId);
+        try {
+          auto const coilId{static_cast<Id>(std::stoul(coilcode))};
+          coil.setCode(coilId);
+        } catch (const std::invalid_argument& e) {
+          spdlog::warn("Invalid coil code ({}) for {}", coilcode, *edge(streetId));
+        }
+      }
+      if (!customWeight.empty()) {
+        try {
+          auto const weight{std::stod(customWeight)};
+          edge(streetId)->setWeight(weight);
+        } catch (const std::invalid_argument& e) {
+          spdlog::warn("Invalid custom weight {} for {}", customWeight, *edge(streetId));
+        }
+      }
     }
     this->m_nodes.rehash(this->nNodes());
     this->m_edges.rehash(this->nEdges());
