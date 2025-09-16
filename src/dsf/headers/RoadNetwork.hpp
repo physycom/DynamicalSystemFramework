@@ -395,7 +395,7 @@ namespace dsf {
     // Check if source node exists
     auto const& nodes = this->nodes();
     if (!nodes.contains(sourceId)) {
-      throw std::invalid_argument(
+      throw std::out_of_range(
           std::format("Source node with id {} does not exist.", sourceId));
     }
 

@@ -963,7 +963,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addEdge<Street>(15, std::make_pair(3, 0), 10., 10.);
       graph2.addEdge<Street>(20, std::make_pair(4, 0), 10., 10.);
       FirstOrderDynamics dynamics{
-          graph2, false, 69, 0., dsf::weight_functions::streetLength, 1.};
+          graph2, false, 69, 0., dsf::weight_functions::streetLength, 0.};
       dynamics.graph().node(0)->setCapacity(3);
       dynamics.graph().node(0)->setTransportCapacity(1);
       auto& nodeO{dynamic_cast<Intersection&>(*dynamics.graph().node(0))};
