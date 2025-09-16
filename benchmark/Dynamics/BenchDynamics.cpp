@@ -5,6 +5,8 @@
 #include "FirstOrderDynamics.hpp"
 #include "Bench.hpp"
 
+#include <spdlog/spdlog.h>
+
 using RoadNetwork = dsf::RoadNetwork;
 using Itinerary = dsf::Itinerary;
 using Dynamics = dsf::FirstOrderDynamics;
@@ -37,6 +39,20 @@ int main() {
   Bench b1(n_rep);
   std::cout << "Benchmarking updatePaths\n";
   b1.benchmark([&dynamics]() -> void { dynamics.updatePaths(); });
-  std::cout << "Time elapsed (s):\n";
-  b1.print<sb::seconds>();
+  std::cout << "Time elapsed (us):\n";
+  b1.print<sb::microseconds>();
+
+  for (auto const& [itineraryId, pItinerary] : dynamics.itineraries()) {
+    auto const& path = pItinerary->path();
+    auto const& size = path.size();
+    double avgPossibleMoves{0.};
+    for (auto const& [nodeId, nextHops] : path) {
+      avgPossibleMoves += nextHops.size();
+    }
+    avgPossibleMoves /= size;
+    spdlog::info("Itinerary {}: {} nodes, avg possible moves: {:.2f}",
+                itineraryId,
+                size,
+                avgPossibleMoves);
+  }
 }
