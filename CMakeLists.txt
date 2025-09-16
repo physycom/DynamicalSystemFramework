@@ -26,7 +26,7 @@ endif()
 find_package(TBB REQUIRED CONFIG)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
-find_package(jsoncpp REQUIRED)
+find_package(simdjson REQUIRED)
 
 file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp")
 
@@ -35,7 +35,7 @@ target_include_directories(dsf PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/headers>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog jsoncpp_lib)
+target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
 
 install(TARGETS dsf
         EXPORT dsfConfig

@@ -32,12 +32,12 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev doxygen
+        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
 
     - name: Install system dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        brew install cmake tbb spdlog doxygen
+        brew install cmake tbb spdlog simdjson doxygen
         echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include:$(brew --prefix fmt)/include:$(brew --prefix spdlog)/include" >> $GITHUB_ENV
         echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib" >> $GITHUB_ENV

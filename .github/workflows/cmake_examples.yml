@@ -23,10 +23,10 @@ jobs:
       run: |
         if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
           sudo apt update
-          sudo apt install libtbb-dev libfmt-dev libspdlog-dev binutils
+          sudo apt install libtbb-dev libfmt-dev libspdlog-dev libsimdjson-dev binutils
         elif [ ${{ matrix.os }} == 'macos-latest' ]; then
-          brew install tbb fmt spdlog
-        fi       
+          brew install tbb fmt spdlog simdjson
+        fi
 
     - uses: actions/checkout@v4
 

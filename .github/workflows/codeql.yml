@@ -30,10 +30,10 @@ jobs:
     - name: Install TBB (MacOS & Ubuntu)
       run: |
         if [[ "$RUNNER_OS" == "macOS" ]]; then
-          brew install tbb fmt spdlog
-          echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include:$(brew --prefix fmt)/include:$(brew --prefix spdlog)/include" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib" >> $GITHUB_ENV
+          brew install tbb fmt spdlog simdjson
+          echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include:$(brew --prefix fmt)/include:$(brew --prefix spdlog)/include:$(brew --prefix simdjson)/include" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib:$(brew --prefix simdjson)/lib" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib:$(brew --prefix simdjson)/lib" >> $GITHUB_ENV
         elif [[ "$RUNNER_OS" == "Linux" ]]; then
           sudo apt update && sudo apt install -y libtbb-dev libfmt-dev libspdlog-dev
         fi

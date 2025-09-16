@@ -40,7 +40,6 @@
 #include <cassert>
 #include <format>
 
-#include <json/json.h>
 #include <spdlog/spdlog.h>
 
 namespace dsf {

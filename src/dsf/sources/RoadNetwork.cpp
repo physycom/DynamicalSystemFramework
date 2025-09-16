@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <ranges>
 
+#include <simdjson.h>
+
 namespace dsf {
   void RoadNetwork::m_updateMaxAgentCapacity() {
     m_maxAgentCapacity = 0;
@@ -220,27 +222,69 @@ namespace dsf {
   }
 
   void RoadNetwork::m_jsonEdgesImporter(std::ifstream& file) {
-    Json::Value root;
-    file >> root;
-    for (const auto& feature : root["features"]) {
-      const auto& edge_properties = feature["properties"];
+    // Read the file into a string
+    std::string json_str((std::istreambuf_iterator<char>(file)),
+                         std::istreambuf_iterator<char>());
+    simdjson::dom::parser parser;
+    simdjson::dom::element root;
+    auto error = parser.parse(json_str).get(root);
+    if (error) {
+      throw std::runtime_error("Failed to parse JSON: " +
+                               std::string(simdjson::error_message(error)));
+    }
+
+    for (auto feature : root["features"]) {
+      auto edge_properties = feature["properties"];
 
       std::vector<std::pair<double, double>> geometry;
-      for (const auto& coord : feature["geometry"]["coordinates"]) {
-        geometry.emplace_back(coord[1].asDouble(), coord[0].asDouble());
+      for (auto const& coord : feature["geometry"]["coordinates"]) {
+        auto const& lat = coord.at(1);
+        auto const& lon = coord.at(0);
+        geometry.emplace_back(lat, lon);
       }
 
-      auto const& src_node_id{edge_properties["u"].asUInt64()};
-      auto const& dst_node_id{edge_properties["v"].asUInt64()};
-      auto const& edge_id{edge_properties["osmid"].asUInt64()};
-      auto const& edge_length{edge_properties["length"].asDouble()};
-      auto const& edge_maxspeed{std::stod(edge_properties["maxspeed"].isNull()
-                                              ? "50"
-                                              : edge_properties["maxspeed"].asString()) /
-                                3.6};
-      auto edge_lanes{edge_properties.get("lanes", 1).asUInt()};
+      auto const& src_node_id = static_cast<Id>(edge_properties["u"].get_uint64());
+      auto const& dst_node_id = static_cast<Id>(edge_properties["v"].get_uint64());
+      auto const& edge_id = static_cast<Id>(edge_properties["osmid"].get_uint64());
+      auto const& edge_length =
+          static_cast<double>(edge_properties["length"].get_double());
 
-      auto const& name{edge_properties.get("name", "").asString()};
+      // Robust extraction for maxspeed
+      double edge_maxspeed = 50.0;
+      if (!edge_properties["maxspeed"].is_null()) {
+        auto maxspeed_val = edge_properties["maxspeed"];
+        if (maxspeed_val.is_string()) {
+          try {
+            edge_maxspeed = std::stod(std::string(maxspeed_val.get_string().value()));
+          } catch (...) {
+            edge_maxspeed = 50.0;
+          }
+        } else if (maxspeed_val.is_number()) {
+          edge_maxspeed = maxspeed_val.get_double();
+        }
+      }
+      edge_maxspeed /= 3.6;
+
+      // Robust extraction for lanes
+      auto edge_lanes{1u};
+      if (!edge_properties["lanes"].is_null()) {
+        auto lanes_val = edge_properties["lanes"];
+        if (lanes_val.is_number()) {
+          edge_lanes = lanes_val.get_uint64();
+        } else if (lanes_val.is_string()) {
+          try {
+            edge_lanes = std::stoul(std::string(lanes_val.get_string().value()));
+          } catch (...) {
+            edge_lanes = 1;
+          }
+        }
+      }
+
+      // Robust extraction for name
+      std::string name = "";
+      if (!edge_properties["name"].is_null() && edge_properties["name"].is_string()) {
+        name = std::string(edge_properties["name"].get_string().value());
+      }
 
       addStreet(Street(edge_id,
                        std::make_pair(src_node_id, dst_node_id),
