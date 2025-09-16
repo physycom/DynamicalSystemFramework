@@ -492,13 +492,18 @@ namespace dsf {
             uniformDist(this->m_generator) < m_errorProbability)) {
         const auto& it = this->itineraries().at(pAgent->itineraryId());
         if (it->destination() != nodeId) {
-          const auto pathTargets = it->path().at(nodeId);
-          allowedTargets.insert(pathTargets.begin(), pathTargets.end());
-          hasItineraryConstraints = true;
+          try {
+            const auto pathTargets = it->path().at(nodeId);
+            allowedTargets.insert(pathTargets.begin(), pathTargets.end());
+            hasItineraryConstraints = true;
 
-          // Remove forbidden nodes from allowed targets
-          for (const auto& forbiddenNodeId : forbiddenTargetNodes) {
-            allowedTargets.erase(forbiddenNodeId);
+            // Remove forbidden nodes from allowed targets
+            for (const auto& forbiddenNodeId : forbiddenTargetNodes) {
+              allowedTargets.erase(forbiddenNodeId);
+            }
+          } catch (...) {
+            throw std::runtime_error(std::format(
+                "No path from node {} to destination {}", nodeId, it->destination()));
           }
         }
       }
