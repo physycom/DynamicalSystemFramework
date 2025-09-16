@@ -1048,6 +1048,7 @@ TEST_CASE("FirstOrderDynamics") {
       dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
       dynamics.updatePaths();
       dynamics.addAgent(2, 0);
+      dynamics.initTurnCounts();
       WHEN("We evolve the dynamics") {
         dynamics.evolve(false);
         dynamics.evolve(false);
@@ -1063,7 +1064,20 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(meanSpireFlow.mean, 0.5);
           CHECK_EQ(meanSpireFlow.std, 0);
         }
+        THEN("Also the turn counts are correct") {
+          auto const normTurnCounts = dynamics.normalizedTurnCounts();
+          CHECK_EQ(normTurnCounts.at(0).at(1), 1.);
+          auto const& turnCounts = dynamics.turnCounts();
+          CHECK_EQ(turnCounts.at(0).at(1), 1);
+          dynamics.resetTurnCounts();
+          for (auto const& [k1, map] : turnCounts) {
+            for (auto const& [k2, value] : map) {
+              CHECK_EQ(value, 0);
+            }
+          }
+        }
       }
+      spdlog::set_level(spdlog::level::info);
     }
   }
   SUBCASE("meanSpireFlow") {

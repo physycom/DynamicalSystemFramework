@@ -248,6 +248,9 @@ PYBIND11_MODULE(dsf, m) {
           pybind11::arg("destinationNodes"),
           pybind11::arg("updatePaths") = true,
           dsf::g_docstrings.at("dsf::RoadDynamics::setDestinationNodes").c_str())
+      .def("initTurnCounts",
+           &dsf::FirstOrderDynamics::initTurnCounts,
+           dsf::g_docstrings.at("dsf::RoadDynamics::initTurnCounts").c_str())
       .def("updatePaths",
            &dsf::FirstOrderDynamics::updatePaths,
            dsf::g_docstrings.at("dsf::RoadDynamics::updatePaths").c_str())
@@ -326,25 +329,42 @@ PYBIND11_MODULE(dsf, m) {
            &dsf::FirstOrderDynamics::meanTravelSpeed,
            pybind11::arg("clearData") = false,
            dsf::g_docstrings.at("dsf::RoadDynamics::meanTravelSpeed").c_str())
-      //  .def("turnCounts",
-      //       [](const dsf::FirstOrderDynamics& self) -> std::unordered_map<uint32_t, std::array<uint64_t, 4>> {
-      //         const auto& counts = self.turnCounts();
-      //         std::unordered_map<uint32_t, std::array<uint64_t, 4>> result;
-      //         for (const auto& [id, arr] : counts) {
-      //           result[id] = {arr[0], arr[1], arr[2], arr[3]};
-      //         }
-      //         return result;
-      //       },
-      //       "Get turn counts for all streets")
+      .def(
+          "turnCounts",
+          [](const dsf::FirstOrderDynamics& self) {
+            // Convert C++ unordered_map<Id, unordered_map<Id, size_t>> to Python dict of dicts
+            pybind11::dict py_result;
+            for (const auto& [from_id, inner_map] : self.turnCounts()) {
+              pybind11::dict py_inner;
+              for (const auto& [to_id, count] : inner_map) {
+                py_inner[pybind11::int_(to_id)] = pybind11::int_(count);
+              }
+              py_result[pybind11::int_(from_id)] = py_inner;
+            }
+            return py_result;
+          },
+          dsf::g_docstrings.at("dsf::RoadDynamics::turnCounts").c_str())
+      .def(
+          "normalizedTurnCounts",
+          [](const dsf::FirstOrderDynamics& self) {
+            // Convert C++ unordered_map<Id, unordered_map<Id, size_t>> to Python dict of dicts
+            pybind11::dict py_result;
+            for (const auto& [from_id, inner_map] : self.normalizedTurnCounts()) {
+              pybind11::dict py_inner;
+              for (const auto& [to_id, count] : inner_map) {
+                py_inner[pybind11::int_(to_id)] = pybind11::float_(count);
+              }
+              py_result[pybind11::int_(from_id)] = py_inner;
+            }
+            return py_result;
+          },
+          dsf::g_docstrings.at("dsf::RoadDynamics::normalizedTurnCounts").c_str())
       //  .def("turnProbabilities",
       //       &dsf::FirstOrderDynamics::turnProbabilities,
       //       pybind11::arg("reset") = true)
       //  .def("turnMapping",
       //       &dsf::FirstOrderDynamics::turnMapping,
       //       pybind11::return_value_policy::reference_internal)
-      .def("agentMeanSpeed",
-           &dsf::FirstOrderDynamics::agentMeanSpeed,
-           dsf::g_docstrings.at("dsf::RoadDynamics::agentMeanSpeed").c_str())
       // .def("streetMeanSpeed", static_cast<double (dsf::FirstOrderDynamics::*)(dsf::Id) const>(&dsf::FirstOrderDynamics::streetMeanSpeed), pybind11::arg("streetId"))
       // .def("streetMeanSpeed", static_cast<dsf::Measurement<double> (dsf::FirstOrderDynamics::*)() const>(&dsf::FirstOrderDynamics::streetMeanSpeed))
       // .def("streetMeanSpeed", static_cast<dsf::Measurement<double> (dsf::FirstOrderDynamics::*)(double, bool) const>(&dsf::FirstOrderDynamics::streetMeanSpeed), pybind11::arg("threshold"), pybind11::arg("above"))
