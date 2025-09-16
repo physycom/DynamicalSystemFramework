@@ -40,6 +40,8 @@
 #include <cassert>
 #include <format>
 
+#include <tbb/parallel_for_each.h>
+
 namespace dsf {
 
   /// @brief The RoadNetwork class represents a graph in the network.
@@ -251,6 +253,12 @@ namespace dsf {
           std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
     std::optional<DijkstraResult> shortestPath(
         Id source, Id destination, Func f = weight_functions::streetLength) const;
+
+    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
+      requires(
+          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+    std::unordered_map<Id, std::vector<Id>> globalDijkstra(
+        Id const sourceId, Func f = weight_functions::streetLength) const;
   };
 
   template <typename T1, typename... Tn>
@@ -373,5 +381,88 @@ namespace dsf {
 
     std::reverse(path.begin(), path.end());
     return DijkstraResult(path, dist[destination]);
+  }
+
+  template <typename Func>
+    requires(
+        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+  std::unordered_map<Id, std::vector<Id>> RoadNetwork::globalDijkstra(Id const sourceId,
+                                                                      Func f) const {
+    // Check if source node exists
+    auto const& nodes = this->nodes();
+    if (!nodes.contains(sourceId)) {
+      throw std::invalid_argument(
+          std::format("Source node with id {} does not exist.", sourceId));
+    }
+
+    // Distance from each node to the source (going backward)
+    std::unordered_map<Id, double> distToSource;
+    distToSource.reserve(nNodes());
+    // Next hop from each node toward the source
+    std::unordered_map<Id, std::vector<Id>> nextHopsToSource;
+
+    // Priority queue: pair<distance, nodeId> (min-heap)
+    std::priority_queue<std::pair<double, Id>,
+                        std::vector<std::pair<double, Id>>,
+                        std::greater<>>
+        pq;
+
+    // Initialize all nodes with infinite distance
+    for (auto const& [nodeId, node] : nodes) {
+      distToSource[nodeId] = std::numeric_limits<double>::infinity();
+      nextHopsToSource[nodeId] = std::vector<Id>();
+    }
+
+    // Source has distance 0 to itself
+    distToSource[sourceId] = 0.0;
+    pq.push({0.0, sourceId});
+
+    while (!pq.empty()) {
+      auto [currentDist, currentNode] = pq.top();
+      pq.pop();
+
+      // Skip if we've already found a better path to this node
+      if (currentDist > distToSource[currentNode]) {
+        continue;
+      }
+
+      // Explore all incoming edges (nodes that can reach currentNode)
+      auto const& inEdges = node(currentNode)->ingoingEdges();
+      for (auto const& inEdgeId : inEdges) {
+        Id neighborId = edge(inEdgeId)->source();
+
+        // Calculate the weight of the edge from neighbor to currentNode
+        double edgeWeight = f(this, neighborId, currentNode);
+        double newDistToSource = distToSource[currentNode] + edgeWeight;
+
+        // If we found a shorter path from neighborId to source
+        if (newDistToSource < distToSource[neighborId]) {
+          distToSource[neighborId] = newDistToSource;
+          nextHopsToSource[neighborId].clear();
+          nextHopsToSource[neighborId].push_back(currentNode);
+          pq.push({newDistToSource, neighborId});
+        }
+        // If we found an equally good path, add it as alternative
+        else if (std::abs(newDistToSource - distToSource[neighborId]) < 1e-9) {
+          // Check if currentNode is not already in the nextHops
+          auto& hops = nextHopsToSource[neighborId];
+          if (std::find(hops.begin(), hops.end(), currentNode) == hops.end()) {
+            hops.push_back(currentNode);
+          }
+        }
+      }
+    }
+
+    // Build result: only include reachable nodes (excluding source)
+    std::unordered_map<Id, std::vector<Id>> result;
+    for (auto const& [nodeId, hops] : nextHopsToSource) {
+      if (nodeId != sourceId &&
+          distToSource[nodeId] != std::numeric_limits<double>::infinity() &&
+          !hops.empty()) {
+        result[nodeId] = hops;
+      }
+    }
+
+    return result;
   }
 };  // namespace dsf

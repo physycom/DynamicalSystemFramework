@@ -433,85 +433,14 @@ namespace dsf {
         return;
       }
     }
-    auto const destinationID = pItinerary->destination();
-    std::unordered_map<Id, DijkstraResult> shortestPaths(this->graph().nNodes());
 
-    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
-      if (nodeId == destinationID) {
-        shortestPaths[pNode->id()] = DijkstraResult{};
-        continue;
-      }
-      auto result = this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
-      if (!result.has_value()) {
-        spdlog::warn("No path found from node {} to node {}", nodeId, destinationID);
-        shortestPaths[nodeId] = DijkstraResult{};
-        continue;
-      }
-      shortestPaths[nodeId] = *result;
-    }
-    std::unordered_map<Id, std::vector<Id>> path;
-    // cycle over the nodes
-    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
-      if (nodeId == destinationID) {
-        continue;
-      }
-      // save the minimum distance between i and the destination
-      const auto minDistance{shortestPaths[nodeId].distance()};
-      if (minDistance < 0.) {
-        continue;
-      }
-      for (const auto outEdge : pNode->outgoingEdges()) {
-        auto const& nextNodeId = this->graph().edge(outEdge)->target();
-        if (nextNodeId == destinationID) {
-          if (std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) -
-                       minDistance) <
-              m_weightTreshold)  // 1 meter tolerance between shortest paths
-          {
-            path[nodeId].push_back(nextNodeId);
-          } else {
-            spdlog::debug(
-                "Found a path from {} to {} which differs for more than {} "
-                "unit(s) from the shortest one.",
-                nodeId,
-                destinationID,
-                m_weightTreshold);
-          }
-          continue;
-        }
-        auto const distance{shortestPaths[nextNodeId].distance()};
-        if (distance < 0.) {
-          continue;
-        }
-        if (std::find(shortestPaths[nextNodeId].path().cbegin(),
-                      shortestPaths[nextNodeId].path().cend(),
-                      nodeId) != shortestPaths[nextNodeId].path().cend()) {
-          continue;
-        }
-        bool const bIsMinDistance{
-            std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) + distance -
-                     minDistance) <
-            m_weightTreshold};  // 1 meter tolerance between shortest paths
-        if (bIsMinDistance) {
-          path[nodeId].push_back(nextNodeId);
-        } else {
-          spdlog::debug(
-              "Found a path from {} to {} which differs for more than {} "
-              "unit(s) from the shortest one.",
-              nodeId,
-              destinationID,
-              m_weightTreshold);
-        }
-      }
-    }
-
+    auto const& path{this->graph().globalDijkstra(pItinerary->destination(), m_weightFunction)};
     if (path.empty()) {
-      spdlog::error(
-          "Path with id {} and destination {} is empty. Please check the "
-          "adjacency matrix.",
+      throw std::runtime_error(std::format(
+          "No path found for itinerary {} with destination node {}",
           pItinerary->id(),
-          pItinerary->destination());
+          pItinerary->destination()));
     }
-
     pItinerary->setPath(path);
     if (m_bCacheEnabled) {
       pItinerary->save(std::format("{}{}.ity", g_cacheFolder, pItinerary->id()));

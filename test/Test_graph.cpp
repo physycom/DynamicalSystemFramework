@@ -448,6 +448,15 @@ TEST_CASE("Dijkstra") {
     CHECK_EQ(result.value().path().size(), 3);
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 5.);
+
+    auto const& pathMap = graph.globalDijkstra(2);
+    CHECK_FALSE(pathMap.contains(2));
+    CHECK_EQ(pathMap.at(3).size(), 1);
+    CHECK_EQ(pathMap.at(3)[0], 0);
+    CHECK_EQ(pathMap.at(0).size(), 1);
+    CHECK_EQ(pathMap.at(0)[0], 1);
+    CHECK_EQ(pathMap.at(1).size(), 1);
+    CHECK_EQ(pathMap.at(1)[0], 2);
   }
 
   SUBCASE("Case 2") {
@@ -462,6 +471,13 @@ TEST_CASE("Dijkstra") {
     CHECK_EQ(result.value().path().size(), 3);
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 2.);
+
+    auto const& pathMap = graph.globalDijkstra(2);
+    CHECK_FALSE(pathMap.contains(2));
+    CHECK_EQ(pathMap.at(0).size(), 1);
+    CHECK_EQ(pathMap.at(0)[0], 1);
+    CHECK_EQ(pathMap.at(1).size(), 1);
+    CHECK_EQ(pathMap.at(1)[0], 2);
   }
 
   SUBCASE("Case 3") {
@@ -476,6 +492,13 @@ TEST_CASE("Dijkstra") {
     CHECK_EQ(result.value().path().size(), 2);
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 6.);
+
+    auto const& pathMap = graph.globalDijkstra(2);
+    CHECK_FALSE(pathMap.contains(2));
+    CHECK_EQ(pathMap.at(0).size(), 1);
+    CHECK_EQ(pathMap.at(0)[0], 2);
+    CHECK_EQ(pathMap.at(1).size(), 1);
+    CHECK_EQ(pathMap.at(1)[0], 2);
   }
 
   SUBCASE("Case 4") {
