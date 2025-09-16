@@ -40,7 +40,9 @@
 #include <cassert>
 #include <format>
 
+#include <tbb/concurrent_unordered_map.h>
 #include <tbb/parallel_for_each.h>
+#include <spdlog/spdlog.h>
 
 namespace dsf {
 
@@ -258,7 +260,9 @@ namespace dsf {
       requires(
           std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
     std::unordered_map<Id, std::vector<Id>> globalDijkstra(
-        Id const sourceId, Func f = weight_functions::streetLength) const;
+        Id const sourceId,
+        Func f = weight_functions::streetLength,
+        double const threshold = 1e-9) const;
   };
 
   template <typename T1, typename... Tn>
@@ -386,8 +390,8 @@ namespace dsf {
   template <typename Func>
     requires(
         std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-  std::unordered_map<Id, std::vector<Id>> RoadNetwork::globalDijkstra(Id const sourceId,
-                                                                      Func f) const {
+  std::unordered_map<Id, std::vector<Id>> RoadNetwork::globalDijkstra(
+      Id const sourceId, Func f, double const threshold) const {
     // Check if source node exists
     auto const& nodes = this->nodes();
     if (!nodes.contains(sourceId)) {
@@ -396,10 +400,10 @@ namespace dsf {
     }
 
     // Distance from each node to the source (going backward)
-    std::unordered_map<Id, double> distToSource;
+    tbb::concurrent_unordered_map<Id, double> distToSource;
     distToSource.reserve(nNodes());
     // Next hop from each node toward the source
-    std::unordered_map<Id, std::vector<Id>> nextHopsToSource;
+    tbb::concurrent_unordered_map<Id, std::vector<Id>> nextHopsToSource;
 
     // Priority queue: pair<distance, nodeId> (min-heap)
     std::priority_queue<std::pair<double, Id>,
@@ -408,10 +412,11 @@ namespace dsf {
         pq;
 
     // Initialize all nodes with infinite distance
-    for (auto const& [nodeId, node] : nodes) {
+    tbb::parallel_for_each(nodes.begin(), nodes.end(), [&](auto const& pair) {
+      auto const& [nodeId, node] = pair;
       distToSource[nodeId] = std::numeric_limits<double>::infinity();
       nextHopsToSource[nodeId] = std::vector<Id>();
-    }
+    });
 
     // Source has distance 0 to itself
     distToSource[sourceId] = 0.0;
@@ -443,7 +448,14 @@ namespace dsf {
           pq.push({newDistToSource, neighborId});
         }
         // If we found an equally good path, add it as alternative
-        else if (std::abs(newDistToSource - distToSource[neighborId]) < 1e-9) {
+        else if (newDistToSource < (1. + threshold) * distToSource[neighborId]) {
+          spdlog::debug(
+              "Found alternative path to node {} with distance {:.6f} (existing: {:.6f}) "
+              "for threshold {:.6f}",
+              neighborId,
+              newDistToSource,
+              distToSource[neighborId],
+              threshold);
           // Check if currentNode is not already in the nextHops
           auto& hops = nextHopsToSource[neighborId];
           if (std::find(hops.begin(), hops.end(), currentNode) == hops.end()) {

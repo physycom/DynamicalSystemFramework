@@ -109,7 +109,7 @@ namespace dsf {
                  std::optional<unsigned int> seed = std::nullopt,
                  std::function<double(const RoadNetwork*, Id, Id)> weightFunction =
                      weight_functions::streetTime,
-                 double weightTreshold = 60.);  // 60 seconds thresholds for paths
+                 double weightTreshold = 0.);  // 60 seconds thresholds for paths
 
     /// @brief Set the error probability
     /// @param errorProbability The error probability
@@ -434,12 +434,13 @@ namespace dsf {
       }
     }
 
-    auto const& path{this->graph().globalDijkstra(pItinerary->destination(), m_weightFunction)};
+    auto const& path{this->graph().globalDijkstra(
+        pItinerary->destination(), m_weightFunction, m_weightTreshold)};
     if (path.empty()) {
-      throw std::runtime_error(std::format(
-          "No path found for itinerary {} with destination node {}",
-          pItinerary->id(),
-          pItinerary->destination()));
+      throw std::runtime_error(
+          std::format("No path found for itinerary {} with destination node {}",
+                      pItinerary->id(),
+                      pItinerary->destination()));
     }
     pItinerary->setPath(path);
     if (m_bCacheEnabled) {

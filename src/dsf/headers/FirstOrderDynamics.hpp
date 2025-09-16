@@ -19,7 +19,7 @@ namespace dsf {
                                 double alpha = 0.,
                                 std::function<double(const RoadNetwork*, Id, Id)>
                                     weightFunction = weight_functions::streetTime,
-                                double weightTreshold = 60.);
+                                double weightTreshold = 0.0069);
     /// @brief Set the speed of an agent
     /// @param agentId The id of the agent
     /// @throw std::invalid_argument, If the agent is not found

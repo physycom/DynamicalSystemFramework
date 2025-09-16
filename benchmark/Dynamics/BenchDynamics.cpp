@@ -14,6 +14,9 @@ using Dynamics = dsf::FirstOrderDynamics;
 using Bench = sb::Bench<long long int>;
 
 int main() {
+  // Declare generator
+  std::mt19937_64 generator{std::random_device{}()};
+  generator.seed(69);
   RoadNetwork graph{};
   graph.importOSMNodes("../test/data/forlì_nodes.csv");
   graph.importOSMEdges("../test/data/forlì_edges.csv");
@@ -31,16 +34,16 @@ int main() {
                 nodeIds.end(),
                 std::back_inserter(randomNodeIds),
                 10,
-                std::mt19937{std::random_device{}()});
+                generator);
   }
   dynamics.setDestinationNodes(randomNodeIds, false);
 
-  const int n_rep{1};
+  const int n_rep{100};
   Bench b1(n_rep);
   std::cout << "Benchmarking updatePaths\n";
   b1.benchmark([&dynamics]() -> void { dynamics.updatePaths(); });
-  std::cout << "Time elapsed (us):\n";
-  b1.print<sb::microseconds>();
+  std::cout << "Time elapsed after " << n_rep << " repetitions (ms):\n";
+  b1.print<sb::milliseconds>();
 
   for (auto const& [itineraryId, pItinerary] : dynamics.itineraries()) {
     auto const& path = pItinerary->path();
@@ -49,10 +52,16 @@ int main() {
     for (auto const& [nodeId, nextHops] : path) {
       avgPossibleMoves += nextHops.size();
     }
+    double avgDegree{0.};
+    for (auto const& nodeId : dynamics.graph().nodes()) {
+      avgDegree += nodeId.second->outgoingEdges().size();
+    }
+    avgDegree /= dynamics.graph().nNodes();
     avgPossibleMoves /= size;
-    spdlog::info("Itinerary {}: {} nodes, avg possible moves: {:.2f}",
+    spdlog::info("Itinerary {}: {} nodes, avg possible moves: {:.2f}, avg degree: {:.2f}",
                 itineraryId,
                 size,
-                avgPossibleMoves);
+                avgPossibleMoves,
+                avgDegree);
   }
 }
