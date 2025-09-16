@@ -49,7 +49,7 @@ namespace dsf {
     Size m_nAgents;
 
   protected:
-    std::unordered_map<Id, std::array<unsigned long long, 4>> m_turnCounts;
+    std::unordered_map<Id, std::unordered_map<Id, size_t>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
         m_queuesAtTrafficLights;
@@ -80,8 +80,6 @@ namespace dsf {
     virtual Id m_nextStreetId(std::unique_ptr<Agent> const& pAgent,
                               Id NodeId,
                               std::optional<Id> streetId = std::nullopt);
-    /// @brief Increase the turn counts
-    virtual void m_increaseTurnCounts(Id streetId, double delta);
     /// @brief Evolve a street
     /// @param pStreet A std::unique_ptr to the street
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
@@ -166,6 +164,12 @@ namespace dsf {
     void setDestinationNodes(TContainer const& destinationNodes, bool updatePaths = true);
 
     virtual void setAgentSpeed(std::unique_ptr<Agent> const& pAgent) = 0;
+    /// @brief Initialize the turn counts map
+    /// @throws std::runtime_error if the turn counts map is already initialized
+    void initTurnCounts();
+    /// @brief Reset the turn counts map values to zero
+    /// @throws std::runtime_error if the turn counts map is not initialized
+    void resetTurnCounts();
 
     /// @brief Update the paths of the itineraries based on the given weight function
     void updatePaths();
@@ -268,27 +272,20 @@ namespace dsf {
     /// @return Measurement<double> The mean travel speed of the agents and the standard deviation
     Measurement<double> meanTravelSpeed(bool clearData = false);
     /// @brief Get the turn counts of the agents
-    /// @return const std::array<unsigned long long, 3>& The turn counts
-    /// @details The array contains the counts of left (0), straight (1), right (2) and U (3) turns
-    inline const std::unordered_map<Id, std::array<unsigned long long, 4>>& turnCounts()
+    /// @return const std::unordered_map<Id, std::unordered_map<Id, size_t>>& The turn counts. The outer map's key is the street id, the inner map's key is the next street id and the value is the number of counts
+    inline std::unordered_map<Id, std::unordered_map<Id, size_t>> const& turnCounts()
         const noexcept {
       return m_turnCounts;
-    }
-    /// @brief Get the turn probabilities of the agents
-    /// @return std::array<double, 3> The turn probabilities
-    /// @details The array contains the probabilities of left (0), straight (1), right (2) and U (3) turns
-    std::unordered_map<Id, std::array<double, 4>> turnProbabilities(bool reset = true);
+    };
+    /// @brief Get the normalized turn counts of the agents
+    /// @return const std::unordered_map<Id, std::unordered_map<Id, double>>& The normalized turn counts. The outer map's key is the street id, the inner map's key is the next street id and the value is the normalized number of counts
+    std::unordered_map<Id, std::unordered_map<Id, double>> const normalizedTurnCounts()
+        const noexcept;
 
     std::unordered_map<Id, std::array<long, 4>> turnMapping() const {
       return m_turnMapping;
     }
 
-    /// @brief Get the mean speed of the agents in \f$m/s\f$
-    /// @return Measurement<double> The mean speed of the agents and the standard deviation
-    Measurement<double> agentMeanSpeed() const;
-    // TODO: implement the following functions
-    // We can implement the base version of these functions by cycling over agents... I won't do it for now.
-    // Grufoony - 19/02/2024
     virtual double streetMeanSpeed(Id streetId) const;
     virtual Measurement<double> streetMeanSpeed() const;
     virtual Measurement<double> streetMeanSpeed(double, bool) const;
@@ -401,7 +398,6 @@ namespace dsf {
         [this](auto const& pair) {
           auto const& pEdge{pair.second};
           auto const edgeId{pair.first};
-          m_turnCounts.emplace(edgeId, std::array<unsigned long long, 4>{0, 0, 0, 0});
           // fill turn mapping as [pair.first, [left street Id, straight street Id, right street Id, U self street Id]]
           m_turnMapping.emplace(edgeId, std::array<long, 4>{-1, -1, -1, -1});
           // Turn mappings
@@ -610,22 +606,6 @@ namespace dsf {
     std::uniform_int_distribution<Size> moveDist{
         0, static_cast<Size>(possibleEdgeIds.size() - 1)};
     return possibleEdgeIds[moveDist(this->m_generator)];
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_increaseTurnCounts(Id streetId, double delta) {
-    if (std::abs(delta) < std::numbers::pi) {
-      if (delta < 0.) {
-        ++m_turnCounts[streetId][0];  // right
-      } else if (delta > 0.) {
-        ++m_turnCounts[streetId][2];  // left
-      } else {
-        ++m_turnCounts[streetId][1];  // straight
-      }
-    } else {
-      ++m_turnCounts[streetId][3];  // U
-    }
   }
 
   template <typename delay_t>
@@ -956,7 +936,6 @@ namespace dsf {
         if (destinationNode->isIntersection()) {
           auto& intersection = dynamic_cast<Intersection&>(*destinationNode);
           auto const delta{nextStreet->deltaAngle(pStreet->angle())};
-          // m_increaseTurnCounts(pStreet->id(), delta);
           intersection.addAgent(delta, std::move(pAgent));
         } else if (destinationNode->isRoundabout()) {
           auto& roundabout = dynamic_cast<Roundabout&>(*destinationNode);
@@ -999,6 +978,9 @@ namespace dsf {
             ++it;
             continue;
           }
+          if (!m_turnCounts.empty() && pAgent->streetId().has_value()) {
+            ++m_turnCounts[*(pAgent->streetId())][nextStreet->id()];
+          }
           pAgent->setStreetId();
           this->setAgentSpeed(pAgent);
           pAgent->setFreeTime(this->time() +
@@ -1023,15 +1005,8 @@ namespace dsf {
         auto const& pAgentTemp{roundabout.agents().front()};
         auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
         if (!(nextStreet->isFull())) {
-          if (pAgentTemp->streetId().has_value()) {
-            const auto streetId = pAgentTemp->streetId().value();
-            auto delta = nextStreet->angle() - this->graph().edge(streetId)->angle();
-            if (delta > std::numbers::pi) {
-              delta -= 2 * std::numbers::pi;
-            } else if (delta < -std::numbers::pi) {
-              delta += 2 * std::numbers::pi;
-            }
-            m_increaseTurnCounts(streetId, delta);
+          if (!m_turnCounts.empty() && pAgentTemp->streetId().has_value()) {
+            ++m_turnCounts[*(pAgentTemp->streetId())][nextStreet->id()];
           }
           auto pAgent{roundabout.dequeue()};
           pAgent->setStreetId();
@@ -1130,6 +1105,38 @@ namespace dsf {
                    strWeightFunction);
     }
     this->updatePaths();
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::initTurnCounts() {
+    if (!m_turnCounts.empty()) {
+      throw std::runtime_error("Turn counts have already been initialized.");
+    }
+    for (auto const& [edgeId, pEdge] : this->graph().edges()) {
+      auto const& pTargetNode{this->graph().node(pEdge->target())};
+      for (auto const& nextEdgeId : pTargetNode->outgoingEdges()) {
+        spdlog::debug("Initializing turn count for edge {} -> {}", edgeId, nextEdgeId);
+        m_turnCounts[edgeId][nextEdgeId] = 0;
+      }
+    }
+  }
+  // You may wonder why not just use one function...
+  // Never trust the user!
+  // Jokes aside, the init is necessary because it allocates the memory for the first time and
+  // turn counts are not incremented if the map is empty for performance reasons.
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::resetTurnCounts() {
+    if (m_turnCounts.empty()) {
+      throw std::runtime_error("Turn counts have not been initialized.");
+    }
+    for (auto const& [edgeId, pEdge] : this->graph().edges()) {
+      auto const& pTargetNode{this->graph().node(pEdge->target())};
+      for (auto const& nextEdgeId : pTargetNode->outgoingEdges()) {
+        m_turnCounts[edgeId][nextEdgeId] = 0;
+      }
+    }
   }
 
   template <typename delay_t>
@@ -1976,41 +1983,26 @@ namespace dsf {
     }
     return Measurement<double>(travelSpeeds);
   }
-
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  std::unordered_map<Id, std::array<double, 4>> RoadDynamics<delay_t>::turnProbabilities(
-      bool reset) {
-    std::unordered_map<Id, std::array<double, 4>> res;
-    for (auto& [streetId, counts] : m_turnCounts) {
-      std::array<double, 4> probabilities{0., 0., 0., 0.};
-      const auto sum{std::accumulate(counts.cbegin(), counts.cend(), 0.)};
-      if (sum != 0) {
-        for (auto i{0}; i < counts.size(); ++i) {
-          probabilities[i] = counts[i] / sum;
+  std::unordered_map<Id, std::unordered_map<Id, double>> const
+  RoadDynamics<delay_t>::normalizedTurnCounts() const noexcept {
+    std::unordered_map<Id, std::unordered_map<Id, double>> normalizedTurnCounts;
+    for (auto const& [fromId, map] : m_turnCounts) {
+      auto const sum{
+          std::accumulate(map.begin(), map.end(), 0., [](auto const sum, auto const& p) {
+            return sum + static_cast<double>(p.second);
+          })};
+      if (sum == 0.) {
+        for (auto const& [toId, count] : map) {
+          normalizedTurnCounts[fromId][toId] = 0.;
         }
       }
-      res.emplace(streetId, probabilities);
-    }
-    if (reset) {
-      for (auto& [streetId, counts] : m_turnCounts) {
-        std::fill(counts.begin(), counts.end(), 0);
+      for (auto const& [toId, count] : map) {
+        normalizedTurnCounts[fromId][toId] = static_cast<double>(count) / sum;
       }
     }
-    return res;
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::agentMeanSpeed() const {
-    std::vector<double> speeds;
-    // if (!this->agents().empty()) {
-    //   speeds.reserve(this->nAgents());
-    //   for (const auto& [agentId, agent] : this->agents()) {
-    //     speeds.push_back(agent->speed());
-    //   }
-    // }
-    return Measurement<double>(speeds);
+    return normalizedTurnCounts;
   }
 
   template <typename delay_t>
