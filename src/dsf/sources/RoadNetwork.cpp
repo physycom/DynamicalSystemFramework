@@ -250,14 +250,14 @@ namespace dsf {
           static_cast<double>(edge_properties["length"].get_double());
 
       // Robust extraction for maxspeed
-      double edge_maxspeed = 50.0;
+      double edge_maxspeed = 30.0;
       if (!edge_properties["maxspeed"].is_null()) {
         auto maxspeed_val = edge_properties["maxspeed"];
         if (maxspeed_val.is_string()) {
           try {
             edge_maxspeed = std::stod(std::string(maxspeed_val.get_string().value()));
           } catch (...) {
-            edge_maxspeed = 50.0;
+            edge_maxspeed = 30.0;
           }
         } else if (maxspeed_val.is_number()) {
           edge_maxspeed = maxspeed_val.get_double();

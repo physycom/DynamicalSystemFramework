@@ -72,6 +72,7 @@ namespace dsf {
            double transportCapacity = 1.);
     Street(Street&&) = default;
     Street(Street const&) = delete;
+    bool operator==(Street const& other) const;
 
     /// @brief Set the street's lane mapping
     /// @param laneMapping The street's lane mapping
