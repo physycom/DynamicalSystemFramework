@@ -22,6 +22,17 @@ endif()
 # Set the folder for the executable
 set(EXECUTABLE_OUTPUT_PATH ../)
 
+include(FetchContent)
+# Get csv-parser
+FetchContent_Declare(csv_parser
+  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
+  GIT_TAG 2.3.0
+)
+FetchContent_GetProperties(csv_parser)
+if(NOT csv_parser_POPULATED)
+  FetchContent_MakeAvailable(csv_parser)
+endif()
+
 # add as executable all cpp files into '.' folder
 file(GLOB SOURCES "*.cpp")
 file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
@@ -31,5 +42,5 @@ foreach(SOURCE ${SOURCES})
     get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
 	add_executable(${EXE_NAME}.out ${SOURCE} ${SRC_SOURCES})
     target_include_directories(${EXE_NAME}.out PRIVATE ../src/dsf/headers/ ../src/dsf/utility/TypeTraits/)
-    target_link_libraries(${EXE_NAME}.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
+    target_link_libraries(${EXE_NAME}.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson csv)
 endforeach()

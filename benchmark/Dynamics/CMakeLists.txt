@@ -16,6 +16,17 @@ string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -Ofast -march=native -flto=auto")
 # Set the folder for the executable
 set(EXECUTABLE_OUTPUT_PATH ../../)
 
+include(FetchContent)
+# Get csv-parser
+FetchContent_Declare(csv_parser
+  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
+  GIT_TAG 2.3.0
+)
+FetchContent_GetProperties(csv_parser)
+if(NOT csv_parser_POPULATED)
+  FetchContent_MakeAvailable(csv_parser)
+endif()
+
 include_directories(../../src/dsf/headers)
 include_directories(../../src/dsf/utility/)
 
@@ -23,4 +34,4 @@ file(GLOB SOURCES "../../src/dsf/sources/*.cpp" "../../src/dsf/utility/*.cpp")
 
 # Compile
 add_executable(bench_dynamics.out BenchDynamics.cpp ${SOURCES})
-target_link_libraries(bench_dynamics.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
+target_link_libraries(bench_dynamics.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson csv)

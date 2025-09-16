@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <ranges>
 
+#include <csv.hpp>
 #include <simdjson.h>
 
 namespace dsf {
@@ -13,186 +14,155 @@ namespace dsf {
     }
   }
   void RoadNetwork::m_csvNodesImporter(std::ifstream& file, const char separator) {
-    std::string line;
-    std::getline(file, line);  // skip header line
-    while (!file.eof()) {
-      std::getline(file, line);
-      if (line.empty()) {
-        continue;
-      }
-      std::istringstream iss{line};
-      std::string id, lat, lon, highway;
-      // osmid;x;y;highway
-      std::getline(iss, id, separator);
-      std::getline(iss, lon, separator);
-      std::getline(iss, lat, separator);
-      std::getline(iss, highway, separator);
-      auto const nodeIndex{std::stoul(id)};
+    auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
+
+    for (auto const& row : csvReader) {
+      auto const nodeId = row["osmid"].get<Id>();
+      auto const dLat = row["y"].get<double>();
+      auto const dLon = row["x"].get<double>();
+      auto const highway = row["highway"].get<std::string>();
       if (highway.find("traffic_signals") != std::string::npos) {
-        addNode<TrafficLight>(
-            nodeIndex, 120, std::make_pair(std::stod(lat), std::stod(lon)));
+        addNode<TrafficLight>(nodeId, 120, std::make_pair(dLat, dLon));
       } else if (highway.find("roundabout") != std::string::npos) {
-        addNode<Roundabout>(nodeIndex, std::make_pair(std::stod(lat), std::stod(lon)));
+        addNode<Roundabout>(nodeId, std::make_pair(dLat, dLon));
       } else {
-        addNode<Intersection>(nodeIndex, std::make_pair(std::stod(lat), std::stod(lon)));
+        addNode<Intersection>(nodeId, std::make_pair(dLat, dLon));
         if (highway.find("destination") != std::string::npos) {
-          spdlog::debug("Setting node {} as a destination node", nodeIndex);
-          m_destinationNodes.push_back(nodeIndex);
+          spdlog::debug("Setting node {} as a destination node", nodeId);
+          m_destinationNodes.push_back(nodeId);
         }
         if (highway.find("origin") != std::string::npos) {
-          spdlog::debug("Setting node {} as an origin node", nodeIndex);
-          m_originNodes.push_back(nodeIndex);
+          spdlog::debug("Setting node {} as an origin node", nodeId);
+          m_originNodes.push_back(nodeId);
         }
       }
     }
   }
   void RoadNetwork::m_csvEdgesImporter(std::ifstream& file, const char separator) {
-    std::unordered_map<Id, std::string> mapForbiddenTurns;
-    std::string line;
-    std::getline(file, line);  // skip first line
-    while (!file.eof()) {
-      std::getline(file, line);
-      if (line.empty()) {
-        continue;
-      }
-      std::istringstream iss{line};
-      std::string id, strSourceId, strTargetId, length, lanes, highway, maxspeed, name,
-          geometry, forbiddenTurns, coilcode, customWeight;
-      // id;sourceId;targetId;length;highway;maxspeed;name;geometry;forbiddenTurns;coilcode;customWeight
-      std::getline(iss, id, separator);
-      std::getline(iss, strSourceId, separator);
-      std::getline(iss, strTargetId, separator);
-      std::getline(iss, length, separator);
-      std::getline(iss, lanes, separator);
-      std::getline(iss, highway, separator);
-      std::getline(iss, maxspeed, separator);
-      std::getline(iss, name, separator);
-      std::getline(iss, geometry, separator);
-      std::getline(iss, forbiddenTurns, separator);
-      std::getline(iss, coilcode, separator);
-      std::getline(iss, customWeight, '\n');
-      Id sourceId, targetId;
-      try {
-        sourceId = std::stoul(strSourceId);
-        targetId = std::stoul(strTargetId);
-      } catch (std::invalid_argument const& e) {
-        throw std::invalid_argument(std::format(
-            "Invalid source or target ids {} - {}", strSourceId, strTargetId));
-      }
-      if (lanes.empty()) {
-        lanes = "1";  // Default to 1 lane if no value is provided
-      } else {
-        try {
-          std::stoul(lanes);
-        } catch (const std::invalid_argument& e) {
-          lanes = "1";  // Default to 1 lane if lanes is invalid
+    auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
+    auto const& colNames = csvReader.get_col_names();
+    bool const bHasGeometry =
+        (std::find(colNames.begin(), colNames.end(), "geometry") != colNames.end());
+    if (!bHasGeometry) {
+      spdlog::warn(
+          "No geometry column found in the CSV file. Streets will be imported without "
+          "geometry.");
+    }
+    bool const bHasLanes =
+        (std::find(colNames.begin(), colNames.end(), "lanes") != colNames.end());
+    bool const bHasCoilcode =
+        (std::find(colNames.begin(), colNames.end(), "coilcode") != colNames.end());
+    bool const bHasCustomWeight =
+        (std::find(colNames.begin(), colNames.end(), "customWeight") != colNames.end());
+    // bool const bHasForbiddenTurns = (std::find(colNames.begin(), colNames.end(), "forbiddenTurns") != colNames.end());
+    for (auto const& row : csvReader) {
+      auto const streetId = row["osmid"].get<Id>();
+      auto const sourceId = row["u"].get<Id>();
+      auto const targetId = row["v"].get<Id>();
+      auto const dLength = row["length"].get<double>();
+      auto const highway = row["highway"].get<std::string>();
+      auto const name = row["name"].get<std::string>();
+      std::vector<std::pair<double, double>> coords;
+      if (bHasGeometry) {
+        auto const geometry = row["geometry"].get<std::string>();
+        if (!geometry.empty()) {
+          // Geometry is LINESTRING(lon,lat lon,lat ...)
+          std::istringstream geom{geometry};
+          std::string pair;
+          std::getline(geom, pair, '(');
+          while (std::getline(geom, pair, ',')) {
+            pair.erase(pair.begin(),
+                       std::find_if(pair.begin(), pair.end(), [](unsigned char ch) {
+                         return !std::isspace(ch);
+                       }));
+
+            // Trim trailing spaces
+            pair.erase(std::find_if(pair.rbegin(),
+                                    pair.rend(),
+                                    [](unsigned char ch) { return !std::isspace(ch); })
+                           .base(),
+                       pair.end());
+            // Create a stream for each coordinate pair to split by comma
+            std::istringstream pairStream(pair);
+            std::string lon, lat;
+            std::getline(pairStream, lon, ' ');
+            std::getline(pairStream, lat);  // read the rest for latitude
+            // Remove ')' from lat if present
+            if (lat.back() == ')') {
+              lat.pop_back();
+            }
+            auto dLon{0.}, dLat{0.};
+            try {
+              dLon = std::stod(lon);
+              dLat = std::stod(lat);
+            } catch (const std::invalid_argument& e) {
+              spdlog::error("Invalid coordinates ({}, {}) for edge {}->{}",
+                            lon,
+                            lat,
+                            sourceId,
+                            targetId);
+            }
+            // Note: The original code stored as (lat, lon) based on your comment.
+            coords.emplace_back(dLon, dLat);
+          }
+        } else {
+          coords.emplace_back(node(sourceId)->coords().value());
+          coords.emplace_back(node(targetId)->coords().value());
         }
       }
 
-      auto dLength{0.};
-      try {
-        dLength = std::stod(length);
-      } catch (const std::invalid_argument& e) {
-        spdlog::error("Invalid length {} for edge {}->{}", length, sourceId, targetId);
-        continue;
-      }
-      auto dMaxSpeed{0.};
-      try {
-        dMaxSpeed = std::stod(maxspeed);
-      } catch (const std::invalid_argument& e) {
-        dMaxSpeed = 30.;  // Default to 30 km/h if maxspeed is invalid
-      }
-      int iLanes{0};
-      try {
-        iLanes = std::stoi(lanes);
-        if (iLanes < 1) {
+      auto iLanes = 1;
+      if (bHasLanes) {
+        try {
+          iLanes = row["lanes"].get<int>();
+        } catch (...) {
           spdlog::warn(
-              "Invalid number of lanes {} for edge {}->{}. Defaulting to 1 lane.",
-              iLanes,
+              "Invalid number of lanes ({}) for edge {}->{}. Defaulting to 1 lane.",
+              row["lanes"].get<std::string>(),
               sourceId,
               targetId);
-          ++iLanes;  // Ensure at least 1 lane
+          iLanes = 1;
         }
-      } catch (const std::invalid_argument& e) {
-        iLanes = 1;  // Default to 1 lane if lanes is invalid
       }
 
-      // Parse the geometry
-      std::vector<std::pair<double, double>> coords;
-      if (!geometry.empty()) {
-        // Gemetri is LINESTRING(lon,lat lon,lat ...)
-        std::istringstream geom{geometry};
-        // Read until (
-        std::string pair;
-        std::getline(geom, pair, '(');
-        while (std::getline(geom, pair, ',')) {
-          pair.erase(pair.begin(),
-                     std::find_if(pair.begin(), pair.end(), [](unsigned char ch) {
-                       return !std::isspace(ch);
-                     }));
-
-          // Trim trailing spaces
-          pair.erase(std::find_if(pair.rbegin(),
-                                  pair.rend(),
-                                  [](unsigned char ch) { return !std::isspace(ch); })
-                         .base(),
-                     pair.end());
-          // Create a stream for each coordinate pair to split by comma
-          std::istringstream pairStream(pair);
-          std::string lon, lat;
-          std::getline(pairStream, lon, ' ');
-          std::getline(pairStream, lat);  // read the rest for latitude
-          // Remove ')' from lat if present
-          if (lat.back() == ')') {
-            lat.pop_back();
-          }
-          auto dLon{0.}, dLat{0.};
-          try {
-            dLon = std::stod(lon);
-            dLat = std::stod(lat);
-          } catch (const std::invalid_argument& e) {
-            spdlog::error("Invalid coordinates ({}, {}) for edge {}->{}",
-                          lon,
-                          lat,
-                          sourceId,
-                          targetId);
-          }
-          // Note: The original code stored as (lat, lon) based on your comment.
-          coords.emplace_back(dLon, dLat);
-        }
-      } else {
-        coords.emplace_back(node(sourceId)->coords().value());
-        coords.emplace_back(node(targetId)->coords().value());
-      }
-      Id streetId;
+      double dMaxSpeed = 30.;  // Default to 30 km/h
       try {
-        streetId = std::stoul(id);
+        dMaxSpeed = row["maxspeed"].get<double>();
       } catch (...) {
-        throw std::invalid_argument(std::format("Invalid edge id {}", id));
+        spdlog::warn(
+            "Invalid maxspeed ({}) provided for edge {}->{}. Defaulting to 30 km/h.",
+            row["maxspeed"].get<std::string>(),
+            sourceId,
+            targetId);
       }
+      dMaxSpeed /= 3.6;  // Convert to m/s
+
       addStreet(Street(streetId,
                        std::make_pair(sourceId, targetId),
                        dLength,
-                       dMaxSpeed / 3.6,
+                       dMaxSpeed,
                        iLanes,
                        name,
                        coords));
-      if (!coilcode.empty()) {
+
+      if (bHasCoilcode) {
         makeSpireStreet(streetId);
         auto& coil = edge<SpireStreet>(streetId);
         try {
-          auto const coilId{static_cast<Id>(std::stoul(coilcode))};
-          coil.setCode(coilId);
-        } catch (const std::invalid_argument& e) {
-          spdlog::warn("Invalid coil code ({}) for {}", coilcode, *edge(streetId));
+          coil.setCode(row["coilcode"].get<Id>());
+        } catch (...) {
+          spdlog::warn("Invalid coil code ({}) for {}",
+                       row["coilcode"].get<std::string>(),
+                       *edge(streetId));
         }
       }
-      if (!customWeight.empty()) {
+      if (bHasCustomWeight) {
         try {
-          auto const weight{std::stod(customWeight)};
-          edge(streetId)->setWeight(weight);
-        } catch (const std::invalid_argument& e) {
-          spdlog::warn("Invalid custom weight {} for {}", customWeight, *edge(streetId));
+          edge(streetId)->setWeight(row["customWeight"].get<double>());
+        } catch (...) {
+          spdlog::warn("Invalid custom weight {} for {}",
+                       row["customWeight"].get<std::string>(),
+                       *edge(streetId));
         }
       }
     }

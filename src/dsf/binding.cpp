@@ -1,6 +1,4 @@
-#include "./headers/AdjacencyMatrix.hpp"
-#include "./headers/RoadNetwork.hpp"
-#include "./headers/FirstOrderDynamics.hpp"
+#include "./dsf.hpp"
 
 #include "./.docstrings.hpp"
 
@@ -12,6 +10,9 @@
 
 PYBIND11_MODULE(dsf, m) {
   m.doc() = "Python bindings for the DSM library";
+
+  // Bind version function
+  m.def("version", &dsf::version, "Get the version of the DSM library");
 
   // Create type aliases for better stub generation
   using WeightFunction = std::function<double(const dsf::RoadNetwork*, dsf::Id, dsf::Id)>;

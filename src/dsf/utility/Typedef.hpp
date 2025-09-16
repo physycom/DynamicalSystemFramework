@@ -14,7 +14,7 @@
 
 namespace dsf {
 
-  using Id = uint32_t;
+  using Id = uint64_t;
   using Size = uint32_t;
   using Delay = uint16_t;
   using Time = uint64_t;
