@@ -433,6 +433,7 @@ namespace dsf {
         return;
       }
     }
+    auto const oldSize{pItinerary->path().size()};
 
     auto const& path{this->graph().globalDijkstra(
         pItinerary->destination(), m_weightFunction, m_weightTreshold)};
@@ -443,6 +444,13 @@ namespace dsf {
                       pItinerary->destination()));
     }
     pItinerary->setPath(path);
+    auto const newSize{pItinerary->path().size()};
+    if (oldSize > 0 && newSize != oldSize) {
+      spdlog::warn("Path for itinerary {} changed size from {} to {}",
+                   pItinerary->id(),
+                   oldSize,
+                   newSize);
+    }
     if (m_bCacheEnabled) {
       pItinerary->save(std::format("{}{}.ity", g_cacheFolder, pItinerary->id()));
       spdlog::debug("Saved path in cache for itinerary {}", pItinerary->id());
