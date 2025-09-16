@@ -35,7 +35,7 @@ jobs:
           echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib:$(brew --prefix simdjson)/lib" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib:$(brew --prefix simdjson)/lib" >> $GITHUB_ENV
         elif [[ "$RUNNER_OS" == "Linux" ]]; then
-          sudo apt update && sudo apt install -y libtbb-dev libfmt-dev libspdlog-dev
+          sudo apt update && sudo apt install -y libtbb-dev libfmt-dev libspdlog-dev libsimdjson-dev
         fi
 
     - name: Initialize CodeQL
