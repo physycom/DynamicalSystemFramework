@@ -1993,13 +1993,9 @@ namespace dsf {
           std::accumulate(map.begin(), map.end(), 0., [](auto const sum, auto const& p) {
             return sum + static_cast<double>(p.second);
           })};
-      if (sum == 0.) {
-        for (auto const& [toId, count] : map) {
-          normalizedTurnCounts[fromId][toId] = 0.;
-        }
-      }
       for (auto const& [toId, count] : map) {
-        normalizedTurnCounts[fromId][toId] = static_cast<double>(count) / sum;
+        normalizedTurnCounts[fromId][toId] =
+            sum == 0. ? 0. : static_cast<double>(count) / sum;
       }
     }
     return normalizedTurnCounts;
