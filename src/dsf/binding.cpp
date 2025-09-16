@@ -248,6 +248,9 @@ PYBIND11_MODULE(dsf, m) {
           pybind11::arg("destinationNodes"),
           pybind11::arg("updatePaths") = true,
           dsf::g_docstrings.at("dsf::RoadDynamics::setDestinationNodes").c_str())
+      .def("initTurnCounts",
+           &dsf::FirstOrderDynamics::initTurnCounts,
+           dsf::g_docstrings.at("dsf::RoadDynamics::initTurnCounts").c_str())
       .def("updatePaths",
            &dsf::FirstOrderDynamics::updatePaths,
            dsf::g_docstrings.at("dsf::RoadDynamics::updatePaths").c_str())
