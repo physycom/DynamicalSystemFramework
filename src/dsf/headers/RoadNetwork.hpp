@@ -40,8 +40,6 @@
 #include <cassert>
 #include <format>
 
-#include <tbb/concurrent_unordered_map.h>
-#include <tbb/parallel_for_each.h>
 #include <spdlog/spdlog.h>
 
 namespace dsf {
@@ -400,10 +398,10 @@ namespace dsf {
     }
 
     // Distance from each node to the source (going backward)
-    tbb::concurrent_unordered_map<Id, double> distToSource;
+    std::unordered_map<Id, double> distToSource;
     distToSource.reserve(nNodes());
     // Next hop from each node toward the source
-    tbb::concurrent_unordered_map<Id, std::vector<Id>> nextHopsToSource;
+    std::unordered_map<Id, std::vector<Id>> nextHopsToSource;
 
     // Priority queue: pair<distance, nodeId> (min-heap)
     std::priority_queue<std::pair<double, Id>,
@@ -412,10 +410,9 @@ namespace dsf {
         pq;
 
     // Initialize all nodes with infinite distance
-    tbb::parallel_for_each(nodes.begin(), nodes.end(), [&](auto const& pair) {
-      auto const& [nodeId, node] = pair;
-      distToSource[nodeId] = std::numeric_limits<double>::infinity();
-      nextHopsToSource[nodeId] = std::vector<Id>();
+    std::for_each(nodes.cbegin(), nodes.cend(), [&](auto const& pair) {
+      distToSource[pair.first] = std::numeric_limits<double>::infinity();
+      nextHopsToSource[pair.first] = std::vector<Id>();
     });
 
     // Source has distance 0 to itself
