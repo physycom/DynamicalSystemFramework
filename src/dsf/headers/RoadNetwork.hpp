@@ -357,7 +357,7 @@ namespace dsf {
           continue;
         }
 
-        double streetWeight = getStreetWeight(this, currentNode, neighborId);
+        double streetWeight = getStreetWeight(this, outEdgeId, 0.6);
         double altDistance = dist[currentNode] + streetWeight;
 
         // If we found a shorter path to the neighbor, update it
@@ -434,7 +434,7 @@ namespace dsf {
         Id neighborId = edge(inEdgeId)->source();
 
         // Calculate the weight of the edge from neighbor to currentNode
-        double edgeWeight = f(this, neighborId, currentNode);
+        double edgeWeight = f(this, inEdgeId, 0.6);
         double newDistToSource = distToSource[currentNode] + edgeWeight;
 
         // If we found a shorter path from neighborId to source

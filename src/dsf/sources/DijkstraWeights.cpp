@@ -5,22 +5,28 @@
 namespace dsf {
 
   namespace weight_functions {
-    double streetLength(const RoadNetwork* graph, Id node1, Id node2) {
-      const auto street{graph->street(node1, node2)};
-      return (*street)->length();
+    double streetLength(const RoadNetwork* graph,
+                        Id edgeId,
+                        [[maybe_unused]] double param) {
+      return graph->edge(edgeId)->length();
     }
 
-    double streetTime(const RoadNetwork* graph, Id node1, Id node2) {
-      const auto street{graph->street(node1, node2)};
-      const auto length{(*street)->length()};
-      const auto speed{(*street)->maxSpeed() *
-                       (1. - (*street)->nAgents() / (*street)->capacity())};
-      return std::ceil(length / speed);
+    double streetTime(const RoadNetwork* graph,
+                      Id edgeId,
+                      [[maybe_unused]] double param) {
+      auto const& pStreet{graph->edge(edgeId)};
+      const auto length{pStreet->length()};
+      const auto speed{
+          pStreet->maxSpeed() *
+          (1. - param * pStreet->density(true))};  // param is the alpha parameter
+      return length / speed;
     }
 
-    double streetWeight(const RoadNetwork* graph, Id node1, Id node2) {
-      auto const street{graph->street(node1, node2)};
-      return (*street)->weight();
+    double streetWeight(const RoadNetwork* graph,
+                        Id edgeId,
+                        [[maybe_unused]] double param) {
+      auto const& pStreet{graph->edge(edgeId)};
+      return pStreet->weight();
     }
   }  // namespace weight_functions
 
