@@ -436,21 +436,9 @@ TEST_CASE("Dijkstra") {
     Street s5{4, std::make_pair(0, 2), 6.};
     RoadNetwork graph{};
     graph.addStreets(s1, s2, s3, s4, s5);
-    auto result = graph.shortestPath(0, 1);
-    Path correctPath{0, 1};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 2);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 3.);
-    result = graph.shortestPath(0, 2);
-    correctPath = Path{0, 1, 2};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 3);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 5.);
 
-    auto const& pathMap = graph.globalDijkstra(
-        2, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
+    auto const& pathMap =
+        graph.globalDijkstra(2, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(3).size(), 1);
     CHECK_EQ(pathMap.at(3)[0], 0);
@@ -466,15 +454,9 @@ TEST_CASE("Dijkstra") {
     Street s3(2, std::make_pair(0, 2), 6.);
     RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
-    auto result = graph.shortestPath(0, 2);
-    Path correctPath{0, 1, 2};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 3);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 2.);
 
-    auto const& pathMap = graph.globalDijkstra(
-        2, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
+    auto const& pathMap =
+        graph.globalDijkstra(2, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -488,15 +470,9 @@ TEST_CASE("Dijkstra") {
     Street s3(2, std::make_pair(0, 2), 6.);
     RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
-    auto result = graph.shortestPath(0, 2);
-    Path correctPath{0, 2};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 2);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 6.);
 
-    auto const& pathMap = graph.globalDijkstra(
-        2, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
+    auto const& pathMap =
+        graph.globalDijkstra(2, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 2);
@@ -521,33 +497,9 @@ TEST_CASE("Dijkstra") {
     Street s14(13, std::make_pair(4, 3), 7.);
     RoadNetwork graph{};
     graph.addStreets(s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14);
-    auto result = graph.shortestPath(2, 4);
-    Path correctPath{2, 0, 1, 4};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 4);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 5.);
-    result = graph.shortestPath(2, 0);
-    correctPath = Path{2, 0};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 2);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 1.);
-    result = graph.shortestPath(2, 1);
-    correctPath = Path{2, 0, 1};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 3);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 4.);
-    result = graph.shortestPath(2, 3);
-    correctPath = Path{2, 3};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 2);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 2.);
 
-    auto const& pathMap = graph.globalDijkstra(
-        4, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
+    auto const& pathMap =
+        graph.globalDijkstra(4, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(4));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -581,50 +533,9 @@ TEST_CASE("Dijkstra") {
     RoadNetwork graph{};
     graph.addStreets(
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18);
-    auto result = graph.shortestPath(0, 1);
-    Path correctPath{0, 1};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 2);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 2.);
 
-    result = graph.shortestPath(0, 2);
-    correctPath = Path{0, 2};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 2);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 6.);
-
-    result = graph.shortestPath(0, 3);
-    correctPath = Path{0, 1, 3};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 3);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 7.);
-
-    result = graph.shortestPath(0, 4);
-    correctPath = Path{0, 1, 3, 4};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 4);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 17.);
-
-    result = graph.shortestPath(0, 5);
-    correctPath = Path{0, 1, 3, 5};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 4);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 22.);
-
-    result = graph.shortestPath(0, 6);
-    correctPath = Path{0, 1, 3, 4, 6};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 5);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 19.);
-
-    auto const& pathMap = graph.globalDijkstra(
-        6, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
+    auto const& pathMap =
+        graph.globalDijkstra(6, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(6));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -662,15 +573,9 @@ TEST_CASE("Dijkstra") {
     RoadNetwork graph{};
     graph.addStreets(
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18);
-    auto result = graph.shortestPath(0, 4);
-    Path correctPath{0, 2, 5, 4};
-    CHECK(result.has_value());
-    CHECK_EQ(result.value().path().size(), 4);
-    CHECK(checkPath(result.value().path(), correctPath));
-    CHECK_EQ(result.value().distance(), 20.);
 
-    auto const& pathMap = graph.globalDijkstra(
-        4, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
+    auto const& pathMap =
+        graph.globalDijkstra(4, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(4));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 2);
@@ -691,11 +596,9 @@ TEST_CASE("Dijkstra") {
     Street s3(2, std::make_pair(2, 0), 6.);
     RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
-    auto result = graph.shortestPath(0, 1);
-    CHECK_FALSE(result.has_value());
 
-    auto const& pathMap = graph.globalDijkstra(
-        1, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
+    auto const& pathMap =
+        graph.globalDijkstra(1, [](auto const& pEdge) { return pEdge->length(); });
     CHECK(pathMap.empty());
   }
 
@@ -705,26 +608,13 @@ TEST_CASE("Dijkstra") {
     Street s3(2, std::make_pair(2, 0), 6.);
     RoadNetwork graph{};
     graph.addStreets(s1, s2, s3);
-    auto result = graph.shortestPath(3, 1);
-    CHECK_FALSE(result.has_value());
 
     CHECK_THROWS_AS(
-        graph.globalDijkstra(
-            3, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); }),
+        graph.globalDijkstra(3, [](auto const& pEdge) { return pEdge->length(); }),
         std::out_of_range);
   }
 
-  SUBCASE("Case 9") {
-    Street s1(0, std::make_pair(1, 2), 1.);
-    Street s2(1, std::make_pair(0, 2), 6.);
-    Street s3(2, std::make_pair(2, 0), 6.);
-    RoadNetwork graph{};
-    graph.addStreets(s1, s2, s3);
-    auto result = graph.shortestPath(1, 3);
-    CHECK_FALSE(result.has_value());
-  }
-
-  SUBCASE("Case 10 - Equal Lengths") {
+  SUBCASE("Case 9 - Equal Lengths") {
     RoadNetwork graph{};
     graph.importMatrix("./data/matrix.dat", false);
     // check correct import
@@ -738,11 +628,8 @@ TEST_CASE("Dijkstra") {
     CHECK(graph.edge(94, 106));
     CHECK(graph.edge(106, 118));
 
-    auto result = graph.shortestPath(46, 118);
-    CHECK(result.has_value());
-
-    auto const& path = graph.globalDijkstra(
-        118, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
+    auto const& path =
+        graph.globalDijkstra(118, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_EQ(path.size(), 119);
     CHECK_FALSE(path.contains(118));
   }

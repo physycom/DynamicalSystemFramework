@@ -1,18 +1,17 @@
 #include "../headers/FirstOrderDynamics.hpp"
 
 namespace dsf {
-  double FirstOrderDynamics::m_streetEstimatedTravelTime(Id streetId) const {
-    auto const& street{this->graph().edge(streetId)};
-    return street->length() /
-           (street->maxSpeed() * (1. - m_alpha * street->density(true)));
+  double FirstOrderDynamics::m_streetEstimatedTravelTime(
+      std::unique_ptr<Street> const& pStreet) const {
+    return pStreet->length() /
+           (pStreet->maxSpeed() * (1. - m_alpha * pStreet->density(true)));
   }
-  FirstOrderDynamics::FirstOrderDynamics(
-      RoadNetwork& graph,
-      bool useCache,
-      std::optional<unsigned int> seed,
-      double alpha,
-      std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
-      double weightTreshold)
+  FirstOrderDynamics::FirstOrderDynamics(RoadNetwork& graph,
+                                         bool useCache,
+                                         std::optional<unsigned int> seed,
+                                         double alpha,
+                                         PathWeight const weightFunction,
+                                         std::optional<double> weightTreshold)
       : RoadDynamics<Delay>(graph, useCache, seed, weightFunction, weightTreshold),
         m_alpha{alpha},
         m_speedFluctuationSTD{0.} {

@@ -10,7 +10,6 @@
 #pragma once
 
 #include "AdjacencyMatrix.hpp"
-#include "DijkstraWeights.hpp"
 #include "Network.hpp"
 #include "RoadJunction.hpp"
 #include "Intersection.hpp"
@@ -232,30 +231,8 @@ namespace dsf {
     /// @return std::vector<Id>& The destination nodes of the graph
     inline std::vector<Id>& destinationNodes() noexcept { return m_destinationNodes; }
 
-    /// @brief Get the shortest path between two nodes using dijkstra algorithm
-    /// @param source The source node
-    /// @param destination The destination node
-    /// @return A DijkstraResult object containing the path and the distance
-    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
-      requires(
-          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-    std::optional<DijkstraResult> shortestPath(
-        const Node& source,
-        const Node& destination,
-        Func f = weight_functions::streetLength) const;
-
-    /// @brief Get the shortest path between two nodes using dijkstra algorithm
-    /// @param source The source node id
-    /// @param destination The destination node id
-    /// @return A DijkstraResult object containing the path and the distance
-    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
-      requires(
-          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-    std::optional<DijkstraResult> shortestPath(
-        Id source, Id destination, Func f = weight_functions::streetLength) const;
-
     template <typename DynamicsFunc>
-      requires(std::is_invocable_r_v<double, DynamicsFunc, Id>)
+      requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
     std::unordered_map<Id, std::vector<Id>> globalDijkstra(
         Id const sourceId, DynamicsFunc f, double const threshold = 1e-9) const;
   };
@@ -282,108 +259,8 @@ namespace dsf {
     addStreets(std::forward<Tn>(streets)...);
   }
 
-  template <typename Func>
-    requires(
-        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-  std::optional<DijkstraResult> RoadNetwork::shortestPath(const Node& source,
-                                                          const Node& destination,
-                                                          Func f) const {
-    return this->shortestPath(source.id(), destination.id(), f);
-  }
-
-  template <typename Func>
-    requires(
-        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-  std::optional<DijkstraResult> RoadNetwork::shortestPath(Id source,
-                                                          Id destination,
-                                                          Func getStreetWeight) const {
-    // Check if source and destination nodes exist
-    auto const& nodes = this->nodes();
-    if (!std::any_of(nodes.cbegin(),
-                     nodes.cend(),
-                     [source](auto const& pair) { return pair.first == source; }) ||
-        !std::any_of(nodes.cbegin(), nodes.cend(), [destination](auto const& pair) {
-          return pair.first == destination;
-        })) {
-      return std::nullopt;
-    }
-
-    // Use unordered_map for distances and previous nodes using original node IDs
-    std::unordered_map<Id, double> dist;
-    std::unordered_map<Id, Id> prev;
-    std::unordered_set<Id> unvisitedNodes;
-    std::unordered_set<Id> visitedNodes;
-
-    // Initialize distances and unvisited nodes using original node IDs
-    for (auto const& [nodeId, node] : nodes) {
-      dist[nodeId] = std::numeric_limits<double>::max();
-      prev[nodeId] = std::numeric_limits<Id>::max();
-      unvisitedNodes.insert(nodeId);
-    }
-
-    // Set distance to source as 0
-    dist[source] = 0.0;
-
-    while (!unvisitedNodes.empty()) {
-      // Find unvisited node with minimum distance
-      Id currentNode = *std::min_element(
-          unvisitedNodes.begin(),
-          unvisitedNodes.end(),
-          [&dist](const Id& a, const Id& b) -> bool { return dist[a] < dist[b]; });
-
-      // If we reached the destination, we can stop
-      if (currentNode == destination) {
-        break;
-      }
-
-      // If the current node has infinite distance, there's no path
-      if (dist[currentNode] == std::numeric_limits<double>::max()) {
-        return std::nullopt;
-      }
-
-      unvisitedNodes.erase(currentNode);
-      visitedNodes.insert(currentNode);
-
-      // Get outgoing neighbors (nodes this node can reach)
-      auto const& outEdges = node(currentNode)->outgoingEdges();
-      for (auto const& outEdgeId : outEdges) {
-        Id neighborId = edge(outEdgeId)->target();
-
-        // Skip if already visited
-        if (visitedNodes.find(neighborId) != visitedNodes.end()) {
-          continue;
-        }
-
-        double streetWeight = getStreetWeight(this, outEdgeId, 0.6);
-        double altDistance = dist[currentNode] + streetWeight;
-
-        // If we found a shorter path to the neighbor, update it
-        if (altDistance < dist[neighborId]) {
-          dist[neighborId] = altDistance;
-          prev[neighborId] = currentNode;
-        }
-      }
-    }
-
-    // Check if destination is reachable
-    if (dist[destination] == std::numeric_limits<double>::max()) {
-      return std::nullopt;
-    }
-
-    // Reconstruct path
-    std::vector<Id> path;
-    Id current = destination;
-    while (current != std::numeric_limits<Id>::max()) {
-      path.push_back(current);
-      current = prev[current];
-    }
-
-    std::reverse(path.begin(), path.end());
-    return DijkstraResult(path, dist[destination]);
-  }
-
   template <typename DynamicsFunc>
-    requires(std::is_invocable_r_v<double, DynamicsFunc, Id>)
+    requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
   std::unordered_map<Id, std::vector<Id>> RoadNetwork::globalDijkstra(
       Id const sourceId, DynamicsFunc f, double const threshold) const {
     // Check if source node exists
@@ -430,7 +307,7 @@ namespace dsf {
         Id neighborId = edge(inEdgeId)->source();
 
         // Calculate the weight of the edge from neighbor to currentNode using the dynamics function
-        double edgeWeight = f(inEdgeId);
+        double edgeWeight = f(this->edge(inEdgeId));
         double newDistToSource = distToSource[currentNode] + edgeWeight;
 
         // If we found a shorter path from neighborId to source

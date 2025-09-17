@@ -7,7 +7,8 @@ namespace dsf {
     double m_alpha;
     double m_speedFluctuationSTD;
 
-    double m_streetEstimatedTravelTime(Id streetId) const override;
+    double m_streetEstimatedTravelTime(
+        std::unique_ptr<Street> const& pStreet) const override;
 
   public:
     /// @brief Construct a new First Order Dynamics object
@@ -19,9 +20,8 @@ namespace dsf {
                                 bool useCache = false,
                                 std::optional<unsigned int> seed = std::nullopt,
                                 double alpha = 0.,
-                                std::function<double(const RoadNetwork*, Id, Id)>
-                                    weightFunction = weight_functions::streetTime,
-                                double weightTreshold = 0.0069);
+                                PathWeight const weightFunction = PathWeight::TRAVELTIME,
+                                std::optional<double> weightTreshold = std::nullopt);
     /// @brief Set the speed of an agent
     /// @param agentId The id of the agent
     /// @throw std::invalid_argument, If the agent is not found
