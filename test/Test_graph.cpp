@@ -449,7 +449,8 @@ TEST_CASE("Dijkstra") {
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 5.);
 
-    auto const& pathMap = graph.globalDijkstra(2);
+    auto const& pathMap = graph.globalDijkstra(
+        2, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(3).size(), 1);
     CHECK_EQ(pathMap.at(3)[0], 0);
@@ -472,7 +473,8 @@ TEST_CASE("Dijkstra") {
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 2.);
 
-    auto const& pathMap = graph.globalDijkstra(2);
+    auto const& pathMap = graph.globalDijkstra(
+        2, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -493,7 +495,8 @@ TEST_CASE("Dijkstra") {
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 6.);
 
-    auto const& pathMap = graph.globalDijkstra(2);
+    auto const& pathMap = graph.globalDijkstra(
+        2, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 2);
@@ -543,7 +546,8 @@ TEST_CASE("Dijkstra") {
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 2.);
 
-    auto const& pathMap = graph.globalDijkstra(4);
+    auto const& pathMap = graph.globalDijkstra(
+        4, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
     CHECK_FALSE(pathMap.contains(4));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -619,7 +623,8 @@ TEST_CASE("Dijkstra") {
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 19.);
 
-    auto const& pathMap = graph.globalDijkstra(6);
+    auto const& pathMap = graph.globalDijkstra(
+        6, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
     CHECK_FALSE(pathMap.contains(6));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -664,7 +669,8 @@ TEST_CASE("Dijkstra") {
     CHECK(checkPath(result.value().path(), correctPath));
     CHECK_EQ(result.value().distance(), 20.);
 
-    auto const& pathMap = graph.globalDijkstra(4);
+    auto const& pathMap = graph.globalDijkstra(
+        4, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
     CHECK_FALSE(pathMap.contains(4));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 2);
@@ -688,7 +694,8 @@ TEST_CASE("Dijkstra") {
     auto result = graph.shortestPath(0, 1);
     CHECK_FALSE(result.has_value());
 
-    auto const& pathMap = graph.globalDijkstra(1);
+    auto const& pathMap = graph.globalDijkstra(
+        1, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
     CHECK(pathMap.empty());
   }
 
@@ -701,7 +708,10 @@ TEST_CASE("Dijkstra") {
     auto result = graph.shortestPath(3, 1);
     CHECK_FALSE(result.has_value());
 
-    CHECK_THROWS_AS(graph.globalDijkstra(3), std::out_of_range);
+    CHECK_THROWS_AS(
+        graph.globalDijkstra(
+            3, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); }),
+        std::out_of_range);
   }
 
   SUBCASE("Case 9") {
@@ -731,7 +741,8 @@ TEST_CASE("Dijkstra") {
     auto result = graph.shortestPath(46, 118);
     CHECK(result.has_value());
 
-    auto const& path = graph.globalDijkstra(118);
+    auto const& path = graph.globalDijkstra(
+        118, [&graph](auto const& edgeId) { return graph.edge(edgeId)->length(); });
     CHECK_EQ(path.size(), 119);
     CHECK_FALSE(path.contains(118));
   }

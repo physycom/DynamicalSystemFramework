@@ -254,13 +254,10 @@ namespace dsf {
     std::optional<DijkstraResult> shortestPath(
         Id source, Id destination, Func f = weight_functions::streetLength) const;
 
-    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
-      requires(
-          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+    template <typename DynamicsFunc>
+      requires(std::is_invocable_r_v<double, DynamicsFunc, Id>)
     std::unordered_map<Id, std::vector<Id>> globalDijkstra(
-        Id const sourceId,
-        Func f = weight_functions::streetLength,
-        double const threshold = 1e-9) const;
+        Id const sourceId, DynamicsFunc f, double const threshold = 1e-9) const;
   };
 
   template <typename T1, typename... Tn>
@@ -385,11 +382,10 @@ namespace dsf {
     return DijkstraResult(path, dist[destination]);
   }
 
-  template <typename Func>
-    requires(
-        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
+  template <typename DynamicsFunc>
+    requires(std::is_invocable_r_v<double, DynamicsFunc, Id>)
   std::unordered_map<Id, std::vector<Id>> RoadNetwork::globalDijkstra(
-      Id const sourceId, Func f, double const threshold) const {
+      Id const sourceId, DynamicsFunc f, double const threshold) const {
     // Check if source node exists
     auto const& nodes = this->nodes();
     if (!nodes.contains(sourceId)) {
@@ -433,8 +429,8 @@ namespace dsf {
       for (auto const& inEdgeId : inEdges) {
         Id neighborId = edge(inEdgeId)->source();
 
-        // Calculate the weight of the edge from neighbor to currentNode
-        double edgeWeight = f(this, inEdgeId, 0.6);
+        // Calculate the weight of the edge from neighbor to currentNode using the dynamics function
+        double edgeWeight = f(inEdgeId);
         double newDistToSource = distToSource[currentNode] + edgeWeight;
 
         // If we found a shorter path from neighborId to source

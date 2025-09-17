@@ -97,6 +97,8 @@ namespace dsf {
     void m_trafficlightSingleTailOptimizer(double const& beta,
                                            std::optional<std::ofstream>& logStream);
 
+    virtual double m_streetEstimatedTravelTime(Id streetId) const = 0;
+
   public:
     /// @brief Construct a new RoadDynamics object
     /// @param graph The graph representing the network
@@ -436,7 +438,9 @@ namespace dsf {
     auto const oldSize{pItinerary->path().size()};
 
     auto const& path{this->graph().globalDijkstra(
-        pItinerary->destination(), m_weightFunction, m_weightTreshold)};
+        pItinerary->destination(),
+        [this](Id streetId) { return this->m_streetEstimatedTravelTime(streetId); },
+        m_weightTreshold)};
     if (path.empty()) {
       throw std::runtime_error(
           std::format("No path found for itinerary {} with destination node {}",

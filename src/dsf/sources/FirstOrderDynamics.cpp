@@ -1,6 +1,11 @@
 #include "../headers/FirstOrderDynamics.hpp"
 
 namespace dsf {
+  double FirstOrderDynamics::m_streetEstimatedTravelTime(Id streetId) const {
+    auto const& street{this->graph().edge(streetId)};
+    return street->length() /
+           (street->maxSpeed() * (1. - m_alpha * street->density(true)));
+  }
   FirstOrderDynamics::FirstOrderDynamics(
       RoadNetwork& graph,
       bool useCache,

@@ -7,6 +7,8 @@ namespace dsf {
     double m_alpha;
     double m_speedFluctuationSTD;
 
+    double m_streetEstimatedTravelTime(Id streetId) const override;
+
   public:
     /// @brief Construct a new First Order Dynamics object
     /// @param graph The graph representing the network
