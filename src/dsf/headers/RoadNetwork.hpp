@@ -41,7 +41,6 @@
 #include <spdlog/spdlog.h>
 
 namespace dsf {
-
   /// @brief The RoadNetwork class represents a graph in the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
@@ -51,15 +50,16 @@ namespace dsf {
     std::vector<Id> m_destinationNodes;
     unsigned long long m_maxAgentCapacity;
 
-    /// @brief Reassign the street ids using the max node id
-    /// @details The street ids are reassigned using the max node id, i.e.
-    /// newStreetId = srcId * n + dstId, where n is the max node id.
-    void m_reassignIds();
     /// @brief If every node has coordinates, set the street angles
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
 
     void m_updateMaxAgentCapacity();
+
+    void m_csvNodesImporter(std::ifstream& file, const char separator = ';');
+    void m_csvEdgesImporter(std::ifstream& file, const char separator = ';');
+
+    void m_jsonEdgesImporter(std::ifstream& file, const bool bCreateInverse = false);
 
   public:
     RoadNetwork();
@@ -98,10 +98,14 @@ namespace dsf {
     ///           The first input number is the number of nodes, followed by the coordinates of each node.
     ///           In the i-th row of the file, the (i - 1)-th node's coordinates are expected.
     [[deprecated]] void importCoordinates(const std::string& fileName);
+
+    void importGeoJSON(const std::string& fileName,
+                       std::unordered_map<std::string, std::string> const& fields);
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
-    /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// @details Supports csv file format. Please specify the separator as second parameter.
+    /// Supported fields:
     /// - id: The id of the node
     /// - lon: The x coordinate of the node
     /// - lat: The y coordinate of the node
@@ -110,16 +114,19 @@ namespace dsf {
     /// - traffic_signals: intersection + traffic light
     /// - roundabout
     /// - origin/destination: intesection counted as origin, destination or both. To have both, the string must contain both the strings "origin" and "destination".
-    void importOSMNodes(const std::string& fileName);
+    template <typename... TArgs>
+    void importNodes(const std::string& fileName, TArgs&&... args);
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
-    /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// @details Supports csv, json and geojson file formats.
+    /// The file format is deduced from the file extension.
+    /// Supported fields:
     /// - id: The id of the street
-    /// - sourceId: The id of the source node
-    /// - targetId: The id of the target node
+    /// - source: The id of the source node
+    /// - target: The id of the target node
     /// - length: The length of the street, in meters
-    /// - highway: The type of the street (e.g. residential, primary, secondary, etc.)
-    /// - lanes: The number of lanes of the street
+    /// - type: The type of the street (e.g. residential, primary, secondary, etc.)
+    /// - nlanes: The number of lanes of the street
     /// - maxspeed: The street's speed limit, in km/h
     /// - name: The name of the street
     /// - geometry: The geometry of the street, as a LINESTRING
@@ -129,7 +136,8 @@ namespace dsf {
     /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
     /// - coilcode: An integer code to identify the coil located on the street
     /// - customWeight: will be stored in the `weight` parameter of the Edge class. You can use it for the shortest path via dsf::weight_functions::customWeight.
-    void importOSMEdges(const std::string& fileName);
+    template <typename... TArgs>
+    void importEdges(const std::string& fileName, TArgs&&... args);
     /// @brief Import the graph's traffic lights from a file
     /// @param fileName The name of the file to import the traffic lights from.
     /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
@@ -245,6 +253,61 @@ namespace dsf {
         DynamicsFunc getEdgeWeight,
         double const threshold = 1e-9) const;
   };
+
+  template <typename... TArgs>
+  void RoadNetwork::importNodes(const std::string& fileName, TArgs&&... args) {
+    std::ifstream file{fileName};
+    if (!file.is_open()) {
+      throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
+    }
+    auto const fileExt = fileName.substr(fileName.find_last_of('.') + 1);
+    if (!fileExtMap.contains(fileExt)) {
+      throw std::invalid_argument(
+          std::format("File extension ({}) not supported", fileExt));
+    }
+    switch (fileExtMap.at(fileExt)) {
+      case FileExt::CSV:
+        spdlog::debug("Importing nodes from CSV file: {}", fileName);
+        this->m_csvNodesImporter(file, std::forward<TArgs>(args)...);
+        break;
+      case FileExt::JSON:
+      case FileExt::GEOJSON:
+        throw std::invalid_argument(
+            "Importing nodes from JSON or GEOJSON files is not supported.");
+      default:
+        throw std::invalid_argument(
+            std::format("File extension ({}) not supported", fileExt));
+    }
+    spdlog::debug("Successfully imported {} nodes", nNodes());
+  }
+  template <typename... TArgs>
+  void RoadNetwork::importEdges(const std::string& fileName, TArgs&&... args) {
+    std::ifstream file{fileName};
+    if (!file.is_open()) {
+      throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
+    }
+    auto const fileExt = fileName.substr(fileName.find_last_of('.') + 1);
+    if (!fileExtMap.contains(fileExt)) {
+      throw std::invalid_argument(
+          std::format("File extension ({}) not supported", fileExt));
+    }
+    switch (fileExtMap.at(fileExt)) {
+      case FileExt::CSV:
+        spdlog::debug("Importing nodes from CSV file: {}", fileName);
+        this->m_csvEdgesImporter(file, std::forward<TArgs>(args)...);
+        break;
+      case FileExt::GEOJSON:
+      case FileExt::JSON:
+        spdlog::debug("Importing nodes from JSON file: {}", fileName);
+        this->m_jsonEdgesImporter(file, std::forward<TArgs>(args)...);
+        break;
+      default:
+        throw std::invalid_argument(
+            std::format("File extension ({}) not supported", fileExt));
+    }
+
+    spdlog::debug("Successfully imported {} edges", this->nEdges());
+  }
 
   template <typename T1, typename... Tn>
     requires is_node_v<std::remove_reference_t<T1>> &&

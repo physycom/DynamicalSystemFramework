@@ -221,12 +221,12 @@ TEST_CASE("RoadNetwork") {
       CHECK_THROWS(graph.importMatrix("./data/matrix.nogood"));
       CHECK_THROWS(graph.importMatrix("./data/not_found.dsf"));
     }
-    SUBCASE("importOSMNodes and importOSMEdges") {
+    SUBCASE("importNodes and importEdges") {
       GIVEN("A graph object") {
-        RoadNetwork graph{};
+        RoadNetwork graph;
         WHEN("We import nodes and edges from OSM") {
-          graph.importOSMNodes("./data/postua_nodes.csv");
-          graph.importOSMEdges("./data/postua_edges.csv");
+          graph.importNodes("./data/postua_nodes.csv");
+          graph.importEdges("./data/postua_edges.csv");
           std::ifstream fNodes{"./data/postua_nodes.csv"};
           // get number of lines
           std::string line;
@@ -245,10 +245,19 @@ TEST_CASE("RoadNetwork") {
             CHECK_EQ(graph.nNodes(), nNodes);
             CHECK_EQ(graph.nEdges(), nEdges);
           }
+          RoadNetwork graph2;
+          graph2.importEdges("./data/postua_edges.geojson");
+          THEN("Sizes are correct also with geojson") {
+            CHECK_EQ(graph2.nEdges(), graph.nEdges());
+            CHECK_EQ(graph2.nNodes(), graph.nNodes());
+            for (auto const& [edgeId, pEdge] : graph2.edges()) {
+              CHECK_EQ(*pEdge, *graph.edge(edgeId));
+            }
+          }
         }
         WHEN("We import many nodes and edges from OSM") {
-          graph.importOSMNodes("./data/forlì_nodes.csv");
-          graph.importOSMEdges("./data/forlì_edges.csv");
+          graph.importNodes("./data/forlì_nodes.csv");
+          graph.importEdges("./data/forlì_edges.csv");
           std::ifstream fNodes{"./data/forlì_nodes.csv"};
           // get number of lines
           std::string line;

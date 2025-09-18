@@ -17,8 +17,8 @@ else()
 endif()
 
 find_package(TBB REQUIRED CONFIG)
-find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(simdjson REQUIRED)
 
 # Set the folder for the executable
 set(EXECUTABLE_OUTPUT_PATH ../)
@@ -34,6 +34,16 @@ if(NOT doctest_POPULATED)
   FetchContent_MakeAvailable(doctest)
 endif()
 
+# Get csv-parser
+FetchContent_Declare(csv_parser
+  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
+  GIT_TAG 2.3.0
+)
+FetchContent_GetProperties(csv_parser)
+if(NOT csv_parser_POPULATED)
+  FetchContent_MakeAvailable(csv_parser)
+endif()
+
 # add as executable all cpp files into '.' folder
 file(GLOB TEST_SOURCES "*.cpp")
 file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
@@ -43,4 +53,4 @@ list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 add_executable(dsf_tests.out ${SOURCES})
 target_include_directories(dsf_tests.out PRIVATE ../src/dsf/headers/ ../src/dsf/utility/TypeTraits/)
 target_include_directories(dsf_tests.out SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
-target_link_libraries(dsf_tests.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog)
+target_link_libraries(dsf_tests.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson csv)

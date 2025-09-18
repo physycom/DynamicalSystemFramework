@@ -1,4 +1,4 @@
-osmid;u;v;length;lanes;highway;maxspeed;name
+id;source;target;length;nlanes;type;maxspeed;name
 1;82596001;283318694;5457.0546018648265;2;['secondary', 'tertiary'];;['Via Tevere', 'Via La Straniera']
 2;82596001;868599743;5429.998681109139;;tertiary;;Via Savio
 3;82596001;82596034;2666.577208657532;;secondary;;Via La Straniera

@@ -24,18 +24,35 @@ if (CMAKE_BUILD_TYPE MATCHES "Release")
 endif()
 
 find_package(TBB REQUIRED CONFIG)
-find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(simdjson REQUIRED)
 
 file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp")
 
-add_library(dsf STATIC ${SOURCES})
+include(FetchContent)
+# Get csv-parser
+FetchContent_Declare(csv_parser
+  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
+  GIT_TAG 2.3.0
+)
+FetchContent_MakeAvailable(csv_parser)
+
+# Get csv source files manually to avoid export issues
+file(GLOB CSV_SOURCES "${csv_parser_SOURCE_DIR}/include/internal/*.cpp")
+
+add_library(dsf STATIC ${SOURCES} ${CSV_SOURCES})
 target_include_directories(dsf PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/headers>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog)
 
+# Include csv headers privately
+target_include_directories(dsf PRIVATE "${csv_parser_SOURCE_DIR}/include")
+
+# Link other libraries - no csv dependency needed now
+target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
+
+# Install dsf library
 install(TARGETS dsf
         EXPORT dsfConfig
         ARCHIVE DESTINATION lib

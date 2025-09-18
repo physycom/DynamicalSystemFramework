@@ -15,7 +15,7 @@ jobs:
 
     steps:
     - name: Install tools manually
-      run: sudo apt update && sudo apt install libtbb-dev libfmt-dev libspdlog-dev
+      run: sudo apt update && sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev
     - uses: actions/checkout@v4
 
     - name: Build test simulation

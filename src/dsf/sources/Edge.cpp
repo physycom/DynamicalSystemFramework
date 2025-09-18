@@ -38,14 +38,14 @@ namespace dsf {
   void Edge::setCapacity(int capacity) {
     if (capacity < 1) {
       throw std::invalid_argument(
-          std::format("Edge capacity ({}) must be greater than 0.", capacity));
+          std::format("{} capacity ({}) must be greater than 0.", *this, capacity));
     }
     m_capacity = capacity;
   }
   void Edge::setTransportCapacity(double capacity) {
     if (capacity <= 0.) {
-      throw std::invalid_argument(
-          std::format("Edge transport capacity ({}) must be greater than 0.", capacity));
+      throw std::invalid_argument(std::format(
+          "{} edge transport capacity ({}) must be greater than 0.", *this, capacity));
     }
     m_transportCapacity = capacity;
   }

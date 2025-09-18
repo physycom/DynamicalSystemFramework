@@ -49,6 +49,17 @@ namespace dsf {
         break;
     }
   }
+  auto Street::operator==(Street const& other) const -> bool {
+    bool isEqual{true};
+    isEqual &= (this->m_id == other.m_id);
+    isEqual &= (this->m_nodePair == other.m_nodePair);
+    isEqual &= (this->m_length == other.m_length);
+    isEqual &= (this->m_maxSpeed == other.m_maxSpeed);
+    isEqual &= (this->m_nLanes == other.m_nLanes);
+    isEqual &= (this->m_name == other.m_name);
+    isEqual &= (this->m_priority == other.m_priority);
+    return isEqual;
+  }
 
   void Street::setLaneMapping(std::vector<Direction> const& laneMapping) {
     assert(laneMapping.size() == static_cast<size_t>(m_nLanes));

@@ -10,7 +10,6 @@
 
 PYBIND11_MODULE(dsf, m) {
   m.doc() = "Python bindings for the DSM library";
-
   m.attr("__version__") = dsf::version();
 
   // Bind PathWeight enum
@@ -129,6 +128,12 @@ PYBIND11_MODULE(dsf, m) {
            dsf::g_docstrings.at("dsf::RoadNetwork::RoadNetwork").c_str())
       .def(pybind11::init<const dsf::AdjacencyMatrix&>(),
            dsf::g_docstrings.at("dsf::RoadNetwork::RoadNetwork").c_str())
+      .def("nNodes",
+           &dsf::RoadNetwork::nNodes,
+           dsf::g_docstrings.at("dsf::Network::nNodes").c_str())
+      .def("nEdges",
+           &dsf::RoadNetwork::nEdges,
+           dsf::g_docstrings.at("dsf::Network::nEdges").c_str())
       .def("adjustNodeCapacities",
            &dsf::RoadNetwork::adjustNodeCapacities,
            dsf::g_docstrings.at("dsf::RoadNetwork::adjustNodeCapacities").c_str())
@@ -149,14 +154,44 @@ PYBIND11_MODULE(dsf, m) {
            &dsf::RoadNetwork::importCoordinates,
            pybind11::arg("fileName"),
            dsf::g_docstrings.at("dsf::RoadNetwork::importCoordinates").c_str())
-      .def("importOSMNodes",
-           &dsf::RoadNetwork::importOSMNodes,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::RoadNetwork::importOSMNodes").c_str())
-      .def("importOSMEdges",
-           &dsf::RoadNetwork::importOSMEdges,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::RoadNetwork::importOSMEdges").c_str())
+      .def(
+          "importNodes",
+          [](dsf::RoadNetwork& self, const std::string& fileName) {
+            self.importNodes(fileName);
+          },
+          pybind11::arg("fileName"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
+      .def(
+          "importNodes",
+          [](dsf::RoadNetwork& self, std::string const& fileName, char const separator) {
+            self.importNodes(fileName, separator);
+          },
+          pybind11::arg("fileName"),
+          pybind11::arg("separator"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
+      .def(
+          "importEdges",
+          [](dsf::RoadNetwork& self, const std::string& fileName) {
+            self.importEdges(fileName);
+          },
+          pybind11::arg("fileName"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
+      .def(
+          "importEdges",
+          [](dsf::RoadNetwork& self, std::string const& fileName, char const separator) {
+            self.importEdges(fileName, separator);
+          },
+          pybind11::arg("fileName"),
+          pybind11::arg("separator"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
+      .def(
+          "importEdges",
+          [](dsf::RoadNetwork& self,
+             std::string const& fileName,
+             bool const bCreateInverse) { self.importEdges(fileName, bCreateInverse); },
+          pybind11::arg("fileName"),
+          pybind11::arg("bCreateInverse"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,
            pybind11::arg("fileName"),
