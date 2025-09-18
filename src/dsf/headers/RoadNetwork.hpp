@@ -46,8 +46,6 @@ namespace dsf {
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
   class RoadNetwork : public Network<RoadJunction, Street> {
   private:
-    std::vector<Id> m_originNodes;
-    std::vector<Id> m_destinationNodes;
     unsigned long long m_maxAgentCapacity;
 
     /// @brief If every node has coordinates, set the street angles
@@ -221,22 +219,7 @@ namespace dsf {
 
     /// @brief Get the maximum agent capacity
     /// @return unsigned long long The maximum agent capacity of the graph
-    inline unsigned long long maxCapacity() const noexcept { return m_maxAgentCapacity; }
-
-    /// @brief Get the origin nodes of the graph
-    /// @return std::vector<Id> const& The origin nodes of the graph
-    inline std::vector<Id> const& originNodes() const noexcept { return m_originNodes; }
-    /// @brief Get the origin nodes of the graph
-    /// @return std::vector<Id>& The origin nodes of the graph
-    inline std::vector<Id>& originNodes() noexcept { return m_originNodes; }
-    /// @brief Get the destination nodes of the graph
-    /// @return std::vector<Id> const& The destination nodes of the graph
-    inline std::vector<Id> const& destinationNodes() const noexcept {
-      return m_destinationNodes;
-    }
-    /// @brief Get the destination nodes of the graph
-    /// @return std::vector<Id>& The destination nodes of the graph
-    inline std::vector<Id>& destinationNodes() noexcept { return m_destinationNodes; }
+    inline auto maxCapacity() const noexcept { return m_maxAgentCapacity; }
 
     /// @brief Perform a global Dijkstra search to a target node from all other nodes in the graph
     /// @tparam DynamicsFunc A callable type that takes a const reference to a Street and returns a double representing the edge weight

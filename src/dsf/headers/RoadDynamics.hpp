@@ -45,6 +45,8 @@ namespace dsf {
     std::vector<Id> m_nodeIndices;
     std::vector<std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
+    std::unordered_map<Id, double> m_originNodes;
+    std::unordered_map<Id, double> m_destinationNodes;
     Size m_nAgents;
 
   protected:
@@ -152,7 +154,9 @@ namespace dsf {
     inline void setMaxTravelTime(Time const maxTravelTime) noexcept {
       m_maxTravelTime = maxTravelTime;
     };
+    void setOriginNodes(std::unordered_map<Id, double> const& originNodes);
 
+    void setDestinationNodes(std::unordered_map<Id, double> const& destinationNodes);
     /// @brief Set the destination nodes
     /// @param destinationNodes The destination nodes (as an initializer list)
     /// @param updatePaths If true, the paths are updated
@@ -252,6 +256,26 @@ namespace dsf {
     inline const std::unordered_map<Id, std::unique_ptr<Itinerary>>& itineraries()
         const noexcept {
       return m_itineraries;
+    }
+    /// @brief Get the origin nodes of the graph
+    /// @return std::unordered_map<Id, double> const& The origin nodes of the graph
+    inline std::unordered_map<Id, double> const& originNodes() const noexcept {
+      return m_originNodes;
+    }
+    /// @brief Get the origin nodes of the graph
+    /// @return std::unordered_map<Id, double>& The origin nodes of the graph
+    inline std::unordered_map<Id, double>& originNodes() noexcept {
+      return m_originNodes;
+    }
+    /// @brief Get the destination nodes of the graph
+    /// @return std::unordered_map<Id, double> const& The destination nodes of the graph
+    inline std::unordered_map<Id, double> const& destinationNodes() const noexcept {
+      return m_destinationNodes;
+    }
+    /// @brief Get the destination nodes of the graph
+    /// @return std::unordered_map<Id, double>& The destination nodes of the graph
+    inline std::unordered_map<Id, double>& destinationNodes() noexcept {
+      return m_destinationNodes;
     }
     /// @brief Get the agents
     /// @return const std::unordered_map<Id, Agent<Id>>&, The agents
@@ -389,7 +413,7 @@ namespace dsf {
     for (auto const& [nodeId, pNode] : this->graph().nodes()) {
       m_nodeIndices.push_back(nodeId);
     }
-    for (auto const& nodeId : this->graph().destinationNodes()) {
+    for (auto const& [nodeId, weight] : this->m_destinationNodes) {
       m_itineraries.emplace(nodeId, std::make_unique<Itinerary>(nodeId, nodeId));
     }
     // updatePaths();
@@ -1067,6 +1091,43 @@ namespace dsf {
         break;
     }
   }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::setOriginNodes(
+      std::unordered_map<Id, double> const& originNodes) {
+    m_originNodes.clear();
+    m_originNodes.reserve(originNodes.size());
+    auto const sumWeights = std::accumulate(
+        originNodes.begin(), originNodes.end(), 0., [](double sum, auto const& pair) {
+          return sum + pair.second;
+        });
+    if (sumWeights == 1.) {
+      m_originNodes = originNodes;
+      return;
+    }
+    for (auto const& [nodeId, weight] : originNodes) {
+      m_originNodes[nodeId] = weight / sumWeights;
+    }
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::setDestinationNodes(
+      std::unordered_map<Id, double> const& destinationNodes) {
+    m_destinationNodes.clear();
+    m_destinationNodes.reserve(destinationNodes.size());
+    auto const sumWeights =
+        std::accumulate(destinationNodes.begin(),
+                        destinationNodes.end(),
+                        0.,
+                        [](double sum, auto const& pair) { return sum + pair.second; });
+    if (sumWeights == 1.) {
+      m_destinationNodes = destinationNodes;
+      return;
+    }
+    for (auto const& [nodeId, weight] : destinationNodes) {
+      m_destinationNodes[nodeId] = weight / sumWeights;
+    }
+  }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
@@ -1320,13 +1381,8 @@ namespace dsf {
   void RoadDynamics<delay_t>::addAgentsRandomly(
       Size nAgents, const std::variant<std::monostate, size_t, double> minNodeDistance) {
     std::unordered_map<Id, double> src_weights, dst_weights;
-    for (auto const& id : this->graph().originNodes()) {
-      src_weights[id] = 1.;
-    }
-    for (auto const& id : this->graph().destinationNodes()) {
-      dst_weights[id] = 1.;
-    }
-    addAgentsRandomly(nAgents, src_weights, dst_weights, minNodeDistance);
+    addAgentsRandomly(
+        nAgents, this->m_originNodes, this->m_destinationNodes, minNodeDistance);
   }
 
   template <typename delay_t>
