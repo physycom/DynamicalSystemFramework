@@ -1,0 +1,24 @@
+{
+  "title": "DynamicalSystemFramework",
+  "description": "Framework for modelling dynamical complex systems.",
+  "creators": [
+    {
+      "name": "Berselli, Gregorio",
+      "affiliation": "University of Bologna, INFN Bologna",
+      "orcid": "0009-0004-7797-9138"
+    },
+    {
+      "name": "Balducci, Simone",
+      "affiliation": "CERN, University and INFN Bologna",
+      "orcid": "0009-0001-0186-755X"
+    },
+  ],
+  "access_right": "open",
+  "keywords": [
+	"Dynamics",
+	"Complex Systems",
+	"Human mobility",
+    "C++20",
+  ],
+  "upload_type": "software",
+}
