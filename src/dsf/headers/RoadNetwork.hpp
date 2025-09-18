@@ -104,7 +104,8 @@ namespace dsf {
     /// @brief Import the graph's nodes from a file
     /// @param fileName The name of the file to import the nodes from.
     /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
-    /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// @details Supports csv file format. Please specify the separator as second parameter.
+    /// Supported fields:
     /// - id: The id of the node
     /// - lon: The x coordinate of the node
     /// - lat: The y coordinate of the node
@@ -114,7 +115,6 @@ namespace dsf {
     /// - roundabout
     /// - origin/destination: intesection counted as origin, destination or both. To have both, the string must contain both the strings "origin" and "destination".
     template <typename... TArgs>
-    // Check using std::is_callable that m_csvNodesImporter can be called with TArgs...
       requires(std::is_invocable_v<decltype(&RoadNetwork::m_csvNodesImporter),
                                    RoadNetwork*,
                                    std::ifstream&,
@@ -122,13 +122,15 @@ namespace dsf {
     void importNodes(const std::string& fileName, TArgs&&... args);
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
-    /// @details The file format is csv-like with the ';' separator. Supported columns (in order):
+    /// @details Supports csv, json and geojson file formats.
+    /// The file format is deduced from the file extension. If the file is a csv, please specify the separator as second parameter.
+    /// Supported fields:
     /// - id: The id of the street
-    /// - sourceId: The id of the source node
-    /// - targetId: The id of the target node
+    /// - source: The id of the source node
+    /// - target: The id of the target node
     /// - length: The length of the street, in meters
-    /// - highway: The type of the street (e.g. residential, primary, secondary, etc.)
-    /// - lanes: The number of lanes of the street
+    /// - type: The type of the street (e.g. residential, primary, secondary, etc.)
+    /// - nlanes: The number of lanes of the street
     /// - maxspeed: The street's speed limit, in km/h
     /// - name: The name of the street
     /// - geometry: The geometry of the street, as a LINESTRING

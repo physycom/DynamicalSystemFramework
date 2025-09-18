@@ -17,21 +17,21 @@ namespace dsf {
     auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
 
     for (auto const& row : csvReader) {
-      auto const nodeId = row["osmid"].get<Id>();
-      auto const dLat = row["y"].get<double>();
-      auto const dLon = row["x"].get<double>();
-      auto const highway = row["highway"].get<std::string>();
-      if (highway.find("traffic_signals") != std::string::npos) {
+      auto const nodeId = row["id"].get<Id>();
+      auto const dLat = row["lat"].get<double>();
+      auto const dLon = row["lon"].get<double>();
+      auto const type = row["type"].get<std::string>();
+      if (type.find("traffic_signals") != std::string::npos) {
         addNode<TrafficLight>(nodeId, 120, std::make_pair(dLat, dLon));
-      } else if (highway.find("roundabout") != std::string::npos) {
+      } else if (type.find("roundabout") != std::string::npos) {
         addNode<Roundabout>(nodeId, std::make_pair(dLat, dLon));
       } else {
         addNode<Intersection>(nodeId, std::make_pair(dLat, dLon));
-        if (highway.find("destination") != std::string::npos) {
+        if (type.find("destination") != std::string::npos) {
           spdlog::debug("Setting node {} as a destination node", nodeId);
           m_destinationNodes.push_back(nodeId);
         }
-        if (highway.find("origin") != std::string::npos) {
+        if (type.find("origin") != std::string::npos) {
           spdlog::debug("Setting node {} as an origin node", nodeId);
           m_originNodes.push_back(nodeId);
         }
@@ -49,18 +49,22 @@ namespace dsf {
           "geometry.");
     }
     bool const bHasLanes =
-        (std::find(colNames.begin(), colNames.end(), "lanes") != colNames.end());
+        (std::find(colNames.begin(), colNames.end(), "nlanes") != colNames.end());
     bool const bHasCoilcode =
         (std::find(colNames.begin(), colNames.end(), "coilcode") != colNames.end());
     bool const bHasCustomWeight =
         (std::find(colNames.begin(), colNames.end(), "customWeight") != colNames.end());
     // bool const bHasForbiddenTurns = (std::find(colNames.begin(), colNames.end(), "forbiddenTurns") != colNames.end());
     for (auto const& row : csvReader) {
-      auto const streetId = row["osmid"].get<Id>();
-      auto const sourceId = row["u"].get<Id>();
-      auto const targetId = row["v"].get<Id>();
+      auto const sourceId = row["source"].get<Id>();
+      auto const targetId = row["target"].get<Id>();
+      if (sourceId == targetId) {
+        spdlog::warn("Skipping self-loop edge {}->{}", sourceId, targetId);
+        continue;
+      }
+      auto const streetId = row["id"].get<Id>();
       auto const dLength = row["length"].get<double>();
-      auto const highway = row["highway"].get<std::string>();
+      auto const highway = row["type"].get<std::string>();
       auto const name = row["name"].get<std::string>();
       std::vector<std::pair<double, double>> coords;
       if (bHasGeometry) {
@@ -114,11 +118,11 @@ namespace dsf {
       auto iLanes = 1;
       if (bHasLanes) {
         try {
-          iLanes = row["lanes"].get<int>();
+          iLanes = row["nlanes"].get<int>();
         } catch (...) {
           spdlog::warn(
               "Invalid number of lanes ({}) for edge {}->{}. Defaulting to 1 lane.",
-              row["lanes"].get<std::string>(),
+              row["nlanes"].get<std::string>(),
               sourceId,
               targetId);
           iLanes = 1;
@@ -166,8 +170,8 @@ namespace dsf {
         }
       }
     }
-    this->m_nodes.rehash(this->nNodes());
-    this->m_edges.rehash(this->nEdges());
+    this->m_nodes.rehash(0);
+    this->m_edges.rehash(0);
     // Parse forbidden turns
     // for (auto const& [streetId, forbiddenTurns] : mapForbiddenTurns) {
     //   auto const& pStreet{edge(streetId)};
@@ -204,16 +208,20 @@ namespace dsf {
     for (auto feature : root["features"]) {
       auto edge_properties = feature["properties"];
 
+      auto const& src_node_id = static_cast<Id>(edge_properties["source"].get_uint64());
+      auto const& dst_node_id = static_cast<Id>(edge_properties["target"].get_uint64());
+      if (src_node_id == dst_node_id) {
+        spdlog::warn("Skipping self-loop edge {}->{}", src_node_id, dst_node_id);
+        continue;
+      }
+
       std::vector<std::pair<double, double>> geometry;
       for (auto const& coord : feature["geometry"]["coordinates"]) {
         auto const& lat = coord.at(1);
         auto const& lon = coord.at(0);
         geometry.emplace_back(lat, lon);
       }
-
-      auto const& src_node_id = static_cast<Id>(edge_properties["u"].get_uint64());
-      auto const& dst_node_id = static_cast<Id>(edge_properties["v"].get_uint64());
-      auto const& edge_id = static_cast<Id>(edge_properties["osmid"].get_uint64());
+      auto const& edge_id = static_cast<Id>(edge_properties["id"].get_uint64());
       auto const& edge_length =
           static_cast<double>(edge_properties["length"].get_double());
 
@@ -235,8 +243,8 @@ namespace dsf {
 
       // Robust extraction for lanes
       auto edge_lanes{1u};
-      if (!edge_properties["lanes"].is_null()) {
-        auto lanes_val = edge_properties["lanes"];
+      if (!edge_properties["nlanes"].is_null()) {
+        auto lanes_val = edge_properties["nlanes"];
         if (lanes_val.is_number()) {
           edge_lanes = lanes_val.get_uint64();
         } else if (lanes_val.is_string()) {
@@ -262,6 +270,8 @@ namespace dsf {
                        name,
                        geometry));
     }
+    this->m_nodes.rehash(0);
+    this->m_edges.rehash(0);
   }
 
   RoadNetwork::RoadNetwork() : Network{AdjacencyMatrix()}, m_maxAgentCapacity{0} {}
