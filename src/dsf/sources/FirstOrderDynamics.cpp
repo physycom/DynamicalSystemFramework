@@ -1,13 +1,20 @@
 #include "../headers/FirstOrderDynamics.hpp"
 
 namespace dsf {
-  FirstOrderDynamics::FirstOrderDynamics(
-      RoadNetwork& graph,
-      bool useCache,
-      std::optional<unsigned int> seed,
-      double alpha,
-      std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
-      double weightTreshold)
+  double FirstOrderDynamics::m_speedFactor(double const& density) const {
+    return (1. - m_alpha * density);
+  }
+  double FirstOrderDynamics::m_streetEstimatedTravelTime(
+      std::unique_ptr<Street> const& pStreet) const {
+    return pStreet->length() /
+           (pStreet->maxSpeed() * m_speedFactor(pStreet->density(true)));
+  }
+  FirstOrderDynamics::FirstOrderDynamics(RoadNetwork& graph,
+                                         bool useCache,
+                                         std::optional<unsigned int> seed,
+                                         double alpha,
+                                         PathWeight const weightFunction,
+                                         std::optional<double> weightTreshold)
       : RoadDynamics<Delay>(graph, useCache, seed, weightFunction, weightTreshold),
         m_alpha{alpha},
         m_speedFluctuationSTD{0.} {
@@ -32,7 +39,7 @@ namespace dsf {
 
   void FirstOrderDynamics::setAgentSpeed(std::unique_ptr<Agent> const& pAgent) {
     const auto& street{this->graph().edge(pAgent->streetId().value())};
-    double speed{street->maxSpeed() * (1. - m_alpha * street->density(true))};
+    double speed{street->maxSpeed() * this->m_speedFactor(street->density(true))};
     if (m_speedFluctuationSTD > 0.) {
       std::normal_distribution<double> speedDist{speed, speed * m_speedFluctuationSTD};
       speed = speedDist(this->m_generator);

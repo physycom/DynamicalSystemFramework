@@ -14,11 +14,12 @@
 
 namespace dsf {
 
-  using Id = uint32_t;
+  using Id = uint64_t;
   using Size = uint32_t;
   using Delay = uint16_t;
   using Time = uint64_t;
 
+  enum class PathWeight : uint8_t { LENGTH = 0, TRAVELTIME = 1, WEIGHT = 2 };
   enum Direction : uint8_t {
     RIGHT = 0,     // delta < 0
     STRAIGHT = 1,  // delta == 0

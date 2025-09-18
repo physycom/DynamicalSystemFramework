@@ -10,7 +10,6 @@
 #pragma once
 
 #include "AdjacencyMatrix.hpp"
-#include "DijkstraWeights.hpp"
 #include "Network.hpp"
 #include "RoadJunction.hpp"
 #include "Intersection.hpp"
@@ -18,7 +17,6 @@
 #include "Roundabout.hpp"
 #include "Station.hpp"
 #include "Street.hpp"
-#include "../utility/DijkstraResult.hpp"
 #include "../utility/Typedef.hpp"
 #include "../utility/TypeTraits/is_node.hpp"
 #include "../utility/TypeTraits/is_street.hpp"
@@ -39,6 +37,8 @@
 #include <sstream>
 #include <cassert>
 #include <format>
+
+#include <spdlog/spdlog.h>
 
 namespace dsf {
 
@@ -230,27 +230,20 @@ namespace dsf {
     /// @return std::vector<Id>& The destination nodes of the graph
     inline std::vector<Id>& destinationNodes() noexcept { return m_destinationNodes; }
 
-    /// @brief Get the shortest path between two nodes using dijkstra algorithm
-    /// @param source The source node
-    /// @param destination The destination node
-    /// @return A DijkstraResult object containing the path and the distance
-    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
-      requires(
-          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-    std::optional<DijkstraResult> shortestPath(
-        const Node& source,
-        const Node& destination,
-        Func f = weight_functions::streetLength) const;
-
-    /// @brief Get the shortest path between two nodes using dijkstra algorithm
-    /// @param source The source node id
-    /// @param destination The destination node id
-    /// @return A DijkstraResult object containing the path and the distance
-    template <typename Func = std::function<double(const RoadNetwork*, Id, Id)>>
-      requires(
-          std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-    std::optional<DijkstraResult> shortestPath(
-        Id source, Id destination, Func f = weight_functions::streetLength) const;
+    /// @brief Perform a global Dijkstra search to a target node from all other nodes in the graph
+    /// @tparam DynamicsFunc A callable type that takes a const reference to a Street and returns a double representing the edge weight
+    /// @param targetId The id of the target node
+    /// @param getEdgeWeight A callable that takes a const reference to a Street and returns a double representing the edge weight
+    /// @param threshold A threshold value to consider alternative paths
+    /// @return A map where each key is a node id and the value is a vector of next hop node ids toward the target
+    /// @throws std::out_of_range if the target node does not exist
+    /// @throws std::invalid_argument if the dynamics function is not callable with a const reference
+    template <typename DynamicsFunc>
+      requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
+    std::unordered_map<Id, std::vector<Id>> allPathsTo(
+        Id const targetId,
+        DynamicsFunc getEdgeWeight,
+        double const threshold = 1e-9) const;
   };
 
   template <typename T1, typename... Tn>
@@ -275,103 +268,92 @@ namespace dsf {
     addStreets(std::forward<Tn>(streets)...);
   }
 
-  template <typename Func>
-    requires(
-        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-  std::optional<DijkstraResult> RoadNetwork::shortestPath(const Node& source,
-                                                          const Node& destination,
-                                                          Func f) const {
-    return this->shortestPath(source.id(), destination.id(), f);
-  }
-
-  template <typename Func>
-    requires(
-        std::is_same_v<std::invoke_result_t<Func, const RoadNetwork*, Id, Id>, double>)
-  std::optional<DijkstraResult> RoadNetwork::shortestPath(Id source,
-                                                          Id destination,
-                                                          Func getStreetWeight) const {
-    // Check if source and destination nodes exist
+  template <typename DynamicsFunc>
+    requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
+  std::unordered_map<Id, std::vector<Id>> RoadNetwork::allPathsTo(
+      Id const sourceId, DynamicsFunc f, double const threshold) const {
+    // Check if source node exists
     auto const& nodes = this->nodes();
-    if (!std::any_of(nodes.cbegin(),
-                     nodes.cend(),
-                     [source](auto const& pair) { return pair.first == source; }) ||
-        !std::any_of(nodes.cbegin(), nodes.cend(), [destination](auto const& pair) {
-          return pair.first == destination;
-        })) {
-      return std::nullopt;
+    if (!nodes.contains(sourceId)) {
+      throw std::out_of_range(
+          std::format("Source node with id {} does not exist.", sourceId));
     }
 
-    // Use unordered_map for distances and previous nodes using original node IDs
-    std::unordered_map<Id, double> dist;
-    std::unordered_map<Id, Id> prev;
-    std::unordered_set<Id> unvisitedNodes;
-    std::unordered_set<Id> visitedNodes;
+    // Distance from each node to the source (going backward)
+    std::unordered_map<Id, double> distToSource;
+    distToSource.reserve(nNodes());
+    // Next hop from each node toward the source
+    std::unordered_map<Id, std::vector<Id>> nextHopsToSource;
 
-    // Initialize distances and unvisited nodes using original node IDs
-    for (auto const& [nodeId, node] : nodes) {
-      dist[nodeId] = std::numeric_limits<double>::max();
-      prev[nodeId] = std::numeric_limits<Id>::max();
-      unvisitedNodes.insert(nodeId);
-    }
+    // Priority queue: pair<distance, nodeId> (min-heap)
+    std::priority_queue<std::pair<double, Id>,
+                        std::vector<std::pair<double, Id>>,
+                        std::greater<>>
+        pq;
 
-    // Set distance to source as 0
-    dist[source] = 0.0;
+    // Initialize all nodes with infinite distance
+    std::for_each(nodes.cbegin(), nodes.cend(), [&](auto const& pair) {
+      distToSource[pair.first] = std::numeric_limits<double>::infinity();
+      nextHopsToSource[pair.first] = std::vector<Id>();
+    });
 
-    while (!unvisitedNodes.empty()) {
-      // Find unvisited node with minimum distance
-      Id currentNode = *std::min_element(
-          unvisitedNodes.begin(),
-          unvisitedNodes.end(),
-          [&dist](const Id& a, const Id& b) -> bool { return dist[a] < dist[b]; });
+    // Source has distance 0 to itself
+    distToSource[sourceId] = 0.0;
+    pq.push({0.0, sourceId});
 
-      // If we reached the destination, we can stop
-      if (currentNode == destination) {
-        break;
+    while (!pq.empty()) {
+      auto [currentDist, currentNode] = pq.top();
+      pq.pop();
+
+      // Skip if we've already found a better path to this node
+      if (currentDist > distToSource[currentNode]) {
+        continue;
       }
 
-      // If the current node has infinite distance, there's no path
-      if (dist[currentNode] == std::numeric_limits<double>::max()) {
-        return std::nullopt;
-      }
+      // Explore all incoming edges (nodes that can reach currentNode)
+      auto const& inEdges = node(currentNode)->ingoingEdges();
+      for (auto const& inEdgeId : inEdges) {
+        Id neighborId = edge(inEdgeId)->source();
 
-      unvisitedNodes.erase(currentNode);
-      visitedNodes.insert(currentNode);
+        // Calculate the weight of the edge from neighbor to currentNode using the dynamics function
+        double edgeWeight = f(this->edge(inEdgeId));
+        double newDistToSource = distToSource[currentNode] + edgeWeight;
 
-      // Get outgoing neighbors (nodes this node can reach)
-      auto const& outEdges = node(currentNode)->outgoingEdges();
-      for (auto const& outEdgeId : outEdges) {
-        Id neighborId = edge(outEdgeId)->target();
-
-        // Skip if already visited
-        if (visitedNodes.find(neighborId) != visitedNodes.end()) {
-          continue;
+        // If we found a shorter path from neighborId to source
+        if (newDistToSource < distToSource[neighborId]) {
+          distToSource[neighborId] = newDistToSource;
+          nextHopsToSource[neighborId].clear();
+          nextHopsToSource[neighborId].push_back(currentNode);
+          pq.push({newDistToSource, neighborId});
         }
-
-        double streetWeight = getStreetWeight(this, currentNode, neighborId);
-        double altDistance = dist[currentNode] + streetWeight;
-
-        // If we found a shorter path to the neighbor, update it
-        if (altDistance < dist[neighborId]) {
-          dist[neighborId] = altDistance;
-          prev[neighborId] = currentNode;
+        // If we found an equally good path, add it as alternative
+        else if (newDistToSource < (1. + threshold) * distToSource[neighborId]) {
+          spdlog::debug(
+              "Found alternative path to node {} with distance {:.6f} (existing: {:.6f}) "
+              "for threshold {:.6f}",
+              neighborId,
+              newDistToSource,
+              distToSource[neighborId],
+              threshold);
+          // Check if currentNode is not already in the nextHops
+          auto& hops = nextHopsToSource[neighborId];
+          if (std::find(hops.begin(), hops.end(), currentNode) == hops.end()) {
+            hops.push_back(currentNode);
+          }
         }
       }
     }
 
-    // Check if destination is reachable
-    if (dist[destination] == std::numeric_limits<double>::max()) {
-      return std::nullopt;
+    // Build result: only include reachable nodes (excluding source)
+    std::unordered_map<Id, std::vector<Id>> result;
+    for (auto const& [nodeId, hops] : nextHopsToSource) {
+      if (nodeId != sourceId &&
+          distToSource[nodeId] != std::numeric_limits<double>::infinity() &&
+          !hops.empty()) {
+        result[nodeId] = hops;
+      }
     }
 
-    // Reconstruct path
-    std::vector<Id> path;
-    Id current = destination;
-    while (current != std::numeric_limits<Id>::max()) {
-      path.push_back(current);
-      current = prev[current];
-    }
-
-    std::reverse(path.begin(), path.end());
-    return DijkstraResult(path, dist[destination]);
+    return result;
   }
 };  // namespace dsf
