@@ -1075,7 +1075,7 @@ namespace dsf {
     // Get the iterator at id m_cantorPairingHashing(source, destination)
     try {
       return &(edge(source, destination));
-    } catch (const std::out_of_range& e) {
+    } catch (const std::out_of_range&) {
       return nullptr;
     }
   }

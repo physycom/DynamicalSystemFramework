@@ -119,6 +119,7 @@ int main(int argc, char** argv) {
     dynamics.setDestinationNodes(destinationNodes);
     std::cout << "Number of exits: " << destinationNodes.size() << '\n';
   }
+  dynamics.updatePaths();
 
   dynamics.setErrorProbability(0.05);
   dynamics.setPassageProbability(0.7707);

@@ -176,6 +176,7 @@ TEST_CASE("FirstOrderDynamics") {
         std::unordered_map<dsf::Id, double> src{{0, 1.}};
         std::unordered_map<dsf::Id, double> dst{{2, 1.}};
         dynamics.addItinerary(2, 2);
+        dynamics.updatePaths();
         dynamics.addAgentsRandomly(1, src, dst);
         THEN("The agents are correctly set") {
           CHECK_EQ(dynamics.nAgents(), 1);

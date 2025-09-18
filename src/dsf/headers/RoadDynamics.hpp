@@ -527,7 +527,7 @@ namespace dsf {
               allowedTargets.erase(forbiddenNodeId);
             }
             // Catch unordered_map::at exceptions
-          } catch (const std::out_of_range& e) {
+          } catch (const std::out_of_range&) {
             throw std::runtime_error(std::format(
                 "No path from node {} to destination {}", nodeId, it->destination()));
           }
@@ -1361,9 +1361,9 @@ namespace dsf {
       // Check if destination is reachable from source
       auto const& itinerary = itineraryIt->second;
       if (!itinerary->path().contains(*srcId)) {
-        spdlog::debug("Destination {} not reachable from source {}. Skipping agent.",
-                      *dstId,
-                      *srcId);
+        spdlog::warn("Destination {} not reachable from source {}. Skipping agent.",
+                     *dstId,
+                     *srcId);
         --nAgents;
         continue;
       }
