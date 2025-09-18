@@ -30,11 +30,8 @@ int main() {
     for (const auto& pair : dynamics.graph().nodes()) {
       nodeIds.push_back(pair.first);
     }
-    std::sample(nodeIds.begin(),
-                nodeIds.end(),
-                std::back_inserter(randomNodeIds),
-                10,
-                generator);
+    std::sample(
+        nodeIds.begin(), nodeIds.end(), std::back_inserter(randomNodeIds), 10, generator);
   }
   dynamics.setDestinationNodes(randomNodeIds, false);
 
@@ -42,8 +39,8 @@ int main() {
   Bench b1(n_rep);
   std::cout << "Benchmarking updatePaths\n";
   b1.benchmark([&dynamics]() -> void { dynamics.updatePaths(); });
-  std::cout << "Time elapsed after " << n_rep << " repetitions (ms):\n";
-  b1.print<sb::milliseconds>();
+  std::cout << "Time elapsed after " << n_rep << " repetitions (us):\n";
+  b1.print<sb::microseconds>();
 
   for (auto const& [itineraryId, pItinerary] : dynamics.itineraries()) {
     auto const& path = pItinerary->path();
@@ -59,9 +56,9 @@ int main() {
     avgDegree /= dynamics.graph().nNodes();
     avgPossibleMoves /= size;
     spdlog::info("Itinerary {}: {} nodes, avg possible moves: {:.2f}, avg degree: {:.2f}",
-                itineraryId,
-                size,
-                avgPossibleMoves,
-                avgDegree);
+                 itineraryId,
+                 size,
+                 avgPossibleMoves,
+                 avgDegree);
   }
 }

@@ -104,8 +104,8 @@ namespace dsf {
     /// @param graph The graph representing the network
     /// @param useCache If true, the cache is used (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
-    /// @param weightFunction The weight function for the Dijkstra's algorithm (default is weight_functions::streetTime)
-    /// @param weightTreshold The weight treshold for updating the paths (default is 60.)
+    /// @param weightFunction The dsf::PathWeight function to use for the pathfinding (default is dsf::PathWeight::TRAVELTIME)
+    /// @param weightTreshold The weight treshold for updating the paths (default is std::nullopt)
     RoadDynamics(RoadNetwork& graph,
                  bool useCache = false,
                  std::optional<unsigned int> seed = std::nullopt,
@@ -436,7 +436,7 @@ namespace dsf {
     }
     auto const oldSize{pItinerary->path().size()};
 
-    auto const& path{this->graph().globalDijkstra(
+    auto const& path{this->graph().allPathsTo(
         pItinerary->destination(), m_weightFunction, m_weightTreshold)};
     if (path.empty()) {
       throw std::runtime_error(

@@ -173,8 +173,8 @@ TEST_CASE("FirstOrderDynamics") {
       graph.importMatrix("./data/matrix.dat");
       FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
       WHEN("We add one agent for existing itinerary") {
-        std::unordered_map<uint32_t, double> src{{0, 1.}};
-        std::unordered_map<uint32_t, double> dst{{2, 1.}};
+        std::unordered_map<dsf::Id, double> src{{0, 1.}};
+        std::unordered_map<dsf::Id, double> dst{{2, 1.}};
         dynamics.addItinerary(2, 2);
         dynamics.addAgentsRandomly(1, src, dst);
         THEN("The agents are correctly set") {
@@ -187,8 +187,8 @@ TEST_CASE("FirstOrderDynamics") {
         }
       }
       WHEN("We add agents for existing itineraries") {
-        std::unordered_map<uint32_t, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
-        std::unordered_map<uint32_t, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
+        std::unordered_map<dsf::Id, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
+        std::unordered_map<dsf::Id, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
         std::vector<dsf::Id> destinations{14, 102, 107};
         dynamics.setDestinationNodes(destinations);
         dynamics.addAgentsRandomly(3, src, dst);

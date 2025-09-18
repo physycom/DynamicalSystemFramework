@@ -438,7 +438,7 @@ TEST_CASE("Dijkstra") {
     graph.addStreets(s1, s2, s3, s4, s5);
 
     auto const& pathMap =
-        graph.globalDijkstra(2, [](auto const& pEdge) { return pEdge->length(); });
+        graph.allPathsTo(2, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(3).size(), 1);
     CHECK_EQ(pathMap.at(3)[0], 0);
@@ -456,7 +456,7 @@ TEST_CASE("Dijkstra") {
     graph.addStreets(s1, s2, s3);
 
     auto const& pathMap =
-        graph.globalDijkstra(2, [](auto const& pEdge) { return pEdge->length(); });
+        graph.allPathsTo(2, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -472,7 +472,7 @@ TEST_CASE("Dijkstra") {
     graph.addStreets(s1, s2, s3);
 
     auto const& pathMap =
-        graph.globalDijkstra(2, [](auto const& pEdge) { return pEdge->length(); });
+        graph.allPathsTo(2, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(2));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 2);
@@ -499,7 +499,7 @@ TEST_CASE("Dijkstra") {
     graph.addStreets(s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14);
 
     auto const& pathMap =
-        graph.globalDijkstra(4, [](auto const& pEdge) { return pEdge->length(); });
+        graph.allPathsTo(4, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(4));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -535,7 +535,7 @@ TEST_CASE("Dijkstra") {
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18);
 
     auto const& pathMap =
-        graph.globalDijkstra(6, [](auto const& pEdge) { return pEdge->length(); });
+        graph.allPathsTo(6, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(6));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 1);
@@ -575,7 +575,7 @@ TEST_CASE("Dijkstra") {
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18);
 
     auto const& pathMap =
-        graph.globalDijkstra(4, [](auto const& pEdge) { return pEdge->length(); });
+        graph.allPathsTo(4, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_FALSE(pathMap.contains(4));
     CHECK_EQ(pathMap.at(0).size(), 1);
     CHECK_EQ(pathMap.at(0)[0], 2);
@@ -598,7 +598,7 @@ TEST_CASE("Dijkstra") {
     graph.addStreets(s1, s2, s3);
 
     auto const& pathMap =
-        graph.globalDijkstra(1, [](auto const& pEdge) { return pEdge->length(); });
+        graph.allPathsTo(1, [](auto const& pEdge) { return pEdge->length(); });
     CHECK(pathMap.empty());
   }
 
@@ -610,7 +610,7 @@ TEST_CASE("Dijkstra") {
     graph.addStreets(s1, s2, s3);
 
     CHECK_THROWS_AS(
-        graph.globalDijkstra(3, [](auto const& pEdge) { return pEdge->length(); }),
+        graph.allPathsTo(3, [](auto const& pEdge) { return pEdge->length(); }),
         std::out_of_range);
   }
 
@@ -629,7 +629,7 @@ TEST_CASE("Dijkstra") {
     CHECK(graph.edge(106, 118));
 
     auto const& path =
-        graph.globalDijkstra(118, [](auto const& pEdge) { return pEdge->length(); });
+        graph.allPathsTo(118, [](auto const& pEdge) { return pEdge->length(); });
     CHECK_EQ(path.size(), 119);
     CHECK_FALSE(path.contains(118));
   }
