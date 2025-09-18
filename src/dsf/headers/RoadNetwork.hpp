@@ -50,10 +50,6 @@ namespace dsf {
     std::vector<Id> m_destinationNodes;
     unsigned long long m_maxAgentCapacity;
 
-    /// @brief Reassign the street ids using the max node id
-    /// @details The street ids are reassigned using the max node id, i.e.
-    /// newStreetId = srcId * n + dstId, where n is the max node id.
-    void m_reassignIds();
     /// @brief If every node has coordinates, set the street angles
     /// @details The street angles are set using the node's coordinates.
     void m_setStreetAngles();
