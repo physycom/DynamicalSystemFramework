@@ -30,7 +30,6 @@
 
 #include "Dynamics.hpp"
 #include "Agent.hpp"
-#include "DijkstraWeights.hpp"
 #include "Itinerary.hpp"
 #include "RoadNetwork.hpp"
 #include "../utility/Typedef.hpp"
@@ -57,7 +56,7 @@ namespace dsf {
     Time m_previousOptimizationTime, m_previousSpireTime;
 
   private:
-    std::function<double(const RoadNetwork*, Id, Id)> m_weightFunction;
+    std::function<double(std::unique_ptr<Street> const&)> m_weightFunction;
     std::optional<double> m_errorProbability;
     std::optional<double> m_passageProbability;
     double m_maxTravelDistance;
@@ -97,19 +96,22 @@ namespace dsf {
     void m_trafficlightSingleTailOptimizer(double const& beta,
                                            std::optional<std::ofstream>& logStream);
 
+    virtual double m_streetEstimatedTravelTime(
+        std::unique_ptr<Street> const& pStreet) const = 0;
+
   public:
     /// @brief Construct a new RoadDynamics object
     /// @param graph The graph representing the network
     /// @param useCache If true, the cache is used (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
-    /// @param weightFunction The weight function for the Dijkstra's algorithm (default is weight_functions::streetTime)
-    /// @param weightTreshold The weight treshold for updating the paths (default is 60.)
+    /// @param weightFunction The dsf::PathWeight function to use for the pathfinding (default is dsf::PathWeight::TRAVELTIME)
+    /// @param weightTreshold The weight treshold for updating the paths (default is std::nullopt)
     RoadDynamics(RoadNetwork& graph,
                  bool useCache = false,
                  std::optional<unsigned int> seed = std::nullopt,
-                 std::function<double(const RoadNetwork*, Id, Id)> weightFunction =
-                     weight_functions::streetTime,
-                 double weightTreshold = 60.);  // 60 seconds thresholds for paths
+                 PathWeight const weightFunction = PathWeight::TRAVELTIME,
+                 std::optional<double> weightTreshold =
+                     std::nullopt);  // 60 seconds thresholds for paths
 
     /// @brief Set the error probability
     /// @param errorProbability The error probability
@@ -121,7 +123,8 @@ namespace dsf {
     ///   It is useful in the case of random agents
     void setPassageProbability(double passageProbability);
 
-    void setWeightFunction(std::string const& strWeightFunction);
+    void setWeightFunction(PathWeight const pathWeight,
+                           std::optional<double> weigthThreshold = std::nullopt);
     /// @brief Set the force priorities flag
     /// @param forcePriorities The flag
     /// @details If true, if an agent cannot move to the next street, the whole node is skipped
@@ -361,24 +364,22 @@ namespace dsf {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  RoadDynamics<delay_t>::RoadDynamics(
-      RoadNetwork& graph,
-      bool useCache,
-      std::optional<unsigned int> seed,
-      std::function<double(const RoadNetwork*, Id, Id)> weightFunction,
-      double weightTreshold)
+  RoadDynamics<delay_t>::RoadDynamics(RoadNetwork& graph,
+                                      bool useCache,
+                                      std::optional<unsigned int> seed,
+                                      PathWeight const weightFunction,
+                                      std::optional<double> weightTreshold)
       : Dynamics<RoadNetwork>(graph, seed),
         m_nAgents{0},
         m_previousOptimizationTime{0},
         m_previousSpireTime{0},
-        m_weightFunction{weightFunction},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
         m_maxTravelDistance{std::numeric_limits<double>::max()},
         m_maxTravelTime{std::numeric_limits<Time>::max()},
-        m_weightTreshold{weightTreshold},
         m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
+    this->setWeightFunction(weightFunction, weightTreshold);
     if (m_bCacheEnabled) {
       if (!std::filesystem::exists(g_cacheFolder)) {
         std::filesystem::create_directory(g_cacheFolder);
@@ -433,86 +434,24 @@ namespace dsf {
         return;
       }
     }
-    auto const destinationID = pItinerary->destination();
-    std::unordered_map<Id, DijkstraResult> shortestPaths(this->graph().nNodes());
+    auto const oldSize{pItinerary->path().size()};
 
-    for (auto const& [nodeId, pNode] : this->graph().nodes()) {
-      if (nodeId == destinationID) {
-        shortestPaths[pNode->id()] = DijkstraResult{};
-        continue;
-      }
-      auto result = this->graph().shortestPath(nodeId, destinationID, m_weightFunction);
-      if (!result.has_value()) {
-        spdlog::warn("No path found from node {} to node {}", nodeId, destinationID);
-        shortestPaths[nodeId] = DijkstraResult{};
-        continue;
-      }
-      shortestPaths[nodeId] = *result;
-    }
-    std::unordered_map<Id, std::vector<Id>> path;
-    // cycle over the nodes
-    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
-      if (nodeId == destinationID) {
-        continue;
-      }
-      // save the minimum distance between i and the destination
-      const auto minDistance{shortestPaths[nodeId].distance()};
-      if (minDistance < 0.) {
-        continue;
-      }
-      for (const auto outEdge : pNode->outgoingEdges()) {
-        auto const& nextNodeId = this->graph().edge(outEdge)->target();
-        if (nextNodeId == destinationID) {
-          if (std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) -
-                       minDistance) <
-              m_weightTreshold)  // 1 meter tolerance between shortest paths
-          {
-            path[nodeId].push_back(nextNodeId);
-          } else {
-            spdlog::debug(
-                "Found a path from {} to {} which differs for more than {} "
-                "unit(s) from the shortest one.",
-                nodeId,
-                destinationID,
-                m_weightTreshold);
-          }
-          continue;
-        }
-        auto const distance{shortestPaths[nextNodeId].distance()};
-        if (distance < 0.) {
-          continue;
-        }
-        if (std::find(shortestPaths[nextNodeId].path().cbegin(),
-                      shortestPaths[nextNodeId].path().cend(),
-                      nodeId) != shortestPaths[nextNodeId].path().cend()) {
-          continue;
-        }
-        bool const bIsMinDistance{
-            std::abs(m_weightFunction(&this->graph(), nodeId, nextNodeId) + distance -
-                     minDistance) <
-            m_weightTreshold};  // 1 meter tolerance between shortest paths
-        if (bIsMinDistance) {
-          path[nodeId].push_back(nextNodeId);
-        } else {
-          spdlog::debug(
-              "Found a path from {} to {} which differs for more than {} "
-              "unit(s) from the shortest one.",
-              nodeId,
-              destinationID,
-              m_weightTreshold);
-        }
-      }
-    }
-
+    auto const& path{this->graph().allPathsTo(
+        pItinerary->destination(), m_weightFunction, m_weightTreshold)};
     if (path.empty()) {
-      spdlog::error(
-          "Path with id {} and destination {} is empty. Please check the "
-          "adjacency matrix.",
-          pItinerary->id(),
-          pItinerary->destination());
+      throw std::runtime_error(
+          std::format("No path found for itinerary {} with destination node {}",
+                      pItinerary->id(),
+                      pItinerary->destination()));
     }
-
     pItinerary->setPath(path);
+    auto const newSize{pItinerary->path().size()};
+    if (oldSize > 0 && newSize != oldSize) {
+      spdlog::warn("Path for itinerary {} changed size from {} to {}",
+                   pItinerary->id(),
+                   oldSize,
+                   newSize);
+    }
     if (m_bCacheEnabled) {
       pItinerary->save(std::format("{}{}.ity", g_cacheFolder, pItinerary->id()));
       spdlog::debug("Saved path in cache for itinerary {}", pItinerary->id());
@@ -562,13 +501,18 @@ namespace dsf {
             uniformDist(this->m_generator) < m_errorProbability)) {
         const auto& it = this->itineraries().at(pAgent->itineraryId());
         if (it->destination() != nodeId) {
-          const auto pathTargets = it->path().at(nodeId);
-          allowedTargets.insert(pathTargets.begin(), pathTargets.end());
-          hasItineraryConstraints = true;
+          try {
+            const auto pathTargets = it->path().at(nodeId);
+            allowedTargets.insert(pathTargets.begin(), pathTargets.end());
+            hasItineraryConstraints = true;
 
-          // Remove forbidden nodes from allowed targets
-          for (const auto& forbiddenNodeId : forbiddenTargetNodes) {
-            allowedTargets.erase(forbiddenNodeId);
+            // Remove forbidden nodes from allowed targets
+            for (const auto& forbiddenNodeId : forbiddenTargetNodes) {
+              allowedTargets.erase(forbiddenNodeId);
+            }
+          } catch (...) {
+            throw std::runtime_error(std::format(
+                "No path from node {} to destination {}", nodeId, it->destination()));
           }
         }
       }
@@ -1093,18 +1037,35 @@ namespace dsf {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::setWeightFunction(std::string const& strWeightFunction) {
-    if (strWeightFunction == "length") {
-      m_weightFunction = weight_functions::streetLength;
-    } else if (strWeightFunction == "time") {
-      m_weightFunction = weight_functions::streetTime;
-    } else if (strWeightFunction == "weight") {
-      m_weightFunction = weight_functions::streetWeight;
-    } else {
-      spdlog::warn("Invalid weight function name ({}). Keeping the previous one.",
-                   strWeightFunction);
+  void RoadDynamics<delay_t>::setWeightFunction(PathWeight const pathWeight,
+                                                std::optional<double> weightTreshold) {
+    switch (pathWeight) {
+      case PathWeight::LENGTH:
+        m_weightFunction = [this](std::unique_ptr<Street> const& pStreet) {
+          return pStreet->length();
+        };
+        m_weightTreshold = weightTreshold.value_or(1.);
+        break;
+      case PathWeight::TRAVELTIME:
+        m_weightFunction = [this](std::unique_ptr<Street> const& pStreet) {
+          return this->m_streetEstimatedTravelTime(pStreet);
+        };
+        m_weightTreshold = weightTreshold.value_or(0.0069);
+        break;
+      case PathWeight::WEIGHT:
+        m_weightFunction = [this](std::unique_ptr<Street> const& pStreet) {
+          return pStreet->weight();
+        };
+        m_weightTreshold = weightTreshold.value_or(1.);
+        break;
+      default:
+        spdlog::error("Invalid weight function. Defaulting to traveltime");
+        m_weightFunction = [this](std::unique_ptr<Street> const& pStreet) {
+          return this->m_streetEstimatedTravelTime(pStreet);
+        };
+        m_weightTreshold = weightTreshold.value_or(0.0069);
+        break;
     }
-    this->updatePaths();
   }
 
   template <typename delay_t>
@@ -1308,25 +1269,25 @@ namespace dsf {
             ++n_emptyRows;
             continue;
           }
-          if (std::holds_alternative<size_t>(minNodeDistance)) {
-            auto const minDistance{std::get<size_t>(minNodeDistance)};
-            if (this->graph().shortestPath(srcId, id).value().path().size() <
-                minDistance) {
-              continue;
-            }
-          } else if (std::holds_alternative<double>(minNodeDistance)) {
-            auto const minDistance{std::get<double>(minNodeDistance)};
-            if (this->graph()
-                    .shortestPath(srcId, id, weight_functions::streetLength)
-                    .value()
-                    .distance() < minDistance) {
-              spdlog::debug(
-                  "Skipping node {} because the distance from the source is less than {}",
-                  id,
-                  minDistance);
-              continue;
-            }
-          }
+          // if (std::holds_alternative<size_t>(minNodeDistance)) {
+          //   auto const minDistance{std::get<size_t>(minNodeDistance)};
+          //   if (this->graph().shortestPath(srcId, id).value().path().size() <
+          //       minDistance) {
+          //     continue;
+          //   }
+          // } else if (std::holds_alternative<double>(minNodeDistance)) {
+          //   auto const minDistance{std::get<double>(minNodeDistance)};
+          //   if (this->graph()
+          //           .shortestPath(srcId, id, weight_functions::streetLength)
+          //           .value()
+          //           .distance() < minDistance) {
+          //     spdlog::debug(
+          //         "Skipping node {} because the distance from the source is less than {}",
+          //         id,
+          //         minDistance);
+          //     continue;
+          //   }
+          // }
           dstId = id;
           sum += weight;
           if (dRand < sum) {

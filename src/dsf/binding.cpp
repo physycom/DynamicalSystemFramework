@@ -10,12 +10,14 @@
 
 PYBIND11_MODULE(dsf, m) {
   m.doc() = "Python bindings for the DSM library";
+  m.attr("__version__") = dsf::version();
 
-  // Bind version function
-  m.def("version", &dsf::version, "Get the version of the DSM library");
-
-  // Create type aliases for better stub generation
-  using WeightFunction = std::function<double(const dsf::RoadNetwork*, dsf::Id, dsf::Id)>;
+  // Bind PathWeight enum
+  pybind11::enum_<dsf::PathWeight>(m, "PathWeight")
+      .value("LENGTH", dsf::PathWeight::LENGTH)
+      .value("TRAVELTIME", dsf::PathWeight::TRAVELTIME)
+      .value("WEIGHT", dsf::PathWeight::WEIGHT)
+      .export_values();
 
   // Bind TrafficLightOptimization enum
   pybind11::enum_<dsf::TrafficLightOptimization>(m, "TrafficLightOptimization")
@@ -213,29 +215,18 @@ PYBIND11_MODULE(dsf, m) {
   pybind11::class_<dsf::FirstOrderDynamics>(m, "Dynamics")
       //     // Constructors are not directly exposed due to the template nature and complexity.
       //     // Users should use derived classes like FirstOrderDynamics.
-      .def(pybind11::init<dsf::RoadNetwork&>(),
+      .def(pybind11::init<dsf::RoadNetwork&,
+                          bool,
+                          std::optional<unsigned int>,
+                          double,
+                          dsf::PathWeight,
+                          std::optional<double>>(),
            pybind11::arg("graph"),
-           dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
-      .def(pybind11::init<dsf::RoadNetwork&, bool>(),
-           pybind11::arg("graph"),
-           pybind11::arg("useCache"),
-           dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
-      .def(pybind11::init<dsf::RoadNetwork&, bool, std::optional<unsigned int>>(),
-           pybind11::arg("graph"),
-           pybind11::arg("useCache"),
-           pybind11::arg("seed"),
-           dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
-      .def(pybind11::init<dsf::RoadNetwork&, bool, std::optional<unsigned int>, double>(),
-           pybind11::arg("graph"),
-           pybind11::arg("useCache"),
-           pybind11::arg("seed"),
-           pybind11::arg("alpha"),
-           dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
-      .def(pybind11::init<dsf::RoadNetwork&, bool, std::optional<unsigned int>, double>(),
-           pybind11::arg("graph"),
-           pybind11::arg("useCache"),
-           pybind11::arg("seed"),
-           pybind11::arg("alpha"),
+           pybind11::arg("useCache") = false,
+           pybind11::arg("seed") = std::nullopt,
+           pybind11::arg("alpha") = 0.,
+           pybind11::arg("weightFunction") = dsf::PathWeight::TRAVELTIME,
+           pybind11::arg("weightThreshold") = std::nullopt,
            dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
       // Note: Constructors with std::function parameters are not exposed to avoid stub generation issues
       .def("setForcePriorities",
@@ -266,7 +257,8 @@ PYBIND11_MODULE(dsf, m) {
            dsf::g_docstrings.at("dsf::RoadDynamics::setErrorProbability").c_str())
       .def("setWeightFunction",
            &dsf::FirstOrderDynamics::setWeightFunction,
-           pybind11::arg("strWeightFunction"))
+           pybind11::arg("weightFunction"),
+           pybind11::arg("weightThreshold") = std::nullopt)
       .def(
           "setDestinationNodes",
           [](dsf::FirstOrderDynamics& self,
