@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - name: Install tools manually
-      run: brew install tbb fmt spdlog simdjson
+      run: brew install tbb spdlog simdjson
 
     - uses: actions/checkout@v4
 

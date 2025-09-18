@@ -225,8 +225,8 @@ TEST_CASE("RoadNetwork") {
       GIVEN("A graph object") {
         RoadNetwork graph;
         WHEN("We import nodes and edges from OSM") {
-          graph.importNodes("./data/postua_nodes.csv", ';');
-          graph.importEdges("./data/postua_edges.csv", ';');
+          graph.importNodes("./data/postua_nodes.csv");
+          graph.importEdges("./data/postua_edges.csv");
           std::ifstream fNodes{"./data/postua_nodes.csv"};
           // get number of lines
           std::string line;
@@ -256,8 +256,8 @@ TEST_CASE("RoadNetwork") {
           }
         }
         WHEN("We import many nodes and edges from OSM") {
-          graph.importNodes("./data/forlì_nodes.csv", ';');
-          graph.importEdges("./data/forlì_edges.csv", ';');
+          graph.importNodes("./data/forlì_nodes.csv");
+          graph.importEdges("./data/forlì_edges.csv");
           std::ifstream fNodes{"./data/forlì_nodes.csv"};
           // get number of lines
           std::string line;

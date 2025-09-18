@@ -157,13 +157,13 @@ PYBIND11_MODULE(dsf, m) {
       .def(
           "importNodes",
           [](dsf::RoadNetwork& self, const std::string& fileName) {
-            self.importNodes(fileName, ';');
+            self.importNodes(fileName);
           },
           pybind11::arg("fileName"),
           dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
       .def(
           "importNodes",
-          [](dsf::RoadNetwork& self, const std::string& fileName, char separator) {
+          [](dsf::RoadNetwork& self, std::string const& fileName, char const separator) {
             self.importNodes(fileName, separator);
           },
           pybind11::arg("fileName"),
@@ -172,17 +172,25 @@ PYBIND11_MODULE(dsf, m) {
       .def(
           "importEdges",
           [](dsf::RoadNetwork& self, const std::string& fileName) {
-            self.importEdges(fileName, ';');
+            self.importEdges(fileName);
           },
           pybind11::arg("fileName"),
           dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
       .def(
           "importEdges",
-          [](dsf::RoadNetwork& self, const std::string& fileName, char separator) {
+          [](dsf::RoadNetwork& self, std::string const& fileName, char const separator) {
             self.importEdges(fileName, separator);
           },
           pybind11::arg("fileName"),
           pybind11::arg("separator"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
+      .def(
+          "importEdges",
+          [](dsf::RoadNetwork& self,
+             std::string const& fileName,
+             bool const bCreateInverse) { self.importEdges(fileName, bCreateInverse); },
+          pybind11::arg("fileName"),
+          pybind11::arg("bCreateInverse"),
           dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,

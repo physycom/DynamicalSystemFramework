@@ -59,7 +59,7 @@ namespace dsf {
     void m_csvNodesImporter(std::ifstream& file, const char separator = ';');
     void m_csvEdgesImporter(std::ifstream& file, const char separator = ';');
 
-    void m_jsonEdgesImporter(std::ifstream& file);
+    void m_jsonEdgesImporter(std::ifstream& file, const bool bCreateInverse = false);
 
   public:
     RoadNetwork();
@@ -115,15 +115,11 @@ namespace dsf {
     /// - roundabout
     /// - origin/destination: intesection counted as origin, destination or both. To have both, the string must contain both the strings "origin" and "destination".
     template <typename... TArgs>
-      requires(std::is_invocable_v<decltype(&RoadNetwork::m_csvNodesImporter),
-                                   RoadNetwork*,
-                                   std::ifstream&,
-                                   TArgs...>)
     void importNodes(const std::string& fileName, TArgs&&... args);
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
     /// @details Supports csv, json and geojson file formats.
-    /// The file format is deduced from the file extension. If the file is a csv, please specify the separator as second parameter.
+    /// The file format is deduced from the file extension.
     /// Supported fields:
     /// - id: The id of the street
     /// - source: The id of the source node
@@ -141,14 +137,6 @@ namespace dsf {
     /// - coilcode: An integer code to identify the coil located on the street
     /// - customWeight: will be stored in the `weight` parameter of the Edge class. You can use it for the shortest path via dsf::weight_functions::customWeight.
     template <typename... TArgs>
-      requires(std::is_invocable_v<decltype(&RoadNetwork::m_csvEdgesImporter),
-                                   RoadNetwork*,
-                                   std::ifstream&,
-                                   TArgs...> ||
-               std::is_invocable_v<decltype(&RoadNetwork::m_jsonEdgesImporter),
-                                   RoadNetwork*,
-                                   std::ifstream&,
-                                   TArgs...>)
     void importEdges(const std::string& fileName, TArgs&&... args);
     /// @brief Import the graph's traffic lights from a file
     /// @param fileName The name of the file to import the traffic lights from.
@@ -267,10 +255,6 @@ namespace dsf {
   };
 
   template <typename... TArgs>
-    requires(std::is_invocable_v<decltype(&RoadNetwork::m_csvNodesImporter),
-                                 RoadNetwork*,
-                                 std::ifstream&,
-                                 TArgs...>)
   void RoadNetwork::importNodes(const std::string& fileName, TArgs&&... args) {
     std::ifstream file{fileName};
     if (!file.is_open()) {
@@ -297,14 +281,6 @@ namespace dsf {
     spdlog::debug("Successfully imported {} nodes", nNodes());
   }
   template <typename... TArgs>
-    requires(std::is_invocable_v<decltype(&RoadNetwork::m_csvEdgesImporter),
-                                 RoadNetwork*,
-                                 std::ifstream&,
-                                 TArgs...> ||
-             std::is_invocable_v<decltype(&RoadNetwork::m_jsonEdgesImporter),
-                                 RoadNetwork*,
-                                 std::ifstream&,
-                                 TArgs...>)
   void RoadNetwork::importEdges(const std::string& fileName, TArgs&&... args) {
     std::ifstream file{fileName};
     if (!file.is_open()) {
@@ -323,7 +299,7 @@ namespace dsf {
       case FileExt::GEOJSON:
       case FileExt::JSON:
         spdlog::debug("Importing nodes from JSON file: {}", fileName);
-        this->m_jsonEdgesImporter(file);
+        this->m_jsonEdgesImporter(file, std::forward<TArgs>(args)...);
         break;
       default:
         throw std::invalid_argument(

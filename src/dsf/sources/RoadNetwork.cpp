@@ -193,7 +193,7 @@ namespace dsf {
     // }
   }
 
-  void RoadNetwork::m_jsonEdgesImporter(std::ifstream& file) {
+  void RoadNetwork::m_jsonEdgesImporter(std::ifstream& file, const bool bCreateInverse) {
     // Read the file into a string
     std::string json_str((std::istreambuf_iterator<char>(file)),
                          std::istreambuf_iterator<char>());
@@ -262,13 +262,44 @@ namespace dsf {
         name = std::string(edge_properties["name"].get_string().value());
       }
 
-      addStreet(Street(edge_id,
-                       std::make_pair(src_node_id, dst_node_id),
-                       edge_length,
-                       edge_maxspeed,
-                       edge_lanes,
-                       name,
-                       geometry));
+      if (!bCreateInverse) {
+        addStreet(Street(edge_id,
+                         std::make_pair(src_node_id, dst_node_id),
+                         edge_length,
+                         edge_maxspeed,
+                         edge_lanes,
+                         name,
+                         geometry));
+        // Check if there is coilcode property
+        if (!edge_properties["coilcode"].is_null() &&
+            edge_properties["coilcode"].is_uint64()) {
+          makeSpireStreet(edge_id);
+          auto& coil = edge<SpireStreet>(edge_id);
+          try {
+            coil.setCode(edge_properties["coilcode"].get_uint64());
+          } catch (...) {
+            spdlog::warn("Invalid coil code ({}) for {}",
+                         edge_properties["coilcode"].get_string().value(),
+                         *edge(edge_id));
+          }
+        }
+      } else {
+        addStreet(Street(edge_id * 10,
+                         std::make_pair(src_node_id, dst_node_id),
+                         edge_length,
+                         edge_maxspeed,
+                         edge_lanes,
+                         name,
+                         geometry));
+        addStreet(Street(
+            edge_id * 10 + 1,
+            std::make_pair(dst_node_id, src_node_id),
+            edge_length,
+            edge_maxspeed,
+            edge_lanes,
+            name,
+            std::vector<std::pair<double, double>>(geometry.rbegin(), geometry.rend())));
+      }
     }
     this->m_nodes.rehash(0);
     this->m_edges.rehash(0);
