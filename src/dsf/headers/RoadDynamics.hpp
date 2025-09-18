@@ -1358,6 +1358,14 @@ namespace dsf {
         continue;
       }
 
+      // Check if destination is reachable from source
+      auto const& itinerary = itineraryIt->second;
+      if (!itinerary->path().contains(*srcId)) {
+        spdlog::debug("Destination {} not reachable from source {}. Skipping agent.", *dstId, *srcId);
+        --nAgents;
+        continue;
+      }
+
       this->addAgent(itineraryIt->first, *srcId);
       --nAgents;
     }
