@@ -33,7 +33,7 @@ int main() {
     std::sample(
         nodeIds.begin(), nodeIds.end(), std::back_inserter(randomNodeIds), 10, generator);
   }
-  dynamics.setDestinationNodes(randomNodeIds, false);
+  dynamics.setDestinationNodes(randomNodeIds);
 
   const int n_rep{100};
   Bench b1(n_rep);

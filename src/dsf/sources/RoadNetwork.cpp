@@ -15,7 +15,6 @@ namespace dsf {
   }
   void RoadNetwork::m_csvNodesImporter(std::ifstream& file, const char separator) {
     auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
-
     for (auto const& row : csvReader) {
       auto const nodeId = row["id"].get<Id>();
       auto const dLat = row["lat"].get<double>();
@@ -27,14 +26,6 @@ namespace dsf {
         addNode<Roundabout>(nodeId, std::make_pair(dLat, dLon));
       } else {
         addNode<Intersection>(nodeId, std::make_pair(dLat, dLon));
-        if (type.find("destination") != std::string::npos) {
-          spdlog::debug("Setting node {} as a destination node", nodeId);
-          m_destinationNodes.push_back(nodeId);
-        }
-        if (type.find("origin") != std::string::npos) {
-          spdlog::debug("Setting node {} as an origin node", nodeId);
-          m_originNodes.push_back(nodeId);
-        }
       }
     }
   }
@@ -962,22 +953,10 @@ namespace dsf {
       } else {
         file << "Nan;Nan";
       }
-      bool const bIsOrigin{std::find(m_originNodes.begin(),
-                                     m_originNodes.end(),
-                                     pNode->id()) != m_originNodes.end()};
-      bool const bIsDestination{std::find(m_destinationNodes.begin(),
-                                          m_destinationNodes.end(),
-                                          pNode->id()) != m_destinationNodes.end()};
       if (pNode->isTrafficLight()) {
         file << ";traffic_light";
       } else if (pNode->isRoundabout()) {
         file << ";roundabout";
-      } else if (bIsOrigin && bIsDestination) {
-        file << ";origin-destination";
-      } else if (bIsOrigin) {
-        file << ";origin";
-      } else if (bIsDestination) {
-        file << ";destination";
       } else {
         file << ";";
       }
@@ -1096,7 +1075,7 @@ namespace dsf {
     // Get the iterator at id m_cantorPairingHashing(source, destination)
     try {
       return &(edge(source, destination));
-    } catch (const std::out_of_range& e) {
+    } catch (const std::out_of_range&) {
       return nullptr;
     }
   }

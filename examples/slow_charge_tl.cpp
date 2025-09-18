@@ -210,6 +210,7 @@ int main(int argc, char** argv) {
     }
     dynamics.setDestinationNodes(destinationNodes);
   }
+  dynamics.updatePaths();
   std::cout << "Number of exits: " << n << '\n';
 
   dynamics.setErrorProbability(ERROR_PROBABILITY);
