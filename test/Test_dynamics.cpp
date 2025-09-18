@@ -191,6 +191,7 @@ TEST_CASE("FirstOrderDynamics") {
         std::unordered_map<dsf::Id, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
         std::vector<dsf::Id> destinations{14, 102, 107};
         dynamics.setDestinationNodes(destinations);
+        dynamics.updatePaths();
         dynamics.addAgentsRandomly(3, src, dst);
         THEN("The agents are correctly set") {
           CHECK_EQ(dynamics.nAgents(), 3);
@@ -526,6 +527,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1);
       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.setDestinationNodes({1, 2});
+      dynamics.updatePaths();
       std::vector<dsf::Id> trip{2, 1};
       dynamics.addAgent(trip, 0);
       WHEN("We evolve the dynamics") {
@@ -631,6 +633,7 @@ TEST_CASE("FirstOrderDynamics") {
 
       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.setDestinationNodes({0, 2, 3, 4});
+      dynamics.updatePaths();
 
       WHEN("We add agents and make the system evolve") {
         // Logger::setLogLevel(dsf::log_level_t::DEBUG);
@@ -694,6 +697,7 @@ TEST_CASE("FirstOrderDynamics") {
 
       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.setDestinationNodes({0, 2, 3, 4});
+      dynamics.updatePaths();
 
       WHEN("We add agents and make the system evolve") {
         dynamics.addAgent(2, 0);
@@ -747,6 +751,7 @@ TEST_CASE("FirstOrderDynamics") {
         tl.setComplementaryCycle(21, 11);
         FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
         dynamics.setDestinationNodes({0, 2, 3, 4});
+        dynamics.updatePaths();
         WHEN("We evolve the dynamics and optimize traffic lights") {
           dynamics.addAgents(7, 0, 2);
           dynamics.addAgents(7, 2, 0);

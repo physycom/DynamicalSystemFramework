@@ -5,6 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>         // Changed to include all stl type casters
 #include <pybind11/functional.h>  // For std::function support
+#include <pybind11/numpy.h>       // For numpy array support
 
 #include <spdlog/spdlog.h>  // For logging functionality
 
@@ -270,12 +271,51 @@ PYBIND11_MODULE(dsf, m) {
       .def(
           "setDestinationNodes",
           [](dsf::FirstOrderDynamics& self,
-             const std::vector<uint32_t>& destinationNodes,
-             bool updatePaths) {
-            self.setDestinationNodes(destinationNodes, updatePaths);
+             const std::vector<dsf::Id>& destinationNodes) {
+            self.setDestinationNodes(destinationNodes);
           },
           pybind11::arg("destinationNodes"),
-          pybind11::arg("updatePaths") = true,
+          dsf::g_docstrings.at("dsf::RoadDynamics::setDestinationNodes").c_str())
+      .def(
+          "setOriginNodes",
+          [](dsf::FirstOrderDynamics& self,
+             const std::unordered_map<dsf::Id, double>& originNodes) {
+            self.setOriginNodes(originNodes);
+          },
+          pybind11::arg("originNodes"),
+          dsf::g_docstrings.at("dsf::RoadDynamics::setOriginNodes").c_str())
+      .def(
+          "setOriginNodes",
+          [](dsf::FirstOrderDynamics& self, pybind11::array_t<dsf::Id> originNodes) {
+            // Convert numpy array to vector with equal weights
+            auto buf = originNodes.request();
+            auto* ptr = static_cast<dsf::Id*>(buf.ptr);
+            std::unordered_map<dsf::Id, double> nodeWeights;
+            for (size_t i = 0; i < buf.size; ++i) {
+              nodeWeights[ptr[i]] = 1.0;  // Equal weight for all nodes
+            }
+            self.setOriginNodes(nodeWeights);
+          },
+          pybind11::arg("originNodes"),
+          dsf::g_docstrings.at("dsf::RoadDynamics::setOriginNodes").c_str())
+      .def(
+          "setDestinationNodes",
+          [](dsf::FirstOrderDynamics& self, pybind11::array_t<dsf::Id> destinationNodes) {
+            // Convert numpy array to vector
+            auto buf = destinationNodes.request();
+            auto* ptr = static_cast<dsf::Id*>(buf.ptr);
+            std::vector<dsf::Id> nodes(ptr, ptr + buf.size);
+            self.setDestinationNodes(nodes);
+          },
+          pybind11::arg("destinationNodes"),
+          dsf::g_docstrings.at("dsf::RoadDynamics::setDestinationNodes").c_str())
+      .def(
+          "setDestinationNodes",
+          [](dsf::FirstOrderDynamics& self,
+             const std::unordered_map<dsf::Id, double>& destinationNodes) {
+            self.setDestinationNodes(destinationNodes);
+          },
+          pybind11::arg("destinationNodes"),
           dsf::g_docstrings.at("dsf::RoadDynamics::setDestinationNodes").c_str())
       .def("initTurnCounts",
            &dsf::FirstOrderDynamics::initTurnCounts,
@@ -290,41 +330,22 @@ PYBIND11_MODULE(dsf, m) {
            dsf::g_docstrings.at("dsf::RoadDynamics::addAgentsUniformly").c_str())
       .def(
           "addAgentsRandomly",
-          [](dsf::FirstOrderDynamics& self,
-             dsf::Size nAgents,
-             const std::variant<std::monostate, size_t, double>& minNodeDistance) {
-            self.addAgentsRandomly(nAgents, minNodeDistance);
+          [](dsf::FirstOrderDynamics& self, dsf::Size nAgents) {
+            self.addAgentsRandomly(nAgents);
           },
           pybind11::arg("nAgents"),
-          pybind11::arg("minNodeDistance") = std::monostate{},
           dsf::g_docstrings.at("dsf::RoadDynamics::addAgentsRandomly").c_str())
       .def(
           "addAgentsRandomly",
           [](dsf::FirstOrderDynamics& self,
              dsf::Size nAgents,
              const std::unordered_map<dsf::Id, double>& src_weights,
-             const std::unordered_map<dsf::Id, double>& dst_weights,
-             const std::variant<std::monostate, size_t, double>& minNodeDistance) {
-            self.addAgentsRandomly(nAgents, src_weights, dst_weights, minNodeDistance);
+             const std::unordered_map<dsf::Id, double>& dst_weights) {
+            self.addAgentsRandomly(nAgents, src_weights, dst_weights);
           },
           pybind11::arg("nAgents"),
           pybind11::arg("src_weights"),
           pybind11::arg("dst_weights"),
-          pybind11::arg("minNodeDistance"),
-          dsf::g_docstrings.at("dsf::RoadDynamics::addAgentsRandomly").c_str())
-      .def(
-          "addAgentsRandomly",
-          [](dsf::FirstOrderDynamics& self,
-             dsf::Size nAgents,
-             const std::map<dsf::Id, double>& src_weights,
-             const std::map<dsf::Id, double>& dst_weights,
-             const std::variant<std::monostate, size_t, double>& minNodeDistance) {
-            self.addAgentsRandomly(nAgents, src_weights, dst_weights, minNodeDistance);
-          },
-          pybind11::arg("nAgents"),
-          pybind11::arg("src_weights"),
-          pybind11::arg("dst_weights"),
-          pybind11::arg("minNodeDistance"),
           dsf::g_docstrings.at("dsf::RoadDynamics::addAgentsRandomly").c_str())
       // .def("addAgent", static_cast<void (dsf::FirstOrderDynamics::*)(std::unique_ptr<dsf::Agent>)>(&dsf::FirstOrderDynamics::addAgent), pybind11::arg("agent"))
       // .def("addItinerary", static_cast<void (dsf::FirstOrderDynamics::*)(dsf::Id, dsf::Id)>(&dsf::FirstOrderDynamics::addItinerary), pybind11::arg("id"), pybind11::arg("destination"))

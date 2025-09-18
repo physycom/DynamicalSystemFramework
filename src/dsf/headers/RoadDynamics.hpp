@@ -159,16 +159,13 @@ namespace dsf {
     void setDestinationNodes(std::unordered_map<Id, double> const& destinationNodes);
     /// @brief Set the destination nodes
     /// @param destinationNodes The destination nodes (as an initializer list)
-    /// @param updatePaths If true, the paths are updated
-    void setDestinationNodes(std::initializer_list<Id> destinationNodes,
-                             bool updatePaths = true);
+    void setDestinationNodes(std::initializer_list<Id> destinationNodes);
     /// @brief Set the destination nodes
     /// @param destinationNodes A container of destination nodes ids
-    /// @param updatePaths If true, the paths are updated
     /// @details The container must have a value_type convertible to Id and begin() and end() methods
     template <typename TContainer>
       requires(std::is_convertible_v<typename TContainer::value_type, Id>)
-    void setDestinationNodes(TContainer const& destinationNodes, bool updatePaths = true);
+    void setDestinationNodes(TContainer const& destinationNodes);
 
     virtual void setAgentSpeed(std::unique_ptr<Agent> const& pAgent) = 0;
     /// @brief Initialize the turn counts map
@@ -189,20 +186,15 @@ namespace dsf {
     /// @param nAgents The number of agents to add
     /// @param src_weights The weights of the source nodes
     /// @param dst_weights The weights of the destination nodes
-    /// @param minNodeDistance The minimum distance between the source and destination nodes
     /// @throw std::invalid_argument If the source and destination nodes are the same
     template <typename TContainer>
       requires(std::is_same_v<TContainer, std::unordered_map<Id, double>> ||
                std::is_same_v<TContainer, std::map<Id, double>>)
     void addAgentsRandomly(Size nAgents,
                            const TContainer& src_weights,
-                           const TContainer& dst_weights,
-                           const std::variant<std::monostate, size_t, double>
-                               minNodeDistance = std::monostate{});
+                           const TContainer& dst_weights);
 
-    void addAgentsRandomly(Size nAgents,
-                           const std::variant<std::monostate, size_t, double>
-                               minNodeDistance = std::monostate{});
+    void addAgentsRandomly(Size nAgents);
 
     /// @brief Add an agent to the simulation
     /// @param agent std::unique_ptr to the agent
@@ -534,7 +526,8 @@ namespace dsf {
             for (const auto& forbiddenNodeId : forbiddenTargetNodes) {
               allowedTargets.erase(forbiddenNodeId);
             }
-          } catch (...) {
+            // Catch unordered_map::at exceptions
+          } catch (const std::out_of_range& e) {
             throw std::runtime_error(std::format(
                 "No path from node {} to destination {}", nodeId, it->destination()));
           }
@@ -1113,13 +1106,17 @@ namespace dsf {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setDestinationNodes(
       std::unordered_map<Id, double> const& destinationNodes) {
+    m_itineraries.clear();
+    m_itineraries.reserve(destinationNodes.size());
     m_destinationNodes.clear();
     m_destinationNodes.reserve(destinationNodes.size());
-    auto const sumWeights =
-        std::accumulate(destinationNodes.begin(),
-                        destinationNodes.end(),
-                        0.,
-                        [](double sum, auto const& pair) { return sum + pair.second; });
+    auto sumWeights{0.};
+    std::for_each(destinationNodes.begin(),
+                  destinationNodes.end(),
+                  [this, &sumWeights](auto const& pair) -> void {
+                    this->addItinerary(pair.first, pair.first);
+                    sumWeights += pair.second;
+                  });
     if (sumWeights == 1.) {
       m_destinationNodes = destinationNodes;
       return;
@@ -1164,28 +1161,35 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setDestinationNodes(
-      std::initializer_list<Id> destinationNodes, bool updatePaths) {
-    std::for_each(
-        destinationNodes.begin(),
-        destinationNodes.end(),
-        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
-    if (updatePaths) {
-      this->updatePaths();
-    }
+      std::initializer_list<Id> destinationNodes) {
+    auto const numNodes{destinationNodes.size()};
+    m_itineraries.clear();
+    m_itineraries.reserve(numNodes);
+    m_itineraries.clear();
+    m_itineraries.reserve(numNodes);
+    std::for_each(destinationNodes.begin(),
+                  destinationNodes.end(),
+                  [this, &numNodes](auto const& nodeId) -> void {
+                    this->addItinerary(nodeId, nodeId);
+                    this->m_destinationNodes[nodeId] = 1. / numNodes;
+                  });
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename TContainer>
     requires(std::is_convertible_v<typename TContainer::value_type, Id>)
-  void RoadDynamics<delay_t>::setDestinationNodes(TContainer const& destinationNodes,
-                                                  bool updatePaths) {
-    std::for_each(
-        destinationNodes.begin(),
-        destinationNodes.end(),
-        [this](auto const& nodeId) -> void { this->addItinerary(nodeId, nodeId); });
-    if (updatePaths) {
-      this->updatePaths();
-    }
+  void RoadDynamics<delay_t>::setDestinationNodes(TContainer const& destinationNodes) {
+    auto const numNodes{destinationNodes.size()};
+    m_itineraries.clear();
+    m_itineraries.reserve(numNodes);
+    m_itineraries.clear();
+    m_itineraries.reserve(numNodes);
+    std::for_each(destinationNodes.begin(),
+                  destinationNodes.end(),
+                  [this, &numNodes](auto const& nodeId) -> void {
+                    this->addItinerary(nodeId, nodeId);
+                    this->m_destinationNodes[nodeId] = 1. / numNodes;
+                  });
   }
 
   template <typename delay_t>
@@ -1255,11 +1259,9 @@ namespace dsf {
   template <typename TContainer>
     requires(std::is_same_v<TContainer, std::unordered_map<Id, double>> ||
              std::is_same_v<TContainer, std::map<Id, double>>)
-  void RoadDynamics<delay_t>::addAgentsRandomly(
-      Size nAgents,
-      const TContainer& src_weights,
-      const TContainer& dst_weights,
-      const std::variant<std::monostate, size_t, double> minNodeDistance) {
+  void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
+                                                const TContainer& src_weights,
+                                                const TContainer& dst_weights) {
     auto const& nSources{src_weights.size()};
     auto const& nDestinations{dst_weights.size()};
     spdlog::debug("Init addAgentsRandomly for {} agents from {} nodes to {} nodes.",
@@ -1294,95 +1296,77 @@ namespace dsf {
           }
           return sum + p.second;
         })};
+    std::uniform_int_distribution<size_t> nodeDist{
+        0, static_cast<size_t>(this->graph().nNodes() - 1)};
     std::uniform_real_distribution<double> srcUniformDist{0., srcSum};
     std::uniform_real_distribution<double> dstUniformDist{0., dstSum};
     spdlog::debug("Adding {} agents at time {}.", nAgents, this->time());
     while (nAgents > 0) {
-      Id srcId{0}, dstId{0};
+      std::optional<Id> srcId{std::nullopt}, dstId{std::nullopt};
+
+      // Select source using weighted random selection
+      if (nSources == 1) {
+        srcId = src_weights.begin()->first;
+      } else {
+        double dRand = srcUniformDist(this->m_generator);
+        double sum = 0.;
+        for (const auto& [id, weight] : src_weights) {
+          sum += weight;
+          if (dRand < sum) {
+            srcId = id;
+            break;
+          }
+        }
+      }
+
+      // Select destination using weighted random selection
       if (nDestinations == 1) {
         dstId = dst_weights.begin()->first;
-        srcId = dstId;
-      }
-      double dRand, sum;
-      while (srcId == dstId) {
-        dRand = srcUniformDist(this->m_generator);
-        sum = 0.;
-        for (const auto& [id, weight] : src_weights) {
-          srcId = id;
-          sum += weight;
-          if (dRand < sum) {
-            break;
-          }
-        }
-      }
-      spdlog::debug(
-          "Exiting first while loop with srcId = {} and dstId = {}", srcId, dstId);
-      if (nSources > 1) {
-        dstId = srcId;
-      }
-      while (dstId == srcId) {
-        dRand = dstUniformDist(this->m_generator);
-        sum = 0.;
-        std::size_t n_emptyRows = 0;
+      } else {
+        double dRand = dstUniformDist(this->m_generator);
+        double sum = 0.;
         for (const auto& [id, weight] : dst_weights) {
-          // if the node is at a minimum distance from the destination, skip it
-          if (!this->itineraries().at(id)->path().contains(srcId)) {
-            ++n_emptyRows;
-            continue;
-          }
-          // if (std::holds_alternative<size_t>(minNodeDistance)) {
-          //   auto const minDistance{std::get<size_t>(minNodeDistance)};
-          //   if (this->graph().shortestPath(srcId, id).value().path().size() <
-          //       minDistance) {
-          //     continue;
-          //   }
-          // } else if (std::holds_alternative<double>(minNodeDistance)) {
-          //   auto const minDistance{std::get<double>(minNodeDistance)};
-          //   if (this->graph()
-          //           .shortestPath(srcId, id, weight_functions::streetLength)
-          //           .value()
-          //           .distance() < minDistance) {
-          //     spdlog::debug(
-          //         "Skipping node {} because the distance from the source is less than {}",
-          //         id,
-          //         minDistance);
-          //     continue;
-          //   }
-          // }
-          dstId = id;
           sum += weight;
           if (dRand < sum) {
+            dstId = id;
             break;
           }
         }
-        if (n_emptyRows == dst_weights.size()) {
-          spdlog::error("No destination nodes found from source node {}.", srcId);
-          return;
-        }
       }
-      spdlog::debug(
-          "Exiting second while loop with srcId = {} and dstId = {}", srcId, dstId);
-      // find the itinerary with the given destination as destination
+
+      // Fallback to random nodes if selection failed
+      if (!srcId.has_value()) {
+        auto nodeIt{this->graph().nodes().begin()};
+        std::advance(nodeIt, nodeDist(this->m_generator));
+        srcId = nodeIt->first;
+      }
+      if (!dstId.has_value()) {
+        auto nodeIt{this->graph().nodes().begin()};
+        std::advance(nodeIt, nodeDist(this->m_generator));
+        dstId = nodeIt->first;
+      }
+
+      // Find the itinerary with the given destination
       auto itineraryIt{std::find_if(this->itineraries().cbegin(),
                                     this->itineraries().cend(),
                                     [dstId](const auto& itinerary) {
-                                      return itinerary.second->destination() == dstId;
+                                      return itinerary.second->destination() == *dstId;
                                     })};
       if (itineraryIt == this->itineraries().cend()) {
-        spdlog::error("Itinerary with destination {} not found.", dstId);
+        spdlog::error("Itinerary with destination {} not found. Skipping agent.", *dstId);
+        --nAgents;
+        continue;
       }
-      this->addAgent(itineraryIt->first, srcId);
+
+      this->addAgent(itineraryIt->first, *srcId);
       --nAgents;
     }
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgentsRandomly(
-      Size nAgents, const std::variant<std::monostate, size_t, double> minNodeDistance) {
-    std::unordered_map<Id, double> src_weights, dst_weights;
-    addAgentsRandomly(
-        nAgents, this->m_originNodes, this->m_destinationNodes, minNodeDistance);
+  void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents) {
+    addAgentsRandomly(nAgents, this->m_originNodes, this->m_destinationNodes);
   }
 
   template <typename delay_t>
