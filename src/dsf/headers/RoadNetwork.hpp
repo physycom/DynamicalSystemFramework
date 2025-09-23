@@ -46,7 +46,7 @@ namespace dsf {
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
   class RoadNetwork : public Network<RoadJunction, Street> {
   private:
-    unsigned long long m_maxAgentCapacity;
+    unsigned long long m_capacity;
 
     /// @brief If every node has coordinates, set the street angles
     /// @details The street angles are set using the node's coordinates.
@@ -219,7 +219,7 @@ namespace dsf {
 
     /// @brief Get the maximum agent capacity
     /// @return unsigned long long The maximum agent capacity of the graph
-    inline auto maxCapacity() const noexcept { return m_maxAgentCapacity; }
+    inline auto capacity() const noexcept { return m_capacity; }
 
     /// @brief Perform a global Dijkstra search to a target node from all other nodes in the graph
     /// @tparam DynamicsFunc A callable type that takes a const reference to a Street and returns a double representing the edge weight

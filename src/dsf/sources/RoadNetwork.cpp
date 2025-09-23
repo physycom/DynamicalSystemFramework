@@ -8,9 +8,9 @@
 
 namespace dsf {
   void RoadNetwork::m_updateMaxAgentCapacity() {
-    m_maxAgentCapacity = 0;
+    m_capacity = 0;
     for (auto const& [_, pStreet] : this->edges()) {
-      m_maxAgentCapacity += pStreet->capacity();
+      m_capacity += pStreet->capacity();
     }
   }
   void RoadNetwork::m_csvNodesImporter(std::ifstream& file, const char separator) {
@@ -296,10 +296,9 @@ namespace dsf {
     this->m_edges.rehash(0);
   }
 
-  RoadNetwork::RoadNetwork() : Network{AdjacencyMatrix()}, m_maxAgentCapacity{0} {}
+  RoadNetwork::RoadNetwork() : Network{AdjacencyMatrix()}, m_capacity{0} {}
 
-  RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj)
-      : Network{adj}, m_maxAgentCapacity{0} {}
+  RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj) : Network{adj}, m_capacity{0} {}
 
   void RoadNetwork::initTrafficLights(Delay const minGreenTime) {
     for (auto& [_, pNode] : m_nodes) {
@@ -1049,7 +1048,7 @@ namespace dsf {
   }
 
   void RoadNetwork::addStreet(Street&& street) {
-    m_maxAgentCapacity += street.capacity();
+    m_capacity += street.capacity();
     auto const& geometry{street.geometry()};
     auto const& nodes{this->nodes()};
     if (!nodes.contains(street.source())) {
