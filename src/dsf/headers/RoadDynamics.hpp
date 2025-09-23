@@ -1219,13 +1219,13 @@ namespace dsf {
         0, static_cast<Size>(this->itineraries().size() - 1)};
     std::uniform_int_distribution<Size> streetDist{
         0, static_cast<Size>(this->graph().nEdges() - 1)};
-    if (this->nAgents() + nAgents > this->graph().maxCapacity()) {
+    if (this->nAgents() + nAgents > this->graph().capacity()) {
       throw std::overflow_error(std::format(
           "Cannot add {} agents. The graph has currently {} with a maximum capacity of "
           "{}.",
           nAgents,
           this->nAgents(),
-          this->graph().maxCapacity()));
+          this->graph().capacity()));
     }
     for (Size i{0}; i < nAgents; ++i) {
       if (bRandomItinerary) {

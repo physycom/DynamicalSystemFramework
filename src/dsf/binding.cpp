@@ -135,6 +135,9 @@ PYBIND11_MODULE(dsf, m) {
       .def("nEdges",
            &dsf::RoadNetwork::nEdges,
            dsf::g_docstrings.at("dsf::Network::nEdges").c_str())
+      .def("capacity",
+           &dsf::RoadNetwork::capacity,
+           dsf::g_docstrings.at("dsf::RoadNetwork::capacity").c_str())
       .def("adjustNodeCapacities",
            &dsf::RoadNetwork::adjustNodeCapacities,
            dsf::g_docstrings.at("dsf::RoadNetwork::adjustNodeCapacities").c_str())
