@@ -8,7 +8,150 @@ const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.pn
 }).addTo(map);
 tileLayer.getContainer().style.filter = 'grayscale(100%) invert(100%)';
 
-// Create an overlay for D3 visualizations
+// Custom Canvas layer for edges
+L.CanvasEdges = L.Layer.extend({
+  initialize: function(edges, options) {
+    L.setOptions(this, options);
+    this.edges = edges;
+    this.colors = [];
+  },
+
+  onAdd: function(map) {
+    this._map = map;
+    this._canvas = L.DomUtil.create('canvas', 'leaflet-canvas-layer');
+    this._ctx = this._canvas.getContext('2d');
+    
+    // Set canvas style
+    this._canvas.style.pointerEvents = 'none';
+    this._canvas.style.position = 'absolute';
+    this._canvas.style.top = '0';
+    this._canvas.style.left = '0';
+    
+    map.getPanes().overlayPane.appendChild(this._canvas);
+    
+    // Bind events
+    map.on('viewreset', this._reset, this);
+    map.on('zoom', this._update, this);
+    map.on('zoomstart', this._onZoomStart, this);
+    map.on('zoomend', this._onZoomEnd, this);
+    map.on('move', this._update, this);
+    map.on('moveend', this._update, this);
+    
+    this._reset();
+  },
+
+  onRemove: function(map) {
+    map.getPanes().overlayPane.removeChild(this._canvas);
+    map.off('viewreset', this._reset, this);
+    map.off('zoom', this._update, this);
+    map.off('zoomstart', this._onZoomStart, this);
+    map.off('zoomend', this._onZoomEnd, this);
+    map.off('move', this._update, this);
+    map.off('moveend', this._update, this);
+    
+    if (this._zoomAnimationFrame) {
+      cancelAnimationFrame(this._zoomAnimationFrame);
+    }
+  },
+
+  _reset: function() {
+    const size = this._map.getSize();
+    this._canvas.width = size.x;
+    this._canvas.height = size.y;
+    
+    const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+    L.DomUtil.setPosition(this._canvas, topLeft);
+    
+    this._update();
+  },
+
+  _update: function() {
+    if (!this._map) return;
+    
+    const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+    L.DomUtil.setPosition(this._canvas, topLeft);
+    
+    this._redraw();
+  },
+
+  _onZoomStart: function() {
+    this._zooming = true;
+    this._animateZoomUpdate();
+  },
+
+  _onZoomEnd: function() {
+    this._zooming = false;
+    if (this._zoomAnimationFrame) {
+      cancelAnimationFrame(this._zoomAnimationFrame);
+      this._zoomAnimationFrame = null;
+    }
+    this._update();
+  },
+
+  _animateZoomUpdate: function() {
+    if (!this._zooming) return;
+    
+    this._update();
+    
+    // Continue updating during zoom animation
+    this._zoomAnimationFrame = requestAnimationFrame(() => {
+      this._animateZoomUpdate();
+    });
+  },
+
+  setColors: function(colors) {
+    this.colors = colors;
+    this._redraw();
+  },
+
+  setHighlightedEdge: function(highlightedEdge) {
+    this.highlightedEdge = highlightedEdge;
+    this._redraw();
+  },
+
+  _redraw: function() {
+    if (!this._map) return;
+    
+    const ctx = this._ctx;
+    ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+    const zoom = this._map.getZoom();
+    const strokeWidth = 3 + (zoom - baseZoom);
+
+    this.edges.forEach((edge, index) => {
+      if (!edge.geometry || edge.geometry.length === 0) return;
+
+      ctx.beginPath();
+      const firstPoint = this._map.latLngToContainerPoint([edge.geometry[0].y, edge.geometry[0].x]);
+      ctx.moveTo(firstPoint.x, firstPoint.y);
+
+      for (let i = 1; i < edge.geometry.length; i++) {
+        const point = this._map.latLngToContainerPoint([edge.geometry[i].y, edge.geometry[i].x]);
+        ctx.lineTo(point.x, point.y);
+      }
+
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      let color = this.colors[index] || 'rgba(255, 255, 255, 0.8)';
+      if (this.highlightedEdge && edge.id == this.highlightedEdge) {
+        color = 'white';
+      }
+
+      ctx.strokeStyle = color;
+      ctx.stroke();
+
+      // Draw dashed line for autostrada
+      if (edge.name.toLowerCase().includes("autostrada")) {
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+  }
+});
+
+// Create an overlay for D3 visualizations (keeping for node highlights)
 L.svg().addTo(map);
 const overlay = d3.select(map.getPanes().overlayPane).select("svg");
 const g = overlay.append("g").attr("class", "leaflet-zoom-hide");
@@ -80,55 +223,14 @@ dataFolderInput.addEventListener('change', function(event) {
       map.setView([medianLat, medianLon], baseZoom);
     }
 
-    // D3 line generator to draw paths
-    const lineGenerator = d3.line()
-      .x(d => d[0])
-      .y(d => d[1]);
-
-    // Draw edges as SVG paths
-    const link = g.selectAll("path")
-      .data(edges)
-      .enter()
-      .append("path")
-      .attr("fill", "none")
-      .attr("stroke", "white")
-      .attr("stroke-dasharray", d => 
-          d.name.toLowerCase().includes("autostrada") ? "4,4" : "none"
-      )
-      .style("pointer-events", "all")
-      .style("cursor", "pointer")
-      .on("click", function(event, d) {
-        const densityData = densities.find(row => row.time === timeStep);
-        const densityValue = densityData ? densityData.densities[edges.indexOf(d)] : "N/A";
-        alert(`Edge ID: ${d.id} - from ${d.source} to ${d.target}.\n\nDensity at time step ${timeStep}:  ${densityValue}`);
-      });
+    // Create Canvas layer for edges
+    const canvasEdges = new L.CanvasEdges(edges);
+    canvasEdges.addTo(map);
 
     // Function to update edge positions, and color edges based on density
     function update() {
-      // Update edge paths
-      link.attr("d", d => {
-        if (d.geometry && d.geometry.length > 0) {
-          const projectedCoords = d.geometry.map(pt => {
-            const point = map.latLngToLayerPoint([pt.y, pt.x]);
-            return [point.x, point.y];
-          });
-          return lineGenerator(projectedCoords);
-        }
-      });
-      // Update edge stroke width based on zoom level
-      function updateEdgeStrokeWidth() {
-        const zoomLevel = map.getZoom();
-        const strokeWidthScale = 3 + (zoomLevel - baseZoom);
-        link.attr("stroke-width", strokeWidthScale);
-      }
-
-      // Add event listener to map
-      map.on('zoomend', function() {
-        updateEdgeStrokeWidth();
-      });
-
-      // Initial render (default zoom level)
-      updateEdgeStrokeWidth();
+      // Update edge stroke width based on zoom level (handled in Canvas layer)
+      // No need to update paths, Canvas layer handles it
 
       updateDensityVisualization();
       updateNodeHighlight();
@@ -146,21 +248,16 @@ dataFolderInput.addEventListener('change', function(event) {
       }
       const currentDensities = currentDensityRow.densities;
 
-      // For each edge, update the stroke color based on its density value
-      edges.forEach((edge, index) => {
+      const colors = edges.map((edge, index) => {
         let density = currentDensities[index];
         if (density === undefined || isNaN(density)) {
-          console.warn(`Edge index ${index} has invalid density. Defaulting to 0.`);
           density = 0;
         }
         const rgb = d3.rgb(colorScale(density));
-        let color = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
-        if (highlightedEdge && edge.id == highlightedEdge) {
-          color = "white";
-        }
-        link.filter((d, i) => i === index)
-            .attr("stroke", color);
+        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
       });
+
+      canvasEdges.setColors(colors);
     }
 
     // Update node highlight position
@@ -202,7 +299,7 @@ dataFolderInput.addEventListener('change', function(event) {
       const edge = edges.find(e => e.id == id);
       if (edge) {
         highlightedEdge = id;
-        updateDensityVisualization();
+        canvasEdges.setHighlightedEdge(highlightedEdge);
         // Zoom to the edge
         if (edge.geometry && edge.geometry.length > 0) {
           const lats = edge.geometry.map(p => p.y);
@@ -263,7 +360,7 @@ dataFolderInput.addEventListener('change', function(event) {
     clearBtn.addEventListener('click', () => {
       highlightedEdge = null;
       highlightedNode = null;
-      updateDensityVisualization();
+      canvasEdges.setHighlightedEdge(null);
       updateNodeHighlight();
       document.getElementById('searchResults').innerHTML = '';
       document.getElementById('edgeSearch').value = '';
