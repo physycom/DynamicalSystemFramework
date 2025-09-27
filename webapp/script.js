@@ -201,12 +201,7 @@ L.CanvasEdges = L.Layer.extend({
         map.fitBounds(bounds, {padding: [20, 20]});
       }
 
-      document.getElementById('searchResults').innerHTML = `
-        <strong>Edge ID:</strong> ${closestEdge.id}<br>
-        <strong>Source:</strong> ${closestEdge.source}<br>
-        <strong>Target:</strong> ${closestEdge.target}<br>
-        <strong>Name:</strong> ${closestEdge.name}
-      `;
+      updateEdgeInfo(closestEdge);
     }
   },
 
@@ -301,6 +296,25 @@ function updateNodeHighlight() {
       .attr("stroke", "white")
       .attr("stroke-width", 2);
   }
+}
+
+// Update edge info display with current density
+function updateEdgeInfo(edge) {
+  const edgeIndex = edges.indexOf(edge);
+  const currentDensityRow = densities.find(d => d.time === timeStep);
+  let density = 'N/A';
+  if (currentDensityRow) {
+    density = currentDensityRow.densities[edgeIndex];
+    if (density === undefined || isNaN(density)) density = 0;
+    density = parseFloat(density).toFixed(2);
+  }
+  document.getElementById('searchResults').innerHTML = `
+    <strong>Edge ID:</strong> ${edge.id}<br>
+    <strong>Source:</strong> ${edge.source}<br>
+    <strong>Target:</strong> ${edge.target}<br>
+    <strong>Name:</strong> ${edge.name}<br>
+    <strong>Density:</strong> ${density}
+  `;
 }
 
 // Data directory loader
@@ -409,6 +423,11 @@ loadDataBtn.addEventListener('click', async function() {
       timeStep = parseInt(timeSlider.value);
       timeLabel.textContent = `Time Step: ${formatTime(timeStep)}`;
       update();
+      // Update edge info if an edge is selected
+      if (highlightedEdge) {
+        const edge = edges.find(e => e.id == highlightedEdge);
+        if (edge) updateEdgeInfo(edge);
+      }
     });
 
     // Edge search
@@ -430,12 +449,7 @@ loadDataBtn.addEventListener('click', async function() {
           const bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
           map.fitBounds(bounds, {padding: [20, 20]});
         }
-        document.getElementById('searchResults').innerHTML = `
-          <strong>Edge ID:</strong> ${edge.id}<br>
-          <strong>Source:</strong> ${edge.source}<br>
-          <strong>Target:</strong> ${edge.target}<br>
-          <strong>Name:</strong> ${edge.name}
-        `;
+        updateEdgeInfo(edge);
       } else {
         document.getElementById('searchResults').innerHTML = 'Edge not found';
       }
