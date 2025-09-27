@@ -26,6 +26,42 @@ body, html {
     border-radius: 10px;
     font-size: 18px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    text-align: center;
+  }
+  
+  .data-selector input {
+    margin: 10px 5px;
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 200px;
+  }
+  
+  .data-selector button {
+    margin: 10px 5px;
+    padding: 8px 16px;
+    font-size: 16px;
+    background: #007cba;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .data-selector button:hover {
+    background: #005a87;
+  }
+  
+  .data-selector button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+  
+  .data-info {
+    margin-top: 10px;
+    color: #666;
+    font-size: 14px;
   }
   
   /* Search container */

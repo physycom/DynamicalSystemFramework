@@ -19,10 +19,14 @@
   <!-- Map container -->
   <div id="map"></div>
 
-  <!-- Data folder selector -->
+  <!-- Data directory selector -->
   <div class="data-selector">
-    <label for="dataFolder">Select Data Folder:</label>
-    <input type="file" id="dataFolder" webkitdirectory multiple />
+    <label for="dataDir">Data Directory Name:</label>
+    <input type="text" id="dataDir" placeholder="Enter directory name (e.g., 'bologna')" />
+    <button id="loadDataBtn">Load Data</button>
+    <div class="data-info">
+      <small>Place your CSV files in: webapp/{directory_name}/</small>
+    </div>
   </div>
 
   <!-- Search container -->

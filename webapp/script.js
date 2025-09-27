@@ -172,37 +172,41 @@ const colorScale = d3.scaleLinear()
   .domain([0, 0.5, 1])
   .range(["green", "yellow", "red"]);
 
-// Data folder selector
-const dataFolderInput = document.getElementById('dataFolder');
-dataFolderInput.addEventListener('change', function(event) {
-  const files = Array.from(event.target.files);
-  const edgesFile = files.find(f => f.name === 'edges.csv');
-  const densitiesFile = files.find(f => f.name === 'densities.csv');
-
-  if (!edgesFile || !densitiesFile) {
-    alert('Please select a folder containing edges.csv and densities.csv');
+// Data directory loader
+const loadDataBtn = document.getElementById('loadDataBtn');
+loadDataBtn.addEventListener('click', async function() {
+  const input = document.getElementById('dataDir');
+  const dirName = input.value.trim();
+  
+  if (!dirName) {
+    alert('Please enter a data directory name');
     return;
   }
 
-  // Create object URLs for the files
-  const edgesUrl = URL.createObjectURL(edgesFile);
-  const densitiesUrl = URL.createObjectURL(densitiesFile);
+  try {
+    // Show loading state
+    loadDataBtn.textContent = 'Loading...';
+    loadDataBtn.disabled = true;
+    
+    // Fetch CSV files from the data subdirectory
+    const edgesUrl = `${dirName}/edges.csv`;
+    const densitiesUrl = `${dirName}/densities.csv`;
 
-  // Load CSV data
-  Promise.all([
-    d3.dsv(";", edgesUrl, parseEdges),
-    d3.dsv(";", densitiesUrl, parseDensity)
-  ]).then(([edgesData, densityData]) => {
-    edges = edgesData;
-    densities = densityData;
+    // Load CSV data
+    Promise.all([
+      d3.dsv(";", edgesUrl, parseEdges),
+      d3.dsv(";", densitiesUrl, parseDensity)
+    ]).then(([edgesData, densityData]) => {
+      edges = edgesData;
+      densities = densityData;
 
-        // console.log("Edges:", edges);
-        // console.log("Densities:", densities);
+      // console.log("Edges:", edges);
+      // console.log("Densities:", densities);
 
-    if (!edges.length || !densities.length) {
-      console.error("Missing CSV data.");
-      return;
-    }
+      if (!edges.length || !densities.length) {
+        console.error("Missing CSV data.");
+        return;
+      }
 
     // Calculate median center from edge geometries
     let allLats = [];
@@ -367,13 +371,24 @@ dataFolderInput.addEventListener('change', function(event) {
       document.getElementById('nodeSearch').value = '';
     });
 
-    // Hide data selector and show slider and search
-    document.querySelector('.data-selector').style.display = 'none';
-    document.querySelector('.slider-container').style.display = 'block';
-    document.querySelector('.search-container').style.display = 'block';
-  }).catch(error => {
-    console.error("Error loading CSV files:", error);
-  });
+      // Hide data selector and show slider and search
+      document.querySelector('.data-selector').style.display = 'none';
+      document.querySelector('.slider-container').style.display = 'block';
+      document.querySelector('.search-container').style.display = 'block';
+    }).catch(error => {
+      console.error("Error loading CSV files:", error);
+      alert('Error loading data files. Please check the console for details.');
+    }).finally(() => {
+      // Reset button state
+      loadDataBtn.textContent = 'Load Data';
+      loadDataBtn.disabled = false;
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error loading data. Please try again.');
+    loadDataBtn.textContent = 'Load Data';
+    loadDataBtn.disabled = false;
+  }
 });
 
 // Parsing function for edges CSV, including geometry parsing
