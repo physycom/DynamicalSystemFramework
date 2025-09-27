@@ -36,6 +36,8 @@ L.CanvasEdges = L.Layer.extend({
     map.on('zoomend', this._onZoomEnd, this);
     map.on('move', this._update, this);
     map.on('moveend', this._update, this);
+    map.on('click', this._onMapClick, this);
+    map.on('mousemove', this._onMouseMove, this);
     
     this._reset();
   },
@@ -48,6 +50,8 @@ L.CanvasEdges = L.Layer.extend({
     map.off('zoomend', this._onZoomEnd, this);
     map.off('move', this._update, this);
     map.off('moveend', this._update, this);
+    map.off('click', this._onMapClick, this);
+    map.off('mousemove', this._onMouseMove, this);
     
     if (this._zoomAnimationFrame) {
       cancelAnimationFrame(this._zoomAnimationFrame);
@@ -155,6 +159,110 @@ L.CanvasEdges = L.Layer.extend({
         ctx.setLineDash([]);
       }
     });
+  },
+
+  _onMapClick: function(e) {
+    const containerPoint = this._map.latLngToContainerPoint(e.latlng);
+    const x = containerPoint.x;
+    const y = containerPoint.y;
+
+    let closestEdge = null;
+    let minDist = Infinity;
+
+    this.edges.forEach(edge => {
+      if (!edge.geometry || edge.geometry.length < 2) return;
+
+      for (let i = 0; i < edge.geometry.length - 1; i++) {
+        const p1 = this._map.latLngToContainerPoint([edge.geometry[i].y, edge.geometry[i].x]);
+        const p2 = this._map.latLngToContainerPoint([edge.geometry[i+1].y, edge.geometry[i+1].x]);
+        const dist = this._pointToLineDistancePixels({x, y}, p1, p2);
+        if (dist < minDist) {
+          minDist = dist;
+          closestEdge = edge;
+        }
+      }
+    });
+
+    if (closestEdge && minDist < 10) { // 10 pixel threshold
+      highlightedEdge = closestEdge.id;
+      highlightedNode = null;
+      this.setHighlightedEdge(highlightedEdge);
+      updateNodeHighlight();
+
+      // Zoom to the edge
+      if (closestEdge.geometry && closestEdge.geometry.length > 0) {
+        const lats = closestEdge.geometry.map(p => p.y);
+        const lngs = closestEdge.geometry.map(p => p.x);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const minLng = Math.min(...lngs);
+        const maxLng = Math.max(...lngs);
+        const bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+        map.fitBounds(bounds, {padding: [20, 20]});
+      }
+
+      document.getElementById('searchResults').innerHTML = `
+        <strong>Edge ID:</strong> ${closestEdge.id}<br>
+        <strong>Source:</strong> ${closestEdge.source}<br>
+        <strong>Target:</strong> ${closestEdge.target}<br>
+        <strong>Name:</strong> ${closestEdge.name}
+      `;
+    }
+  },
+
+  _pointToLineDistancePixels: function(point, lineStart, lineEnd) {
+    const A = point.x - lineStart.x;
+    const B = point.y - lineStart.y;
+    const C = lineEnd.x - lineStart.x;
+    const D = lineEnd.y - lineStart.y;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = -1;
+    if (lenSq !== 0) param = dot / lenSq;
+
+    let xx, yy;
+    if (param < 0) {
+      xx = lineStart.x;
+      yy = lineStart.y;
+    } else if (param > 1) {
+      xx = lineEnd.x;
+      yy = lineEnd.y;
+    } else {
+      xx = lineStart.x + param * C;
+      yy = lineStart.y + param * D;
+    }
+
+    const dx = point.x - xx;
+    const dy = point.y - yy;
+    return Math.sqrt(dx * dx + dy * dy);
+  },
+
+  _onMouseMove: function(e) {
+    const containerPoint = this._map.latLngToContainerPoint(e.latlng);
+    const x = containerPoint.x;
+    const y = containerPoint.y;
+
+    let minDist = Infinity;
+
+    this.edges.forEach(edge => {
+      if (!edge.geometry || edge.geometry.length < 2) return;
+
+      for (let i = 0; i < edge.geometry.length - 1; i++) {
+        const p1 = this._map.latLngToContainerPoint([edge.geometry[i].y, edge.geometry[i].x]);
+        const p2 = this._map.latLngToContainerPoint([edge.geometry[i+1].y, edge.geometry[i+1].x]);
+        const dist = this._pointToLineDistancePixels({x, y}, p1, p2);
+        if (dist < minDist) {
+          minDist = dist;
+        }
+      }
+    });
+
+    if (minDist < 10) { // Same threshold as click
+      this._map.getContainer().style.cursor = 'pointer';
+    } else {
+      this._map.getContainer().style.cursor = '';
+    }
   }
 });
 
@@ -178,6 +286,22 @@ function formatTime(seconds) {
 const colorScale = d3.scaleLinear()
   .domain([0, 0.5, 1])
   .range(["green", "yellow", "red"]);
+
+// Update node highlight position
+function updateNodeHighlight() {
+  g.selectAll(".node-highlight").remove();
+  if (highlightedNode) {
+    const point = map.latLngToLayerPoint([highlightedNode.y, highlightedNode.x]);
+    g.append("circle")
+      .attr("class", "node-highlight")
+      .attr("cx", point.x)
+      .attr("cy", point.y)
+      .attr("r", 10)
+      .attr("fill", "white")
+      .attr("stroke", "white")
+      .attr("stroke-width", 2);
+  }
+}
 
 // Data directory loader
 const loadDataBtn = document.getElementById('loadDataBtn');
@@ -269,22 +393,6 @@ loadDataBtn.addEventListener('click', async function() {
       });
 
       canvasEdges.setColors(colors);
-    }
-
-    // Update node highlight position
-    function updateNodeHighlight() {
-      g.selectAll(".node-highlight").remove();
-      if (highlightedNode) {
-        const point = map.latLngToLayerPoint([highlightedNode.y, highlightedNode.x]);
-        g.append("circle")
-          .attr("class", "node-highlight")
-          .attr("cx", point.x)
-          .attr("cy", point.y)
-          .attr("r", 10)
-          .attr("fill", "white")
-          .attr("stroke", "white")
-          .attr("stroke-width", 2);
-      }
     }
 
     // Set up the time slider based on the density data's maximum time value
