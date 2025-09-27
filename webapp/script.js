@@ -76,7 +76,8 @@ L.CanvasEdges = L.Layer.extend({
 
   _onZoomStart: function() {
     this._zooming = true;
-    this._animateZoomUpdate();
+    // Hide edges during zoom by clearing the canvas
+    this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
   },
 
   _onZoomEnd: function() {
@@ -85,13 +86,16 @@ L.CanvasEdges = L.Layer.extend({
       cancelAnimationFrame(this._zoomAnimationFrame);
       this._zoomAnimationFrame = null;
     }
+    // Show edges again after zoom ends
     this._update();
   },
 
   _animateZoomUpdate: function() {
     if (!this._zooming) return;
     
-    this._update();
+    // Don't redraw edges during zoom animation for better performance
+    const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+    L.DomUtil.setPosition(this._canvas, topLeft);
     
     // Continue updating during zoom animation
     this._zoomAnimationFrame = requestAnimationFrame(() => {
@@ -111,6 +115,9 @@ L.CanvasEdges = L.Layer.extend({
 
   _redraw: function() {
     if (!this._map) return;
+    
+    // Don't draw edges while zooming for better performance
+    if (this._zooming) return;
     
     const ctx = this._ctx;
     ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
