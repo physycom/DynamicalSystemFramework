@@ -202,6 +202,7 @@ L.CanvasEdges = L.Layer.extend({
       }
 
       updateEdgeInfo(closestEdge);
+      document.getElementById('inverseBtn').disabled = false;
     }
   },
 
@@ -450,6 +451,7 @@ loadDataBtn.addEventListener('click', async function() {
           map.fitBounds(bounds, {padding: [20, 20]});
         }
         updateEdgeInfo(edge);
+        document.getElementById('inverseBtn').disabled = false;
       } else {
         document.getElementById('searchResults').innerHTML = 'Edge not found';
       }
@@ -486,6 +488,7 @@ loadDataBtn.addEventListener('click', async function() {
       } else {
         document.getElementById('searchResults').innerHTML = 'Node not found';
       }
+      document.getElementById('inverseBtn').disabled = true;
     });
 
     // Clear selections
@@ -498,6 +501,38 @@ loadDataBtn.addEventListener('click', async function() {
       document.getElementById('searchResults').innerHTML = '';
       document.getElementById('edgeSearch').value = '';
       document.getElementById('nodeSearch').value = '';
+      document.getElementById('inverseBtn').disabled = true;
+    });
+
+    // Inverse edge button
+    const inverseBtn = document.getElementById('inverseBtn');
+    inverseBtn.addEventListener('click', () => {
+      if (!highlightedEdge) return;
+      const currentEdge = edges.find(e => e.id == highlightedEdge);
+      if (!currentEdge) return;
+      
+      // Find inverse edge: source == current target, target == current source
+      const inverseEdge = edges.find(e => e.source == currentEdge.target && e.target == currentEdge.source);
+      if (inverseEdge) {
+        highlightedEdge = inverseEdge.id;
+        highlightedNode = null;
+        canvasEdges.setHighlightedEdge(highlightedEdge);
+        updateNodeHighlight();
+        // Zoom to the inverse edge
+        if (inverseEdge.geometry && inverseEdge.geometry.length > 0) {
+          const lats = inverseEdge.geometry.map(p => p.y);
+          const lngs = inverseEdge.geometry.map(p => p.x);
+          const minLat = Math.min(...lats);
+          const maxLat = Math.max(...lats);
+          const minLng = Math.min(...lngs);
+          const maxLng = Math.max(...lngs);
+          const bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+          map.fitBounds(bounds, {padding: [20, 20]});
+        }
+        updateEdgeInfo(inverseEdge);
+      } else {
+        alert('Inverse edge from ' + currentEdge.target + ' to ' + currentEdge.source + ' not found');
+      }
     });
 
       // Hide data selector and show slider and search
