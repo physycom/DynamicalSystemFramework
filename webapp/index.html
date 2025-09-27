@@ -19,6 +19,28 @@
   <!-- Map container -->
   <div id="map"></div>
 
+  <!-- Data folder selector -->
+  <div class="data-selector">
+    <label for="dataFolder">Select Data Folder:</label>
+    <input type="file" id="dataFolder" webkitdirectory multiple />
+  </div>
+
+  <!-- Search container -->
+  <div class="search-container">
+    <div>
+      <label for="edgeSearch">Edge ID:</label>
+      <input type="text" id="edgeSearch" />
+      <button id="edgeSearchBtn">Search</button>
+    </div>
+    <div>
+      <label for="nodeSearch">Node ID:</label>
+      <input type="text" id="nodeSearch" />
+      <button id="nodeSearchBtn">Search</button>
+    </div>
+    <button id="clearBtn">Clear Selections</button>
+    <div id="searchResults"></div>
+  </div>
+
   <!-- Slider for time step -->
   <div class="slider-container">
     <label for="timeSlider">Time Step:</label>
