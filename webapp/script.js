@@ -279,7 +279,7 @@ L.CanvasEdges = L.Layer.extend({
       ctx.lineJoin = 'round';
 
       let color = this.colors[index] || 'rgba(255, 255, 255, 0.8)';
-      if (this.highlightedEdge && edge.id == this.highlightedEdge) {
+      if (this.highlightedEdge && edge.id === this.highlightedEdge) {
         color = 'white';
       }
 
@@ -568,7 +568,7 @@ loadDataBtn.addEventListener('click', async function() {
       update();
       // Update edge info if an edge is selected
       if (highlightedEdge) {
-        const edge = edges.find(e => e.id == highlightedEdge);
+        const edge = edges.find(e => e.id === highlightedEdge);
         if (edge) updateEdgeInfo(edge);
       }
     });
@@ -603,8 +603,8 @@ loadDataBtn.addEventListener('click', async function() {
     const nodeSearchBtn = document.getElementById('nodeSearchBtn');
     nodeSearchBtn.addEventListener('click', () => {
       const id = document.getElementById('nodeSearch').value.trim();
-      const edgeAsSource = edges.find(e => e.source == id);
-      const edgeAsTarget = edges.find(e => e.target == id);
+      const edgeAsSource = edges.find(e => e.source === id);
+      const edgeAsTarget = edges.find(e => e.target === id);
       if (edgeAsSource) {
         const geom = edgeAsSource.geometry;
         if (geom && geom.length > 0) {
@@ -650,11 +650,11 @@ loadDataBtn.addEventListener('click', async function() {
     const inverseBtn = document.getElementById('inverseBtn');
     inverseBtn.addEventListener('click', () => {
       if (!highlightedEdge) return;
-      const currentEdge = edges.find(e => e.id == highlightedEdge);
+      const currentEdge = edges.find(e => e.id === highlightedEdge);
       if (!currentEdge) return;
       
       // Find inverse edge: source == current target, target == current source
-      const inverseEdge = edges.find(e => e.source == currentEdge.target && e.target == currentEdge.source);
+      const inverseEdge = edges.find(e => e.source === currentEdge.target && e.target === currentEdge.source);
       if (inverseEdge) {
         highlightedEdge = inverseEdge.id;
         highlightedNode = null;
