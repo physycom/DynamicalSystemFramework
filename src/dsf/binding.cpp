@@ -200,6 +200,28 @@ PYBIND11_MODULE(dsf, m) {
            &dsf::RoadNetwork::importTrafficLights,
            pybind11::arg("fileName"),
            dsf::g_docstrings.at("dsf::RoadNetwork::importTrafficLights").c_str())
+      .def(
+          "makeRoundabout",
+          [](dsf::RoadNetwork& self, dsf::Id id) -> void { self.makeRoundabout(id); },
+          pybind11::arg("id"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::makeRoundabout").c_str())
+      .def(
+          "makeTrafficLight",
+          [](dsf::RoadNetwork& self,
+             dsf::Id id,
+             dsf::Delay const cycleTime,
+             dsf::Delay const counter) -> void {
+            self.makeTrafficLight(id, cycleTime, counter);
+          },
+          pybind11::arg("id"),
+          pybind11::arg("cycleTime"),
+          pybind11::arg("counter"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::makeTrafficLight").c_str())
+      .def(
+          "makeSpireStreet",
+          [](dsf::RoadNetwork& self, dsf::Id id) -> void { self.makeSpireStreet(id); },
+          pybind11::arg("id"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::makeSpireStreet").c_str())
       .def("exportNodes",
            &dsf::RoadNetwork::exportNodes,
            pybind11::arg("fileName"),
