@@ -126,3 +126,12 @@ body, html {
     stroke-width: 2 !important;
   }
   
+  /* Screenshot control styling */
+  .leaflet-control-screenshot {
+    margin-bottom: 5px;
+  }
+  
+  .leaflet-control-screenshot-button:hover {
+    background: #f4f4f4;
+  }
+  

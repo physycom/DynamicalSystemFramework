@@ -15,6 +15,133 @@ L.control.scale({
   imperial: false
 }).addTo(map);
 
+// Add screenshot control
+L.Control.Screenshot = L.Control.extend({
+  options: {
+    position: 'topleft'
+  },
+
+  onAdd: function(map) {
+    const container = L.DomUtil.create('div', 'leaflet-control-screenshot');
+    const button = L.DomUtil.create('a', 'leaflet-control-screenshot-button', container);
+    
+    button.innerHTML = '📷';
+    button.href = '#';
+    button.title = 'Take Screenshot';
+    button.style.cssText = `
+      width: 26px;
+      height: 26px;
+      line-height: 26px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      color: black;
+      background: white;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-radius: 4px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+      font-size: 14px;
+      margin-bottom: 5px;
+    `;
+
+    L.DomEvent.on(button, 'click', L.DomEvent.stopPropagation)
+              .on(button, 'click', L.DomEvent.preventDefault)
+              .on(button, 'click', this._takeScreenshot, this);
+
+    return container;
+  },
+
+  _takeScreenshot: function() {
+    // Show loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.innerHTML = 'Generating screenshot...';
+    loadingDiv.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 10000;
+      font-size: 16px;
+    `;
+    document.body.appendChild(loadingDiv);
+
+    // Capture the map
+    html2canvas(document.getElementById('map'), {
+      useCORS: true,
+      allowTaint: false,
+      scale: 2, // Higher resolution
+      width: window.innerWidth,
+      height: window.innerHeight
+    }).then(canvas => {
+      // Remove loading indicator
+      document.body.removeChild(loadingDiv);
+
+      // Use full canvas dimensions without cropping
+      const cropX = 0, cropY = 0, cropWidth = canvas.width, cropHeight = canvas.height;
+
+      // Create PDF with canvas dimensions
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: cropWidth > cropHeight ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [cropWidth, cropHeight]
+      });
+
+      // Use the full canvas directly
+      const imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', 0, 0, cropWidth, cropHeight);
+
+      // Add simulation timestamp at top right with semi-transparent background and border
+      const timestamp = `Time: ${formatTime(timeStep)}`;
+      const fontSize = Math.max(12, cropHeight / 30);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(fontSize);
+      
+      // Calculate text dimensions for background
+      const textWidth = pdf.getTextWidth(timestamp);
+      const textHeight = fontSize * 0.7; // Approximate line height
+      
+      // Position at top right with margin
+      const margin = 10;
+      const rectX = cropWidth - textWidth - margin * 2;
+      const rectY = margin;
+      
+      // Add semi-transparent white background with black border
+      pdf.setFillColor(255, 255, 255, 0.9); // Semi-transparent white background
+      pdf.setDrawColor(0, 0, 0); // Black border
+      pdf.rect(rectX, rectY, textWidth + margin * 2, textHeight + margin * 2, 'FD'); // Fill and stroke
+      
+      // Add black text on top
+      pdf.setTextColor(0, 0, 0); // Black text
+      pdf.text(timestamp, rectX + margin, rectY + textHeight + margin);
+
+      // Save the PDF
+      const filename = `road_network_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`;
+      pdf.save(filename);
+    }).catch(error => {
+      document.body.removeChild(loadingDiv);
+      console.error('Screenshot failed:', error);
+      alert('Screenshot failed. Please try again.');
+    });
+  },
+
+  _getScaleText: function() {
+    // Get the current scale from Leaflet scale control
+    const scaleElement = document.querySelector('.leaflet-control-scale-line');
+    if (scaleElement) {
+      return scaleElement.textContent;
+    }
+    return 'Scale information not available';
+  }
+});
+
+// Add screenshot control to map
+map.addControl(new L.Control.Screenshot());
+
 // Custom Canvas layer for edges
 L.CanvasEdges = L.Layer.extend({
   initialize: function(edges, options) {
