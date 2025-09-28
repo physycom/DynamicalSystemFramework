@@ -14,16 +14,98 @@ body, html {
     left: 0;
   }
   
+  /* Data selector */
+  .data-selector {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    font-size: 18px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    text-align: center;
+  }
+  
+  .data-selector input {
+    margin: 10px 5px;
+    padding: 8px;
+    font-size: 18px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 300px;
+  }
+  
+  .data-selector button {
+    margin: 10px 5px;
+    padding: 8px 16px;
+    font-size: 16px;
+    background: #007cba;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .data-selector button:hover {
+    background: #005a87;
+  }
+  
+  .data-selector button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+  
+  .data-info {
+    margin-top: 10px;
+    color: #666;
+    font-size: 14px;
+  }
+  
+  /* Search container */
+  .search-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 5px;
+    display: none; /* Initially hidden */
+  }
+  
+  .search-container div {
+    margin-bottom: 10px;
+  }
+  
+  .search-container input {
+    margin-left: 5px;
+    margin-right: 5px;
+  }
+  
+  #searchResults {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+  
   /* Slider container */
   .slider-container {
     position: absolute;
     bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 20px;
     z-index: 1000;
-    width: 80%;
+    width: 250px;
     padding: 10px;
     background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    display: none; /* Initially hidden */
   }
   
   .slider-container input {
@@ -38,9 +120,18 @@ body, html {
     pointer-events: auto;
   }
   
-  circle {
-    fill: black;
-    stroke: white;
-    stroke-width: 1;
+  .node-highlight {
+    fill: white !important;
+    stroke: white !important;
+    stroke-width: 2 !important;
+  }
+  
+  /* Screenshot control styling */
+  .leaflet-control-screenshot {
+    margin-bottom: 5px;
+  }
+  
+  .leaflet-control-screenshot-button:hover {
+    background: #f4f4f4;
   }
   

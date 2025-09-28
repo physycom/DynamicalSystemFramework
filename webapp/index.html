@@ -12,12 +12,45 @@
   <!-- D3.js -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
 
+  <!-- html2canvas for screenshots -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+  <!-- jsPDF for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
   <!-- Map container -->
   <div id="map"></div>
+
+  <!-- Data directory selector -->
+  <div class="data-selector">
+    <label for="dataDir">Data Directory Name:</label>
+    <input type="text" id="dataDir" placeholder="Enter directory name (e.g., 'output')" />
+    <button id="loadDataBtn">Load Data</button>
+    <div class="data-info">
+      <small>Place your edges and densities CSV files in: webapp/{directory_name}/</small>
+    </div>
+  </div>
+
+  <!-- Search container -->
+  <div class="search-container">
+    <div>
+      <label for="edgeSearch">Edge ID:</label>
+      <input type="text" id="edgeSearch" />
+      <button id="edgeSearchBtn">Search</button>
+    </div>
+    <div>
+      <label for="nodeSearch">Node ID:</label>
+      <input type="text" id="nodeSearch" />
+      <button id="nodeSearchBtn">Search</button>
+    </div>
+    <button id="inverseBtn" disabled>Inverse Edge</button>
+    <button id="clearBtn">Clear Selections</button>
+    <div id="searchResults"></div>
+  </div>
 
   <!-- Slider for time step -->
   <div class="slider-container">
