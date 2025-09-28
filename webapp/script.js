@@ -8,6 +8,13 @@ const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.pn
 }).addTo(map);
 tileLayer.getContainer().style.filter = 'grayscale(100%) invert(100%)';
 
+// Add scale control
+L.control.scale({
+  position: 'bottomright',
+  metric: true,
+  imperial: false
+}).addTo(map);
+
 // Custom Canvas layer for edges
 L.CanvasEdges = L.Layer.extend({
   initialize: function(edges, options) {
