@@ -320,6 +320,14 @@ function updateEdgeInfo(edge) {
 
 // Data directory loader
 const loadDataBtn = document.getElementById('loadDataBtn');
+const dataDirInput = document.getElementById('dataDir');
+
+dataDirInput.addEventListener('keydown', function(event) {
+  if (event.key === 'Enter') {
+    loadDataBtn.click();
+  }
+});
+
 loadDataBtn.addEventListener('click', async function() {
   const input = document.getElementById('dataDir');
   const dirName = input.value.trim();
@@ -404,7 +412,7 @@ loadDataBtn.addEventListener('click', async function() {
           density = 0;
         }
         const rgb = d3.rgb(colorScale(density));
-        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`;
+        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.69)`;
       });
 
       canvasEdges.setColors(colors);
