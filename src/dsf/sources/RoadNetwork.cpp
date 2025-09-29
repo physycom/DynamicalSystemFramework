@@ -148,9 +148,9 @@ namespace dsf {
                        strCoilCode.begin(),
                        [](unsigned char c) { return std::tolower(c); });
         // Do not warn if the coilcode contains null or nan
-        if (strCoilCode != "null" && strCoilCode != "nan") {
+        if (!strCoilCode.empty() && strCoilCode != "null" && strCoilCode != "nan") {
           try {
-            Id const coilCode = row["coilcode"].get<Id>();
+            auto const coilCode{static_cast<Id>(std::stoul(strCoilCode))};
             makeSpireStreet(streetId);
             auto& coil = edge<SpireStreet>(streetId);
             coil.setCode(coilCode);
