@@ -67,17 +67,17 @@ namespace dsf {
 
     /// @brief Get the graph's number of coil streets
     /// @return The number of coil streets
-    std::size_t nCoils() const;
+    Size nCoils() const;
 
     /// @brief Get the graph's number of intersections
     /// @return The number of intersections
-    std::size_t nIntersections() const;
+    Size nIntersections() const;
     /// @brief Get the graph's number of roundabouts
     /// @return The number of roundabouts
-    std::size_t nRoundabouts() const;
+    Size nRoundabouts() const;
     /// @brief Get the graph's number of traffic lights
     /// @return The number of traffic lights
-    std::size_t nTrafficLights() const;
+    Size nTrafficLights() const;
 
     /// @brief Adjust the nodes' transport capacity
     /// @details The nodes' capacity is adjusted using the graph's streets transport capacity, which may vary basing on the number of lanes. The node capacity will be set to the sum of the incoming streets' transport capacity.
