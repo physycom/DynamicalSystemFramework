@@ -65,6 +65,20 @@ namespace dsf {
     /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
     RoadNetwork(AdjacencyMatrix const& adj);
 
+    /// @brief Get the graph's number of coil streets
+    /// @return The number of coil streets
+    Size nCoils() const;
+
+    /// @brief Get the graph's number of intersections
+    /// @return The number of intersections
+    Size nIntersections() const;
+    /// @brief Get the graph's number of roundabouts
+    /// @return The number of roundabouts
+    Size nRoundabouts() const;
+    /// @brief Get the graph's number of traffic lights
+    /// @return The number of traffic lights
+    Size nTrafficLights() const;
+
     /// @brief Adjust the nodes' transport capacity
     /// @details The nodes' capacity is adjusted using the graph's streets transport capacity, which may vary basing on the number of lanes. The node capacity will be set to the sum of the incoming streets' transport capacity.
     void adjustNodeCapacities();

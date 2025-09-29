@@ -135,6 +135,18 @@ PYBIND11_MODULE(dsf, m) {
       .def("nEdges",
            &dsf::RoadNetwork::nEdges,
            dsf::g_docstrings.at("dsf::Network::nEdges").c_str())
+      .def("nCoils",
+           &dsf::RoadNetwork::nCoils,
+           dsf::g_docstrings.at("dsf::RoadNetwork::nCoils").c_str())
+      .def("nIntersections",
+           &dsf::RoadNetwork::nIntersections,
+           dsf::g_docstrings.at("dsf::RoadNetwork::nIntersections").c_str())
+      .def("nRoundabouts",
+           &dsf::RoadNetwork::nRoundabouts,
+           dsf::g_docstrings.at("dsf::RoadNetwork::nRoundabouts").c_str())
+      .def("nTrafficLights",
+           &dsf::RoadNetwork::nTrafficLights,
+           dsf::g_docstrings.at("dsf::RoadNetwork::nTrafficLights").c_str())
       .def("capacity",
            &dsf::RoadNetwork::capacity,
            dsf::g_docstrings.at("dsf::RoadNetwork::capacity").c_str())

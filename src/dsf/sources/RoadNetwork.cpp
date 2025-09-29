@@ -310,6 +310,28 @@ namespace dsf {
 
   RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj) : Network{adj}, m_capacity{0} {}
 
+  Size RoadNetwork::nCoils() const {
+    return std::count_if(m_edges.cbegin(), m_edges.cend(), [](auto const& pair) {
+      return pair.second->isSpire();
+    });
+  }
+
+  Size RoadNetwork::nIntersections() const {
+    return std::count_if(m_nodes.cbegin(), m_nodes.cend(), [](auto const& pair) {
+      return pair.second->isIntersection();
+    });
+  }
+  Size RoadNetwork::nRoundabouts() const {
+    return std::count_if(m_nodes.cbegin(), m_nodes.cend(), [](auto const& pair) {
+      return pair.second->isRoundabout();
+    });
+  }
+  Size RoadNetwork::nTrafficLights() const {
+    return std::count_if(m_nodes.cbegin(), m_nodes.cend(), [](auto const& pair) {
+      return pair.second->isTrafficLight();
+    });
+  }
+
   void RoadNetwork::initTrafficLights(Delay const minGreenTime) {
     for (auto& [_, pNode] : m_nodes) {
       if (!pNode->isTrafficLight()) {
