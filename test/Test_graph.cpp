@@ -244,6 +244,10 @@ TEST_CASE("RoadNetwork") {
           THEN("Sizes are correct") {
             CHECK_EQ(graph.nNodes(), nNodes);
             CHECK_EQ(graph.nEdges(), nEdges);
+            CHECK_EQ(graph.nCoils(), 0);
+            CHECK_EQ(graph.nIntersections(), 24);
+            CHECK_EQ(graph.nRoundabouts(), 1);
+            CHECK_EQ(graph.nTrafficLights(), 0);
           }
           RoadNetwork graph2;
           graph2.importEdges("./data/postua_edges.geojson");
@@ -275,6 +279,10 @@ TEST_CASE("RoadNetwork") {
           THEN("Sizes are correct") {
             CHECK_EQ(graph.nNodes(), nNodes);
             CHECK_EQ(graph.nEdges(), nEdges);
+            CHECK_EQ(graph.nCoils(), 0);
+            CHECK_EQ(graph.nIntersections(), 3101);
+            CHECK_EQ(graph.nRoundabouts(), 2);
+            CHECK_EQ(graph.nTrafficLights(), 15);
           }
         }
       }
