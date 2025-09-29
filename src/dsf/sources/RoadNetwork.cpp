@@ -141,14 +141,24 @@ namespace dsf {
                        coords));
 
       if (bHasCoilcode) {
-        makeSpireStreet(streetId);
-        auto& coil = edge<SpireStreet>(streetId);
-        try {
-          coil.setCode(row["coilcode"].get<Id>());
-        } catch (...) {
-          spdlog::warn("Invalid coil code ({}) for {}",
-                       row["coilcode"].get<std::string>(),
-                       *edge(streetId));
+        auto strCoilCode{row["coilcode"].get<std::string>()};
+        // Make this lowercase
+        std::transform(strCoilCode.begin(),
+                       strCoilCode.end(),
+                       strCoilCode.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        // Do not warn if the coilcode contains null or nan
+        if (strCoilCode != "null" && strCoilCode != "nan") {
+          try {
+            Id const coilCode = row["coilcode"].get<Id>();
+            makeSpireStreet(streetId);
+            auto& coil = edge<SpireStreet>(streetId);
+            coil.setCode(coilCode);
+          } catch (...) {
+            spdlog::warn("Invalid coil code ({}) for {}",
+                         row["coilcode"].get<std::string>(),
+                         *edge(streetId));
+          }
         }
       }
       if (bHasCustomWeight) {
