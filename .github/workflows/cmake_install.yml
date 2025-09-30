@@ -26,7 +26,6 @@ jobs:
     - name: Install tools on Windows
       if: matrix.os == 'windows-latest'
       run: |
-        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
         # Install vcpkg for spdlog, tbb, fmt, and simdjson on Windows
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
@@ -65,7 +64,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       working-directory: ${{github.workspace}}
       run: |
-        mkdir -p build && cd build
+        New-Item -ItemType Directory -Force -Path build; cd build
         cmake .. -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release
         cmake --build . --config Release
         cmake --install .
@@ -99,4 +98,4 @@ jobs:
       run: |
         echo "#include <dsf/dsf.hpp>" > test.cpp
         echo "int main() {}" >> test.cpp
-        cl.exe test.cpp /std:c++20 /I"$env:VCPKG_ROOT/installed/x64-windows/include" /link /LIBPATH:"$env:VCPKG_ROOT/installed/x64-windows/lib" && echo "Compiled successfully" || (echo "Cannot include dsf" ; exit 1)
+        cl.exe test.cpp /std:c++20 /I"$env:VCPKG_ROOT/installed/x64-windows/include" /link /LIBPATH:"$env:VCPKG_ROOT/installed/x64-windows/lib" spdlog.lib tbb.lib fmt.lib simdjson.lib && echo "Compiled successfully" || (echo "Cannot include dsf" ; exit 1)
