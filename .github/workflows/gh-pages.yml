@@ -1,4 +1,4 @@
-name: GitHub Pages
+name: "CD: GitHub Pages"
 
 on:
   push:

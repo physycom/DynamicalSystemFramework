@@ -1,4 +1,4 @@
-name: Run examples on CMake
+name: "CI: Run examples on CMake"
 
 on:
   push:

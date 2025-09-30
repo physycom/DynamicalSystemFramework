@@ -1,4 +1,4 @@
-name: Run benchmarks
+name: "CI: Benchmarks"
 
 on:
   push:
