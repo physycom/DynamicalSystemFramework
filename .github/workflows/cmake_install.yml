@@ -1,4 +1,4 @@
-name: Test the installation on Linux
+name: "CI: Test the installation with cmake"
 
 on:
   push:
@@ -8,25 +8,202 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-    - name: Install tools manually
-      run: sudo apt update && sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Build and install
-      working-directory: ${{github.workspace}}
-      run: |
-        mkdir -p build && cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release
-        cmake --build .
-        sudo cmake --install .
+      - name: Install dependencies on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake libtbb-dev libspdlog-dev libsimdjson-dev libfmt-dev
 
-    - name: Test include
-      working-directory: ${{github.workspace}}
-      run: |
-        touch test.cpp
-        echo "#include <dsf/dsf.hpp>" >> test.cpp
-        echo "int main() {}" >> test.cpp
-        g++ test.cpp -std=c++20 && echo "Compiled successfully" || echo "Cannot include dsf"
+      - name: Install dependencies on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install tbb spdlog simdjson fmt
+
+      - name: Install dependencies on Windows (vcpkg)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git vcpkg
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          .\vcpkg install spdlog:x64-windows tbb:x64-windows fmt:x64-windows simdjson:x64-windows
+          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
+          echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
+
+      - name: Build and install on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
+          cmake --build . --config Release
+          cmake --install . --prefix ${GITHUB_WORKSPACE}/install
+
+      - name: Build and install on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix fmt):$(brew --prefix spdlog):$(brew --prefix simdjson)" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
+          cmake --build . --config Release
+          cmake --install . --prefix ${GITHUB_WORKSPACE}/install
+
+      - name: Build and install on Windows
+        if: matrix.os == 'windows-latest'
+        working-directory: ${{ github.workspace }}
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          cd build
+          $vcpkg_toolchain = "$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
+          cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
+          cmake --build . --config Release
+          cmake --install . --config Release --prefix "$env:GITHUB_WORKSPACE\install"
+
+      - name: Test include on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "#include <dsf/dsf.hpp>" > test.cpp
+          echo "int main() { return 0; }" >> test.cpp
+          g++ test.cpp -std=c++20 \
+            -I${GITHUB_WORKSPACE}/install/include \
+            -L${GITHUB_WORKSPACE}/install/lib \
+            -ldsf -ltbb -lspdlog -lsimdjson -lfmt \
+            && echo "SUCCESS: dsf library can be included and linked on Ubuntu!" \
+            || (echo "FAILED: Cannot include/link dsf on Ubuntu"; exit 1)
+
+      - name: Test include on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "#include <dsf/dsf.hpp>" > test.cpp
+          echo "int main() { return 0; }" >> test.cpp
+          clang++ test.cpp -std=c++20 \
+            -I${GITHUB_WORKSPACE}/install/include \
+            -I$(brew --prefix tbb)/include -I$(brew --prefix fmt)/include -I$(brew --prefix spdlog)/include -I$(brew --prefix simdjson)/include \
+            -L${GITHUB_WORKSPACE}/install/lib \
+            -L$(brew --prefix tbb)/lib -L$(brew --prefix fmt)/lib -L$(brew --prefix spdlog)/lib -L$(brew --prefix simdjson)/lib \
+            -Wl,-rpath,${GITHUB_WORKSPACE}/install/lib \
+            -Wl,-rpath,$(brew --prefix simdjson)/lib \
+            -ldsf -ltbb -lfmt -lspdlog -lsimdjson \
+            && echo "SUCCESS: dsf library can be included and linked on macOS!" \
+            || (echo "FAILED: Cannot include/link dsf on macOS"; exit 1)
+
+      - name: Setup MSVC environment on Windows
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+            - name: Test include on Windows
+        if: matrix.os == 'windows-latest'
+        working-directory: ${{ github.workspace }}
+        shell: powershell
+        run: |
+          echo "#include <dsf/dsf.hpp>" > test.cpp
+          echo "int main() { return 0; }" >> test.cpp
+
+          $INSTALL_DIR = "$env:GITHUB_WORKSPACE\install"
+          $VCPKG_INSTALLED = $env:VCPKG_INSTALLED
+
+          Write-Host "INSTALL_DIR = $INSTALL_DIR"
+          Write-Host "VCPKG_INSTALLED = $VCPKG_INSTALLED"
+
+          if (-not (Test-Path "$INSTALL_DIR\include\dsf")) {
+            Write-Host "ERROR: dsf headers not found in $INSTALL_DIR\include"
+            exit 1
+          }
+
+          Write-Host "=== debug: list install/include ==="
+          Get-ChildItem -Force "$INSTALL_DIR\include" -Depth 1 | ForEach-Object { $_.FullName }
+
+          # helper to find the first matching lib by pattern
+          function Find-Lib($dir, $pattern) {
+            if (-not (Test-Path $dir)) { return $null }
+            $found = Get-ChildItem -Path $dir -Filter $pattern -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            return $found
+          }
+
+          # Collect libs (exact filenames) to link; prefer installed dsf first, then vcpkg libs
+          $libs = @()
+
+          $dsfLib = Find-Lib "$INSTALL_DIR\lib" "dsf*.lib"
+          if ($dsfLib) {
+            Write-Host "Found dsf lib: $($dsfLib.Name)"
+            $libs += $dsfLib.Name
+          } else {
+            Write-Host "No dsf.lib found in install (assuming header-only or not produced)."
+          }
+
+          # tbb (vcpkg may name it tbb12.lib etc.)
+          $tbbLib = Find-Lib "$VCPKG_INSTALLED\lib" "tbb*.lib"
+          if ($tbbLib) {
+            Write-Host "Found TBB lib: $($tbbLib.Name)"
+            $libs += $tbbLib.Name
+          } else {
+            Write-Host "ERROR: TBB lib not found in $VCPKG_INSTALLED\lib"
+            exit 1
+          }
+
+          # fmt (may be header-only or have a lib)
+          $fmtLib = Find-Lib "$VCPKG_INSTALLED\lib" "fmt*.lib"
+          if ($fmtLib) {
+            Write-Host "Found fmt lib: $($fmtLib.Name)"
+            $libs += $fmtLib.Name
+          } else {
+            Write-Host "fmt lib not found (fmt may be header-only); continuing."
+          }
+
+          # spdlog
+          $spdLib = Find-Lib "$VCPKG_INSTALLED\lib" "spdlog*.lib"
+          if ($spdLib) {
+            Write-Host "Found spdlog lib: $($spdLib.Name)"
+            $libs += $spdLib.Name
+          } else {
+            Write-Host "spdlog lib not found (may be header-only); continuing."
+          }
+
+          # simdjson
+          $simdLib = Find-Lib "$VCPKG_INSTALLED\lib" "simdjson*.lib"
+          if ($simdLib) {
+            Write-Host "Found simdjson lib: $($simdLib.Name)"
+            $libs += $simdLib.Name
+          } else {
+            Write-Host "simdjson lib not found (may be header-only); continuing."
+          }
+
+          Write-Host "Libraries to link: $($libs -join ', ')"
+
+          # Build the cl/link command
+          $libArgs = $libs -join ' '
+          cl.exe /nologo /std:c++20 /utf-8 /EHsc `
+            test.cpp `
+            /I"$INSTALL_DIR\include" `
+            /I"$VCPKG_INSTALLED\include" `
+            /link `
+            /LIBPATH:"$INSTALL_DIR\lib" `
+            /LIBPATH:"$VCPKG_INSTALLED\lib" $libArgs
+
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "SUCCESS: dsf library can be included and linked on Windows!"
+          } else {
+            Write-Host "FAILED: Cannot compile/link test program on Windows (exit code $LASTEXITCODE)"
+            exit 1
+          }

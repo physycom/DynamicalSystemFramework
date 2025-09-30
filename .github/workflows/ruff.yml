@@ -1,4 +1,4 @@
-name: Ruff checking
+name: "CI: Ruff checking"
 
 on:
   push:

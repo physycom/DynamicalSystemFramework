@@ -1,4 +1,4 @@
-name: Test Python Bindings Installation
+name: "CI: Test Python Bindings Installation"
 
 on:
   push:

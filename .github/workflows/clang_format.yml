@@ -1,4 +1,4 @@
-name: clang-format Check
+name: "CI: clang-format Check"
 
 on:
   push:
