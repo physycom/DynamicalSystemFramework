@@ -234,78 +234,53 @@ jobs:
         "
 
   build-wheels-linux:
-    name: Build wheels on Linux
+    name: Build wheels on Linux (Python ${{ matrix.python-version }})
     needs: [test-binding-installation, test-binding-development]
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
-    
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.12']
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
-        python-version: "3.12"
+        python-version: ${{ matrix.python-version }}
 
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
+        sudo apt install -y cmake build-essential doxygen libtbb-dev libfmt-dev libspdlog-dev libsimdjson-dev
 
-    - name: Install cibuildwheel
-      run: python -m pip install cibuildwheel==2.16.2
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build wheel setuptools pybind11-stubgen auditwheel
 
-    - name: Build wheels
-      env:
-        CIBW_BUILD: "cp310-* cp311-* cp312-*"
-        CIBW_SKIP: "*-musllinux_*"
-        CIBW_ARCHS_LINUX: "x86_64"
-        CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
-        CIBW_BEFORE_ALL_LINUX: >
-          dnf install -y --nogpgcheck epel-release &&
-          dnf config-manager --set-enabled powertools &&
-          dnf install -y --nogpgcheck cmake make doxygen git wget unzip &&
-          dnf install -y --nogpgcheck gcc-toolset-13 gcc-toolset-13-gcc-c++ &&
-          source /opt/rh/gcc-toolset-13/enable &&
-          export CC=/opt/rh/gcc-toolset-13/root/usr/bin/gcc &&
-          export CXX=/opt/rh/gcc-toolset-13/root/usr/bin/g++ &&
-          wget https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.11.0.tar.gz &&
-          tar -xzf v2021.11.0.tar.gz && cd oneTBB-2021.11.0 &&
-          mkdir build && cd build &&
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DTBB_TEST=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON &&
-          make -j2 && make install && cd ../.. &&
-          wget https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip &&
-          unzip fmt-10.1.1.zip && cd fmt-10.1.1 &&
-          mkdir build && cd build &&
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DFMT_TEST=OFF -DFMT_DOC=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON &&
-          make -j2 && make install && cd ../.. &&
-          wget https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz &&
-          tar -xzf v1.12.0.tar.gz && cd spdlog-1.12.0 &&
-          mkdir build && cd build &&
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DSPDLOG_BUILD_SHARED=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON &&
-          make -j2 && make install && cd ../.. &&
-          wget https://github.com/simdjson/simdjson/archive/refs/tags/v3.6.0.tar.gz &&
-          tar -xzf v3.6.0.tar.gz && cd simdjson-3.6.0 &&
-          mkdir build && cd build &&
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DSIMDJSON_BUILD_STATIC=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON &&
-          make -j2 && make install && cd ../.. &&
-          ldconfig
-        CIBW_ENVIRONMENT_LINUX: >
-          CMAKE_BUILD_PARALLEL_LEVEL=2
-          CMAKE_PREFIX_PATH=/usr/local
-          PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig
-          LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib
-          CC=/opt/rh/gcc-toolset-13/root/usr/bin/gcc
-          CXX=/opt/rh/gcc-toolset-13/root/usr/bin/g++
-          PATH=/opt/rh/gcc-toolset-13/root/usr/bin:$PATH
-      run: python -m cibuildwheel --output-dir wheelhouse
+    - name: Build wheel
+      run: |
+        rm -rf dist wheelhouse
+        python -m build --wheel
+
+    - name: Repair wheel (auditwheel)
+      run: |
+        mkdir -p wheelhouse
+        auditwheel repair dist/*.whl -w wheelhouse
+
+    - name: Test wheel installation
+      run: |
+        python -m pip install wheelhouse/*.whl
+        python -c "import dsf; print('DSF wheel installation successful')"
 
     - name: Upload wheels as artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: wheels-linux
-        path: ./wheelhouse/*.whl
+        name: wheel-linux-${{ matrix.python-version }}
+        path: wheelhouse/*.whl
 
   build-wheels-macos:
     name: Build wheels on macOS (Python ${{ matrix.python-version }})
