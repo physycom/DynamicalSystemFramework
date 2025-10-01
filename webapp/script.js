@@ -116,7 +116,7 @@ L.Control.Screenshot = L.Control.extend({
       pdf.rect(rectX, rectY, textWidth + margin * 2, textHeight + margin * 2, 'FD'); // Fill and stroke
       
       // Add black text on top
-      pdf.setTextColor(0, 0, 0); // Black text
+      pdf.setTextColor(255, 255, 255); // White text
       pdf.text(timestamp, rectX + margin, rectY + textHeight + margin);
 
       // Save the PDF
@@ -278,7 +278,7 @@ L.CanvasEdges = L.Layer.extend({
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      let color = this.colors[index] || 'rgba(255, 255, 255, 0.8)';
+      let color = this.colors[index] || 'rgba(0, 128, 0, 0.69)';
       if (this.highlightedEdge && edge.id === this.highlightedEdge) {
         color = 'white';
       }
@@ -448,7 +448,8 @@ function updateEdgeInfo(edge) {
     <strong>Source:</strong> ${edge.source}<br>
     <strong>Target:</strong> ${edge.target}<br>
     <strong>Name:</strong> ${edge.name}<br>
-    <strong>Density:</strong> ${density}
+    <strong>Density:</strong> ${density}<br>
+    <strong>Coil Code:</strong> ${edge.coilcode || 'N/A'}<br>
   `;
 }
 
@@ -633,6 +634,24 @@ loadDataBtn.addEventListener('click', async function() {
       document.getElementById('inverseBtn').disabled = true;
     });
 
+    // Add Enter key support for edge search
+    const edgeSearchInput = document.getElementById('edgeSearch');
+    edgeSearchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        edgeSearchBtn.click();
+      }
+    });
+
+    // Add Enter key support for node search
+    const nodeSearchInput = document.getElementById('nodeSearch');
+    nodeSearchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        nodeSearchBtn.click();
+      }
+    });
+
     // Clear selections
     const clearBtn = document.getElementById('clearBtn');
     clearBtn.addEventListener('click', () => {
@@ -712,7 +731,8 @@ function parseEdges(d) {
         source: d.source,
         target: d.target,
         name: d.name,
-        geometry: geometry
+        geometry: geometry,
+        coilcode: d.coilcode
       };
 }
 
