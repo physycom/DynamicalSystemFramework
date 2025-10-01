@@ -24,6 +24,7 @@ if (CMAKE_BUILD_TYPE MATCHES "Release")
 endif()
 
 find_package(TBB REQUIRED CONFIG)
+find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(simdjson REQUIRED)
 
