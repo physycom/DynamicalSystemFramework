@@ -299,6 +299,7 @@ jobs:
           CC=/opt/rh/gcc-toolset-13/root/usr/bin/gcc
           CXX=/opt/rh/gcc-toolset-13/root/usr/bin/g++
           PATH=/opt/rh/gcc-toolset-13/root/usr/bin:$PATH
+          CMAKE_ARGS="-DPORTABLE_BUILD=ON"
       run: python -m cibuildwheel --output-dir wheelhouse
 
     - name: Upload wheels as artifacts

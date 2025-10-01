@@ -18,9 +18,20 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Option for portable builds (for PyPI wheels)
+option(PORTABLE_BUILD "Build with portable CPU instructions (no -march=native)" OFF)
+
 # Ensure optimization flags are applied only in Release mode
 if (CMAKE_BUILD_TYPE MATCHES "Release")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto=auto")
+    if(PORTABLE_BUILD)
+        # Use conservative flags for maximum compatibility
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+        message(STATUS "Building with portable optimizations (no -march=native)")
+    else()
+        # Use native optimizations for maximum performance
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto=auto")
+        message(STATUS "Building with native optimizations (-march=native)")
+    endif()
 endif()
 
 find_package(TBB REQUIRED CONFIG)
@@ -71,6 +82,9 @@ install(EXPORT dsfConfig
 option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
 if(BUILD_PYTHON_BINDINGS)
+    # Enable PIC for the static library when building Python bindings
+    set_target_properties(dsf PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    
     include(FetchContent)
     
     # Get pybind11

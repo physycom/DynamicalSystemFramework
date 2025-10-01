@@ -44,14 +44,14 @@ def get_version_from_header():
 def generate_docstrings():
     """Generate .docstrings.hpp file from Doxygen XML output"""
     docstrings_path = "./src/dsf/.docstrings.hpp"
-    
+
     # Check if file already exists and is recent
     if os.path.exists(docstrings_path):
         print(f"{docstrings_path} already exists, skipping generation")
         return
-    
+
     print("Generating documentation strings...")
-    
+
     try:
         subprocess.run(["doxygen", "Doxyfile"], check=True)
     except FileNotFoundError as exc:
@@ -62,7 +62,7 @@ def generate_docstrings():
         raise RuntimeError(
             "Doxygen failed to run. Ensure that 'Doxyfile' exists and is valid."
         ) from exc
-    
+
     docs = {}
     DOXYGEN_XML_DIR = "xml"
 
@@ -98,9 +98,7 @@ def generate_docstrings():
         param_docs = {}
         detailed_desc = member.find("detaileddescription")
         if detailed_desc is not None:
-            for param_list in detailed_desc.findall(
-                ".//parameterlist[@kind='param']"
-            ):
+            for param_list in detailed_desc.findall(".//parameterlist[@kind='param']"):
                 for param_item in param_list.findall("parameteritem"):
                     param_name_list = param_item.find("parameternamelist")
                     param_desc = param_item.find("parameterdescription")
@@ -139,9 +137,7 @@ def generate_docstrings():
         # Extract return documentation
         detailed_desc = member.find("detaileddescription")
         if detailed_desc is not None:
-            for return_elem in detailed_desc.findall(
-                ".//simplesect[@kind='return']"
-            ):
+            for return_elem in detailed_desc.findall(".//simplesect[@kind='return']"):
                 para = return_elem.find("para")
                 if para is not None and para.text:
                     return_doc = para.text
@@ -216,9 +212,7 @@ def generate_docstrings():
 
             for compound in root.findall(".//compounddef"):
                 name = compound.find("compoundname").text
-                brief = compound.find("briefdescription").findtext(
-                    "para", default=""
-                )
+                brief = compound.find("briefdescription").findtext("para", default="")
                 detailed = compound.find("detaileddescription").findtext(
                     "para", default=""
                 )
@@ -260,7 +254,7 @@ def generate_docstrings():
                         docs[f"{name}::{member_name}"] = format_documentation_entry(
                             f"{name}::{member_name}", member_brief, member_detailed
                         )
-    
+
     with open(docstrings_path, "w") as f:
         f.write("#pragma once\n\n#include <unordered_map>\n#include <string>\n\n")
         f.write("namespace dsf {\n")
@@ -271,7 +265,7 @@ def generate_docstrings():
             f.write(f'        {{"{k}", R"""({v})"""}},\n')
         f.write("    };\n")
         f.write("}\n")
-    
+
     print(f"Generated {docstrings_path} successfully")
 
 
@@ -311,6 +305,7 @@ class CMakeBuild(build_ext):
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",
             "-DBUILD_PYTHON_BINDINGS=ON",
+            "-DPORTABLE_BUILD=ON",  # Build with portable CPU instructions for PyPI
         ]
 
         # Add macOS-specific CMake prefix paths for Homebrew dependencies
@@ -433,7 +428,7 @@ class CMakeBuild(build_ext):
 
 class CustomSdist(sdist):
     """Custom sdist command that generates documentation before creating source distribution"""
-    
+
     def run(self):
         """Generate docstrings before creating source distribution"""
         print("Running custom sdist command...")
