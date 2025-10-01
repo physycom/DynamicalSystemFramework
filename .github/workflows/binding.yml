@@ -265,7 +265,11 @@ jobs:
         CIBW_BEFORE_ALL_LINUX: >
           dnf install -y --nogpgcheck epel-release &&
           dnf config-manager --set-enabled powertools &&
-          dnf install -y --nogpgcheck cmake gcc-c++ make doxygen git wget unzip &&
+          dnf install -y --nogpgcheck cmake make doxygen git wget unzip &&
+          dnf install -y --nogpgcheck gcc-toolset-13 gcc-toolset-13-gcc-c++ &&
+          source /opt/rh/gcc-toolset-13/enable &&
+          export CC=/opt/rh/gcc-toolset-13/root/usr/bin/gcc &&
+          export CXX=/opt/rh/gcc-toolset-13/root/usr/bin/g++ &&
           wget https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.11.0.tar.gz &&
           tar -xzf v2021.11.0.tar.gz && cd oneTBB-2021.11.0 &&
           mkdir build && cd build &&
@@ -292,6 +296,9 @@ jobs:
           CMAKE_PREFIX_PATH=/usr/local
           PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig
           LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib
+          CC=/opt/rh/gcc-toolset-13/root/usr/bin/gcc
+          CXX=/opt/rh/gcc-toolset-13/root/usr/bin/g++
+          PATH=/opt/rh/gcc-toolset-13/root/usr/bin:$PATH
       run: python -m cibuildwheel --output-dir wheelhouse
 
     - name: Upload wheels as artifacts
