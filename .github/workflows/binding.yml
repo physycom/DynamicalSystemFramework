@@ -1,8 +1,10 @@
-name: "CI: Test Python Bindings Installation"
+name: "CI: Test Python Bindings Installation and Publish"
 
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [ "main" ]
 
@@ -15,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest] # , windows-latest --- IGNORE ---
-        python-version: ["3.8", "3.10", "3.12"]
+        python-version: ["3.10", "3.12"]
 
     runs-on: ${{ matrix.os }}
 
@@ -123,7 +125,7 @@ jobs:
     - name: Test editable installation
       run: |
         # Test editable installation
-        python -m pip uninstall -y dsf
+        python -m pip uninstall -y dsf-mobility
         python -m pip install -e .
         python -c "import dsf; print('DSF editable installation successful')"
 
@@ -143,7 +145,7 @@ jobs:
     - name: Clean installation test
       run: |
         # Test clean uninstall and reinstall
-        python -m pip uninstall -y dsf
+        python -m pip uninstall -y dsf-mobility
         
         # Move to a different directory to avoid importing from source
         mkdir -p /tmp/clean_test
@@ -181,10 +183,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python 3.11
+    - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
+        python-version: "3.12"
 
     - name: Install system dependencies
       run: |
@@ -230,3 +232,204 @@ jobs:
         attrs = [attr for attr in dir(dsf) if not attr.startswith('_')]
         print(f'Available DSF attributes ({len(attrs)}): {attrs}')
         "
+
+  build-wheels-linux:
+    name: Build wheels on Linux
+    needs: [test-binding-installation, test-binding-development]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
+
+    - name: Install cibuildwheel
+      run: python -m pip install cibuildwheel==2.16.2
+
+    - name: Build wheels
+      env:
+        CIBW_BUILD: "cp310-* cp311-* cp312-*"
+        CIBW_SKIP: "*-musllinux_*"
+        CIBW_ARCHS_LINUX: "x86_64"
+        CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+        CIBW_BEFORE_ALL_LINUX: >
+          dnf install -y --nogpgcheck epel-release &&
+          dnf config-manager --set-enabled powertools &&
+          dnf install -y --nogpgcheck cmake make doxygen git wget unzip &&
+          dnf install -y --nogpgcheck gcc-toolset-13 gcc-toolset-13-gcc-c++ &&
+          source /opt/rh/gcc-toolset-13/enable &&
+          export CC=/opt/rh/gcc-toolset-13/root/usr/bin/gcc &&
+          export CXX=/opt/rh/gcc-toolset-13/root/usr/bin/g++ &&
+          wget https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.11.0.tar.gz &&
+          tar -xzf v2021.11.0.tar.gz && cd oneTBB-2021.11.0 &&
+          mkdir build && cd build &&
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DTBB_TEST=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON &&
+          make -j2 && make install && cd ../.. &&
+          wget https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip &&
+          unzip fmt-10.1.1.zip && cd fmt-10.1.1 &&
+          mkdir build && cd build &&
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DFMT_TEST=OFF -DFMT_DOC=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON &&
+          make -j2 && make install && cd ../.. &&
+          wget https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz &&
+          tar -xzf v1.12.0.tar.gz && cd spdlog-1.12.0 &&
+          mkdir build && cd build &&
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DSPDLOG_BUILD_SHARED=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON &&
+          make -j2 && make install && cd ../.. &&
+          wget https://github.com/simdjson/simdjson/archive/refs/tags/v3.6.0.tar.gz &&
+          tar -xzf v3.6.0.tar.gz && cd simdjson-3.6.0 &&
+          mkdir build && cd build &&
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DSIMDJSON_BUILD_STATIC=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON &&
+          make -j2 && make install && cd ../.. &&
+          ldconfig
+        CIBW_ENVIRONMENT_LINUX: >
+          CMAKE_BUILD_PARALLEL_LEVEL=2
+          CMAKE_PREFIX_PATH=/usr/local
+          PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig
+          LD_LIBRARY_PATH=/usr/local/lib64:/usr/local/lib
+          CC=/opt/rh/gcc-toolset-13/root/usr/bin/gcc
+          CXX=/opt/rh/gcc-toolset-13/root/usr/bin/g++
+          PATH=/opt/rh/gcc-toolset-13/root/usr/bin:$PATH
+      run: python -m cibuildwheel --output-dir wheelhouse
+
+    - name: Upload wheels as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheels-linux
+        path: ./wheelhouse/*.whl
+
+  build-wheels-macos:
+    name: Build wheels on macOS (Python ${{ matrix.python-version }})
+    needs: [test-binding-installation, test-binding-development]
+    runs-on: macos-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.12']
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies
+      run: |
+        brew install cmake tbb spdlog simdjson doxygen
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build wheel setuptools pybind11-stubgen delocate
+
+    - name: Set macOS environment variables
+      run: |
+        echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include:$(brew --prefix fmt)/include:$(brew --prefix spdlog)/include:$(brew --prefix simdjson)/include" >> $GITHUB_ENV
+        echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib:$(brew --prefix simdjson)/lib" >> $GITHUB_ENV
+        echo "CMAKE_PREFIX_PATH=$(brew --prefix tbb);$(brew --prefix fmt);$(brew --prefix spdlog);$(brew --prefix simdjson)" >> $GITHUB_ENV
+        echo "ARCHFLAGS=-arch $(uname -m)" >> $GITHUB_ENV
+        echo "_PYTHON_HOST_PLATFORM=macosx-$(sw_vers -productVersion | cut -d. -f1)-$(uname -m)" >> $GITHUB_ENV
+
+    - name: Build wheel
+      run: python -m build --wheel
+
+    - name: Repair wheel (bundle libraries)
+      run: |
+        mkdir -p wheelhouse
+        delocate-wheel -w wheelhouse -v --require-archs $(uname -m) dist/*.whl
+
+    - name: Upload wheels as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheel-macos-${{ matrix.python-version }}
+        path: wheelhouse/*.whl
+
+  build-sdist:
+    name: Build source distribution
+    needs: [test-binding-installation, test-binding-development]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build
+
+    - name: Build source distribution
+      run: python -m build --sdist
+
+    - name: Upload sdist as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: sdist
+        path: dist/*.tar.gz
+
+  publish:
+    name: Publish to PyPI
+    needs: [build-wheels-linux, build-wheels-macos, build-sdist]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist-artifacts
+
+    - name: Collect all distributions
+      run: |
+        mkdir -p dist
+        find dist-artifacts -name '*.whl' -exec cp {} dist/ \;
+        find dist-artifacts -name '*.tar.gz' -exec cp {} dist/ \;
+        echo "Contents of dist/:"
+        ls -la dist/
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
+    - name: Install twine
+      run: python -m pip install twine
+
+    - name: Publish to TestPyPI (on PR)
+      if: github.event_name == 'pull_request'
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI }}
+      run: |
+        python -m twine upload --repository testpypi dist/* --verbose
+
+    - name: Publish to PyPI (on tag)
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI }}
+      run: |
+        python -m twine upload dist/* --verbose
