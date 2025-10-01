@@ -2232,7 +2232,11 @@ namespace dsf {
         if (!pStreet->isSpire()) {
           continue;
         }
-        file << separator << streetId;
+        if (pStreet->isStochastic()) {
+          file << separator << dynamic_cast<StochasticSpireStreet&>(*pStreet).code();
+        } else {
+          file << separator << dynamic_cast<SpireStreet&>(*pStreet).code();
+        }
       }
       file << std::endl;
     }
