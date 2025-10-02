@@ -1,5 +1,6 @@
 # DynamicalSystemFramework
 [![Latest Release](https://img.shields.io/github/v/release/physycom/DynamicalSystemFramework)](https://github.com/physycom/DynamicalSystemFramework/releases/latest)
+[![PyPI version](https://img.shields.io/pypi/v/dsf-mobility)](https://pypi.org/project/dsf-mobility/)
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![TBB](https://img.shields.io/badge/TBB-2021.11.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
 [![SPDLOG](https://img.shields.io/badge/spdlog-1.12.0-blue.svg)](https://github.com/gabime/spdlog)
@@ -11,15 +12,29 @@ The aim of this project is to rework the original [Traffic Flow Dynamics Model](
 This rework consists of a full code rewriting, in order to implement more features (like *intersections*) and get advantage from the latest C++ updates.
 
 ## Table of Contents
-- [Requirements](#requirements)
 - [Installation](#installation)
+- [Installation (from source)](#installation-from-source)
 - [Testing](#testing)
 - [Benchmarking](#benchmarking)
 - [Citing](#citing)
 - [Bibliography](#bibliography)
 
-## Requirements
+## Installation
+The library is available on `PyPI`:
+```shell
+pip install dsf-mobility
+```
 
+To check the installation you can simply run
+```python
+import dsf
+
+print(dsf.__version__)
+```
+
+## Installation (from source)
+
+### Requirements
 The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, and `spdlog` (with `fmt`).
 To install requirements on Ubuntu:
 ```shell
@@ -34,8 +49,7 @@ Utilities are written in python. To install their dependencies:
 ```shell
 pip install -r ./requirements.txt
 ```
-
-## Installation
+### Installation (C++)
 The library can be installed using CMake. To build and install the project in the default folder run:
 ```shell
 cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
@@ -51,7 +65,7 @@ cmake --build build
 cmake --install build
 ```
 
-## Installation via Pybind11
+## Installation (Python)
 If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have doxygen installed to generate the docstrings:
 ```shell
 sudo apt install doxygen
@@ -65,6 +79,8 @@ pip install .
 After installation, you should be able to import the module in Python:
 ```python
 import dsf
+
+print(dsf.__version__)
 ```
 
 If you encounter issues, ensure that the installation path is in your `PYTHONPATH` environment variable.
