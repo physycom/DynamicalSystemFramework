@@ -673,16 +673,19 @@ namespace dsf {
         bool overtimed{false};
         {
           auto const timeDiff{this->time() - pAgentTemp->freeTime()};
-          if (timeDiff > 120) {
+          auto const timeTolerance{3 *
+                                   std::ceil(pStreet->length() / pStreet->maxSpeed())};
+          if (timeDiff > timeTolerance) {
             overtimed = true;
             spdlog::warn(
                 "Time {} - {} currently on {} ({} turn - Traffic Light? {}), "
-                "has been still for more than 120 seconds ({} seconds)",
+                "has been still for more than {} seconds ({} seconds)",
                 this->time(),
                 *pAgentTemp,
                 *pStreet,
                 directionToString.at(pStreet->laneMapping().at(queueIndex)),
                 this->graph().node(pStreet->target())->isTrafficLight(),
+                timeTolerance,
                 timeDiff);
           }
         }
