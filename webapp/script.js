@@ -448,6 +448,7 @@ function updateEdgeInfo(edge) {
     <strong>Source:</strong> ${edge.source}<br>
     <strong>Target:</strong> ${edge.target}<br>
     <strong>Name:</strong> ${edge.name}<br>
+    <strong>Number of Lanes:</strong> ${edge.nlanes || 'N/A'}<br>
     <strong>Density:</strong> ${density}<br>
     <strong>Coil Code:</strong> ${edge.coilcode || 'N/A'}<br>
   `;
@@ -731,6 +732,7 @@ function parseEdges(d) {
         source: d.source,
         target: d.target,
         name: d.name,
+        nlanes: +d.nlanes,
         geometry: geometry,
         coilcode: d.coilcode
       };
