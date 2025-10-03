@@ -2372,9 +2372,9 @@ namespace dsf {
       mean_travel_distance += distance * 1e-3;
       mean_travel_time += time / 60.;
       mean_travel_speed += distance / time * 3.6;
-      std_travel_distance += distance * distance;
-      std_travel_time += time * time;
-      std_travel_speed += (distance / time) * (distance / time);
+      std_travel_distance += distance * distance * 1e-6;
+      std_travel_time += time * time / 3600.;
+      std_travel_speed += (distance / time) * (distance / time) * 12.96;
     }
     m_travelDTs.clear();
 
