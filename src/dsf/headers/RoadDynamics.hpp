@@ -1116,11 +1116,11 @@ namespace dsf {
     std::for_each(destinationNodes.begin(),
                   destinationNodes.end(),
                   [this, &sumWeights](auto const& pair) -> void {
+                    sumWeights += pair.second;
                     if (this->itineraries().contains(pair.first)) {
                       return;
                     }
                     this->addItinerary(pair.first, pair.first);
-                    sumWeights += pair.second;
                   });
     if (sumWeights == 1.) {
       m_destinationNodes = destinationNodes;
@@ -1173,11 +1173,11 @@ namespace dsf {
     std::for_each(destinationNodes.begin(),
                   destinationNodes.end(),
                   [this, &numNodes](auto const& nodeId) -> void {
+                    this->m_destinationNodes[nodeId] = 1. / numNodes;
                     if (this->itineraries().contains(nodeId)) {
                       return;
                     }
                     this->addItinerary(nodeId, nodeId);
-                    this->m_destinationNodes[nodeId] = 1. / numNodes;
                   });
   }
   template <typename delay_t>
@@ -1191,11 +1191,11 @@ namespace dsf {
     std::for_each(destinationNodes.begin(),
                   destinationNodes.end(),
                   [this, &numNodes](auto const& nodeId) -> void {
+                    this->m_destinationNodes[nodeId] = 1. / numNodes;
                     if (this->itineraries().contains(nodeId)) {
                       return;
                     }
                     this->addItinerary(nodeId, nodeId);
-                    this->m_destinationNodes[nodeId] = 1. / numNodes;
                   });
   }
 
