@@ -1107,14 +1107,15 @@ namespace dsf {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setDestinationNodes(
       std::unordered_map<Id, double> const& destinationNodes) {
-    m_itineraries.clear();
-    m_itineraries.reserve(destinationNodes.size());
     m_destinationNodes.clear();
     m_destinationNodes.reserve(destinationNodes.size());
     auto sumWeights{0.};
     std::for_each(destinationNodes.begin(),
                   destinationNodes.end(),
                   [this, &sumWeights](auto const& pair) -> void {
+                    if (this->itineraries().contains(pair.first)) {
+                      return;
+                    }
                     this->addItinerary(pair.first, pair.first);
                     sumWeights += pair.second;
                   });
@@ -1164,13 +1165,14 @@ namespace dsf {
   void RoadDynamics<delay_t>::setDestinationNodes(
       std::initializer_list<Id> destinationNodes) {
     auto const numNodes{destinationNodes.size()};
-    m_itineraries.clear();
-    m_itineraries.reserve(numNodes);
-    m_itineraries.clear();
-    m_itineraries.reserve(numNodes);
+    m_destinationNodes.clear();
+    m_destinationNodes.reserve(numNodes);
     std::for_each(destinationNodes.begin(),
                   destinationNodes.end(),
                   [this, &numNodes](auto const& nodeId) -> void {
+                    if (this->itineraries().contains(nodeId)) {
+                      return;
+                    }
                     this->addItinerary(nodeId, nodeId);
                     this->m_destinationNodes[nodeId] = 1. / numNodes;
                   });
@@ -1181,13 +1183,14 @@ namespace dsf {
     requires(std::is_convertible_v<typename TContainer::value_type, Id>)
   void RoadDynamics<delay_t>::setDestinationNodes(TContainer const& destinationNodes) {
     auto const numNodes{destinationNodes.size()};
-    m_itineraries.clear();
-    m_itineraries.reserve(numNodes);
-    m_itineraries.clear();
-    m_itineraries.reserve(numNodes);
+    m_destinationNodes.clear();
+    m_destinationNodes.reserve(numNodes);
     std::for_each(destinationNodes.begin(),
                   destinationNodes.end(),
                   [this, &numNodes](auto const& nodeId) -> void {
+                    if (this->itineraries().contains(nodeId)) {
+                      return;
+                    }
                     this->addItinerary(nodeId, nodeId);
                     this->m_destinationNodes[nodeId] = 1. / numNodes;
                   });
