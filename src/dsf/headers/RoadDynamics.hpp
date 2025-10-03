@@ -20,6 +20,7 @@
 #include <optional>
 #include <random>
 #include <span>
+#include <sstream>
 #include <thread>
 #include <unordered_map>
 #include <variant>
@@ -364,14 +365,14 @@ namespace dsf {
     /// @param separator The separator character (default is ';')
     /// @details The file contains the following columns:
     /// - time: the time of the simulation
+    /// - n_ghost_agents: the number of agents waiting to be inserted in the simulation
     /// - n_agents: the number of agents currently in the simulation
-    /// - mean_speed - mean_speed_std: the mean speed of the agents
-    /// - mean_density - mean_density_std: the (normalized) mean density of the streets
-    /// - mean_flow - mean_flow_std: the mean flow of the streets
-    /// - mean_flow_spires - mean_flow_spires_std: the mean flow of the spires
-    /// - mean_traveltime - mean_traveltime_std: the mean travel time of the agents
-    /// - mean_traveldistance - mean_traveldistance_err: the mean travel distance of the agents
-    /// - mean_travelspeed - mean_travelspeed_std: the mean travel speed of the agents
+    /// - mean_speed - mean_speed_std (km/h): the mean speed of the agents
+    /// - mean_density - mean_density_std (veh/km): the mean density of the streets
+    /// - mean_flow - mean_flow_std (veh/h): the mean flow of the streets
+    /// - mean_traveltime - mean_traveltime_std (min): the mean travel time of the agents
+    /// - mean_traveldistance - mean_traveldistance_err (km): the mean travel distance of the agents
+    /// - mean_travelspeed - mean_travelspeed_std (km/h): the mean travel speed of the agents
     ///
     /// NOTE: the mean density is normalized in [0, 1] and reset is true for all observables which have such parameter
     void saveMacroscopicObservables(const std::string& filename,
@@ -2193,7 +2194,14 @@ namespace dsf {
     if (bEmptyFile) {
       file << "time";
       for (auto const& [streetId, pStreet] : this->graph().edges()) {
-        file << separator << streetId;
+        if (!pStreet->isSpire()) {
+          continue;
+        }
+        if (pStreet->isStochastic()) {
+          file << separator << dynamic_cast<StochasticSpireStreet&>(*pStreet).code();
+        } else {
+          file << separator << dynamic_cast<SpireStreet&>(*pStreet).code();
+        }
       }
       file << std::endl;
     }
@@ -2270,29 +2278,41 @@ namespace dsf {
     if (bEmptyFile) {
       file << "time;distances;times;speeds" << std::endl;
     }
-    file << this->time() << ';';
-    file << std::fixed << std::setprecision(2);
+
+    // Construct strings efficiently with proper formatting
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(2);
+
+    std::string strTravelDistances, strTravelTimes, strTravelSpeeds;
+    strTravelDistances.reserve(m_travelDTs.size() *
+                               10);  // Rough estimate for numeric strings
+    strTravelTimes.reserve(m_travelDTs.size() * 10);
+    strTravelSpeeds.reserve(m_travelDTs.size() * 10);
+
     for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      file << it->first;
+      oss.str("");  // Clear the stream
+      oss << it->first;
+      strTravelDistances += oss.str();
+
+      oss.str("");
+      oss << it->second;
+      strTravelTimes += oss.str();
+
+      oss.str("");
+      oss << (it->first / it->second);
+      strTravelSpeeds += oss.str();
+
       if (it != m_travelDTs.cend() - 1) {
-        file << ',';
+        strTravelDistances += ',';
+        strTravelTimes += ',';
+        strTravelSpeeds += ',';
       }
     }
-    file << ';';
-    for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      file << it->second;
-      if (it != m_travelDTs.cend() - 1) {
-        file << ',';
-      }
-    }
-    file << ';';
-    for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      file << (it->first / it->second);
-      if (it != m_travelDTs.cend() - 1) {
-        file << ',';
-      }
-    }
-    file << std::endl;
+
+    // Write all data at once
+    file << this->time() << ';' << strTravelDistances << ';' << strTravelTimes << ';'
+         << strTravelSpeeds << std::endl;
+
     file.close();
     if (reset) {
       m_travelDTs.clear();
@@ -2313,69 +2333,66 @@ namespace dsf {
     }
     if (bEmptyFile) {
       file << "time;n_ghost_agents;n_agents;mean_speed;mean_speed_std;mean_density;mean_"
-              "density_std;"
-              "mean_flow;mean_flow_std;mean_flow_spires;mean_flow_spires_std;mean_"
-              "traveltime;mean_traveltime_std;mean_traveldistance;mean_traveldistance_"
+              "density_std;mean_flow;mean_flow_std;mean_traveltime;mean_traveltime_std;"
+              "mean_traveldistance;mean_traveldistance_"
               "err;mean_travelspeed;mean_travelspeed_std\n";
     }
+    double mean_speed{0.}, mean_density{0.}, mean_flow{0.}, mean_travel_distance{0.},
+        mean_travel_time{0.}, mean_travel_speed{0.};
+    double std_speed{0.}, std_density{0.}, std_flow{0.}, std_travel_distance{0.},
+        std_travel_time{0.}, std_travel_speed{0.};
+    auto const& nEdges{this->graph().nEdges()};
+    auto const& nData{m_travelDTs.size()};
+
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
+      auto const& speed{this->streetMeanSpeed(streetId) * 3.6};
+      auto const& density{pStreet->density() * 1e3};
+      auto const& flow{density * speed};
+      mean_speed += speed;
+      mean_density += density;
+      mean_flow += flow;
+      std_speed += speed * speed;
+      std_density += density * density;
+      std_flow += flow * flow;
+    }
+    mean_speed /= nEdges;
+    mean_density /= nEdges;
+    mean_flow /= nEdges;
+    std_speed = std::sqrt(std_speed / nEdges - mean_speed * mean_speed);
+    std_density = std::sqrt(std_density / nEdges - mean_density * mean_density);
+    std_flow = std::sqrt(std_flow / nEdges - mean_flow * mean_flow);
+
+    for (auto const& [distance, time] : m_travelDTs) {
+      mean_travel_distance += distance * 1e-3;
+      mean_travel_time += time / 60.;
+      mean_travel_speed += distance / time * 3.6;
+      std_travel_distance += distance * distance;
+      std_travel_time += time * time;
+      std_travel_speed += (distance / time) * (distance / time);
+    }
+    m_travelDTs.clear();
+
+    mean_travel_distance /= nData;
+    mean_travel_time /= nData;
+    mean_travel_speed /= nData;
+    std_travel_distance = std::sqrt(std_travel_distance / nData -
+                                    mean_travel_distance * mean_travel_distance);
+    std_travel_time =
+        std::sqrt(std_travel_time / nData - mean_travel_time * mean_travel_time);
+    std_travel_speed =
+        std::sqrt(std_travel_speed / nData - mean_travel_speed * mean_travel_speed);
+
     file << this->time() << separator;
     file << m_agents.size() << separator;
-    {
-      std::vector<double> speeds, densities, flows, spireFlows;
-      size_t nAgents{0};
-      speeds.reserve(this->graph().nEdges());
-      densities.reserve(this->graph().nEdges());
-      flows.reserve(this->graph().nEdges());
-      spireFlows.reserve(this->graph().nEdges());
-      for (auto const& [streetId, pStreet] : this->graph().edges()) {
-        nAgents += pStreet->nAgents();
-        speeds.push_back(this->streetMeanSpeed(streetId));
-        densities.push_back(pStreet->density(true));
-        flows.push_back(pStreet->density(true) * speeds.back());
-        if (pStreet->isSpire()) {
-          auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
-          spireFlows.push_back(static_cast<double>(spire.inputCounts(true)) /
-                               (this->time() - m_previousSpireTime));
-        }
-      }
-      for (auto const& [nodeId, pNode] : this->graph().nodes()) {
-        if (pNode->isIntersection()) {
-          auto& intersection = dynamic_cast<Intersection&>(*pNode);
-          nAgents += intersection.agents().size();
-        } else if (pNode->isRoundabout()) {
-          auto& roundabout = dynamic_cast<Roundabout&>(*pNode);
-          nAgents += roundabout.agents().size();
-        }
-      }
-      auto speed{Measurement<double>(speeds)};
-      auto density{Measurement<double>(densities)};
-      auto flow{Measurement<double>(flows)};
-      auto spireFlow{Measurement<double>(spireFlows)};
-      file << nAgents << separator;
-      file << std::scientific << std::setprecision(2);
-      file << speed.mean << separator << speed.std << separator;
-      file << density.mean << separator << density.std << separator;
-      file << flow.mean << separator << flow.std << separator;
-      file << spireFlow.mean << separator << spireFlow.std << separator;
-    }
-    {
-      std::vector<double> distances, times, speeds;
-      distances.reserve(m_travelDTs.size());
-      times.reserve(m_travelDTs.size());
-      speeds.reserve(m_travelDTs.size());
-      for (auto const& [distance, time] : m_travelDTs) {
-        distances.push_back(distance);
-        times.push_back(time);
-        speeds.push_back(distance / time);
-      }
-      auto distance{Measurement<double>(distances)};
-      auto time{Measurement<double>(times)};
-      auto speed{Measurement<double>(speeds)};
-      file << time.mean << separator << time.std << separator;
-      file << distance.mean << separator << distance.std << separator;
-      file << speed.mean << separator << speed.std << std::endl;
-      m_travelDTs.clear();
-    }
+    file << this->nAgents() << separator;
+    file << std::scientific << std::setprecision(2);
+    file << mean_speed << separator << std_speed << separator;
+    file << mean_density << separator << std_density << separator;
+    file << mean_flow << separator << std_flow << separator;
+    file << mean_travel_time << separator << std_travel_time << separator;
+    file << mean_travel_distance << separator << std_travel_distance << separator;
+    file << mean_travel_speed << separator << std_travel_speed << std::endl;
+
     file.close();
   }
 };  // namespace dsf
