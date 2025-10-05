@@ -9,7 +9,7 @@
 
 #include <spdlog/spdlog.h>  // For logging functionality
 
-PYBIND11_MODULE(dsf, m) {
+PYBIND11_MODULE(dsf_cpp, m) {
   m.doc() = "Python bindings for the DSM library";
   m.attr("__version__") = dsf::version();
 

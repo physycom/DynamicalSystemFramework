@@ -378,11 +378,11 @@ class CMakeBuild(build_ext):
             # Generate stub files
             cmd = [
                 "pybind11-stubgen",
-                "dsf",
+                "dsf_cpp",
                 "--ignore-invalid-expressions",
                 "std::function|dsf::RoadDynamics",
                 "--enum-class-locations",
-                "TrafficLightOptimization:dsf",
+                "TrafficLightOptimization:dsf_cpp",
                 "--output-dir",
                 stub_output_dir,
             ]
@@ -395,13 +395,15 @@ class CMakeBuild(build_ext):
             print(f"stdout: {result.stdout}")
 
             # Check if stub file was created
-            stub_file = os.path.join(stub_output_dir, "dsf.pyi")
+            stub_file = os.path.join(stub_output_dir, "dsf_cpp.pyi")
             if os.path.exists(stub_file):
                 print(f"Stub file successfully created at {stub_file}")
                 # For editable installs, also copy to source directory for development
-                source_stub = os.path.join(os.path.dirname(__file__), "dsf.pyi")
+                source_stub = os.path.join(
+                    os.path.dirname(__file__), "src", "dsf", "__init__.pyi"
+                )
                 if source_stub != stub_file:
-                    print(f"Copying stub file to source directory: {source_stub}")
+                    print(f"Copying stub file to package: {source_stub}")
                     shutil.copy2(stub_file, source_stub)
             else:
                 print(f"Warning: Stub file not found at {stub_file}")
@@ -464,9 +466,12 @@ setup(
         "flow",
         "optimization",
     ],
-    ext_modules=[CMakeExtension("dsf")],
+    ext_modules=[CMakeExtension("dsf_cpp")],
+    packages=["dsf"],
+    package_dir={"dsf": "src/dsf"},
     cmdclass={"build_ext": CMakeBuild},
     package_data={
+        "dsf": ["*.pyi"],
         "": ["*.pyi"],
     },
     include_package_data=True,
