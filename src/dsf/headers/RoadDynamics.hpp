@@ -65,6 +65,7 @@ namespace dsf {
     double m_maxTravelDistance;
     Time m_maxTravelTime;
     double m_weightTreshold;
+    std::optional<double> m_timeToleranceFactor;
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
     bool m_forcePriorities;
@@ -125,9 +126,16 @@ namespace dsf {
     /// @details The passage probability is the probability of passing through a node
     ///   It is useful in the case of random agents
     void setPassageProbability(double passageProbability);
-
+    /// @brief Set the time tolerance factor for killing stagnant agents.
+    ///   An agent will be considered stagnant if it has not moved for timeToleranceFactor * std::ceil(street_length / street_maxSpeed) time units.
+    /// @param timeToleranceFactor The time tolerance factor
+    /// @throw std::invalid_argument If the time tolerance factor is not positive
+    void killStagnantAgents(double timeToleranceFactor = 3.);
+    /// @brief Set the weight function
+    /// @param pathWeight The dsf::PathWeight function to use for the pathfinding
+    /// @param weightThreshold The weight threshold for updating the paths (default is std::nullopt)
     void setWeightFunction(PathWeight const pathWeight,
-                           std::optional<double> weigthThreshold = std::nullopt);
+                           std::optional<double> weightThreshold = std::nullopt);
     /// @brief Set the force priorities flag
     /// @param forcePriorities The flag
     /// @details If true, if an agent cannot move to the next street, the whole node is skipped
@@ -393,6 +401,7 @@ namespace dsf {
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
         m_maxTravelDistance{std::numeric_limits<double>::max()},
+        m_timeToleranceFactor{std::nullopt},
         m_maxTravelTime{std::numeric_limits<Time>::max()},
         m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
@@ -670,16 +679,15 @@ namespace dsf {
                         pAgentTemp->freeTime());
           continue;
         }
-        bool overtimed{false};
-        {
+
+        if (m_timeToleranceFactor.has_value()) {
           auto const timeDiff{this->time() - pAgentTemp->freeTime()};
-          auto const timeTolerance{3 *
+          auto const timeTolerance{m_timeToleranceFactor.value() *
                                    std::ceil(pStreet->length() / pStreet->maxSpeed())};
           if (timeDiff > timeTolerance) {
-            overtimed = true;
             spdlog::warn(
                 "Time {} - {} currently on {} ({} turn - Traffic Light? {}), "
-                "has been still for more than {} seconds ({} seconds)",
+                "has been still for more than {} seconds ({} seconds). Killing it.",
                 this->time(),
                 *pAgentTemp,
                 *pStreet,
@@ -687,17 +695,15 @@ namespace dsf {
                 this->graph().node(pStreet->target())->isTrafficLight(),
                 timeTolerance,
                 timeDiff);
+            // Kill the agent
+            auto pAgent{pStreet->dequeue(queueIndex)};
+            continue;
           }
         }
         pAgentTemp->setSpeed(0.);
         const auto& destinationNode{this->graph().node(pStreet->target())};
         if (destinationNode->isFull()) {
-          if (overtimed) {
-            spdlog::warn("Skipping due to full destination node {}", *destinationNode);
-          } else {
-            spdlog::debug("Skipping due to space at destination node {}",
-                          *destinationNode);
-          }
+          spdlog::debug("Skipping due to full destination node {}", *destinationNode);
           continue;
         }
         if (destinationNode->isTrafficLight()) {
@@ -807,17 +813,9 @@ namespace dsf {
           }
           if (!bCanPass) {
             spdlog::debug(
-                "Skipping agent emission from street {} -> {} due to right of way.",
+                "Skipping agent emission from street {} -> {} due to right of way",
                 pStreet->source(),
                 pStreet->target());
-            if (overtimed) {
-              spdlog::warn(
-                  "Skipping agent emission from street {} -> {} due to right of way "
-                  "and overtimed agent {}",
-                  pStreet->source(),
-                  pStreet->target(),
-                  pAgentTemp->id());
-            }
             continue;
           }
         }
@@ -832,14 +830,6 @@ namespace dsf {
                 "probability",
                 pStreet->source(),
                 pStreet->target());
-            if (overtimed) {
-              spdlog::warn(
-                  "Skipping agent emission from street {} -> {} due to passage "
-                  "probability and overtimed agent {}",
-                  pStreet->source(),
-                  pStreet->target(),
-                  pAgentTemp->id());
-            }
             continue;
           }
         }
@@ -879,21 +869,12 @@ namespace dsf {
         }
         auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
         if (nextStreet->isFull()) {
-          if (overtimed) {
-            spdlog::warn(
-                "Skipping agent emission from street {} -> {} due to full "
-                "next street: {}",
-                pStreet->source(),
-                pStreet->target(),
-                *nextStreet);
-          } else {
-            spdlog::debug(
-                "Skipping agent emission from street {} -> {} due to full "
-                "next street: {}",
-                pStreet->source(),
-                pStreet->target(),
-                *nextStreet);
-          }
+          spdlog::debug(
+              "Skipping agent emission from street {} -> {} due to full "
+              "next street: {}",
+              pStreet->source(),
+              pStreet->target(),
+              *nextStreet);
           continue;
         }
         auto pAgent{pStreet->dequeue(queueIndex)};
@@ -1055,6 +1036,15 @@ namespace dsf {
           "The passage probability ({}) must be in [0, 1]", passageProbability));
     }
     m_passageProbability = passageProbability;
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::killStagnantAgents(double timeToleranceFactor) {
+    if (timeToleranceFactor <= 0.) {
+      throw std::invalid_argument(std::format(
+          "The time tolerance factor ({}) must be positive", timeToleranceFactor));
+    }
+    m_timeToleranceFactor = timeToleranceFactor;
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
