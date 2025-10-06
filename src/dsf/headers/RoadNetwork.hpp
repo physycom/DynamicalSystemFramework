@@ -319,6 +319,11 @@ namespace dsf {
   }
   template <typename... TArgs>
   void RoadNetwork::importNodeProperties(const std::string& fileName, TArgs&&... args) {
+    if (this->nNodes() == 0) {
+      throw std::runtime_error(
+          "Cannot import node properties when there are no nodes in the network. Please "
+          "import edges or construct network first.");
+    }
     std::ifstream file{fileName};
     if (!file.is_open()) {
       throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
@@ -331,7 +336,7 @@ namespace dsf {
     switch (fileExtMap.at(fileExt)) {
       case FileExt::CSV:
         spdlog::debug("Importing node properties from CSV file: {}", fileName);
-        this->m_csvNodesImporter(file, std::forward<TArgs>(args)...);
+        this->m_csvNodePropertiesImporter(file, std::forward<TArgs>(args)...);
         break;
       case FileExt::JSON:
       case FileExt::GEOJSON:

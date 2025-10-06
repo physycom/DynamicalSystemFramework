@@ -1,3 +1,4 @@
+import networkx as nx
 import osmnx as ox
 
 
@@ -52,7 +53,7 @@ def get_cartography(
     # Remove self-loops
     G.remove_edges_from([(u, v, k) for u, v, k in G.edges(keys=True) if u == v])
     # Remove also isolated nodes
-    G.remove_nodes_from(list(ox.isolate_nodes(G)))
+    G.remove_nodes_from(list(nx.isolates(G)))
 
     # Create GeoDataFrames
     gdf_nodes, gdf_edges = ox.graph_to_gdfs(ox.project_graph(G, to_latlong=True))
@@ -62,8 +63,8 @@ def get_cartography(
     gdf_edges.reset_index(inplace=True)
 
     if consolidate_intersections:
-        gdf_edges["u"] = gdf_edges["u_original"]
-        gdf_edges["v"] = gdf_edges["v_original"]
+        # gdf_edges["u"] = gdf_edges["u_original"]
+        # gdf_edges["v"] = gdf_edges["v_original"]
         gdf_edges.drop(columns=["u_original", "v_original"], inplace=True)
     gdf_edges["id"] = gdf_edges.index
     gdf_edges.drop(
@@ -79,7 +80,10 @@ def get_cartography(
             "osmid",
         ],
         inplace=True,
+        errors="ignore",
     )
+    if not "lanes" in gdf_edges.columns:
+        gdf_edges["lanes"] = 1
     gdf_edges.rename(
         columns={"u": "source", "v": "target", "lanes": "nlanes", "highway": "type"},
         inplace=True,
@@ -100,11 +104,24 @@ def get_cartography(
     # Preparing gdf_nodes
     gdf_nodes.reset_index(inplace=True)
     if consolidate_intersections:
-        gdf_nodes["osmid"] = gdf_nodes["osmid_original"]
+        # gdf_nodes["osmid"] = gdf_nodes["osmid_original"]
         gdf_nodes.drop(columns=["osmid_original"], inplace=True)
     gdf_nodes.drop(
-        columns=["y", "x", "street_count", "ref", "cluster", "junction"], inplace=True
+        columns=["y", "x", "street_count", "ref", "cluster", "junction"],
+        inplace=True,
+        errors="ignore",
     )
     gdf_nodes.rename(columns={"osmid": "id", "highway": "type"}, inplace=True)
 
     return gdf_edges, gdf_nodes
+
+
+# if __name__ == "__main__":
+#     Produce data for tests
+#     edges, nodes = get_cartography("Postua, Piedmont, Italy", consolidate_intersections=False)
+#     edges.to_csv("../../../test/data/postua_edges.csv", index=False, sep=";")
+#     edges.to_file("../../../test/data/postua_edges.geojson", index=False, driver="GeoJSON")
+#     nodes.to_csv("../../../test/data/postua_nodes.csv", index=False, sep=";")
+#     edges, nodes = get_cartography("Forlì, Emilia-Romagna, Italy")
+#     edges.to_csv("../../../test/data/forlì_edges.csv", index=False, sep=";")
+#     nodes.to_csv("../../../test/data/forlì_nodes.csv", index=False, sep=";")

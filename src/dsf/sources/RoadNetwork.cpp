@@ -251,12 +251,12 @@ namespace dsf {
             spdlog::error("Invalid coordinates ({}, {}) for node {}", lon, lat, nodeId);
           }
           // Note: The original code stored as (lat, lon) based on your comment.
-          coords = std::make_pair(dLat, dLon);
+          coords = std::make_pair(dLon, dLat);
         }
         // Check if these coords match the existing ones
         if (pNode->coords().has_value()) {
-          auto const& [oldLat, oldLon] = pNode->coords().value();
-          auto const& [newLat, newLon] = coords;
+          auto const& [oldLon, oldLat] = pNode->coords().value();
+          auto const& [newLon, newLat] = coords;
           if (std::abs(oldLat - newLat) > std::numeric_limits<double>::epsilon() ||
               std::abs(oldLon - newLon) > std::numeric_limits<double>::epsilon()) {
             spdlog::error(
