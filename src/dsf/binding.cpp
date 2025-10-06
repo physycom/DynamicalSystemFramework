@@ -208,6 +208,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("fileName"),
           pybind11::arg("bCreateInverse"),
           dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
+      .def("importNodeProperties",
+           &dsf::RoadNetwork::importNodeProperties,
+           pybind11::arg("fileName"),
+           pybind11::arg("separator") = ';',
+           dsf::g_docstrings.at("dsf::RoadNetwork::importNodeProperties").c_str())
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,
            pybind11::arg("fileName"),

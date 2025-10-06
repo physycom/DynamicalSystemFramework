@@ -193,7 +193,85 @@ namespace dsf {
     //   }
     // }
   }
+  void RoadNetwork::m_csvNodePropertiesImporter(std::ifstream& file,
+                                                const char separator) {
+    auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
+    for (auto const& row : csvReader) {
+      auto const nodeId = row["id"].get<Id>();
+      if (m_nodes.find(nodeId) == m_nodes.end()) {
+        spdlog::warn("Node {} not found in the network. Skipping properties import.",
+                     nodeId);
+        continue;
+      }
+      auto const& pNode{node(nodeId)};
+      auto strType{row["type"].get<std::string>()};
+      std::transform(
+          strType.begin(), strType.end(), strType.begin(), [](unsigned char c) {
+            return std::tolower(c);
+          });
+      if (strType.find("traffic_signals") != std::string::npos) {
+        makeTrafficLight(nodeId, 120);
+      } else if (strType.find("roundabout") != std::string::npos) {
+        makeRoundabout(nodeId);
+      }
 
+      std::pair<double, double> coords;
+      auto const& strGeometry{row["geometry"].get<std::string>()};
+      if (!strGeometry.empty()) {
+        // Geometry is Point (lon,lat lon,lat ...)
+        std::istringstream geom{strGeometry};
+        std::string pair;
+        std::getline(geom, pair, '(');
+        while (std::getline(geom, pair, ',')) {
+          pair.erase(pair.begin(),
+                     std::find_if(pair.begin(), pair.end(), [](unsigned char ch) {
+                       return !std::isspace(ch);
+                     }));
+
+          // Trim trailing spaces
+          pair.erase(std::find_if(pair.rbegin(),
+                                  pair.rend(),
+                                  [](unsigned char ch) { return !std::isspace(ch); })
+                         .base(),
+                     pair.end());
+          // Create a stream for each coordinate pair to split by comma
+          std::istringstream pairStream(pair);
+          std::string lon, lat;
+          std::getline(pairStream, lon, ' ');
+          std::getline(pairStream, lat);  // read the rest for latitude
+          // Remove ')' from lat if present
+          if (lat.back() == ')') {
+            lat.pop_back();
+          }
+          auto dLon{0.}, dLat{0.};
+          try {
+            dLon = std::stod(lon);
+            dLat = std::stod(lat);
+          } catch (const std::invalid_argument& e) {
+            spdlog::error("Invalid coordinates ({}, {}) for node {}", lon, lat, nodeId);
+          }
+          // Note: The original code stored as (lat, lon) based on your comment.
+          coords = std::make_pair(dLat, dLon);
+        }
+        // Check if these coords match the existing ones
+        if (pNode->coords().has_value()) {
+          auto const& [oldLat, oldLon] = pNode->coords().value();
+          auto const& [newLat, newLon] = coords;
+          if (std::abs(oldLat - newLat) > std::numeric_limits<double>::epsilon() ||
+              std::abs(oldLon - newLon) > std::numeric_limits<double>::epsilon()) {
+            spdlog::error(
+                "Node {} coordinates from properties file ({}, {}) do not match existing "
+                "coordinates ({}, {}). Keeping existing coordinates.",
+                nodeId,
+                newLat,
+                newLon,
+                oldLat,
+                oldLon);
+          }
+        }
+      }
+    }
+  }
   void RoadNetwork::m_jsonEdgesImporter(std::ifstream& file, const bool bCreateInverse) {
     // Read the file into a string
     std::string json_str((std::istreambuf_iterator<char>(file)),
