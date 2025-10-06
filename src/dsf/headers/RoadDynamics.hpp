@@ -1204,6 +1204,15 @@ namespace dsf {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::addAgentsUniformly(Size nAgents,
                                                  std::optional<Id> optItineraryId) {
+    if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
+      auto const nStagnantAgents{m_agents.size()};
+      spdlog::warn(
+          "Removing {} stagnant agents that were not inserted since the previous call to "
+          "addAgentsUniformly().",
+          nStagnantAgents);
+      m_agents.clear();
+      m_nAgents -= nStagnantAgents;
+    }
     if (optItineraryId.has_value() && !this->itineraries().contains(*optItineraryId)) {
       throw std::invalid_argument(
           std::format("No itineraries available. Cannot add agents with itinerary id {}",
@@ -1259,6 +1268,15 @@ namespace dsf {
   void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
                                                 const TContainer& src_weights,
                                                 const TContainer& dst_weights) {
+    if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
+      auto const nStagnantAgents{m_agents.size()};
+      spdlog::warn(
+          "Removing {} stagnant agents that were not inserted since the previous call to "
+          "addAgentsRandomly().",
+          nStagnantAgents);
+      m_agents.clear();
+      m_nAgents -= nStagnantAgents;
+    }
     auto const& nSources{src_weights.size()};
     auto const& nDestinations{dst_weights.size()};
     spdlog::debug("Init addAgentsRandomly for {} agents from {} nodes to {} nodes.",
