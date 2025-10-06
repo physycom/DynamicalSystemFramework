@@ -203,7 +203,6 @@ namespace dsf {
                      nodeId);
         continue;
       }
-      auto const& pNode{node(nodeId)};
       auto strType{row["type"].get<std::string>()};
       std::transform(
           strType.begin(), strType.end(), strType.begin(), [](unsigned char c) {
@@ -218,7 +217,7 @@ namespace dsf {
       std::pair<double, double> coords;
       auto const& strGeometry{row["geometry"].get<std::string>()};
       if (!strGeometry.empty()) {
-        // Geometry is Point (lon,lat lon,lat ...)
+        // Geometry is POINT (lon lat)
         std::istringstream geom{strGeometry};
         std::string pair;
         std::getline(geom, pair, '(');
@@ -253,8 +252,11 @@ namespace dsf {
           // Note: The original code stored as (lat, lon) based on your comment.
           coords = std::make_pair(dLon, dLat);
         }
-        // Check if these coords match the existing ones
-        if (pNode->coords().has_value()) {
+        auto const& pNode{node(nodeId)};
+        // Assign coords or check if these coords match the existing ones
+        if (!pNode->coords().has_value()) {
+          pNode->setCoords(coords);
+        } else {
           auto const& [oldLon, oldLat] = pNode->coords().value();
           auto const& [newLon, newLat] = coords;
           if (std::abs(oldLat - newLat) > std::numeric_limits<double>::epsilon() ||

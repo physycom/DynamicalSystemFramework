@@ -224,7 +224,7 @@ TEST_CASE("RoadNetwork") {
     SUBCASE("importEdges and importNodeProperties") {
       GIVEN("A graph object") {
         RoadNetwork graph;
-        WHEN("We import nodes and edges from OSM") {
+        WHEN("We import edges and then node properties from OSM") {
           graph.importEdges("./data/postua_edges.csv");
           graph.importNodeProperties("./data/postua_nodes.csv");
           std::ifstream fNodes{"./data/postua_nodes.csv"};

@@ -82,7 +82,7 @@ def get_cartography(
         inplace=True,
         errors="ignore",
     )
-    if not "lanes" in gdf_edges.columns:
+    if "lanes" not in gdf_edges.columns:
         gdf_edges["lanes"] = 1
     gdf_edges.rename(
         columns={"u": "source", "v": "target", "lanes": "nlanes", "highway": "type"},

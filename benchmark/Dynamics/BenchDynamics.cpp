@@ -18,8 +18,8 @@ int main() {
   std::mt19937_64 generator{std::random_device{}()};
   generator.seed(69);
   RoadNetwork graph{};
-  graph.importNodes("../test/data/forlì_nodes.csv");
   graph.importEdges("../test/data/forlì_edges.csv");
+  graph.importNodeProperties("../test/data/forlì_nodes.csv");
 
   Dynamics dynamics{graph};
   // Take 10 random keys from nodes map
