@@ -171,21 +171,6 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("fileName"),
            dsf::g_docstrings.at("dsf::RoadNetwork::importCoordinates").c_str())
       .def(
-          "importNodes",
-          [](dsf::RoadNetwork& self, const std::string& fileName) {
-            self.importNodes(fileName);
-          },
-          pybind11::arg("fileName"),
-          dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
-      .def(
-          "importNodes",
-          [](dsf::RoadNetwork& self, std::string const& fileName, char const separator) {
-            self.importNodes(fileName, separator);
-          },
-          pybind11::arg("fileName"),
-          pybind11::arg("separator"),
-          dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
-      .def(
           "importEdges",
           [](dsf::RoadNetwork& self, const std::string& fileName) {
             self.importEdges(fileName);

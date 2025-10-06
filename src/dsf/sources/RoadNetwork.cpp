@@ -13,22 +13,7 @@ namespace dsf {
       m_capacity += pStreet->capacity();
     }
   }
-  void RoadNetwork::m_csvNodesImporter(std::ifstream& file, const char separator) {
-    auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
-    for (auto const& row : csvReader) {
-      auto const nodeId = row["id"].get<Id>();
-      auto const dLat = row["lat"].get<double>();
-      auto const dLon = row["lon"].get<double>();
-      auto const type = row["type"].get<std::string>();
-      if (type.find("traffic_signals") != std::string::npos) {
-        addNode<TrafficLight>(nodeId, 120, std::make_pair(dLat, dLon));
-      } else if (type.find("roundabout") != std::string::npos) {
-        addNode<Roundabout>(nodeId, std::make_pair(dLat, dLon));
-      } else {
-        addNode<Intersection>(nodeId, std::make_pair(dLat, dLon));
-      }
-    }
-  }
+
   void RoadNetwork::m_csvEdgesImporter(std::ifstream& file, const char separator) {
     auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
     auto const& colNames = csvReader.get_col_names();

@@ -23,4 +23,4 @@ jobs:
     - name: Analysing the code with ruff
       run: |
         ruff format --check $(git ls-files '*.py')
-        ruff check --exclude src/dsf/__init__.py $(git ls-files '*.py')
+        ruff check $(git ls-files '*.py' | grep -v 'src/dsf/__init__.py')
