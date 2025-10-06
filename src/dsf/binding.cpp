@@ -298,6 +298,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::FirstOrderDynamics::setWeightFunction,
            pybind11::arg("weightFunction"),
            pybind11::arg("weightThreshold") = std::nullopt)
+      .def("killStagnantAgents",
+           &dsf::FirstOrderDynamics::killStagnantAgents,
+           pybind11::arg("timeToleranceFactor") = 3.,
+           dsf::g_docstrings.at("dsf::RoadDynamics::killStagnantAgents").c_str())
       .def(
           "setDestinationNodes",
           [](dsf::FirstOrderDynamics& self,
