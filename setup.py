@@ -45,7 +45,7 @@ class CMakeExtension(Extension):  # pylint: disable=too-few-public-methods
 
     def __init__(self, name: str, sourcedir: str = ""):
         super().__init__(name, sources=[])
-        self.sourcedir = os.path.abspath(sourcedir)
+        self.sourcedir = Path(sourcedir).resolve()
 
 
 class CMakeBuild(build_ext):
@@ -66,7 +66,7 @@ class CMakeBuild(build_ext):
         self.run_stubgen()
 
     def build_extension(self, ext: CMakeExtension):
-        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+        extdir = Path(self.get_ext_fullpath(ext.name)).parent.resolve()
         cfg = "Release"
         build_temp = Path(self.build_temp)
         build_temp.mkdir(parents=True, exist_ok=True)
@@ -277,13 +277,13 @@ class CMakeBuild(build_ext):
             return "\n\n".join(doc_parts)
 
         # Main parsing function
-        for filename in os.listdir(DOXYGEN_XML_DIR):
+        for file_path in Path(DOXYGEN_XML_DIR).iterdir():
             if (
-                filename.startswith("class")
-                or filename.startswith("namespace")
-                or filename.startswith("struct")
+                file_path.name.startswith("class")
+                or file_path.name.startswith("namespace")
+                or file_path.name.startswith("struct")
             ):
-                tree = ET.parse(os.path.join(DOXYGEN_XML_DIR, filename))
+                tree = ET.parse(file_path)
                 root = tree.getroot()
 
                 for compound in root.findall(".//compounddef"):
@@ -359,8 +359,8 @@ class CMakeBuild(build_ext):
             return
 
         # Check both the full path and build lib location
-        module_dir = os.path.dirname(ext_path)
-        build_lib_path = os.path.join(self.build_lib, "dsf.so")
+        module_dir = Path(ext_path).parent
+        build_lib_path = Path(self.build_lib) / "dsf_cpp.so"
 
         print(f"Checking extension at: {ext_path}")
         print(f"Checking build lib at: {build_lib_path}")
@@ -378,11 +378,11 @@ class CMakeBuild(build_ext):
             # Generate stub files
             cmd = [
                 "pybind11-stubgen",
-                "dsf",
+                "dsf_cpp",
                 "--ignore-invalid-expressions",
                 "std::function|dsf::RoadDynamics",
                 "--enum-class-locations",
-                "TrafficLightOptimization:dsf",
+                "TrafficLightOptimization:dsf_cpp",
                 "--output-dir",
                 stub_output_dir,
             ]
@@ -395,13 +395,13 @@ class CMakeBuild(build_ext):
             print(f"stdout: {result.stdout}")
 
             # Check if stub file was created
-            stub_file = os.path.join(stub_output_dir, "dsf.pyi")
-            if os.path.exists(stub_file):
+            stub_file = Path(stub_output_dir) / "dsf_cpp.pyi"
+            if stub_file.exists():
                 print(f"Stub file successfully created at {stub_file}")
                 # For editable installs, also copy to source directory for development
-                source_stub = os.path.join(os.path.dirname(__file__), "dsf.pyi")
+                source_stub = Path(__file__).parent / "src" / "dsf" / "__init__.pyi"
                 if source_stub != stub_file:
-                    print(f"Copying stub file to source directory: {source_stub}")
+                    print(f"Copying stub file to package: {source_stub}")
                     shutil.copy2(stub_file, source_stub)
             else:
                 print(f"Warning: Stub file not found at {stub_file}")
@@ -415,7 +415,7 @@ class CMakeBuild(build_ext):
 
 # Read long description from README.md if available
 LONG_DESCRIPTION = ""
-if os.path.exists("README.md"):
+if Path("README.md").exists():
     with open("README.md", "r", encoding="utf-8") as f:
         LONG_DESCRIPTION = f.read()
 
@@ -464,13 +464,16 @@ setup(
         "flow",
         "optimization",
     ],
-    ext_modules=[CMakeExtension("dsf")],
+    ext_modules=[CMakeExtension("dsf_cpp")],
+    packages=["dsf"],
+    package_dir={"dsf": "src/dsf"},
     cmdclass={"build_ext": CMakeBuild},
     package_data={
+        "dsf": ["*.pyi"],
         "": ["*.pyi"],
     },
     include_package_data=True,
     zip_safe=False,
     python_requires=">=3.10",
-    install_requires=["pybind11-stubgen"],
+    install_requires=["pybind11-stubgen", "osmnx>=2.0.6", "networkx>=3"],
 )

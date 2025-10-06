@@ -9,7 +9,7 @@
 
 #include <spdlog/spdlog.h>  // For logging functionality
 
-PYBIND11_MODULE(dsf, m) {
+PYBIND11_MODULE(dsf_cpp, m) {
   m.doc() = "Python bindings for the DSM library";
   m.attr("__version__") = dsf::version();
 
@@ -171,21 +171,6 @@ PYBIND11_MODULE(dsf, m) {
            pybind11::arg("fileName"),
            dsf::g_docstrings.at("dsf::RoadNetwork::importCoordinates").c_str())
       .def(
-          "importNodes",
-          [](dsf::RoadNetwork& self, const std::string& fileName) {
-            self.importNodes(fileName);
-          },
-          pybind11::arg("fileName"),
-          dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
-      .def(
-          "importNodes",
-          [](dsf::RoadNetwork& self, std::string const& fileName, char const separator) {
-            self.importNodes(fileName, separator);
-          },
-          pybind11::arg("fileName"),
-          pybind11::arg("separator"),
-          dsf::g_docstrings.at("dsf::RoadNetwork::importNodes").c_str())
-      .def(
           "importEdges",
           [](dsf::RoadNetwork& self, const std::string& fileName) {
             self.importEdges(fileName);
@@ -208,6 +193,14 @@ PYBIND11_MODULE(dsf, m) {
           pybind11::arg("fileName"),
           pybind11::arg("bCreateInverse"),
           dsf::g_docstrings.at("dsf::RoadNetwork::importEdges").c_str())
+      .def(
+          "importNodeProperties",
+          [](dsf::RoadNetwork& self, std::string const& fileName, char const separator) {
+            self.importNodeProperties(fileName, separator);
+          },
+          pybind11::arg("fileName"),
+          pybind11::arg("separator"),
+          dsf::g_docstrings.at("dsf::RoadNetwork::importNodeProperties").c_str())
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,
            pybind11::arg("fileName"),

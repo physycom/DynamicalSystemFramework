@@ -89,7 +89,7 @@ if(BUILD_PYTHON_BINDINGS)
     # Ensure the Python module name has no 'lib' prefix on Unix systems
     set_target_properties(dsf_python_module PROPERTIES
         PREFIX ""
-        OUTPUT_NAME "dsf"
+        OUTPUT_NAME "dsf_cpp"
     )
 
     # Link the pybind11 module with your static library and pybind11
