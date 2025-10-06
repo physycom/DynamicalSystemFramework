@@ -221,12 +221,12 @@ TEST_CASE("RoadNetwork") {
       CHECK_THROWS(graph.importMatrix("./data/matrix.nogood"));
       CHECK_THROWS(graph.importMatrix("./data/not_found.dsf"));
     }
-    SUBCASE("importNodes and importEdges") {
+    SUBCASE("importEdges and importNodeProperties") {
       GIVEN("A graph object") {
         RoadNetwork graph;
         WHEN("We import nodes and edges from OSM") {
-          graph.importNodes("./data/postua_nodes.csv");
           graph.importEdges("./data/postua_edges.csv");
+          graph.importNodeProperties("./data/postua_nodes.csv");
           std::ifstream fNodes{"./data/postua_nodes.csv"};
           // get number of lines
           std::string line;
@@ -260,8 +260,8 @@ TEST_CASE("RoadNetwork") {
           }
         }
         WHEN("We import many nodes and edges from OSM") {
-          graph.importNodes("./data/forlì_nodes.csv");
           graph.importEdges("./data/forlì_edges.csv");
+          graph.importNodeProperties("./data/forlì_nodes.csv");
           std::ifstream fNodes{"./data/forlì_nodes.csv"};
           // get number of lines
           std::string line;
@@ -280,9 +280,9 @@ TEST_CASE("RoadNetwork") {
             CHECK_EQ(graph.nNodes(), nNodes);
             CHECK_EQ(graph.nEdges(), nEdges);
             CHECK_EQ(graph.nCoils(), 0);
-            CHECK_EQ(graph.nIntersections(), 3101);
-            CHECK_EQ(graph.nRoundabouts(), 2);
-            CHECK_EQ(graph.nTrafficLights(), 15);
+            CHECK_EQ(graph.nIntersections(), 11012);
+            CHECK_EQ(graph.nRoundabouts(), 17);
+            CHECK_EQ(graph.nTrafficLights(), 30);
           }
         }
       }
