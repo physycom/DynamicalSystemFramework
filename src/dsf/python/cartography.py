@@ -7,13 +7,14 @@ def get_cartography(
     network_type: str = "drive",
     consolidate_intersections: bool | float = 10,
     dead_ends: bool = False,
-) -> tuple:
+    return_type: str = "gdfs",
+) -> tuple | nx.MultiDiGraph:
     """
     Retrieves and processes cartography data for a specified place using OpenStreetMap data.
 
     This function downloads a street network graph for the given place, optionally consolidates
-    intersections to simplify the graph, removes edges with zero length, self-loops and isolated nodes, and converts the graph
-    into GeoDataFrames for edges and nodes with standardized column names and data types.
+    intersections to simplify the graph, removes edges with zero length, self-loops and isolated nodes,
+    and standardizes the attribute names in the graph. Can return either GeoDataFrames or the graph itself.
 
     Args:
         place_name (str): The name of the place (e.g., city, neighborhood) to retrieve cartography for.
@@ -24,13 +25,16 @@ def get_cartography(
             Set to False to skip consolidation. Defaults to 10.
         dead_ends (bool, optional): Whether to include dead ends when consolidating intersections.
             Only relevant if consolidate_intersections is enabled. Defaults to False.
+        return_type (str, optional): Type of return value. Options are "gdfs" (GeoDataFrames) or
+            "graph" (NetworkX MultiDiGraph). Defaults to "gdfs".
 
     Returns:
-        tuple: A tuple containing two GeoDataFrames:
+        tuple | nx.MultiDiGraph: If return_type is "gdfs", returns a tuple containing two GeoDataFrames:
             - gdf_edges: GeoDataFrame with processed edge data, including columns like 'source',
               'target', 'nlanes', 'type', 'name', 'id', and 'geometry'.
             - gdf_nodes: GeoDataFrame with processed node data, including columns like 'id', 'type',
               and 'geometry'.
+            If return_type is "graph", returns the NetworkX MultiDiGraph with standardized attributes.
     """
     if consolidate_intersections and isinstance(consolidate_intersections, bool):
         consolidate_intersections = 10  # Default tolerance value
@@ -55,21 +59,38 @@ def get_cartography(
     # Remove also isolated nodes
     G.remove_nodes_from(list(nx.isolates(G)))
 
-    # Create GeoDataFrames
-    gdf_nodes, gdf_edges = ox.graph_to_gdfs(ox.project_graph(G, to_latlong=True))
+    # Standardize edge attributes in the graph
+    edges_to_update = []
+    for u, v, k, data in G.edges(keys=True, data=True):
+        edge_updates = {}
 
-    #####################################################
-    # Preparing gdf_edges
-    gdf_edges.reset_index(inplace=True)
+        # Standardize lanes
+        if "lanes" in data:
+            lanes_value = data["lanes"]
+            if isinstance(lanes_value, list):
+                edge_updates["nlanes"] = min(lanes_value)
+            else:
+                edge_updates["nlanes"] = lanes_value
+            edge_updates["_remove_lanes"] = True
+        else:
+            edge_updates["nlanes"] = 1
 
-    if consolidate_intersections:
-        # gdf_edges["u"] = gdf_edges["u_original"]
-        # gdf_edges["v"] = gdf_edges["v_original"]
-        gdf_edges.drop(columns=["u_original", "v_original"], inplace=True)
-    gdf_edges["id"] = gdf_edges.index
-    gdf_edges.drop(
-        columns=[
-            "key",
+        # Standardize highway -> type
+        if "highway" in data:
+            edge_updates["type"] = data["highway"]
+            edge_updates["_remove_highway"] = True
+
+        # Standardize name
+        if "name" in data:
+            name_value = data["name"]
+            if isinstance(name_value, list):
+                name_value = ",".join(name_value)
+            edge_updates["name"] = str(name_value).lower().replace(" ", "_")
+        else:
+            edge_updates["name"] = "unknown"
+
+        # Remove unnecessary attributes
+        for attr in [
             "bridge",
             "tunnel",
             "access",
@@ -78,42 +99,100 @@ def get_cartography(
             "reversed",
             "junction",
             "osmid",
-        ],
-        inplace=True,
-        errors="ignore",
-    )
-    if "lanes" not in gdf_edges.columns:
-        gdf_edges["lanes"] = 1
-    gdf_edges.rename(
-        columns={"u": "source", "v": "target", "lanes": "nlanes", "highway": "type"},
-        inplace=True,
-    )
+        ]:
+            if attr in data:
+                edge_updates[f"_remove_{attr}"] = True
 
-    gdf_edges["nlanes"] = gdf_edges["nlanes"].fillna(1)
-    gdf_edges["nlanes"] = gdf_edges["nlanes"].apply(
-        lambda x: min(x) if isinstance(x, list) else x
-    )
+        if consolidate_intersections:
+            for attr in ["u_original", "v_original"]:
+                if attr in data:
+                    edge_updates[f"_remove_{attr}"] = True
 
-    gdf_edges["name"] = gdf_edges["name"].fillna("unknown")
-    gdf_edges["name"] = gdf_edges["name"].apply(
-        lambda x: ",".join(x) if isinstance(x, list) else x
-    )
-    gdf_edges["name"] = gdf_edges["name"].str.lower().str.replace(" ", "_")
+        edges_to_update.append((u, v, k, edge_updates))
 
-    #####################################################
-    # Preparing gdf_nodes
-    gdf_nodes.reset_index(inplace=True)
-    if consolidate_intersections:
-        # gdf_nodes["osmid"] = gdf_nodes["osmid_original"]
-        gdf_nodes.drop(columns=["osmid_original"], inplace=True)
-    gdf_nodes.drop(
-        columns=["y", "x", "street_count", "ref", "cluster", "junction"],
-        inplace=True,
-        errors="ignore",
-    )
-    gdf_nodes.rename(columns={"osmid": "id", "highway": "type"}, inplace=True)
+    # Apply edge updates
+    for u, v, k, updates in edges_to_update:
+        for key, value in updates.items():
+            if key.startswith("_remove_"):
+                attr_name = key.replace("_remove_", "")
+                if attr_name in G[u][v][k]:
+                    del G[u][v][k][attr_name]
+            else:
+                G[u][v][k][key] = value
 
-    return gdf_edges, gdf_nodes
+    # Standardize node attributes in the graph
+    nodes_to_update = []
+    for node, data in G.nodes(data=True):
+        node_updates = {}
+
+        # Standardize osmid -> id (keep both for compatibility with ox.graph_to_gdfs)
+        if "osmid" in data:
+            node_updates["id"] = data["osmid"]
+
+        # Standardize highway -> type
+        if "highway" in data:
+            node_updates["type"] = data["highway"]
+            node_updates["_remove_highway"] = True
+        else:
+            # Set type to "N/A" if not present
+            node_updates["type"] = "N/A"
+
+        # Remove unnecessary attributes
+        for attr in ["street_count", "ref", "cluster", "junction"]:
+            if attr in data:
+                node_updates[f"_remove_{attr}"] = True
+
+        if consolidate_intersections and "osmid_original" in data:
+            node_updates["_remove_osmid_original"] = True
+
+        nodes_to_update.append((node, node_updates))
+
+    # Apply node updates
+    for node, updates in nodes_to_update:
+        for key, value in updates.items():
+            if key.startswith("_remove_"):
+                attr_name = key.replace("_remove_", "")
+                if attr_name in G.nodes[node]:
+                    del G.nodes[node][attr_name]
+            else:
+                G.nodes[node][key] = value
+
+    # Fill NaN values in node type attribute
+    for node in G.nodes():
+        if (
+            "type" not in G.nodes[node]
+            or G.nodes[node]["type"] is None
+            or (
+                isinstance(G.nodes[node]["type"], float)
+                and G.nodes[node]["type"] != G.nodes[node]["type"]
+            )
+        ):  # Check for NaN
+            G.nodes[node]["type"] = "N/A"
+
+    # Convert to lat/long
+    G = ox.project_graph(G, to_latlong=True)
+
+    # Return graph or GeoDataFrames based on return_type
+    if return_type == "graph":
+        return G
+    elif return_type == "gdfs":
+        # Convert back to MultiDiGraph temporarily for ox.graph_to_gdfs compatibility
+        gdf_nodes, gdf_edges = ox.graph_to_gdfs(G)
+
+        # Reset index and add edge id
+        gdf_edges.reset_index(inplace=True)
+        gdf_edges["id"] = gdf_edges.index
+        gdf_edges.rename(columns={"u": "source", "v": "target"}, inplace=True)
+        gdf_edges.drop(columns=["key"], inplace=True, errors="ignore")
+
+        # Reset index for nodes
+        gdf_nodes.reset_index(inplace=True)
+        gdf_nodes.drop(columns=["y", "x"], inplace=True, errors="ignore")
+        gdf_nodes.rename(columns={"osmid": "id"}, inplace=True)
+
+        return gdf_edges, gdf_nodes
+    else:
+        raise ValueError("Invalid return_type. Choose 'gdfs' or 'graph'.")
 
 
 # if __name__ == "__main__":
