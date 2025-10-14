@@ -175,7 +175,7 @@ def get_cartography(
     # Return graph or GeoDataFrames based on return_type
     if return_type == "graph":
         return G
-    else:  # return_type == "gdfs"
+    elif return_type == "gdfs":
         # Convert back to MultiDiGraph temporarily for ox.graph_to_gdfs compatibility
         gdf_nodes, gdf_edges = ox.graph_to_gdfs(G)
 
@@ -191,6 +191,8 @@ def get_cartography(
         gdf_nodes.rename(columns={"osmid": "id"}, inplace=True)
 
         return gdf_edges, gdf_nodes
+    else:
+        raise ValueError("Invalid return_type. Choose 'gdfs' or 'graph'.")
 
 
 # if __name__ == "__main__":
