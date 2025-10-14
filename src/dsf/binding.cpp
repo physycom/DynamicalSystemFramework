@@ -199,7 +199,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
             self.importNodeProperties(fileName, separator);
           },
           pybind11::arg("fileName"),
-          pybind11::arg("separator"),
+          pybind11::arg("separator") = ';',
           dsf::g_docstrings.at("dsf::RoadNetwork::importNodeProperties").c_str())
       .def("importTrafficLights",
            &dsf::RoadNetwork::importTrafficLights,
