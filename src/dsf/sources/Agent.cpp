@@ -1,7 +1,7 @@
 #include "../headers/Agent.hpp"
 
 namespace dsf {
-  Agent::Agent(Time const& spawnTime,
+  Agent::Agent(std::time_t const& spawnTime,
                std::optional<Id> itineraryId,
                std::optional<Id> srcNodeId)
       : m_spawnTime{spawnTime},
@@ -14,7 +14,7 @@ namespace dsf {
         m_itineraryIdx{0},
         m_speed{0.},
         m_distance{0.} {}
-  Agent::Agent(Time const& spawnTime,
+  Agent::Agent(std::time_t const& spawnTime,
                std::vector<Id> const& trip,
                std::optional<Id> srcNodeId)
       : m_spawnTime{spawnTime},
@@ -46,7 +46,7 @@ namespace dsf {
     }
     m_speed = speed;
   }
-  void Agent::setFreeTime(Time const& freeTime) { m_freeTime = freeTime; }
+  void Agent::setFreeTime(std::time_t const& freeTime) { m_freeTime = freeTime; }
 
   void Agent::incrementDistance(double distance) {
     if (distance < 0) {
@@ -60,7 +60,7 @@ namespace dsf {
       ++m_itineraryIdx;
     }
   }
-  void Agent::reset(Time const& spawnTime) {
+  void Agent::reset(std::time_t const& spawnTime) {
     m_spawnTime = spawnTime;
     m_freeTime = 0;
     m_streetId = std::nullopt;

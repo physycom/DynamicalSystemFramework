@@ -67,11 +67,11 @@ namespace dsf {
 
   protected:
     tbb::task_arena m_taskArena;
-    Time m_time;
+    std::time_t m_timeInit, m_timeStep;
     std::mt19937_64 m_generator;
 
   protected:
-    void m_evolve() { ++m_time; };
+    void m_evolve() { ++m_timeStep; };
 
   public:
     /// @brief Construct a new Dynamics object
@@ -79,20 +79,27 @@ namespace dsf {
     /// @param seed The seed for the random number generator (default is std::nullopt)
     Dynamics(network_t& graph, std::optional<unsigned int> seed = std::nullopt);
 
-    /// @brief Reset the simulation time to 0
-    void resetTime() { m_time = 0; };
+    /// @brief Set the initial time as epoch time
+    /// @param timeEpoch The initial time as epoch time
+    void setInitTime(std::time_t timeEpoch) { m_timeInit = timeEpoch; };
 
     /// @brief Get the graph
     /// @return const network_t&, The graph
     const network_t& graph() const { return m_graph; };
+    /// @brief Get the current simulation time as epoch time
+    /// @return std::time_t, The current simulation time as epoch time
+    std::time_t time() const { return m_timeInit + m_timeStep; }
     /// @brief Get the current simulation time-step
-    /// @return Time The current simulation time
-    Time time() const { return m_time; }
+    /// @return std::time_t, The current simulation time-step
+    auto time_step() const { return m_timeStep; }
   };
 
   template <typename network_t>
   Dynamics<network_t>::Dynamics(network_t& graph, std::optional<unsigned int> seed)
-      : m_graph{std::move(graph)}, m_time{0}, m_generator{std::random_device{}()} {
+      : m_graph{std::move(graph)},
+        m_timeInit{0},
+        m_timeStep{0},
+        m_generator{std::random_device{}()} {
     if (seed.has_value()) {
       m_generator.seed(*seed);
     }

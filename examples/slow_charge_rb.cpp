@@ -170,8 +170,8 @@ int main(int argc, char** argv) {
     }
   });
   // dynamics.addAgentsUniformly(20000);
-  while (dynamics.time() < MAX_TIME) {
-    if (dynamics.time() < MAX_TIME && dynamics.time() % 60 == 0) {
+  while (dynamics.time_step() < MAX_TIME) {
+    if (dynamics.time_step() < MAX_TIME && dynamics.time_step() % 60 == 0) {
       try {
         dynamics.addAgentsUniformly(nAgents);
       } catch (const std::overflow_error& e) {
@@ -183,22 +183,22 @@ int main(int argc, char** argv) {
     }
     dynamics.evolve(false);
 
-    if (dynamics.time() % 2400 == 0) {
+    if (dynamics.time_step() % 2400 == 0) {
       auto const totalDynamicsAgents{dynamics.nAgents()};
       deltaAgents = totalDynamicsAgents - previousAgents;
       if (deltaAgents < 0) {
         ++nAgents;
         std::cout << "- Now I'm adding " << nAgents << " agents.\n";
         std::cout << "Delta agents: " << deltaAgents << '\n';
-        std::cout << "At time: " << dynamics.time() << '\n';
+        std::cout << "At time: " << dynamics.time_step() << '\n';
       }
       previousAgents = totalDynamicsAgents;
     }
 
-    if (dynamics.time() % 300 == 0) {
+    if (dynamics.time_step() % 300 == 0) {
 #ifdef PRINT_OUT_SPIRES
-      outSpires << dynamics.time();
-      inSpires << dynamics.time();
+      outSpires << dynamics.time_step();
+      inSpires << dynamics.time_step();
       for (const auto& [streetId, pStreet] : dynamics.graph().edges()) {
         auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
         outSpires << ';' << spire.outputCounts(false);
@@ -207,15 +207,15 @@ int main(int argc, char** argv) {
       outSpires << std::endl;
       inSpires << std::endl;
 #endif
-      printLoadingBar(dynamics.time(), MAX_TIME);
+      printLoadingBar(dynamics.time_step(), MAX_TIME);
       dynamics.saveMacroscopicObservables(std::format("{}data.csv", OUT_FOLDER));
     }
-    if (dynamics.time() % 10 == 0) {
+    if (dynamics.time_step() % 10 == 0) {
 #ifdef PRINT_DENSITIES
       dynamics.saveStreetDensities(OUT_FOLDER + "densities.csv", true);
 #endif
 #ifdef PRINT_FLOWS
-      streetFlow << dynamics.time();
+      streetFlow << dynamics.time_step();
       for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& meanSpeed = dynamics.streetMeanSpeed(id);
         if (meanSpeed.has_value()) {
@@ -227,7 +227,7 @@ int main(int argc, char** argv) {
       streetFlow << std::endl;
 #endif
 #ifdef PRINT_SPEEDS
-      streetSpeed << dynamics.time();
+      streetSpeed << dynamics.time_step();
       for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& meanSpeed = dynamics.streetMeanSpeed(id);
         if (meanSpeed.has_value()) {

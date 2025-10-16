@@ -268,6 +268,19 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("weightThreshold") = std::nullopt,
            dsf::g_docstrings.at("dsf::FirstOrderDynamics::FirstOrderDynamics").c_str())
       // Note: Constructors with std::function parameters are not exposed to avoid stub generation issues
+      .def("setInitTime",
+           &dsf::FirstOrderDynamics::setInitTime,
+           pybind11::arg("timeEpoch"),
+           dsf::g_docstrings.at("dsf::Dynamics::setInitTime").c_str())
+      .def(
+          "setInitTime",
+          [](dsf::FirstOrderDynamics& self, pybind11::object datetime_obj) {
+            auto const epoch =
+                pybind11::cast<std::time_t>(datetime_obj.attr("timestamp")());
+            self.setInitTime(epoch);
+          },
+          pybind11::arg("datetime"),
+          dsf::g_docstrings.at("dsf::Dynamics::setInitTime").c_str())
       .def("setForcePriorities",
            &dsf::FirstOrderDynamics::setForcePriorities,
            pybind11::arg("forcePriorities"),
@@ -286,7 +299,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def(
           "setMaxTravelTime",
           [](dsf::FirstOrderDynamics& self, uint64_t maxTravelTime) {
-            self.setMaxTravelTime(static_cast<dsf::Time>(maxTravelTime));
+            self.setMaxTravelTime(static_cast<std::time_t>(maxTravelTime));
           },
           pybind11::arg("maxTravelTime"),
           dsf::g_docstrings.at("dsf::RoadDynamics::setMaxTravelTime").c_str())
@@ -377,9 +390,6 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("src_weights"),
           pybind11::arg("dst_weights"),
           dsf::g_docstrings.at("dsf::RoadDynamics::addAgentsRandomly").c_str())
-      // .def("addAgent", static_cast<void (dsf::FirstOrderDynamics::*)(std::unique_ptr<dsf::Agent>)>(&dsf::FirstOrderDynamics::addAgent), pybind11::arg("agent"))
-      // .def("addItinerary", static_cast<void (dsf::FirstOrderDynamics::*)(dsf::Id, dsf::Id)>(&dsf::FirstOrderDynamics::addItinerary), pybind11::arg("id"), pybind11::arg("destination"))
-      // .def("addItinerary", static_cast<void (dsf::FirstOrderDynamics::*)(std::unique_ptr<dsf::Itinerary>)>(&dsf::FirstOrderDynamics::addItinerary), pybind11::arg("itinerary"))
       .def("evolve",
            &dsf::FirstOrderDynamics::evolve,
            pybind11::arg("reinsert_agents") = false,
@@ -391,12 +401,15 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("threshold") = 0.,
            pybind11::arg("ratio") = 1.3,
            dsf::g_docstrings.at("dsf::RoadDynamics::optimizeTrafficLights").c_str())
-      // .def("itineraries", &dsf::FirstOrderDynamics::itineraries, pybind11::return_value_policy::reference_internal)
-      // .def("transitionMatrix", &dsf::FirstOrderDynamics::transitionMatrix, pybind11::return_value_policy::reference_internal)
-      // .def("agents", &dsf::FirstOrderDynamics::agents, pybind11::return_value_policy::reference_internal)
       .def("nAgents",
            &dsf::FirstOrderDynamics::nAgents,
            dsf::g_docstrings.at("dsf::RoadDynamics::nAgents").c_str())
+      .def("time",
+           &dsf::FirstOrderDynamics::time,
+           dsf::g_docstrings.at("dsf::Dynamics::time").c_str())
+      .def("time_step",
+           &dsf::FirstOrderDynamics::time_step,
+           dsf::g_docstrings.at("dsf::Dynamics::time_step").c_str())
       .def("meanTravelTime",
            &dsf::FirstOrderDynamics::meanTravelTime,
            pybind11::arg("clearData") = false,

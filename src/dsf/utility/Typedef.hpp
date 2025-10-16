@@ -2,6 +2,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #ifndef __APPLE__
 #include <execution>
@@ -18,7 +19,6 @@ namespace dsf {
   using Id = uint64_t;
   using Size = uint32_t;
   using Delay = uint16_t;
-  using Time = uint64_t;
 
   enum class PathWeight : uint8_t { LENGTH = 0, TRAVELTIME = 1, WEIGHT = 2 };
   enum Direction : uint8_t {
