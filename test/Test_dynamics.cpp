@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstdint>
 
 #include "FirstOrderDynamics.hpp"
@@ -215,7 +216,7 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
-  SUBCASE("addRandomAgents") {
+  SUBCASE("addRandomAgents and time") {
     GIVEN("A dynamics object") {
       auto const p{0.1};
       auto const n{100};
@@ -223,6 +224,9 @@ TEST_CASE("FirstOrderDynamics") {
       graph.importMatrix("./data/matrix.dat", false);
       // graph.adjustNodeCapacities();
       FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      auto const epochStart{
+          std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())};
+      dynamics.setInitTime(epochStart);
       dynamics.setPassageProbability(p);
       WHEN("We add some agent") {
         // Logger::setLogLevel(dsf::log_level_t::DEBUG);
@@ -234,6 +238,8 @@ TEST_CASE("FirstOrderDynamics") {
           }
           // Logger::setLogLevel(dsf::log_level_t::INFO);
           CHECK(dynamics.nAgents() < n);
+          CHECK_EQ(dynamics.time_step(), 40);
+          CHECK_EQ(dynamics.time() - epochStart, 40);
         }
       }
     }
@@ -416,16 +422,16 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(network.edge(0)->movingAgents().size(), 1);
           auto const& pAgent{network.edge(0)->movingAgents().top()};
           CHECK(pAgent);
-          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), dynamics.time());
-          CHECK_EQ(pAgent->freeTime(), dynamics.time());
+          CHECK_EQ(dynamics.time_step() - pAgent->spawnTime(), dynamics.time_step());
+          CHECK_EQ(pAgent->freeTime(), dynamics.time_step());
           CHECK_EQ(pAgent->streetId().value(), 0);
           CHECK_EQ(pAgent->speed(), 13.8888888889);
         }
         dynamics.evolve(false);  // Agent enqueues on street 0->1 and changes street
         THEN("The agent evolves again, changing street") {
           auto const& pAgent{network.edge(1)->movingAgents().top()};
-          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), dynamics.time());
-          CHECK_EQ(pAgent->freeTime(), dynamics.time());
+          CHECK_EQ(dynamics.time_step() - pAgent->spawnTime(), dynamics.time_step());
+          CHECK_EQ(pAgent->freeTime(), dynamics.time_step());
           CHECK_EQ(pAgent->streetId().value(), 1);
           CHECK_EQ(pAgent->speed(), 13.8888888889);
         }
@@ -448,8 +454,8 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent evolves") {
           auto const& pAgent{dynamics.graph().edge(0)->movingAgents().top()};
-          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), 2);
-          CHECK_EQ(pAgent->freeTime(), dynamics.time());
+          CHECK_EQ(dynamics.time_step() - pAgent->spawnTime(), 2);
+          CHECK_EQ(pAgent->freeTime(), dynamics.time_step());
           CHECK_EQ(pAgent->streetId().value(), 0);
           CHECK_EQ(pAgent->speed(), 13.8888888889);
           CHECK_EQ(pAgent->distance(), 0.);  // Not updated yet
@@ -474,8 +480,8 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent evolves") {
           auto const& pAgent{dynamics.graph().edge(0)->movingAgents().top()};
-          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), 2);
-          CHECK_EQ(pAgent->freeTime(), dynamics.time());
+          CHECK_EQ(dynamics.time_step() - pAgent->spawnTime(), 2);
+          CHECK_EQ(pAgent->freeTime(), dynamics.time_step());
           CHECK_EQ(pAgent->streetId().value(), 0);
           CHECK_EQ(pAgent->speed(), 13.8888888889);
           CHECK_EQ(pAgent->distance(), 0.);  // Not updated yet
@@ -505,8 +511,8 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(true);
         THEN("The agent has correct values") {
           auto const& pAgent{dynamics.graph().edge(0)->movingAgents().top()};
-          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), 2);
-          CHECK_EQ(pAgent->freeTime(), dynamics.time());
+          CHECK_EQ(dynamics.time_step() - pAgent->spawnTime(), 2);
+          CHECK_EQ(pAgent->freeTime(), dynamics.time_step());
           CHECK_EQ(pAgent->streetId().value(), 0);
           CHECK_EQ(pAgent->speed(), 13.8888888889);
           CHECK_EQ(pAgent->distance(), 0.);  // Not updated yet
@@ -855,8 +861,8 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.evolve(false);
         THEN("The agent has travelled the correct distance") {
           auto const& pAgent{dynamics.graph().edge(5)->movingAgents().top()};
-          CHECK_EQ(dynamics.time() - pAgent->spawnTime(), 3);
-          CHECK_EQ(pAgent->freeTime(), dynamics.time());
+          CHECK_EQ(dynamics.time_step() - pAgent->spawnTime(), 3);
+          CHECK_EQ(pAgent->freeTime(), dynamics.time_step());
           CHECK_EQ(pAgent->streetId().value(), 5);
           CHECK_EQ(pAgent->speed(), doctest::Approx(13.8888888889));
           CHECK_EQ(pAgent->distance(), 3.);

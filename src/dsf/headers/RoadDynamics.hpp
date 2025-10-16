@@ -56,14 +56,14 @@ namespace dsf {
     tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
         m_queuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
-    Time m_previousOptimizationTime, m_previousSpireTime;
+    std::time_t m_previousOptimizationTime, m_previousSpireTime;
 
   private:
     std::function<double(std::unique_ptr<Street> const&)> m_weightFunction;
     std::optional<double> m_errorProbability;
     std::optional<double> m_passageProbability;
     double m_maxTravelDistance;
-    Time m_maxTravelTime;
+    std::time_t m_maxTravelTime;
     double m_weightTreshold;
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
@@ -152,7 +152,7 @@ namespace dsf {
     };
     /// @brief Set the maximum travel time which a random agent can travel
     /// @param maxTravelTime The maximum travel time
-    inline void setMaxTravelTime(Time const maxTravelTime) noexcept {
+    inline void setMaxTravelTime(std::time_t const maxTravelTime) noexcept {
       m_maxTravelTime = maxTravelTime;
     };
     void setOriginNodes(std::unordered_map<Id, double> const& originNodes);
@@ -202,11 +202,11 @@ namespace dsf {
     void addAgent(std::unique_ptr<Agent> agent);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent, Time, TArgs...>)
+      requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
     void addAgent(TArgs&&... args);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent, Time, TArgs...>)
+      requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
     void addAgents(Size nAgents, TArgs&&... args);
 
     /// @brief Add an itinerary
@@ -393,7 +393,7 @@ namespace dsf {
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
         m_maxTravelDistance{std::numeric_limits<double>::max()},
-        m_maxTravelTime{std::numeric_limits<Time>::max()},
+        m_maxTravelTime{std::numeric_limits<std::time_t>::max()},
         m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
     this->setWeightFunction(weightFunction, weightTreshold);
@@ -577,7 +577,7 @@ namespace dsf {
     auto const nLanes = pStreet->nLanes();
     while (!pStreet->movingAgents().empty()) {
       auto const& pAgent{pStreet->movingAgents().top()};
-      if (pAgent->freeTime() < this->time()) {
+      if (pAgent->freeTime() < this->time_step()) {
         break;
       }
       pAgent->setSpeed(0.);
@@ -664,15 +664,15 @@ namespace dsf {
         }
         // Logger::debug("Taking temp agent");
         auto const& pAgentTemp{pStreet->queue(queueIndex).front()};
-        if (pAgentTemp->freeTime() > this->time()) {
+        if (pAgentTemp->freeTime() > this->time_step()) {
           spdlog::debug("Skipping due to time {} < free time {}",
-                        this->time(),
+                        this->time_step(),
                         pAgentTemp->freeTime());
           continue;
         }
         bool overtimed{false};
         {
-          auto const timeDiff{this->time() - pAgentTemp->freeTime()};
+          auto const timeDiff{this->time_step() - pAgentTemp->freeTime()};
           auto const timeTolerance{3 *
                                    std::ceil(pStreet->length() / pStreet->maxSpeed())};
           if (timeDiff > timeTolerance) {
@@ -680,7 +680,7 @@ namespace dsf {
             spdlog::warn(
                 "Time {} - {} currently on {} ({} turn - Traffic Light? {}), "
                 "has been still for more than {} seconds ({} seconds)",
-                this->time(),
+                this->time_step(),
                 *pAgentTemp,
                 *pStreet,
                 directionToString.at(pStreet->laneMapping().at(queueIndex)),
@@ -855,7 +855,8 @@ namespace dsf {
           if (pAgentTemp->distance() >= m_maxTravelDistance) {
             bArrived = true;
           }
-          if (!bArrived && (this->time() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
+          if (!bArrived &&
+              (this->time_step() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
             bArrived = true;
           }
         }
@@ -865,11 +866,11 @@ namespace dsf {
               "{} has arrived at destination node {}", *pAgent, destinationNode->id());
           m_travelDTs.push_back(
               {pAgent->distance(),
-               static_cast<double>(this->time() - pAgent->spawnTime())});
+               static_cast<double>(this->time_step() - pAgent->spawnTime())});
           --m_nAgents;
           if (reinsert_agents) {
             // reset Agent's values
-            pAgent->reset(this->time());
+            pAgent->reset(this->time_step());
             this->addAgent(std::move(pAgent));
           }
           continue;
@@ -948,13 +949,13 @@ namespace dsf {
           }
           pAgent->setStreetId();
           this->setAgentSpeed(pAgent);
-          pAgent->setFreeTime(this->time() +
+          pAgent->setFreeTime(this->time_step() +
                               std::ceil(nextStreet->length() / pAgent->speed()));
           spdlog::debug(
               "{} at time {} has been dequeued from intersection {} and "
               "enqueued on street {} with free time {}.",
               *pAgent,
-              this->time(),
+              this->time_step(),
               pNode->id(),
               nextStreet->id(),
               pAgent->freeTime());
@@ -976,12 +977,12 @@ namespace dsf {
           auto pAgent{roundabout.dequeue()};
           pAgent->setStreetId();
           this->setAgentSpeed(pAgent);
-          pAgent->setFreeTime(this->time() +
+          pAgent->setFreeTime(this->time_step() +
                               std::ceil(nextStreet->length() / pAgent->speed()));
           spdlog::debug(
               "An agent at time {} has been dequeued from roundabout {} and "
               "enqueued on street {} with free time {}: {}",
-              this->time(),
+              this->time_step(),
               pNode->id(),
               nextStreet->id(),
               pAgent->freeTime(),
@@ -1251,11 +1252,12 @@ namespace dsf {
       }
       auto const& street{streetIt->second};
       this->addAgent(
-          std::make_unique<Agent>(this->time(), itineraryId, street->source()));
+          std::make_unique<Agent>(this->time_step(), itineraryId, street->source()));
       auto& pAgent{this->m_agents.back()};
       pAgent->setStreetId(street->id());
       this->setAgentSpeed(pAgent);
-      pAgent->setFreeTime(this->time() + std::ceil(street->length() / pAgent->speed()));
+      pAgent->setFreeTime(this->time_step() +
+                          std::ceil(street->length() / pAgent->speed()));
       street->addAgent(std::move(pAgent));
       this->m_agents.pop_back();
     }
@@ -1307,7 +1309,7 @@ namespace dsf {
         0, static_cast<size_t>(this->graph().nNodes() - 1)};
     std::uniform_real_distribution<double> srcUniformDist{0., srcSum};
     std::uniform_real_distribution<double> dstUniformDist{0., dstSum};
-    spdlog::debug("Adding {} agents at time {}.", nAgents, this->time());
+    spdlog::debug("Adding {} agents at time {}.", nAgents, this->time_step());
     while (nAgents > 0) {
       std::optional<Id> srcId{std::nullopt}, dstId{std::nullopt};
 
@@ -1397,18 +1399,18 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent, Time, TArgs...>)
+    requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
   void RoadDynamics<delay_t>::addAgent(TArgs&&... args) {
-    addAgent(std::make_unique<Agent>(this->time(), std::forward<TArgs>(args)...));
+    addAgent(std::make_unique<Agent>(this->time_step(), std::forward<TArgs>(args)...));
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent, Time, TArgs...>)
+    requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
   void RoadDynamics<delay_t>::addAgents(Size nAgents, TArgs&&... args) {
     for (size_t i{0}; i < nAgents; ++i) {
-      addAgent(std::make_unique<Agent>(this->time(), std::forward<TArgs>(args)...));
+      addAgent(std::make_unique<Agent>(this->time_step(), std::forward<TArgs>(args)...));
     }
   }
 
@@ -1433,10 +1435,10 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::evolve(bool reinsert_agents) {
-    spdlog::debug("Init evolve at time {}", this->time());
+    spdlog::debug("Init evolve at time {}", this->time_step());
     // move the first agent of each street queue, if possible, putting it in the next node
-    bool const bUpdateData =
-        m_dataUpdatePeriod.has_value() && this->time() % m_dataUpdatePeriod.value() == 0;
+    bool const bUpdateData = m_dataUpdatePeriod.has_value() &&
+                             this->time_step() % m_dataUpdatePeriod.value() == 0;
     auto const numNodes{this->graph().nNodes()};
 
     const unsigned int concurrency = std::thread::hardware_concurrency();
@@ -1497,7 +1499,7 @@ namespace dsf {
     if (logStream.has_value()) {
       *logStream << std::format(
           "Init Traffic Lights optimization (SINGLE TAIL) - Time {} - Alpha {}\n",
-          this->time(),
+          this->time_step(),
           beta);
     }
     for (auto const& [nodeId, pNode] : this->graph().nodes()) {
@@ -1866,7 +1868,7 @@ namespace dsf {
     }
     if (logStream.has_value()) {
       *logStream << std::format("End Traffic Lights optimization - Time {}\n",
-                                this->time());
+                                this->time_step());
     }
   }
 
@@ -1945,7 +1947,7 @@ namespace dsf {
         value = 0.;
       }
     }
-    m_previousOptimizationTime = this->time();
+    m_previousOptimizationTime = this->time_step();
     if (logStream.has_value()) {
       logStream->close();
     }
@@ -2118,11 +2120,11 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::meanSpireInputFlow(bool resetValue) {
-    auto deltaTime{this->time() - m_previousSpireTime};
+    auto deltaTime{this->time_step() - m_previousSpireTime};
     if (deltaTime == 0) {
       return Measurement(0., 0.);
     }
-    m_previousSpireTime = this->time();
+    m_previousSpireTime = this->time_step();
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
     for (const auto& [streetId, pStreet] : this->graph().edges()) {
@@ -2137,11 +2139,11 @@ namespace dsf {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::meanSpireOutputFlow(bool resetValue) {
-    auto deltaTime{this->time() - m_previousSpireTime};
+    auto deltaTime{this->time_step() - m_previousSpireTime};
     if (deltaTime == 0) {
       return Measurement(0., 0.);
     }
-    m_previousSpireTime = this->time();
+    m_previousSpireTime = this->time_step();
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
@@ -2174,7 +2176,7 @@ namespace dsf {
       }
       file << std::endl;
     }
-    file << this->time();
+    file << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       // keep 2 decimal digits;
       file << separator << std::scientific << std::setprecision(2)
@@ -2211,7 +2213,7 @@ namespace dsf {
       }
       file << std::endl;
     }
-    file << this->time();
+    file << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
@@ -2254,7 +2256,7 @@ namespace dsf {
       }
       file << std::endl;
     }
-    file << this->time();
+    file << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
@@ -2316,7 +2318,7 @@ namespace dsf {
     }
 
     // Write all data at once
-    file << this->time() << ';' << strTravelDistances << ';' << strTravelTimes << ';'
+    file << this->time_step() << ';' << strTravelDistances << ';' << strTravelTimes << ';'
          << strTravelSpeeds << std::endl;
 
     file.close();
@@ -2388,7 +2390,7 @@ namespace dsf {
     std_travel_speed =
         std::sqrt(std_travel_speed / nData - mean_travel_speed * mean_travel_speed);
 
-    file << this->time() << separator;
+    file << this->time_step() << separator;
     file << m_agents.size() << separator;
     file << this->nAgents() << separator;
     file << std::scientific << std::setprecision(2);

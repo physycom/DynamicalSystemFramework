@@ -28,7 +28,7 @@ namespace dsf {
   /// @brief The Agent class represents an agent in the network.
   class Agent {
   private:
-    Time m_spawnTime, m_freeTime;
+    std::time_t m_spawnTime, m_freeTime;
     Id m_id;
     std::vector<Id> m_trip;
     std::optional<Id> m_streetId;
@@ -43,14 +43,14 @@ namespace dsf {
     /// @param spawnTime The agent's spawn time
     /// @param itineraryId Optional, The agent's destination node. If not provided, the agent is a random agent
     /// @param srcNodeId Optional, The id of the source node of the agent
-    Agent(Time const& spawnTime,
+    Agent(std::time_t const& spawnTime,
           std::optional<Id> itineraryId = std::nullopt,
           std::optional<Id> srcNodeId = std::nullopt);
     /// @brief Construct a new Agent object
     /// @param spawnTime The agent's spawn time
     /// @param itineraryIds The agent's itinerary
     /// @param srcNodeId Optional, The id of the source node of the agent
-    Agent(Time const& spawnTime,
+    Agent(std::time_t const& spawnTime,
           std::vector<Id> const& trip,
           std::optional<Id> srcNodeId = std::nullopt);
 
@@ -67,7 +67,7 @@ namespace dsf {
     void setSpeed(double speed);
     /// @brief Set the agent's free time
     /// @param freeTime The agent's free time
-    void setFreeTime(Time const& freeTime);
+    void setFreeTime(std::time_t const& freeTime);
     /// @brief Increment the agent's distance by a given value
     /// @param distance The value to increment the agent's distance byù
     /// @throw std::invalid_argument, if distance is negative
@@ -84,14 +84,14 @@ namespace dsf {
     /// - distance = 0
     /// - time = 0
     /// - itinerary index = 0
-    void reset(Time const& spawnTime);
+    void reset(std::time_t const& spawnTime);
 
     /// @brief Get the agent's spawn time
     /// @return The agent's spawn time
-    inline Time const& spawnTime() const noexcept { return m_spawnTime; };
+    inline std::time_t const& spawnTime() const noexcept { return m_spawnTime; };
     /// @brief Get the agent's free time
     /// @return The agent's free time
-    inline Time const& freeTime() const noexcept { return m_freeTime; };
+    inline std::time_t const& freeTime() const noexcept { return m_freeTime; };
     /// @brief Get the agent's id
     /// @return The agent's id
     inline Id id() const noexcept { return m_id; };
