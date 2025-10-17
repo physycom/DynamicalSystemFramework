@@ -73,7 +73,7 @@ jobs:
           cd build
           $vcpkg_toolchain = "$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
           cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
-          cmake --build . -j$(nproc) --config Release
+          cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Release
           cmake --install . --config Release --prefix "$env:GITHUB_WORKSPACE\install"
 
       - name: Test include on Ubuntu
