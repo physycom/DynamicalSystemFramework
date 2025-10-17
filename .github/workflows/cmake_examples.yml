@@ -36,7 +36,7 @@ jobs:
 
     - name: Build
       working-directory: ${{github.workspace}}/examples
-      run: cmake --build build
+      run: cmake --build build -j$(nproc)
 
     - name: Stalingrado
       working-directory: ${{github.workspace}}/examples

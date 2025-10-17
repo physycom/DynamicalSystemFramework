@@ -2176,7 +2176,7 @@ namespace dsf {
       }
       file << std::endl;
     }
-    file << this->time_step();
+    file << this->strTime();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       // keep 2 decimal digits;
       file << separator << std::scientific << std::setprecision(2)
@@ -2213,7 +2213,7 @@ namespace dsf {
       }
       file << std::endl;
     }
-    file << this->time_step();
+    file << this->strTime();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
@@ -2256,7 +2256,7 @@ namespace dsf {
       }
       file << std::endl;
     }
-    file << this->time_step();
+    file << this->strTime();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
@@ -2318,7 +2318,7 @@ namespace dsf {
     }
 
     // Write all data at once
-    file << this->time_step() << ';' << strTravelDistances << ';' << strTravelTimes << ';'
+    file << this->strTime() << ';' << strTravelDistances << ';' << strTravelTimes << ';'
          << strTravelSpeeds << std::endl;
 
     file.close();
@@ -2390,7 +2390,7 @@ namespace dsf {
     std_travel_speed =
         std::sqrt(std_travel_speed / nData - mean_travel_speed * mean_travel_speed);
 
-    file << this->time_step() << separator;
+    file << this->strTime() << separator;
     file << m_agents.size() << separator;
     file << this->nAgents() << separator;
     file << std::scientific << std::setprecision(2);

@@ -45,12 +45,12 @@ jobs:
     - name: Build on Ubuntu
       if: matrix.os == 'ubuntu-latest'
       working-directory: ${{github.workspace}}/test
-      run: cmake --build ${{github.workspace}}/test/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/test/build -j$(nproc) --config ${{env.BUILD_TYPE}}
 
     - name: Build on macOS
       if: matrix.os == 'macos-latest'
       working-directory: ${{github.workspace}}/test
-      run: cmake --build ${{github.workspace}}/test/build
+      run: cmake --build ${{github.workspace}}/test/build -j$(nproc)
 
     - name: Run tests
       working-directory: ${{github.workspace}}/test
