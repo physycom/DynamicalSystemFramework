@@ -52,7 +52,7 @@ pip install -r ./requirements.txt
 ### Installation (C++)
 The library can be installed using CMake. To build and install the project in the default folder run:
 ```shell
-cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
 sudo cmake --install build
 ```
 Otherwise, it is possible to customize the installation path:
@@ -66,7 +66,7 @@ cmake --install build
 ```
 
 ## Installation (Python)
-If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have doxygen installed to generate the docstrings:
+If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have Doxygen installed to generate the docstrings:
 ```shell
 sudo apt install doxygen
 ```
@@ -91,7 +91,7 @@ This project uses [Doctest](https://github.com/doctest/doctest) for testing.
 To compile tests run:
 ```shell
 cd test
-cmake -B build && make -C build
+cmake -B build && make -C build -j$(nproc)
 ```
 To run all the tests together use the command:
 ```shell

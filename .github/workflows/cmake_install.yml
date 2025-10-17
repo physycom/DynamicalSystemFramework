@@ -48,7 +48,7 @@ jobs:
           mkdir -p build
           cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
-          cmake --build . --config Release
+          cmake --build . -j$(nproc) --config Release
           cmake --install . --prefix ${GITHUB_WORKSPACE}/install
 
       - name: Build and install on macOS
@@ -61,7 +61,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix fmt):$(brew --prefix spdlog):$(brew --prefix simdjson)" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
-          cmake --build . --config Release
+          cmake --build . -j$(nproc) --config Release
           cmake --install . --prefix ${GITHUB_WORKSPACE}/install
 
       - name: Build and install on Windows
@@ -73,7 +73,7 @@ jobs:
           cd build
           $vcpkg_toolchain = "$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
           cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
-          cmake --build . --config Release
+          cmake --build . -j$(nproc) --config Release
           cmake --install . --config Release --prefix "$env:GITHUB_WORKSPACE\install"
 
       - name: Test include on Ubuntu
