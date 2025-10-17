@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstdint>
+#include <iomanip>
 
 #include "FirstOrderDynamics.hpp"
 #include "RoadNetwork.hpp"
@@ -224,22 +225,25 @@ TEST_CASE("FirstOrderDynamics") {
       graph.importMatrix("./data/matrix.dat", false);
       // graph.adjustNodeCapacities();
       FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      CHECK_EQ(dynamics.strTime(), "0");
       auto const epochStart{
           std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())};
       dynamics.setInitTime(epochStart);
       dynamics.setPassageProbability(p);
       WHEN("We add some agent") {
-        // Logger::setLogLevel(dsf::log_level_t::DEBUG);
         dynamics.addAgents(n);
         THEN("The number of agents is correct") { CHECK_EQ(dynamics.nAgents(), 100); }
         THEN("If we evolve the dynamics agent disappear gradually") {
           for (auto i{0}; i < 40; ++i) {
             dynamics.evolve(false);
           }
-          // Logger::setLogLevel(dsf::log_level_t::INFO);
           CHECK(dynamics.nAgents() < n);
           CHECK_EQ(dynamics.time_step(), 40);
           CHECK_EQ(dynamics.time() - epochStart, 40);
+          std::ostringstream oss;
+          auto currentTime = epochStart + 40;
+          oss << std::put_time(std::localtime(&currentTime), "%Y-%m-%d %H:%M:%S");
+          CHECK_EQ(dynamics.strTime(), oss.str());
         }
       }
     }

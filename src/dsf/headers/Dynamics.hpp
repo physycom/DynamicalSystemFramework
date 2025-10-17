@@ -27,6 +27,8 @@
 #include <fstream>
 #include <filesystem>
 #include <functional>
+#include <iomanip>
+#include <sstream>
 
 #include <tbb/tbb.h>
 
@@ -85,13 +87,24 @@ namespace dsf {
 
     /// @brief Get the graph
     /// @return const network_t&, The graph
-    const network_t& graph() const { return m_graph; };
+    inline const network_t& graph() const { return m_graph; };
     /// @brief Get the current simulation time as epoch time
     /// @return std::time_t, The current simulation time as epoch time
-    std::time_t time() const { return m_timeInit + m_timeStep; }
+    inline std::time_t time() const { return m_timeInit + m_timeStep; }
     /// @brief Get the current simulation time-step
     /// @return std::time_t, The current simulation time-step
-    auto time_step() const { return m_timeStep; }
+    inline std::time_t time_step() const { return m_timeStep; }
+    /// @brief Get the current simulation time as formatted string (YYYY-MM-DD HH:MM:SS)
+    /// @return std::string, The current simulation time as formatted string
+    inline auto strTime() const {
+      if (m_timeInit == 0) {
+        return std::to_string(m_timeStep);
+      }
+      std::time_t const t = time();
+      std::ostringstream oss;
+      oss << std::put_time(std::localtime(&t), "%Y-%m-%d %H:%M:%S");
+      return oss.str();
+    }
   };
 
   template <typename network_t>
