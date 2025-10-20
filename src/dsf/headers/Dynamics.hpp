@@ -96,10 +96,7 @@ namespace dsf {
     inline std::time_t time_step() const { return m_timeStep; }
     /// @brief Get the current simulation time as formatted string (YYYY-MM-DD HH:MM:SS)
     /// @return std::string, The current simulation time as formatted string
-    inline auto strTime() const {
-      if (m_timeInit == 0) {
-        return std::to_string(m_timeStep);
-      }
+    inline auto strDateTime() const {
       std::time_t const t = time();
       std::ostringstream oss;
       oss << std::put_time(std::localtime(&t), "%Y-%m-%d %H:%M:%S");

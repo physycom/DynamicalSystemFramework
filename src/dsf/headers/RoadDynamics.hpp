@@ -2170,13 +2170,13 @@ namespace dsf {
       throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
     }
     if (bEmptyFile) {
-      file << "time";
+      file << "datetime" << separator << "time_step";
       for (auto const& [streetId, pStreet] : this->graph().edges()) {
         file << separator << streetId;
       }
       file << std::endl;
     }
-    file << this->strTime();
+    file << this->strDateTime() << separator << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       // keep 2 decimal digits;
       file << separator << std::scientific << std::setprecision(2)
@@ -2200,7 +2200,7 @@ namespace dsf {
       throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
     }
     if (bEmptyFile) {
-      file << "time";
+      file << "datetime" << separator << "time_step";
       for (auto const& [streetId, pStreet] : this->graph().edges()) {
         if (!pStreet->isSpire()) {
           continue;
@@ -2213,7 +2213,7 @@ namespace dsf {
       }
       file << std::endl;
     }
-    file << this->strTime();
+    file << this->strDateTime() << separator << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
@@ -2243,7 +2243,7 @@ namespace dsf {
       throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
     }
     if (bEmptyFile) {
-      file << "time";
+      file << "datetime" << separator << "time_step";
       for (auto const& [streetId, pStreet] : this->graph().edges()) {
         if (!pStreet->isSpire()) {
           continue;
@@ -2256,7 +2256,7 @@ namespace dsf {
       }
       file << std::endl;
     }
-    file << this->strTime();
+    file << this->strDateTime() << separator << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
       if (pStreet->isSpire()) {
@@ -2284,7 +2284,7 @@ namespace dsf {
       throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
     }
     if (bEmptyFile) {
-      file << "time;distances;times;speeds" << std::endl;
+      file << "datetime;time_step;distances;times;speeds" << std::endl;
     }
 
     // Construct strings efficiently with proper formatting
@@ -2318,8 +2318,8 @@ namespace dsf {
     }
 
     // Write all data at once
-    file << this->strTime() << ';' << strTravelDistances << ';' << strTravelTimes << ';'
-         << strTravelSpeeds << std::endl;
+    file << this->strDateTime() << ';' << this->time_step() << ';' << strTravelDistances
+         << ';' << strTravelTimes << ';' << strTravelSpeeds << std::endl;
 
     file.close();
     if (reset) {
@@ -2340,10 +2340,10 @@ namespace dsf {
       throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
     }
     if (bEmptyFile) {
-      file << "time;n_ghost_agents;n_agents;mean_speed;mean_speed_std;mean_density;mean_"
-              "density_std;mean_flow;mean_flow_std;mean_traveltime;mean_traveltime_std;"
-              "mean_traveldistance;mean_traveldistance_"
-              "err;mean_travelspeed;mean_travelspeed_std\n";
+      file << "datetime;time_step;n_ghost_agents;n_agents;mean_speed_kph;std_speed_kph;"
+              "mean_density_vpk;std_density_vpk;mean_flow_vph;std_flow_vph;mean_"
+              "traveltime_m;std_traveltime_m;mean_traveldistance_km;std_traveldistance_"
+              "km;mean_travelspeed_kph;std_travelspeed_kph\n";
     }
     double mean_speed{0.}, mean_density{0.}, mean_flow{0.}, mean_travel_distance{0.},
         mean_travel_time{0.}, mean_travel_speed{0.};
@@ -2390,7 +2390,8 @@ namespace dsf {
     std_travel_speed =
         std::sqrt(std_travel_speed / nData - mean_travel_speed * mean_travel_speed);
 
-    file << this->strTime() << separator;
+    file << this->strDateTime() << separator;
+    file << this->time_step() << separator;
     file << m_agents.size() << separator;
     file << this->nAgents() << separator;
     file << std::scientific << std::setprecision(2);

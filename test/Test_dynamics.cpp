@@ -225,7 +225,7 @@ TEST_CASE("FirstOrderDynamics") {
       graph.importMatrix("./data/matrix.dat", false);
       // graph.adjustNodeCapacities();
       FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
-      CHECK_EQ(dynamics.strTime(), "0");
+      CHECK_EQ(dynamics.strDateTime(), "1970-01-01 01:00:00");
       auto const epochStart{
           std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())};
       dynamics.setInitTime(epochStart);
@@ -243,7 +243,7 @@ TEST_CASE("FirstOrderDynamics") {
           std::ostringstream oss;
           auto currentTime = epochStart + 40;
           oss << std::put_time(std::localtime(&currentTime), "%Y-%m-%d %H:%M:%S");
-          CHECK_EQ(dynamics.strTime(), oss.str());
+          CHECK_EQ(dynamics.strDateTime(), oss.str());
         }
       }
     }
