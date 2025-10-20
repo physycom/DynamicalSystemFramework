@@ -96,7 +96,7 @@ L.Control.Screenshot = L.Control.extend({
       pdf.addImage(imgData, 'PNG', 0, 0, cropWidth, cropHeight);
 
       // Add simulation timestamp at top right with semi-transparent background and border
-      const timestamp = `Time: ${formatTime(timeStep)}`;
+      const timestamp = `Time: ${formatTime(timeStamp)}`;
       const fontSize = Math.max(12, cropHeight / 30);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(fontSize);
@@ -402,14 +402,17 @@ const overlay = d3.select(map.getPanes().overlayPane).select("svg");
 const g = overlay.append("g").attr("class", "leaflet-zoom-hide");
 
 let edges, densities;
-let timeStep = 0;
+let timeStamp = new Date();
 let highlightedEdge = null;
 let highlightedNode = null;
 
-function formatTime(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+function formatTime(date) {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 // Create a color scale for density values using three color stops
@@ -436,7 +439,7 @@ function updateNodeHighlight() {
 // Update edge info display with current density
 function updateEdgeInfo(edge) {
   const edgeIndex = edges.indexOf(edge);
-  const currentDensityRow = densities.find(d => d.time === timeStep);
+  const currentDensityRow = densities.find(d => d.datetime.getTime() === timeStamp.getTime());
   let density = 'N/A';
   if (currentDensityRow) {
     density = currentDensityRow.densities[edgeIndex];
@@ -498,6 +501,8 @@ loadDataBtn.addEventListener('click', async function() {
         return;
       }
 
+      timeStamp = densities[0].datetime;
+
     // Calculate median center from edge geometries
     let allLats = [];
     let allLons = [];
@@ -535,9 +540,9 @@ loadDataBtn.addEventListener('click', async function() {
 
     // Update edge colors based on the current time step density data
     function updateDensityVisualization() {
-      const currentDensityRow = densities.find(d => d.time === timeStep);
+      const currentDensityRow = densities.find(d => d.datetime.getTime() === timeStamp.getTime());
       if (!currentDensityRow) {
-        console.error("No density data for time step:", timeStep);
+        console.error("No density data for time step:", timeStamp);
         return;
       }
       const currentDensities = currentDensityRow.densities;
@@ -555,18 +560,18 @@ loadDataBtn.addEventListener('click', async function() {
     }
 
     // Set up the time slider based on the density data's maximum time value
-    const maxTimeStep = d3.max(densities, d => d.time);
     const timeSlider = document.getElementById('timeSlider');
     const timeLabel = document.getElementById('timeLabel');
     // Round up max to the nearest 300 for step consistency
-    timeSlider.max = Math.ceil(maxTimeStep / 300) * 300;
+    timeSlider.max = (densities.length - 1) * 300;
     timeSlider.step = 300;
-    timeLabel.textContent = `Time Step: ${formatTime(timeStep)}`;
+    timeLabel.textContent = `${formatTime(timeStamp)}`;
 
     // Update the visualization when the slider value changes
     timeSlider.addEventListener('input', function() {
-      timeStep = parseInt(timeSlider.value);
-      timeLabel.textContent = `Time Step: ${formatTime(timeStep)}`;
+      const index = Math.floor(parseInt(timeSlider.value) / 300);
+      timeStamp = densities[index].datetime;
+      timeLabel.textContent = `${formatTime(timeStamp)}`;
       update();
       // Update edge info if an edge is selected
       if (highlightedEdge) {
@@ -740,12 +745,12 @@ function parseEdges(d) {
 
 // Parsing function for density CSV
 function parseDensity(d) {
-      const time = +d.time;
+      const datetime = new Date(d.datetime);
       const densities = Object.keys(d)
-        .filter(key => key !== 'time')
+        .filter(key => !key.includes('time'))
         .map(key => {
           const val = d[key] ? d[key].trim() : "";
           return val === "" ? 0 : +val;
         });
-      return { time, densities };
+      return { datetime, densities };
 }
