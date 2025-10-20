@@ -411,8 +411,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::FirstOrderDynamics::time_step,
            dsf::g_docstrings.at("dsf::Dynamics::time_step").c_str())
       .def("datetime",
-            &dsf::FirstOrderDynamics::strDateTime,
-            dsf::g_docstrings.at("dsf::Dynamics::strDateTime").c_str())
+           &dsf::FirstOrderDynamics::strDateTime,
+           dsf::g_docstrings.at("dsf::Dynamics::strDateTime").c_str())
       .def("meanTravelTime",
            &dsf::FirstOrderDynamics::meanTravelTime,
            pybind11::arg("clearData") = false,
