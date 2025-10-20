@@ -1,3 +1,12 @@
+"""
+@file cartography.py
+@brief Cartography utilities for retrieving and processing OpenStreetMap data.
+
+This module provides functions to download and process street network data
+from OpenStreetMap using OSMnx, with support for graph simplification and
+standardization of attributes.
+"""
+
 import networkx as nx
 import osmnx as ox
 
