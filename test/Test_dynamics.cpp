@@ -225,11 +225,20 @@ TEST_CASE("FirstOrderDynamics") {
       graph.importMatrix("./data/matrix.dat", false);
       // graph.adjustNodeCapacities();
       FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+#ifdef __APPLE__
+      {
+        std::time_t const t{0};
+        std::ostringstream oss;
+        oss << std::put_time(std::localtime(&t), "%Y-%m-%d %H:%M:%S");
+        CHECK_EQ(dynamics.strDateTime(), oss.str());
+      }
+#else
       CHECK_EQ(dynamics.strDateTime(),
                std::format("{:%Y-%m-%d %H:%M:%S}",
                            std::chrono::floor<std::chrono::seconds>(
                                std::chrono::current_zone()->to_local(
                                    std::chrono::system_clock::from_time_t(0)))));
+#endif
       auto const epochStart{
           std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())};
       dynamics.setInitTime(epochStart);
@@ -244,6 +253,14 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(dynamics.nAgents() < n);
           CHECK_EQ(dynamics.time_step(), 40);
           CHECK_EQ(dynamics.time() - epochStart, 40);
+#ifdef __APPLE__
+          {
+            std::time_t const t = dynamics.time();
+            std::ostringstream oss;
+            oss << std::put_time(std::localtime(&t), "%Y-%m-%d %H:%M:%S");
+            CHECK_EQ(dynamics.strDateTime(), oss.str());
+          }
+#else
           CHECK_EQ(
               dynamics.strDateTime(),
               std::format(
@@ -251,6 +268,7 @@ TEST_CASE("FirstOrderDynamics") {
                   std::chrono::floor<std::chrono::seconds>(
                       std::chrono::current_zone()->to_local(
                           std::chrono::system_clock::from_time_t(dynamics.time())))));
+#endif
         }
       }
     }

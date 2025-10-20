@@ -29,6 +29,9 @@
 #include <filesystem>
 #include <functional>
 #include <iomanip>
+#ifdef __APPLE__
+#include <sstream>
+#endif
 
 #include <tbb/tbb.h>
 
@@ -97,9 +100,17 @@ namespace dsf {
     /// @brief Get the current simulation time as formatted string (YYYY-MM-DD HH:MM:SS)
     /// @return std::string, The current simulation time as formatted string
     inline auto strDateTime() const {
+#ifdef __APPLE__
+      std::time_t const t = time();
+      std::ostringstream oss;
+      oss << std::put_time(std::localtime(&t), "%Y-%m-%d %H:%M:%S");
+      return oss.str();
+#else
       return std::format(
-          "{:%Y-%m-%d %H:%M:%S}", std::chrono::floor<std::chrono::seconds>(std::chrono::current_zone()->to_local(
-                                      std::chrono::system_clock::from_time_t(time()))));
+          "{:%Y-%m-%d %H:%M:%S}",
+          std::chrono::floor<std::chrono::seconds>(std::chrono::current_zone()->to_local(
+              std::chrono::system_clock::from_time_t(time()))));
+#endif
     }
   };
 
