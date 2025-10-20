@@ -1,12 +1,3 @@
-"""
-@file cartography.py
-@brief Cartography utilities for retrieving and processing OpenStreetMap data.
-
-This module provides functions to download and process street network data
-from OpenStreetMap using OSMnx, with support for graph simplification and
-standardization of attributes.
-"""
-
 import networkx as nx
 import osmnx as ox
 
@@ -129,6 +120,10 @@ def get_cartography(
             else:
                 G[u][v][k][key] = value
 
+    # Add id to edges
+    for i, (u, v, k) in enumerate(G.edges(keys=True)):
+        G[u][v][k]["id"] = i
+
     # Standardize node attributes in the graph
     nodes_to_update = []
     for node, data in G.nodes(data=True):
@@ -188,9 +183,8 @@ def get_cartography(
         # Convert back to MultiDiGraph temporarily for ox.graph_to_gdfs compatibility
         gdf_nodes, gdf_edges = ox.graph_to_gdfs(G)
 
-        # Reset index and add edge id
+        # Reset index and rename columns (id already exists from graph)
         gdf_edges.reset_index(inplace=True)
-        gdf_edges["id"] = gdf_edges.index
         gdf_edges.rename(columns={"u": "source", "v": "target"}, inplace=True)
         gdf_edges.drop(columns=["key"], inplace=True, errors="ignore")
 
