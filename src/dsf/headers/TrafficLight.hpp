@@ -14,6 +14,8 @@
 
 #include <format>
 #include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace dsf {
   class TrafficLightCycle {
@@ -51,6 +53,30 @@ namespace dsf {
     /// @brief Reset the green and phase values to the default values
     /// @details The default values are the values that the cycle had when it was created
     void reset();
+  };
+
+  class TrafficLightPhase {
+    private:
+    Delay m_greenTime;
+    Direction m_direction;
+    std::unordered_set<Id> m_streetIds;
+
+    public:
+    TrafficLightPhase(Delay greenTime, Direction direction) 
+        : m_greenTime{greenTime}, m_direction{direction} {}
+    
+    inline void setGreenTime(Delay const greenTime) { m_greenTime = greenTime; }
+    inline void addStreetId(Id const& streetId) {
+      if (m_streetIds.contains(streetId)) {
+        throw std::invalid_argument(std::format(
+            "Street with id {} already exists in the traffic light phase.", streetId));
+      }
+      m_streetIds.insert(streetId);
+    }
+
+    inline Delay greenTime() const { return m_greenTime; }
+    inline Direction direction() const { return m_direction; }
+    inline std::unordered_set<Id> const& streetIds() const { return m_streetIds; }
   };
 
   class TrafficLight final : public Intersection {
