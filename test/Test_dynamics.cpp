@@ -225,10 +225,11 @@ TEST_CASE("FirstOrderDynamics") {
       graph.importMatrix("./data/matrix.dat", false);
       // graph.adjustNodeCapacities();
       FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
-      std::ostringstream default_oss;
-      std::time_t defaultTime{0};
-      default_oss << std::put_time(std::localtime(&defaultTime), "%Y-%m-%d %H:%M:%S");
-      CHECK_EQ(dynamics.strDateTime(), default_oss.str());
+      CHECK_EQ(dynamics.strDateTime(),
+               std::format("{:%Y-%m-%d %H:%M:%S}",
+                           std::chrono::floor<std::chrono::seconds>(
+                               std::chrono::current_zone()->to_local(
+                                   std::chrono::system_clock::from_time_t(0)))));
       auto const epochStart{
           std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())};
       dynamics.setInitTime(epochStart);
@@ -243,10 +244,13 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(dynamics.nAgents() < n);
           CHECK_EQ(dynamics.time_step(), 40);
           CHECK_EQ(dynamics.time() - epochStart, 40);
-          std::ostringstream oss;
-          auto currentTime = epochStart + 40;
-          oss << std::put_time(std::localtime(&currentTime), "%Y-%m-%d %H:%M:%S");
-          CHECK_EQ(dynamics.strDateTime(), oss.str());
+          CHECK_EQ(
+              dynamics.strDateTime(),
+              std::format(
+                  "{:%Y-%m-%d %H:%M:%S}",
+                  std::chrono::floor<std::chrono::seconds>(
+                      std::chrono::current_zone()->to_local(
+                          std::chrono::system_clock::from_time_t(dynamics.time())))));
         }
       }
     }
