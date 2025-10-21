@@ -9,24 +9,29 @@ standardization of attributes.
 
 import networkx as nx
 import osmnx as ox
+import numpy as np
 
 
 def get_cartography(
-    place_name: str,
+    place_name: str | None = None,
+    bbox: tuple[float, float, float, float] | None = None,
     network_type: str = "drive",
     consolidate_intersections: bool | float = 10,
     dead_ends: bool = False,
+    infer_speeds: bool = False,
     return_type: str = "gdfs",
 ) -> tuple | nx.MultiDiGraph:
     """
     Retrieves and processes cartography data for a specified place using OpenStreetMap data.
 
-    This function downloads a street network graph for the given place, optionally consolidates
+    This function downloads a street network graph for the given place or bounding box, optionally consolidates
     intersections to simplify the graph, removes edges with zero length, self-loops and isolated nodes,
     and standardizes the attribute names in the graph. Can return either GeoDataFrames or the graph itself.
 
     Args:
         place_name (str): The name of the place (e.g., city, neighborhood) to retrieve cartography for.
+        bbox (tuple, optional): A tuple specifying the bounding box (north, south, east, west)
+            to retrieve cartography for.
         network_type (str, optional): The type of network to retrieve. Common values include "drive",
             "walk", "bike". Defaults to "drive".
         consolidate_intersections (bool | float, optional): If True, consolidates intersections using
@@ -34,6 +39,9 @@ def get_cartography(
             Set to False to skip consolidation. Defaults to 10.
         dead_ends (bool, optional): Whether to include dead ends when consolidating intersections.
             Only relevant if consolidate_intersections is enabled. Defaults to False.
+        infer_speeds (bool, optional): Whether to infer edge speeds based on road types. Defaults to False.
+            If True, calls ox.routing.add_edge_speeds using np.nanmedian as aggregation function.
+            Finally, the "maxspeed" attribute is replaced with the inferred "speed_kph", and the "travel_time" attribute is computed.
         return_type (str, optional): Type of return value. Options are "gdfs" (GeoDataFrames) or
             "graph" (NetworkX MultiDiGraph). Defaults to "gdfs".
 
@@ -45,9 +53,23 @@ def get_cartography(
               and 'geometry'.
             If return_type is "graph", returns the NetworkX MultiDiGraph with standardized attributes.
     """
+    if bbox is None and place_name is None:
+        raise ValueError("Either place_name or bbox must be provided.")
+
     if consolidate_intersections and isinstance(consolidate_intersections, bool):
         consolidate_intersections = 10  # Default tolerance value
-    G = ox.graph_from_place(place_name, network_type=network_type)
+
+    # Retrieve the graph using OSMnx
+    if place_name is not None:
+        G = ox.graph_from_place(place_name, network_type=network_type, simplify=False)
+    else:
+        G = ox.graph_from_bbox(
+            bbox, network_type=network_type, simplify=False, truncate_by_edge=True
+        )
+
+    # Simplify the graph without removing rings
+    G = ox.simplify_graph(G, remove_rings=False)
+
     if consolidate_intersections:
         G = ox.consolidate_intersections(
             ox.project_graph(G),
@@ -55,7 +77,9 @@ def get_cartography(
             rebuild_graph=True,
             dead_ends=dead_ends,
         )
-    # Remove all edges with length 0
+        # Convert back to lat/long
+        G = ox.project_graph(G, to_latlong=True)
+    # Remove all edges with length 0 because the ox.convert.to_digraph will keep the duplicates with minimal length
     G.remove_edges_from(
         [
             (u, v, k)
@@ -68,9 +92,21 @@ def get_cartography(
     # Remove also isolated nodes
     G.remove_nodes_from(list(nx.isolates(G)))
 
+    if infer_speeds:
+        G = ox.routing.add_edge_speeds(G, agg=np.nanmedian)
+        G = ox.routing.add_edge_travel_times(G)
+        # Replace "maxspeed" with "speed_kph"
+        for u, v, data in G.edges(data=True):
+            if "speed_kph" in data:
+                data["maxspeed"] = data["speed_kph"]
+                del data["speed_kph"]
+
+    # Convert to Directed Graph
+    G = ox.convert.to_digraph(G)
+
     # Standardize edge attributes in the graph
     edges_to_update = []
-    for u, v, k, data in G.edges(keys=True, data=True):
+    for u, v, data in G.edges(data=True):
         edge_updates = {}
 
         # Standardize lanes
@@ -117,21 +153,21 @@ def get_cartography(
                 if attr in data:
                     edge_updates[f"_remove_{attr}"] = True
 
-        edges_to_update.append((u, v, k, edge_updates))
+        edges_to_update.append((u, v, edge_updates))
 
     # Apply edge updates
-    for u, v, k, updates in edges_to_update:
+    for u, v, updates in edges_to_update:
         for key, value in updates.items():
             if key.startswith("_remove_"):
                 attr_name = key.replace("_remove_", "")
-                if attr_name in G[u][v][k]:
-                    del G[u][v][k][attr_name]
+                if attr_name in G[u][v]:
+                    del G[u][v][attr_name]
             else:
-                G[u][v][k][key] = value
+                G[u][v][key] = value
 
     # Add id to edges
-    for i, (u, v, k) in enumerate(G.edges(keys=True)):
-        G[u][v][k]["id"] = i
+    for i, (u, v) in enumerate(G.edges()):
+        G[u][v]["id"] = i
 
     # Standardize node attributes in the graph
     nodes_to_update = []
@@ -182,18 +218,22 @@ def get_cartography(
         ):  # Check for NaN
             G.nodes[node]["type"] = "N/A"
 
-    # Convert to lat/long
-    G = ox.project_graph(G, to_latlong=True)
-
     # Return graph or GeoDataFrames based on return_type
     if return_type == "graph":
         return G
     elif return_type == "gdfs":
         # Convert back to MultiDiGraph temporarily for ox.graph_to_gdfs compatibility
-        gdf_nodes, gdf_edges = ox.graph_to_gdfs(G)
+        gdf_nodes, gdf_edges = ox.graph_to_gdfs(nx.MultiDiGraph(G))
 
         # Reset index and rename columns (id already exists from graph)
         gdf_edges.reset_index(inplace=True)
+        # Move the "id" column to the beginning
+        id_col = gdf_edges.pop("id")
+        gdf_edges.insert(0, "id", id_col)
+
+        # Ensure length is float
+        gdf_edges["length"] = gdf_edges["length"].astype(float)
+
         gdf_edges.rename(columns={"u": "source", "v": "target"}, inplace=True)
         gdf_edges.drop(columns=["key"], inplace=True, errors="ignore")
 
@@ -208,11 +248,15 @@ def get_cartography(
 
 
 # if __name__ == "__main__":
-#     Produce data for tests
-#     edges, nodes = get_cartography("Postua, Piedmont, Italy", consolidate_intersections=False)
+#     # Produce data for tests
+#     edges, nodes = get_cartography(
+#         "Postua, Piedmont, Italy", consolidate_intersections=False, infer_speeds=True
+#     )
 #     edges.to_csv("../../../test/data/postua_edges.csv", index=False, sep=";")
-#     edges.to_file("../../../test/data/postua_edges.geojson", index=False, driver="GeoJSON")
+#     edges.to_file(
+#         "../../../test/data/postua_edges.geojson", index=False, driver="GeoJSON"
+#     )
 #     nodes.to_csv("../../../test/data/postua_nodes.csv", index=False, sep=";")
-#     edges, nodes = get_cartography("Forlì, Emilia-Romagna, Italy")
+#     edges, nodes = get_cartography("Forlì, Emilia-Romagna, Italy", infer_speeds=True)
 #     edges.to_csv("../../../test/data/forlì_edges.csv", index=False, sep=";")
 #     nodes.to_csv("../../../test/data/forlì_nodes.csv", index=False, sep=";")

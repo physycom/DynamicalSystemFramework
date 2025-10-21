@@ -182,10 +182,6 @@ TEST_CASE("RoadNetwork") {
             CHECK_EQ(graph.edge(6)->angle(), 3 * std::numbers::pi / 2);
             CHECK_EQ(graph.edge(8)->angle(), 0.);
           }
-          THEN("We are able to save nodes and edges in csv format") {
-            graph.exportNodes("./data/nodes.csv");
-            graph.exportEdges("./data/edges.csv");
-          }
         }
         WHEN("We import the coordinates in csv format") {
           graph.importCoordinates("./data/nodes.csv");
@@ -245,7 +241,7 @@ TEST_CASE("RoadNetwork") {
             CHECK_EQ(graph.nNodes(), nNodes);
             CHECK_EQ(graph.nEdges(), nEdges);
             CHECK_EQ(graph.nCoils(), 0);
-            CHECK_EQ(graph.nIntersections(), 24);
+            CHECK_EQ(graph.nIntersections(), 25);
             CHECK_EQ(graph.nRoundabouts(), 1);
             CHECK_EQ(graph.nTrafficLights(), 0);
           }
@@ -280,7 +276,7 @@ TEST_CASE("RoadNetwork") {
             CHECK_EQ(graph.nNodes(), nNodes);
             CHECK_EQ(graph.nEdges(), nEdges);
             CHECK_EQ(graph.nCoils(), 0);
-            CHECK_EQ(graph.nIntersections(), 11012);
+            CHECK_EQ(graph.nIntersections(), 11100);
             CHECK_EQ(graph.nRoundabouts(), 17);
             CHECK_EQ(graph.nTrafficLights(), 30);
           }
