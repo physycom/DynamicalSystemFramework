@@ -1035,63 +1035,6 @@ namespace dsf {
     }
   }
 
-  void RoadNetwork::exportNodes(std::string const& path) {
-    // assert that path ends with ".csv"
-    assert((void("Only csv export is supported."),
-            path.substr(path.find_last_of(".")) == ".csv"));
-    std::ofstream file{path};
-    // Column names
-    file << "id;lat;lon;type\n";
-    for (auto const& [id, pNode] : nodes()) {
-      file << id << ';';
-      if (pNode->coords().has_value()) {
-        file << pNode->coords().value().first << ';' << pNode->coords().value().second;
-      } else {
-        file << "Nan;Nan";
-      }
-      if (pNode->isTrafficLight()) {
-        file << ";traffic_light";
-      } else if (pNode->isRoundabout()) {
-        file << ";roundabout";
-      } else {
-        file << ";";
-      }
-      file << '\n';
-    }
-    file.close();
-  }
-  void RoadNetwork::exportEdges(std::string const& path) {
-    // assert that path ends with ".csv"
-    assert((void("Only csv export is supported."),
-            path.substr(path.find_last_of(".")) == ".csv"));
-    std::ofstream file{path};
-    // Column names
-    file << "id;source_id;target_id;length;nlanes;capacity;name;coil_code;geometry\n";
-    for (auto const& [streetId, pStreet] : m_edges) {
-      file << streetId << ';' << pStreet->source() << ';' << pStreet->target() << ';';
-      file << pStreet->length() << ';' << pStreet->nLanes() << ';' << pStreet->capacity()
-           << ';' << pStreet->name() << ';';
-      if (pStreet->isSpire()) {
-        file << dynamic_cast<SpireStreet&>(*pStreet).code() << ';';
-      } else {
-        file << ';';
-      }
-      if (!pStreet->geometry().empty()) {
-        file << "LINESTRING(";
-        for (size_t i{0}; i < pStreet->geometry().size(); ++i) {
-          auto const& [lon, lat] = pStreet->geometry()[i];
-          file << lon << ' ' << lat;
-          if (i < pStreet->geometry().size() - 1) {
-            file << ',';
-          } else {
-            file << ')';
-          }
-        }
-      }
-      file << '\n';
-    }
-    file.close();
-  }
   void RoadNetwork::exportMatrix(std::string path, bool isAdj) {
     std::ofstream file{path};
     if (!file.is_open()) {
