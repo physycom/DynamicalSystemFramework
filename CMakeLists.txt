@@ -34,7 +34,7 @@ include(FetchContent)
 # Get csv-parser
 FetchContent_Declare(csv_parser
   GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
-  GIT_TAG 2.3.0
+  GIT_TAG master
 )
 FetchContent_MakeAvailable(csv_parser)
 
