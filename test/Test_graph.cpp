@@ -245,7 +245,7 @@ TEST_CASE("RoadNetwork") {
             CHECK_EQ(graph.nNodes(), nNodes);
             CHECK_EQ(graph.nEdges(), nEdges);
             CHECK_EQ(graph.nCoils(), 0);
-            CHECK_EQ(graph.nIntersections(), 24);
+            CHECK_EQ(graph.nIntersections(), 25);
             CHECK_EQ(graph.nRoundabouts(), 1);
             CHECK_EQ(graph.nTrafficLights(), 0);
           }
@@ -280,7 +280,7 @@ TEST_CASE("RoadNetwork") {
             CHECK_EQ(graph.nNodes(), nNodes);
             CHECK_EQ(graph.nEdges(), nEdges);
             CHECK_EQ(graph.nCoils(), 0);
-            CHECK_EQ(graph.nIntersections(), 11012);
+            CHECK_EQ(graph.nIntersections(), 11100);
             CHECK_EQ(graph.nRoundabouts(), 17);
             CHECK_EQ(graph.nTrafficLights(), 30);
           }
