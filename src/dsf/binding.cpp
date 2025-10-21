@@ -226,9 +226,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
           "makeSpireStreet",
           [](dsf::RoadNetwork& self, dsf::Id id) -> void { self.makeSpireStreet(id); },
           pybind11::arg("id"),
-          dsf::g_docstrings.at("dsf::RoadNetwork::makeSpireStreet").c_str())
+          dsf::g_docstrings.at("dsf::RoadNetwork::makeSpireStreet").c_str());
 
-          pybind11::class_<dsf::Itinerary>(m, "Itinerary")
+  pybind11::class_<dsf::Itinerary>(m, "Itinerary")
       .def(pybind11::init<dsf::Id, dsf::Id>(),
            pybind11::arg("id"),
            pybind11::arg("destination"),

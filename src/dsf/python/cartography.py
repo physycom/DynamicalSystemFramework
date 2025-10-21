@@ -96,7 +96,7 @@ def get_cartography(
         G = ox.routing.add_edge_speeds(G, agg=np.nanmedian)
         G = ox.routing.add_edge_travel_times(G)
         # Replace "maxspeed" with "speed_kph"
-        for u, v, k, data in G.edges(keys=True, data=True):
+        for u, v, data in G.edges(data=True):
             if "speed_kph" in data:
                 data["maxspeed"] = data["speed_kph"]
                 del data["speed_kph"]
