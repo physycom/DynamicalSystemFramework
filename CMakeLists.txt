@@ -31,24 +31,24 @@ find_package(simdjson REQUIRED)
 file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp")
 
 include(FetchContent)
-# Get csv-parser
-FetchContent_Declare(csv_parser
-  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
-  GIT_TAG master
+# Get rapidcsv
+FetchContent_Declare(rapidcsv
+  GIT_REPOSITORY https://github.com/d99kris/rapidcsv
+  GIT_TAG v8.89
 )
-FetchContent_MakeAvailable(csv_parser)
+FetchContent_GetProperties(rapidcsv)
+if(NOT rapidcsv_POPULATED)
+  FetchContent_MakeAvailable(rapidcsv)
+endif()
 
-# Get csv source files manually to avoid export issues
-file(GLOB CSV_SOURCES "${csv_parser_SOURCE_DIR}/include/internal/*.cpp")
-
-add_library(dsf STATIC ${SOURCES} ${CSV_SOURCES})
+add_library(dsf STATIC ${SOURCES})
 target_include_directories(dsf PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/headers>
     $<INSTALL_INTERFACE:include>
 )
 
 # Include csv headers privately
-target_include_directories(dsf PRIVATE "${csv_parser_SOURCE_DIR}/include")
+target_include_directories(dsf PRIVATE "${rapidcsv_SOURCE_DIR}/src")
 
 # Link other libraries - no csv dependency needed now
 target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)

@@ -4,7 +4,7 @@
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![TBB](https://img.shields.io/badge/TBB-2021.11.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
 [![SPDLOG](https://img.shields.io/badge/spdlog-1.12.0-blue.svg)](https://github.com/gabime/spdlog)
-[![CSV](https://img.shields.io/badge/CSVparser-2.3.0-blue.svg)](https://github.com/vincentlaucsb/csv-parser)
+[![CSV](https://img.shields.io/badge/rapidcsv-8.89-blue.svg)](https://github.com/d99kris/rapidcsv)
 [![JSON](https://img.shields.io/badge/simdjson-3.6.4-blue.svg)](https://github.com/simdjson/simdjson)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
 
