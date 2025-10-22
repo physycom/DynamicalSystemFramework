@@ -16,14 +16,14 @@ string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -Ofast -march=native -flto=auto")
 set(EXECUTABLE_OUTPUT_PATH ../../)
 
 include(FetchContent)
-# Get csv-parser
-FetchContent_Declare(csv_parser
-  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
-  GIT_TAG master
+# Get rapidcsv
+FetchContent_Declare(rapidcsv
+  GIT_REPOSITORY https://github.com/d99kris/rapidcsv
+  GIT_TAG v8.89
 )
-FetchContent_GetProperties(csv_parser)
-if(NOT csv_parser_POPULATED)
-  FetchContent_MakeAvailable(csv_parser)
+FetchContent_GetProperties(rapidcsv)
+if(NOT rapidcsv_POPULATED)
+  FetchContent_MakeAvailable(rapidcsv)
 endif()
 
 include_directories(../../src/dsf/headers)
@@ -33,4 +33,5 @@ file(GLOB SOURCES "../../src/dsf/sources/*.cpp" "../../src/dsf/utility/*.cpp")
 
 # Compile
 add_executable(bench_dynamics.out BenchDynamics.cpp ${SOURCES})
-target_link_libraries(bench_dynamics.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson csv)
+target_include_directories(bench_dynamics.out PRIVATE ${rapidcsv_SOURCE_DIR}/src)
+target_link_libraries(bench_dynamics.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)

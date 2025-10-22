@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <ranges>
 
-#include <csv.hpp>
+#include <rapidcsv.h>
 #include <simdjson.h>
 
 namespace dsf {
@@ -15,8 +15,9 @@ namespace dsf {
   }
 
   void RoadNetwork::m_csvEdgesImporter(std::ifstream& file, const char separator) {
-    auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
-    auto const& colNames = csvReader.get_col_names();
+    rapidcsv::Document csvReader(
+        file, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(separator));
+    auto const& colNames = csvReader.GetColumnNames();
     bool const bHasGeometry =
         (std::find(colNames.begin(), colNames.end(), "geometry") != colNames.end());
     if (!bHasGeometry) {
@@ -31,20 +32,22 @@ namespace dsf {
     bool const bHasCustomWeight =
         (std::find(colNames.begin(), colNames.end(), "customWeight") != colNames.end());
     // bool const bHasForbiddenTurns = (std::find(colNames.begin(), colNames.end(), "forbiddenTurns") != colNames.end());
-    for (auto const& row : csvReader) {
-      auto const sourceId = row["source"].get<Id>();
-      auto const targetId = row["target"].get<Id>();
+
+    auto const rowCount = csvReader.GetRowCount();
+    for (std::size_t i = 0; i < rowCount; ++i) {
+      auto const sourceId = csvReader.GetCell<Id>("source", i);
+      auto const targetId = csvReader.GetCell<Id>("target", i);
       if (sourceId == targetId) {
         spdlog::warn("Skipping self-loop edge {}->{}", sourceId, targetId);
         continue;
       }
-      auto const streetId = row["id"].get<Id>();
-      auto const dLength = row["length"].get<double>();
-      auto const highway = row["type"].get<std::string>();
-      auto const name = row["name"].get<std::string>();
+      auto const streetId = csvReader.GetCell<Id>("id", i);
+      auto const dLength = csvReader.GetCell<double>("length", i);
+      auto const highway = csvReader.GetCell<std::string>("type", i);
+      auto const name = csvReader.GetCell<std::string>("name", i);
       std::vector<std::pair<double, double>> coords;
       if (bHasGeometry) {
-        auto const geometry = row["geometry"].get<std::string>();
+        auto const geometry = csvReader.GetCell<std::string>("geometry", i);
         if (!geometry.empty()) {
           // Geometry is LINESTRING(lon,lat lon,lat ...)
           std::istringstream geom{geometry};
@@ -94,26 +97,22 @@ namespace dsf {
       auto iLanes = 1;
       if (bHasLanes) {
         try {
-          iLanes = row["nlanes"].get<int>();
+          iLanes = csvReader.GetCell<int>("nlanes", i);
         } catch (...) {
-          spdlog::warn(
-              "Invalid number of lanes ({}) for edge {}->{}. Defaulting to 1 lane.",
-              row["nlanes"].get<std::string>(),
-              sourceId,
-              targetId);
+          spdlog::warn("Invalid number of lanes for edge {}->{}. Defaulting to 1 lane.",
+                       sourceId,
+                       targetId);
           iLanes = 1;
         }
       }
 
       double dMaxSpeed = 30.;  // Default to 30 km/h
       try {
-        dMaxSpeed = row["maxspeed"].get<double>();
+        dMaxSpeed = csvReader.GetCell<double>("maxspeed", i);
       } catch (...) {
-        spdlog::warn(
-            "Invalid maxspeed ({}) provided for edge {}->{}. Defaulting to 30 km/h.",
-            row["maxspeed"].get<std::string>(),
-            sourceId,
-            targetId);
+        spdlog::warn("Invalid maxspeed provided for edge {}->{}. Defaulting to 30 km/h.",
+                     sourceId,
+                     targetId);
       }
       dMaxSpeed /= 3.6;  // Convert to m/s
 
@@ -126,7 +125,7 @@ namespace dsf {
                        coords));
 
       if (bHasCoilcode) {
-        auto strCoilCode{row["coilcode"].get<std::string>()};
+        auto strCoilCode = csvReader.GetCell<std::string>("coilcode", i);
         // Make this lowercase
         std::transform(strCoilCode.begin(),
                        strCoilCode.end(),
@@ -140,19 +139,15 @@ namespace dsf {
             auto& coil = edge<SpireStreet>(streetId);
             coil.setCode(coilCode);
           } catch (...) {
-            spdlog::warn("Invalid coil code ({}) for {}",
-                         row["coilcode"].get<std::string>(),
-                         *edge(streetId));
+            spdlog::warn("Invalid coil code for {}", *edge(streetId));
           }
         }
       }
       if (bHasCustomWeight) {
         try {
-          edge(streetId)->setWeight(row["customWeight"].get<double>());
+          edge(streetId)->setWeight(csvReader.GetCell<double>("customWeight", i));
         } catch (...) {
-          spdlog::warn("Invalid custom weight {} for {}",
-                       row["customWeight"].get<std::string>(),
-                       *edge(streetId));
+          spdlog::warn("Invalid custom weight for {}", *edge(streetId));
         }
       }
     }
@@ -180,15 +175,17 @@ namespace dsf {
   }
   void RoadNetwork::m_csvNodePropertiesImporter(std::ifstream& file,
                                                 const char separator) {
-    auto csvReader = csv::CSVReader(file, csv::CSVFormat().delimiter(separator));
-    for (auto const& row : csvReader) {
-      auto const nodeId = row["id"].get<Id>();
+    rapidcsv::Document csvReader(
+        file, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(separator));
+    auto const rowCount = csvReader.GetRowCount();
+    for (std::size_t i = 0; i < rowCount; ++i) {
+      auto const nodeId = csvReader.GetCell<Id>("id", i);
       if (m_nodes.find(nodeId) == m_nodes.end()) {
         spdlog::warn("Node {} not found in the network. Skipping properties import.",
                      nodeId);
         continue;
       }
-      auto strType{row["type"].get<std::string>()};
+      auto strType = csvReader.GetCell<std::string>("type", i);
       std::transform(
           strType.begin(), strType.end(), strType.begin(), [](unsigned char c) {
             return std::tolower(c);
@@ -200,7 +197,7 @@ namespace dsf {
       }
 
       std::pair<double, double> coords;
-      auto const& strGeometry{row["geometry"].get<std::string>()};
+      auto const& strGeometry = csvReader.GetCell<std::string>("geometry", i);
       if (!strGeometry.empty()) {
         // Geometry is POINT (lon lat)
         std::istringstream geom{strGeometry};

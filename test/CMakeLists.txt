@@ -34,14 +34,14 @@ if(NOT doctest_POPULATED)
   FetchContent_MakeAvailable(doctest)
 endif()
 
-# Get csv-parser
-FetchContent_Declare(csv_parser
-  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
-  GIT_TAG master
+# Get rapidcsv
+FetchContent_Declare(rapidcsv
+  GIT_REPOSITORY https://github.com/d99kris/rapidcsv
+  GIT_TAG v8.89
 )
-FetchContent_GetProperties(csv_parser)
-if(NOT csv_parser_POPULATED)
-  FetchContent_MakeAvailable(csv_parser)
+FetchContent_GetProperties(rapidcsv)
+if(NOT rapidcsv_POPULATED)
+  FetchContent_MakeAvailable(rapidcsv)
 endif()
 
 # add as executable all cpp files into '.' folder
@@ -53,4 +53,5 @@ list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 add_executable(dsf_tests.out ${SOURCES})
 target_include_directories(dsf_tests.out PRIVATE ../src/dsf/headers/ ../src/dsf/utility/TypeTraits/)
 target_include_directories(dsf_tests.out SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
-target_link_libraries(dsf_tests.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson csv)
+target_include_directories(dsf_tests.out PRIVATE ${rapidcsv_SOURCE_DIR}/src)
+target_link_libraries(dsf_tests.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
