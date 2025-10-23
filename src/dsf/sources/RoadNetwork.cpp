@@ -281,7 +281,7 @@ namespace dsf {
       for (auto const& coord : feature["geometry"]["coordinates"]) {
         auto const& lat = coord.at(1);
         auto const& lon = coord.at(0);
-        geometry.emplace_back(lat, lon);
+        geometry.emplace_back(lon, lat);
       }
       auto const& edge_id = static_cast<Id>(edge_properties["id"].get_uint64());
       auto const& edge_length =
