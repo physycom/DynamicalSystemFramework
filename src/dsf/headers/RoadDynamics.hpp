@@ -53,7 +53,7 @@ namespace dsf {
   protected:
     std::unordered_map<Id, std::unordered_map<Id, size_t>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
-    tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
+    tbb::concurrent_unordered_map<Id, std::vector<double>>
         m_queuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     std::time_t m_previousOptimizationTime, m_previousSpireTime;
@@ -1455,12 +1455,8 @@ namespace dsf {
                 if (bUpdateData && pNode->isTrafficLight()) {
                   if (!m_queuesAtTrafficLights.contains(inEdgeId)) {
                     auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-                    assert(!tl.cycles().empty());
-                    for (auto const& [id, pair] : tl.cycles()) {
-                      for (auto const& [direction, cycle] : pair) {
-                        m_queuesAtTrafficLights[id].emplace(direction, 0.);
-                      }
-                    }
+                    assert(!tl.phases().empty());
+                    m_queuesAtTrafficLights[m_nodeIndices[i]] = std::vector<double>(tl.phases().size());
                   }
                   for (auto& [direction, value] : m_queuesAtTrafficLights.at(inEdgeId)) {
                     value += pStreet->nExitingAgents(direction, true);

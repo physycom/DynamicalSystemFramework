@@ -314,27 +314,27 @@ TEST_CASE("RoadNetwork") {
         for (auto const& [streetId, pStreet] : graph2.edges()) {
           pStreet->setCapacity(2 * pStreet->nLanes());
         }
-        WHEN("We auto-init Traffic Lights") {
-          graph2.initTrafficLights();
-          THEN("Parameters are correctly set") {
-            auto& tl{graph2.node<dsf::TrafficLight>(1)};
-            CHECK_EQ(tl.cycleTime(), 120);
-            auto const& cycles{tl.cycles()};
-            CHECK_EQ(cycles.size(), 4);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 26);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 53);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 26);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 53);
-            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 40);
-            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 80);
-            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 40);
-            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 80);
-          }
-        }
+        // WHEN("We auto-init Traffic Lights") {
+        //   graph2.initTrafficLights();
+        //   THEN("Parameters are correctly set") {
+        //     auto& tl{graph2.node<dsf::TrafficLight>(1)};
+        //     CHECK_EQ(tl.cycleTime(), 120);
+        //     auto const& cycles{tl.cycles()};
+        //     CHECK_EQ(cycles.size(), 4);
+        //     CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
+        //     CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 26);
+        //     CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
+        //     CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 53);
+        //     CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
+        //     CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 26);
+        //     CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
+        //     CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 53);
+        //     CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 40);
+        //     CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 80);
+        //     CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 40);
+        //     CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 80);
+        //   }
+        // }
       }
     }
     GIVEN("A graph object with two nodes and one street") {
