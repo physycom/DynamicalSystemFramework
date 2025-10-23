@@ -43,7 +43,6 @@ namespace dsf {
       }
       auto const streetId = csvReader.GetCell<Id>("id", i);
       auto const dLength = csvReader.GetCell<double>("length", i);
-      auto const highway = csvReader.GetCell<std::string>("type", i);
       auto const name = csvReader.GetCell<std::string>("name", i);
       std::vector<std::pair<double, double>> coords;
       if (bHasGeometry) {
