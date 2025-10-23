@@ -120,7 +120,6 @@ namespace dsf {
     /// - source: The id of the source node
     /// - target: The id of the target node
     /// - length: The length of the street, in meters
-    /// - type: The type of the street (e.g. residential, primary, secondary, etc.)
     /// - nlanes: The number of lanes of the street
     /// - maxspeed: The street's speed limit, in km/h
     /// - name: The name of the street
@@ -128,6 +127,7 @@ namespace dsf {
     ///
     ///   Next columns are optional (meaning that their absence will not -hopefully- cause any pain):
     ///
+    /// - type: The type of the street (e.g. residential, primary, secondary, etc.)
     /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
     /// - coilcode: An integer code to identify the coil located on the street
     /// - customWeight: will be stored in the `weight` parameter of the Edge class. You can use it for the shortest path via dsf::weight_functions::customWeight.
