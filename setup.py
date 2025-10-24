@@ -475,5 +475,11 @@ setup(
     include_package_data=True,
     zip_safe=False,
     python_requires=">=3.10",
-    install_requires=["pybind11-stubgen", "osmnx>=2.0.6", "networkx>=3", "numpy"],
+    install_requires=[
+        "pybind11-stubgen",
+        "osmnx>=2.0.6",
+        "networkx>=3",
+        "numpy",
+        "geopandas",
+    ],
 )
