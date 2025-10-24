@@ -63,10 +63,12 @@ def get_cartography(
     # Retrieve the graph using OSMnx
     if place_name is not None:
         G = ox.graph_from_place(place_name, network_type=network_type, simplify=False)
-    else:
+    elif bbox is not None:
         G = ox.graph_from_bbox(
             bbox, network_type=network_type, simplify=False, truncate_by_edge=True
         )
+    else:
+        raise ValueError("Either place_name or bbox must be provided.")
 
     # Simplify the graph without removing rings
     G = ox.simplify_graph(G, remove_rings=False)
@@ -332,28 +334,3 @@ def graph_to_gdfs(
 #     edges, nodes = get_cartography("Forlì, Emilia-Romagna, Italy", infer_speeds=True)
 #     edges.to_csv("../../../test/data/forlì_edges.csv", index=False, sep=";")
 #     nodes.to_csv("../../../test/data/forlì_nodes.csv", index=False, sep=";")
-
-
-def test_consistency():
-    """
-    A simple consistency test to verify that converting from GeoDataFrames to graph and back
-    yields the same GeoDataFrames.
-    """
-    G_CART = get_cartography("Postua, Piedmont, Italy", return_type="graph")
-    edges_cart, nodes_cart = get_cartography(
-        "Postua, Piedmont, Italy", return_type="gdfs"
-    )
-
-    edges, nodes = graph_to_gdfs(G_CART)
-
-    assert edges_cart.equals(edges), (
-        "Edges GeoDataFrames are not equal after conversion."
-    )
-    assert nodes_cart.equals(nodes), (
-        "Nodes GeoDataFrames are not equal after conversion."
-    )
-
-    G = graph_from_gdfs(edges_cart, nodes_cart)
-
-    # Check structure first
-    assert nx.is_isomorphic(G_CART, G), "Graphs are not isomorphic after conversion."

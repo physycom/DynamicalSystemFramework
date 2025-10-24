@@ -1,0 +1,37 @@
+name: "CI: Pytest"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    
+    steps:
+    - uses: actions/checkout@v5
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+    
+    - name: Install package
+      run: |
+        pip install -e .
+    
+    - name: Run tests with pytest
+      run: |
+        pytest test/*py -v --cov=src/dsf --cov-report=term-missing
