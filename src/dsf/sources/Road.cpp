@@ -18,11 +18,7 @@ namespace dsf {
              std::vector<std::pair<double, double>> geometry,
              std::optional<int> capacity,
              double transportCapacity)
-      : Edge(id,
-             std::move(nodePair),
-             capacity.value_or(std::ceil((length * nLanes) / m_meanVehicleLength)),
-             transportCapacity,
-             std::move(geometry)),
+      : Edge(id, std::move(nodePair), std::move(geometry)),
         m_length{length},
         m_maxSpeed{maxSpeed},
         m_nLanes{nLanes},
@@ -40,6 +36,17 @@ namespace dsf {
       throw std::invalid_argument(std::format(
           "The number of lanes of a road ({}) must be greater than 0.", nLanes));
     }
+    m_capacity = capacity.value_or(std::ceil((length * nLanes) / m_meanVehicleLength));
+    if (m_capacity < 1) {
+      throw std::invalid_argument(
+          std::format("The capacity of a road ({}) must be greater than 0.", m_capacity));
+    }
+    if (transportCapacity <= 0.) {
+      throw std::invalid_argument(
+          std::format("The transport capacity of a road ({}) must be greater than 0.",
+                      transportCapacity));
+    }
+    m_transportCapacity = transportCapacity;
   }
   void Road::setMeanVehicleLength(double meanVehicleLength) {
     if (!(meanVehicleLength > 0.)) {
@@ -62,6 +69,21 @@ namespace dsf {
     }
     m_maxSpeed = speed;
   }
+  void Road::setCapacity(int capacity) {
+    if (capacity < 1) {
+      throw std::invalid_argument(
+          std::format("The capacity of a road ({}) must be greater than 0.", capacity));
+    }
+    m_capacity = capacity;
+  }
+  void Road::setTransportCapacity(double transportCapacity) {
+    if (transportCapacity <= 0.) {
+      throw std::invalid_argument(
+          std::format("The transport capacity of a road ({}) must be greater than 0.",
+                      transportCapacity));
+    }
+    m_transportCapacity = transportCapacity;
+  }
   void Road::setPriority(int priority) {
     assert(priority >= 0);
     m_priority = priority;
@@ -83,6 +105,8 @@ namespace dsf {
   double Road::length() const { return m_length; }
   double Road::maxSpeed() const { return m_maxSpeed; }
   int Road::nLanes() const { return m_nLanes; }
+  int Road::capacity() const { return m_capacity; }
+  double Road::transportCapacity() const { return m_transportCapacity; }
   std::string Road::name() const { return m_name; }
   int Road::priority() const { return m_priority; }
   std::set<Id> const& Road::forbiddenTurns() const { return m_forbiddenTurns; }
