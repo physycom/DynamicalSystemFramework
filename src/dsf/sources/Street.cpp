@@ -11,7 +11,7 @@ namespace dsf {
                  double maxSpeed,
                  int nLanes,
                  std::string name,
-                 std::vector<std::pair<double, double>> geometry,
+                 geometry::PolyLine geometry,
                  std::optional<int> capacity,
                  double transportCapacity)
       : Road(id,
@@ -158,7 +158,7 @@ namespace dsf {
                                      double maxSpeed,
                                      int nLanes,
                                      std::string name,
-                                     std::vector<std::pair<double, double>> geometry,
+                                     geometry::PolyLine geometry,
                                      double flowRate,
                                      std::optional<int> capacity,
                                      double transportCapacity)

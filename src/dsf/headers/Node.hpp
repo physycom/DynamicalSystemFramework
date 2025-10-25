@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Geometry.hpp"
 #include "../utility/queue.hpp"
 #include "../utility/Typedef.hpp"
 
@@ -26,7 +27,7 @@ namespace dsf {
   class Node {
   protected:
     Id m_id;
-    std::optional<std::pair<double, double>> m_coords;
+    std::optional<geometry::Point> m_geometry;
     std::string m_name;
     std::vector<Id> m_ingoingEdges;
     std::vector<Id> m_outgoingEdges;
@@ -37,13 +38,13 @@ namespace dsf {
     explicit Node(Id id) : m_id{id}, m_name{""} {}
     /// @brief Construct a new Node object with capacity 1
     /// @param id The node's id
-    /// @param coords A std::pair containing the node's coordinates (lat, lon)
-    Node(Id id, std::pair<double, double> coords)
-        : m_id{id}, m_coords{std::move(coords)}, m_name{""} {}
+    /// @param point A geometry::Point containing the node's coordinates
+    Node(Id id, geometry::Point point)
+        : m_id{id}, m_geometry{std::move(point)}, m_name{""} {}
 
     Node(Node const& other)
         : m_id{other.m_id},
-          m_coords{other.m_coords},
+          m_geometry{other.m_geometry},
           m_name{other.m_name},
           m_ingoingEdges{other.m_ingoingEdges},
           m_outgoingEdges{other.m_outgoingEdges} {}
@@ -52,7 +53,7 @@ namespace dsf {
     Node& operator=(Node const& other) {
       if (this != &other) {
         m_id = other.m_id;
-        m_coords = other.m_coords;
+        m_geometry = other.m_geometry;
         m_name = other.m_name;
         m_ingoingEdges = other.m_ingoingEdges;
         m_outgoingEdges = other.m_outgoingEdges;
@@ -63,10 +64,10 @@ namespace dsf {
     /// @brief Set the node's id
     /// @param id The node's id
     inline void setId(Id id) noexcept { m_id = id; }
-    /// @brief Set the node's coordinates
-    /// @param coords A std::pair containing the node's coordinates (lat, lon)
-    inline void setCoords(std::pair<double, double> coords) noexcept {
-      m_coords = std::move(coords);
+    /// @brief Set the node's geometry
+    /// @param point A geometry::Point containing the node's geometry
+    inline void setGeometry(geometry::Point point) noexcept {
+      m_geometry = std::move(point);
     }
     /// @brief Set the node's name
     /// @param name The node's name
@@ -97,10 +98,10 @@ namespace dsf {
     /// @brief Get the node's id
     /// @return Id The node's id
     inline Id id() const { return m_id; }
-    /// @brief Get the node's coordinates
-    /// @return std::optional<std::pair<double, double>> A std::pair containing the node's coordinates
-    inline std::optional<std::pair<double, double>> const& coords() const noexcept {
-      return m_coords;
+    /// @brief Get the node's geometry
+    /// @return std::optional<geometry::Point> A geometry::Point
+    inline std::optional<geometry::Point> const& geometry() const noexcept {
+      return m_geometry;
     }
     /// @brief Get the node's name
     /// @return std::string The node's name

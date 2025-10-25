@@ -171,10 +171,10 @@ int main(int argc, char** argv) {
     }
     const auto& col = pNode->ingoingEdges();
     std::set<Unit> streets;
-    const auto& refLat = pNode->coords().value().first;
+    const auto& refLat = pNode->geometry().value().y;
     for (const auto& inEdgeId : col) {
       auto const& pEdge{graph.edge(inEdgeId)};
-      const auto& lat = pEdge->geometry().front().first;
+      const auto& lat = pEdge->geometry().front().y;
       // std::cout << "Lat: " << lat << " RefLat: " << refLat << '\n';
       if (lat == refLat) {
         streets.emplace(inEdgeId);

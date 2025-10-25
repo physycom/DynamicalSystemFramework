@@ -68,10 +68,16 @@ namespace dsf {
     /// @param cycleTime The node's cycle time
     TrafficLight(Id id, Delay cycleTime)
         : Intersection{id}, m_cycleTime{cycleTime}, m_counter{0} {}
-
-    TrafficLight(Id id, Delay cycleTime, std::pair<double, double> coords)
-        : Intersection{id, std::move(coords)}, m_cycleTime{cycleTime}, m_counter{0} {}
-
+    /// @brief Construct a new TrafficLight object
+    /// @param id The node's id
+    /// @param cycleTime The node's cycle time
+    /// @param point A dsf::geometry::Point containing the node's coordinates
+    TrafficLight(Id id, Delay cycleTime, geometry::Point point)
+        : Intersection{id, std::move(point)}, m_cycleTime{cycleTime}, m_counter{0} {}
+    /// @brief Construct a new TrafficLight object
+    /// @param node A RoadJunction object representing the traffic light
+    /// @param cycleTime The node's cycle time
+    /// @param counter The node's counter
     TrafficLight(RoadJunction const& node, Delay const cycleTime, Delay const counter = 0)
         : Intersection{node}, m_cycleTime{cycleTime}, m_counter{counter} {}
 

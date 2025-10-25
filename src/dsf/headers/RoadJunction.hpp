@@ -14,7 +14,7 @@ namespace dsf {
 
   public:
     explicit RoadJunction(Id id);
-    RoadJunction(Id id, std::pair<double, double> coords);
+    RoadJunction(Id id, geometry::Point coords);
     RoadJunction(RoadJunction const& other);
 
     RoadJunction& operator=(RoadJunction const& other) {
@@ -55,17 +55,20 @@ struct std::formatter<dsf::RoadJunction> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
   auto format(dsf::RoadJunction const& junction, FormatContext&& ctx) const {
-    return std::format_to(
-        ctx.out(),
-        "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
-        "{}, coords: {})",
-        junction.id(),
-        junction.name(),
-        junction.capacity(),
-        junction.transportCapacity(),
-        junction.coords().has_value()
-            ? std::format("({}, {})", junction.coords()->first, junction.coords()->second)
-            : "N/A");
+    auto out =
+        std::format_to(ctx.out(),
+                       "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
+                       "{}, coords: ",
+                       junction.id(),
+                       junction.name(),
+                       junction.capacity(),
+                       junction.transportCapacity());
+    if (junction.geometry().has_value()) {
+      out = std::format_to(out, "{})", *junction.geometry());
+    } else {
+      out = std::format_to(out, "N/A)");
+    }
+    return out;
   }
 };
 // Specialization of fmt::formatter for dsf::RoadJunction
@@ -74,16 +77,19 @@ struct fmt::formatter<dsf::RoadJunction> {
   constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
   auto format(dsf::RoadJunction const& junction, FormatContext& ctx) const {
-    return fmt::format_to(
-        ctx.out(),
-        "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
-        "{}, coords: {})",
-        junction.id(),
-        junction.name(),
-        junction.capacity(),
-        junction.transportCapacity(),
-        junction.coords().has_value()
-            ? std::format("({}, {})", junction.coords()->first, junction.coords()->second)
-            : "N/A");
+    auto out =
+        fmt::format_to(ctx.out(),
+                       "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
+                       "{}, coords: ",
+                       junction.id(),
+                       junction.name(),
+                       junction.capacity(),
+                       junction.transportCapacity());
+    if (junction.geometry().has_value()) {
+      out = fmt::format_to(out, "{})", *junction.geometry());
+    } else {
+      out = fmt::format_to(out, "N/A)");
+    }
+    return out;
   }
 };

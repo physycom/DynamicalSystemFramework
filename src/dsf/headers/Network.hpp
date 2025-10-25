@@ -203,8 +203,9 @@ namespace dsf {
     sourceNode->addOutgoingEdge(tmpEdge.id());
     targetNode->addIngoingEdge(tmpEdge.id());
     if (geometry.empty()) {
-      if (sourceNode->coords().has_value() && targetNode->coords().has_value()) {
-        tmpEdge.setGeometry({sourceNode->coords().value(), targetNode->coords().value()});
+      if (sourceNode->geometry().has_value() && targetNode->geometry().has_value()) {
+        tmpEdge.setGeometry(
+            dsf::geometry::PolyLine{*sourceNode->geometry(), *targetNode->geometry()});
       }
     }
     m_edges.emplace(tmpEdge.id(), std::make_unique<TEdge>(std::move(tmpEdge)));

@@ -89,10 +89,10 @@ TEST_CASE("RoadNetwork") {
   SUBCASE("automatically do things") {
     GIVEN("A Graph object") {
       RoadNetwork graph{};
-      graph.addNode(0, std::make_pair(0., 0.));
-      graph.addNode(1, std::make_pair(0., -1.));
-      graph.addNode(2, std::make_pair(-1., 0.));
-      graph.addNode(3, std::make_pair(1., 1.));
+      graph.addNode(0, dsf::geometry::Point(0., 0.));
+      graph.addNode(1, dsf::geometry::Point(0., -1.));
+      graph.addNode(2, dsf::geometry::Point(-1., 0.));
+      graph.addNode(3, dsf::geometry::Point(1., 1.));
       graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 50 / 3.6, 3);
       graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 50 / 3.6, 3);
       graph.addEdge<Street>(2, std::make_pair(0, 2), 1., 30 / 3.6);
@@ -166,9 +166,9 @@ TEST_CASE("RoadNetwork") {
         WHEN("We import the coordinates in dsf format") {
           graph.importCoordinates("./data/coords.dsf");
           THEN("The coordinates are correctly imported") {
-            CHECK_EQ(graph.node(0)->coords(), std::make_pair(0., 0.));
-            CHECK_EQ(graph.node(1)->coords(), std::make_pair(1., 0.));
-            CHECK_EQ(graph.node(2)->coords(), std::make_pair(2., 0.));
+            CHECK_EQ(graph.node(0)->geometry(), dsf::geometry::Point{0., 0.});
+            CHECK_EQ(graph.node(1)->geometry(), dsf::geometry::Point{1., 0.});
+            CHECK_EQ(graph.node(2)->geometry(), dsf::geometry::Point{2., 0.});
           }
           THEN("The adjacency matrix is correctly built") {
             CHECK(graph.edge(0, 1));
@@ -186,9 +186,9 @@ TEST_CASE("RoadNetwork") {
         WHEN("We import the coordinates in csv format") {
           graph.importCoordinates("./data/nodes.csv");
           THEN("The coordinates are correctly imported") {
-            CHECK_EQ(graph.node(0)->coords(), std::make_pair(0., 0.));
-            CHECK_EQ(graph.node(1)->coords(), std::make_pair(1., 0.));
-            CHECK_EQ(graph.node(2)->coords(), std::make_pair(2., 0.));
+            CHECK_EQ(graph.node(0)->geometry(), dsf::geometry::Point{0., 0.});
+            CHECK_EQ(graph.node(1)->geometry(), dsf::geometry::Point{1., 0.});
+            CHECK_EQ(graph.node(2)->geometry(), dsf::geometry::Point{2., 0.});
           }
         }
       }

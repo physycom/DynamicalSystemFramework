@@ -32,8 +32,8 @@ namespace dsf {
     explicit Intersection(Id id) : RoadJunction{id} {};
     /// @brief Construct a new Intersection object
     /// @param id The node's id
-    /// @param coords A std::pair containing the node's coordinates
-    Intersection(Id id, std::pair<double, double> coords) : RoadJunction{id, coords} {};
+    /// @param coords A dsf::geometry::Point containing the node's coordinates
+    Intersection(Id id, geometry::Point coords) : RoadJunction{id, coords} {};
 
     Intersection(RoadJunction const& node) : RoadJunction{node} {};
 
@@ -124,10 +124,11 @@ struct std::formatter<dsf::Intersection> {
         intersection.name(),
         intersection.capacity(),
         intersection.transportCapacity(),
-        intersection.nAgents(),
-        intersection.coords().has_value()
-            ? std::format(
-                  "({}, {})", intersection.coords()->first, intersection.coords()->second)
-            : "N/A");
+        intersection.nAgents());
+    if (intersection.geometry().has_value()) {
+      return std::format_to(ctx.out(), "{})", *intersection.geometry());
+    } else {
+      return std::format_to(ctx.out(), "N/A)");
+    }
   }
 };

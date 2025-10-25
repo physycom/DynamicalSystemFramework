@@ -27,8 +27,8 @@ namespace dsf {
     explicit Roundabout(Id id) : RoadJunction{id} {};
     /// @brief Construct a new Roundabout object
     /// @param id The node's id
-    /// @param coords A std::pair containing the node's coordinates
-    Roundabout(Id id, std::pair<double, double> coords) : RoadJunction{id, coords} {};
+    /// @param point A geometry::Point containing the node's coordinates
+    Roundabout(Id id, geometry::Point point) : RoadJunction{id, point} {};
     /// @brief Construct a new Roundabout object
     /// @param node An Intersection object
     Roundabout(const RoadJunction& node);

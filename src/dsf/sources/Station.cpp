@@ -4,8 +4,8 @@ namespace dsf {
   Station::Station(Id id, Delay managementTime)
       : RoadJunction(id), m_managementTime{managementTime} {}
 
-  Station::Station(Id id, std::pair<double, double> coords, Delay managementTime)
-      : RoadJunction(id, coords), m_managementTime{managementTime} {}
+  Station::Station(Id id, geometry::Point point, Delay managementTime)
+      : RoadJunction(id, point), m_managementTime{managementTime} {}
 
   Station::Station(RoadJunction const& node, Delay managementTime)
       : RoadJunction(node), m_managementTime{managementTime} {}
