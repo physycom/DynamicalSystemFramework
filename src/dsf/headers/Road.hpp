@@ -14,6 +14,8 @@ namespace dsf {
     double m_length;
     double m_maxSpeed;
     int m_nLanes;
+    int m_capacity;
+    double m_transportCapacity;
     std::string m_name;
     int m_priority;
     std::set<Id> m_forbiddenTurns;  // Stores the forbidden turns (road ids)
@@ -49,6 +51,14 @@ namespace dsf {
     /// @param speed The maximum speed
     /// @throws std::invalid_argument If the speed is less or equal to 0
     void setMaxSpeed(double speed);
+    /// @brief Set the capacity, in number of agents
+    /// @param capacity The capacity
+    /// @throws std::invalid_argument If the capacity is less or equal to 0
+    void setCapacity(int capacity);
+    /// @brief Set the transport capacity, in number of agents
+    /// @param transportCapacity The transport capacity
+    /// @throws std::invalid_argument If the transport capacity is less or equal to 0
+    void setTransportCapacity(double transportCapacity);
     /// @brief Set the road's priority
     /// @param priority The road's priority
     void setPriority(int priority);
@@ -68,6 +78,12 @@ namespace dsf {
     /// @brief Get the number of lanes
     /// @return int The number of lanes
     int nLanes() const;
+    /// @brief Get the road's capacity, in number of agents
+    /// @return int The road's capacity, in number of agents
+    int capacity() const;
+    /// @brief Get the road's transport capacity, in number of agents
+    /// @return double The road's transport capacity, in number of agents
+    double transportCapacity() const;
     /// @brief Get the name
     /// @return std::string The name
     std::string name() const;
