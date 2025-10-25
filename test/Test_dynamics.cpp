@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cstdint>
 #include <iomanip>
+#include <iostream>
 
 #include "FirstOrderDynamics.hpp"
 #include "RoadNetwork.hpp"
@@ -41,15 +42,17 @@ TEST_CASE("Measurement") {
 
 TEST_CASE("FirstOrderDynamics") {
   // dsf::Logger::setLogLevel(dsf::log_level_t::DEBUG);
+  auto defaultNetwork = RoadNetwork{};
+  defaultNetwork.importEdges("./data/manhattan_edges.csv");
+  defaultNetwork.importNodeProperties("./data/manhattan_nodes.csv");
   SUBCASE("Constructor") {
     GIVEN("A graph object") {
-      auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsf");
       WHEN("A dynamics object is created") {
-        FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+        FirstOrderDynamics dynamics{
+            defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
         THEN("The node and the street sets are the same") {
-          CHECK_EQ(dynamics.graph().nNodes(), 3);
-          CHECK_EQ(dynamics.graph().nEdges(), 4);
+          CHECK_EQ(dynamics.graph().nNodes(), 120);
+          CHECK_EQ(dynamics.graph().nEdges(), 436);
         }
         THEN("The mean speed, density, flow and travel time are 0") {
           // CHECK_EQ(dynamics.agentMeanSpeed().mean, 0.);
@@ -63,32 +66,30 @@ TEST_CASE("FirstOrderDynamics") {
         }
       }
       WHEN("We transform a node into a traffic light and create the dynamics") {
-        auto& tl = graph.makeTrafficLight(0, 2);
-        FirstOrderDynamics dynamics{graph, false, 69};
+        auto& tl = defaultNetwork.makeTrafficLight(0, 2);
+        FirstOrderDynamics dynamics{defaultNetwork, false, 69};
         THEN("The node is a traffic light") {
           CHECK(dynamics.graph().node(0)->isTrafficLight());
           CHECK_EQ(tl.cycleTime(), 2);
         }
       }
       WHEN("We transform a node into a roundabout and create the dynamics") {
-        graph.makeRoundabout(0);
-        FirstOrderDynamics dynamics{graph, false, 69};
+        defaultNetwork.makeRoundabout(0);
+        FirstOrderDynamics dynamics{defaultNetwork, false, 69};
         THEN("The node is a roundabout") {
           CHECK(dynamics.graph().node(0)->isRoundabout());
         }
       }
-      WHEN("We transorm a street into a spire and create the dynamcis") {
-        graph.makeSpireStreet(8);
-        FirstOrderDynamics dynamics{graph, false, 69};
+      WHEN("We transform a street into a spire and create the dynamics") {
+        defaultNetwork.makeSpireStreet(8);
+        FirstOrderDynamics dynamics{defaultNetwork, false, 69};
         THEN("The street is a spire") { CHECK(dynamics.graph().edge(8)->isSpire()); }
       }
     }
   }
   SUBCASE("setDestinationNodes") {
     GIVEN("A dynamics object and a destination node") {
-      auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dat");
-      FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
       WHEN("We add a span of destination nodes") {
         std::array<uint32_t, 3> nodes{0, 1, 2};
         dynamics.setDestinationNodes(nodes);
@@ -104,9 +105,7 @@ TEST_CASE("FirstOrderDynamics") {
   }
   SUBCASE("addAgent") {
     GIVEN("A dynamics object, a source node and a destination node") {
-      auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsf");
-      FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.addItinerary(2, 2);
       WHEN("We add the agent") {
         dynamics.addAgent(2, 0);
@@ -122,9 +121,7 @@ TEST_CASE("FirstOrderDynamics") {
   }
   SUBCASE("addAgentsUniformly") {
     GIVEN("A dynamics object and an itinerary") {
-      auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsf");
-      FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
       WHEN("We add a random agent") {
         dynamics.addItinerary(2, 2);
         dynamics.addAgentsUniformly(1);
@@ -136,9 +133,7 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
     GIVEN("A dynamics object and many itineraries") {
-      auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsf");
-      FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.addItinerary(2, 2);
       dynamics.addItinerary(1, 1);
       WHEN("We add many agents") {
@@ -150,20 +145,27 @@ TEST_CASE("FirstOrderDynamics") {
             "same as "
             "the itinerary") {
           CHECK_EQ(dynamics.nAgents(), 3);
+          for (auto const& [id, pStreet] : dynamics.graph().edges()) {
+            if (pStreet->nAgents() == 0) {
+              continue;
+            }
+            std::cout << "Street " << id << " has "
+                      << pStreet->movingAgents().top()->itineraryId() << std::endl;
+          }
 #ifdef __APPLE__
-          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(1)->movingAgents().top()->itineraryId(), 2);
-          CHECK_EQ(dynamics.graph().edge(6)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(6)->movingAgents().top()->itineraryId(), 1);
-          CHECK_EQ(dynamics.graph().edge(8)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(8)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(422)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(422)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(199)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(199)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(166)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(166)->movingAgents().top()->itineraryId(), 1);
 #else
-          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(1)->movingAgents().top()->itineraryId(), 1);
-          CHECK_EQ(dynamics.graph().edge(3)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(3)->movingAgents().top()->itineraryId(), 2);
-          CHECK_EQ(dynamics.graph().edge(8)->nAgents(), 1);
-          CHECK_EQ(dynamics.graph().edge(8)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(13)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(13)->movingAgents().top()->itineraryId(), 2);
+          CHECK_EQ(dynamics.graph().edge(370)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(370)->movingAgents().top()->itineraryId(), 1);
+          CHECK_EQ(dynamics.graph().edge(404)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(404)->movingAgents().top()->itineraryId(), 2);
 #endif
         }
       }
@@ -171,9 +173,7 @@ TEST_CASE("FirstOrderDynamics") {
   }
   SUBCASE("addAgentsRandomly") {
     GIVEN("A graph object") {
-      auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dat");
-      FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
       WHEN("We add one agent for existing itinerary") {
         std::unordered_map<dsf::Id, double> src{{0, 1.}};
         std::unordered_map<dsf::Id, double> dst{{2, 1.}};
@@ -221,10 +221,8 @@ TEST_CASE("FirstOrderDynamics") {
     GIVEN("A dynamics object") {
       auto const p{0.1};
       auto const n{100};
-      auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dat", false);
       // graph.adjustNodeCapacities();
-      FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
 #ifdef __APPLE__
       {
         std::time_t const t{0};
@@ -247,12 +245,13 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.addAgents(n);
         THEN("The number of agents is correct") { CHECK_EQ(dynamics.nAgents(), 100); }
         THEN("If we evolve the dynamics agent disappear gradually") {
-          for (auto i{0}; i < 40; ++i) {
+          auto constexpr nSteps = 1000;
+          for (auto i{0}; i < nSteps; ++i) {
             dynamics.evolve(false);
           }
           CHECK(dynamics.nAgents() < n);
-          CHECK_EQ(dynamics.time_step(), 40);
-          CHECK_EQ(dynamics.time() - epochStart, 40);
+          CHECK_EQ(dynamics.time_step(), nSteps);
+          CHECK_EQ(dynamics.time() - epochStart, nSteps);
 #ifdef __APPLE__
           {
             std::time_t const t = dynamics.time();
@@ -275,9 +274,7 @@ TEST_CASE("FirstOrderDynamics") {
   }
   SUBCASE("addAgents") {
     GIVEN("A dynamics object and one itinerary") {
-      auto graph = RoadNetwork{};
-      graph.importMatrix("./data/matrix.dsf");
-      FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.addItinerary(2, 2);
       WHEN("We add an agent with itinerary 2") {
         dynamics.addAgent(2, 0);
@@ -356,9 +353,7 @@ TEST_CASE("FirstOrderDynamics") {
     GIVEN(
         "A dynamics objects, many streets and many itinearies with same "
         "destination") {
-      RoadNetwork graph2{};
-      graph2.importMatrix("./data/matrix.dat");
-      FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.addItinerary(0, 118);
       dynamics.addItinerary(1, 118);
       dynamics.addItinerary(2, 118);

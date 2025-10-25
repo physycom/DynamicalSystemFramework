@@ -160,16 +160,6 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def("autoMapStreetLanes",
            &dsf::RoadNetwork::autoMapStreetLanes,
            dsf::g_docstrings.at("dsf::RoadNetwork::autoMapStreetLanes").c_str())
-      .def("importMatrix",
-           &dsf::RoadNetwork::importMatrix,
-           pybind11::arg("fileName"),
-           pybind11::arg("isAdj") = true,
-           pybind11::arg("defaultSpeed") = 13.8888888889,
-           dsf::g_docstrings.at("dsf::RoadNetwork::importMatrix").c_str())
-      .def("importCoordinates",
-           &dsf::RoadNetwork::importCoordinates,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::RoadNetwork::importCoordinates").c_str())
       .def(
           "importEdges",
           [](dsf::RoadNetwork& self, const std::string& fileName) {

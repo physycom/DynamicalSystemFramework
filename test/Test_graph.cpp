@@ -128,158 +128,68 @@ TEST_CASE("RoadNetwork") {
       }
     }
   }
-  SUBCASE("importMatrix - dsf") {
-    // This tests the importMatrix function over .dsf files
-    // GIVEN: a graph
-    // WHEN: we import a .dsf file
-    // THEN: the graph's adjacency matrix is the same as the one in the file
-    GIVEN("An empty graph") {
-      RoadNetwork graph{};
-      WHEN("A matrix in dsf format is imported") {
-        graph.importMatrix("./data/matrix.dsf");
-        THEN("The graph is correctly built") {
-          CHECK(graph.edge(2, 2));
-          CHECK(graph.edge(2, 0));
-          CHECK(graph.edge(1, 0));
-          CHECK(graph.edge(0, 1));
-          CHECK_EQ(graph.nNodes(), 3);
-          CHECK_EQ(graph.nEdges(), 4);
+  SUBCASE("importEdges and importNodeProperties") {
+    GIVEN("A graph object") {
+      RoadNetwork graph;
+      WHEN("We import edges and then node properties from OSM") {
+        graph.importEdges("./data/postua_edges.csv");
+        graph.importNodeProperties("./data/postua_nodes.csv");
+        std::ifstream fNodes{"./data/postua_nodes.csv"};
+        // get number of lines
+        std::string line;
+        int nNodes{-1};  // -1 because of the header
+        while (std::getline(fNodes, line)) {
+          ++nNodes;
         }
-        THEN("It is correctly exported") { graph.exportMatrix("./data/temp.dsf", true); }
-      }
-      WHEN("The exported one is imported") {
-        graph.importMatrix("./data/temp.dsf");
-        THEN("The graph is correctly built") {
-          CHECK(graph.edge(2, 2));
-          CHECK(graph.edge(2, 0));
-          CHECK(graph.edge(1, 0));
-          CHECK(graph.edge(0, 1));
-          CHECK_EQ(graph.nNodes(), 3);
-          CHECK_EQ(graph.nEdges(), 4);
+        fNodes.close();
+        std::ifstream fEdges{"./data/postua_edges.csv"};
+        int nEdges{-1};  // -1 because of the header
+        while (std::getline(fEdges, line)) {
+          ++nEdges;
         }
-      }
-    }
-    SUBCASE("Coordinates import/export") {
-      GIVEN("A RoadNetwork object with the adj matrix imported") {
-        RoadNetwork graph{};
-        graph.importMatrix("./data/matrix.dsf");
-        WHEN("We import the coordinates in dsf format") {
-          graph.importCoordinates("./data/coords.dsf");
-          THEN("The coordinates are correctly imported") {
-            CHECK_EQ(graph.node(0)->geometry(), dsf::geometry::Point{0., 0.});
-            CHECK_EQ(graph.node(1)->geometry(), dsf::geometry::Point{1., 0.});
-            CHECK_EQ(graph.node(2)->geometry(), dsf::geometry::Point{2., 0.});
-          }
-          THEN("The adjacency matrix is correctly built") {
-            CHECK(graph.edge(0, 1));
-            CHECK(graph.edge(1, 0));
-            CHECK(graph.edge(2, 0));
-            CHECK(graph.edge(2, 2));
-          }
-          THEN("The streets angles are correctly computed") {
-            CHECK_EQ(graph.edge(1)->angle(), 0.);
-            CHECK_EQ(graph.edge(3)->angle(), std::numbers::pi);
-            CHECK_EQ(graph.edge(6)->angle(), std::numbers::pi);
-            CHECK_EQ(graph.edge(8)->angle(), 0.);
-          }
+        fEdges.close();
+        THEN("Sizes are correct") {
+          CHECK_EQ(graph.nNodes(), nNodes);
+          CHECK_EQ(graph.nEdges(), nEdges);
+          CHECK_EQ(graph.nCoils(), 0);
+          CHECK_EQ(graph.nIntersections(), 25);
+          CHECK_EQ(graph.nRoundabouts(), 1);
+          CHECK_EQ(graph.nTrafficLights(), 0);
         }
-        WHEN("We import the coordinates in csv format") {
-          graph.importCoordinates("./data/nodes.csv");
-          THEN("The coordinates are correctly imported") {
-            CHECK_EQ(graph.node(0)->geometry(), dsf::geometry::Point{0., 0.});
-            CHECK_EQ(graph.node(1)->geometry(), dsf::geometry::Point{1., 0.});
-            CHECK_EQ(graph.node(2)->geometry(), dsf::geometry::Point{2., 0.});
+        RoadNetwork graph2;
+        graph2.importEdges("./data/postua_edges.geojson");
+        THEN("Sizes are correct also with geojson") {
+          CHECK_EQ(graph2.nEdges(), graph.nEdges());
+          CHECK_EQ(graph2.nNodes(), graph.nNodes());
+          for (auto const& [edgeId, pEdge] : graph2.edges()) {
+            CHECK_EQ(*pEdge, *graph.edge(edgeId));
           }
         }
       }
-    }
-    SUBCASE("importMatrix - raw matrix") {
-      RoadNetwork graph{};
-      graph.importMatrix("./data/rawMatrix.txt", false);
-      CHECK_EQ(graph.nNodes(), 3);
-      CHECK(graph.edge(0, 1));
-      CHECK(graph.edge(1, 0));
-      CHECK(graph.edge(1, 2));
-      CHECK(graph.edge(2, 1));
-      CHECK_EQ(graph.nNodes(), 3);
-      CHECK_EQ(graph.nEdges(), 4);
-      CHECK_EQ(graph.edge(1)->length(), 500);
-      CHECK_EQ(graph.edge(3)->length(), 200);
-      CHECK_EQ(graph.edge(5)->length(), 1);
-      CHECK_EQ(graph.edge(7)->length(), 3);
-    }
-    SUBCASE("importMatrix - EXCEPTIONS") {
-      // This tests the importMatrix throws an exception when the file has not the correct format or is not found
-      // GIVEN: a graph
-      // WHEN: we import a file with a wrong format
-      // THEN: an exception is thrown
-      RoadNetwork graph{};
-      CHECK_THROWS(graph.importMatrix("./data/matrix.nogood"));
-      CHECK_THROWS(graph.importMatrix("./data/not_found.dsf"));
-    }
-    SUBCASE("importEdges and importNodeProperties") {
-      GIVEN("A graph object") {
-        RoadNetwork graph;
-        WHEN("We import edges and then node properties from OSM") {
-          graph.importEdges("./data/postua_edges.csv");
-          graph.importNodeProperties("./data/postua_nodes.csv");
-          std::ifstream fNodes{"./data/postua_nodes.csv"};
-          // get number of lines
-          std::string line;
-          int nNodes{-1};  // -1 because of the header
-          while (std::getline(fNodes, line)) {
-            ++nNodes;
-          }
-          fNodes.close();
-          std::ifstream fEdges{"./data/postua_edges.csv"};
-          int nEdges{-1};  // -1 because of the header
-          while (std::getline(fEdges, line)) {
-            ++nEdges;
-          }
-          fEdges.close();
-          THEN("Sizes are correct") {
-            CHECK_EQ(graph.nNodes(), nNodes);
-            CHECK_EQ(graph.nEdges(), nEdges);
-            CHECK_EQ(graph.nCoils(), 0);
-            CHECK_EQ(graph.nIntersections(), 25);
-            CHECK_EQ(graph.nRoundabouts(), 1);
-            CHECK_EQ(graph.nTrafficLights(), 0);
-          }
-          RoadNetwork graph2;
-          graph2.importEdges("./data/postua_edges.geojson");
-          THEN("Sizes are correct also with geojson") {
-            CHECK_EQ(graph2.nEdges(), graph.nEdges());
-            CHECK_EQ(graph2.nNodes(), graph.nNodes());
-            for (auto const& [edgeId, pEdge] : graph2.edges()) {
-              CHECK_EQ(*pEdge, *graph.edge(edgeId));
-            }
-          }
+      WHEN("We import many nodes and edges from OSM") {
+        graph.importEdges("./data/forlì_edges.csv");
+        graph.importNodeProperties("./data/forlì_nodes.csv");
+        std::ifstream fNodes{"./data/forlì_nodes.csv"};
+        // get number of lines
+        std::string line;
+        int nNodes{-1};  // -1 because of the header
+        while (std::getline(fNodes, line)) {
+          ++nNodes;
         }
-        WHEN("We import many nodes and edges from OSM") {
-          graph.importEdges("./data/forlì_edges.csv");
-          graph.importNodeProperties("./data/forlì_nodes.csv");
-          std::ifstream fNodes{"./data/forlì_nodes.csv"};
-          // get number of lines
-          std::string line;
-          int nNodes{-1};  // -1 because of the header
-          while (std::getline(fNodes, line)) {
-            ++nNodes;
-          }
-          fNodes.close();
-          std::ifstream fEdges{"./data/forlì_edges.csv"};
-          int nEdges{-1};  // -1 because of the header
-          while (std::getline(fEdges, line)) {
-            ++nEdges;
-          }
-          fEdges.close();
-          THEN("Sizes are correct") {
-            CHECK_EQ(graph.nNodes(), nNodes);
-            CHECK_EQ(graph.nEdges(), nEdges);
-            CHECK_EQ(graph.nCoils(), 0);
-            CHECK_EQ(graph.nIntersections(), 11100);
-            CHECK_EQ(graph.nRoundabouts(), 17);
-            CHECK_EQ(graph.nTrafficLights(), 30);
-          }
+        fNodes.close();
+        std::ifstream fEdges{"./data/forlì_edges.csv"};
+        int nEdges{-1};  // -1 because of the header
+        while (std::getline(fEdges, line)) {
+          ++nEdges;
+        }
+        fEdges.close();
+        THEN("Sizes are correct") {
+          CHECK_EQ(graph.nNodes(), nNodes);
+          CHECK_EQ(graph.nEdges(), nEdges);
+          CHECK_EQ(graph.nCoils(), 0);
+          CHECK_EQ(graph.nIntersections(), 11100);
+          CHECK_EQ(graph.nRoundabouts(), 17);
+          CHECK_EQ(graph.nTrafficLights(), 30);
         }
       }
     }
@@ -629,17 +539,10 @@ TEST_CASE("Dijkstra") {
 
   SUBCASE("Case 9 - Equal Lengths") {
     RoadNetwork graph{};
-    graph.importMatrix("./data/matrix.dat", false);
+    graph.importEdges("./data/manhattan_edges.csv");
     // check correct import
     CHECK_EQ(graph.nNodes(), 120);
     CHECK_EQ(graph.nEdges(), 436);
-    // check that the path exists
-    CHECK(graph.edge(46, 58));
-    CHECK(graph.edge(58, 70));
-    CHECK(graph.edge(70, 82));
-    CHECK(graph.edge(82, 94));
-    CHECK(graph.edge(94, 106));
-    CHECK(graph.edge(106, 118));
 
     auto const& path =
         graph.allPathsTo(118, [](auto const& pEdge) { return pEdge->length(); });

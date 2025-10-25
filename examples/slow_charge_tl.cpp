@@ -89,8 +89,8 @@ int main(int argc, char** argv) {
   std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
-  graph.importEdges("./data/manhattan_edges.csv");
-  graph.importNodeProperties("./data/manhattan_nodes.csv");
+  graph.importEdges("../test/data/manhattan_edges.csv");
+  graph.importNodeProperties("../test/data/manhattan_nodes.csv");
   std::cout << "Setting street parameters..." << '\n';
 
   // graph.addStreet(Street(100002, std::make_pair(0, 108)));

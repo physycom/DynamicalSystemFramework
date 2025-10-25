@@ -92,25 +92,6 @@ namespace dsf {
     /// @details For example, if one street has the right turn forbidden, then the right lane becomes a straight one
     void autoMapStreetLanes();
 
-    /// @brief Import the graph's adjacency matrix from a file.
-    /// If the file is not of a supported format, it will read the file as a matrix with the first two elements being
-    /// the number of rows and columns and the following elements being the matrix elements.
-    /// @param fileName The name of the file to import the adjacency matrix from.
-    /// @param isAdj A boolean value indicating if the file contains the adjacency matrix or the distance matrix.
-    /// @param defaultSpeed The default speed limit for the streets
-    /// @throws std::invalid_argument if the file is not found or invalid
-    /// The matrix format is deduced from the file extension. Currently only .dsm files are supported.
-    void importMatrix(const std::string& fileName,
-                      bool isAdj = true,
-                      double defaultSpeed = 13.8888888889);
-    /// @brief Import the graph's nodes from a file
-    /// @param fileName The name of the file to import the nodes from.
-    /// @throws std::invalid_argument if the file is not found, invalid or the format is not supported
-    /// @details The file format is deduced from the file extension. Currently only .dsm files are supported.
-    ///           The first input number is the number of nodes, followed by the coordinates of each node.
-    ///           In the i-th row of the file, the (i - 1)-th node's coordinates are expected.
-    [[deprecated]] void importCoordinates(const std::string& fileName);
-
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
     /// @details Supports csv, json and geojson file formats.
@@ -156,13 +137,6 @@ namespace dsf {
     ///           Street priorities may be assigned based on additional parameters such as the number of lanes
     ///           and the speed limit, if such data is available in the file.
     void importTrafficLights(const std::string& fileName);
-
-    /// @brief Export the graph's adjacency matrix to a file
-    /// @param path The path to the file to export the adjacency matrix to (default: ./matrix.dsm)
-    /// @param isAdj A boolean value indicating if the file contains the adjacency matrix or the distance matrix.
-    /// @throws std::invalid_argument if the file is not found or invalid
-    [[deprecated]] void exportMatrix(std::string path = "./matrix.dsm",
-                                     bool isAdj = true);
 
     template <typename T1, typename... Tn>
       requires is_node_v<std::remove_reference_t<T1>> &&
