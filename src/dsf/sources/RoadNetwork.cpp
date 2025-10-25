@@ -47,8 +47,7 @@ namespace dsf {
       auto const name = csvReader.GetCell<std::string>("name", i);
       geometry::PolyLine polyline;
       if (bHasGeometry) {
-        polyline =
-            geometry::parseWKTLineString(csvReader.GetCell<std::string>("geometry", i));
+        polyline = geometry::PolyLine(csvReader.GetCell<std::string>("geometry", i));
       }
 
       auto iLanes = 1;
@@ -154,7 +153,7 @@ namespace dsf {
       }
       auto const& strGeometry = csvReader.GetCell<std::string>("geometry", i);
       if (!strGeometry.empty()) {
-        auto const point = geometry::parseWKTPoint(strGeometry);
+        auto const point = geometry::Point(strGeometry);
         auto const& pNode{node(nodeId)};
         // Assign geometry or check if these geometry match the existing ones
         if (!pNode->geometry().has_value()) {

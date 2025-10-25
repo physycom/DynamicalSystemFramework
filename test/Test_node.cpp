@@ -35,8 +35,8 @@ TEST_CASE("Intersection") {
         THEN("Parameters are set correctly") {
           CHECK_EQ(intersection.id(), id);
           CHECK(intersection.geometry().has_value());
-          CHECK_EQ(intersection.geometry().value().x, lon);
-          CHECK_EQ(intersection.geometry().value().y, lat);
+          CHECK_EQ(intersection.geometry().value().x(), lon);
+          CHECK_EQ(intersection.geometry().value().y(), lat);
           CHECK_EQ(intersection.capacity(), 1);
           CHECK_EQ(intersection.transportCapacity(), 1);
           CHECK(intersection.name().empty());
@@ -79,8 +79,8 @@ TEST_CASE("TrafficLight") {
           CHECK_EQ(tl.id(), 0);
           CHECK_EQ(tl.cycleTime(), 60);
           CHECK(tl.geometry().has_value());
-          CHECK_EQ(tl.geometry().value().x, 1.);
-          CHECK_EQ(tl.geometry().value().y, 2.);
+          CHECK_EQ(tl.geometry().value().x(), 1.);
+          CHECK_EQ(tl.geometry().value().y(), 2.);
         }
       }
     }

@@ -174,7 +174,7 @@ TEST_CASE("Street") {
     Street street{1, std::make_pair(0, 1), 3.5};
     CHECK_EQ(street.angle(), 0);
     street.setGeometry(
-        dsf::geometry::PolyLine{dsf::geometry::Point{1, 0}, dsf::geometry::Point{0, 1}});
+        dsf::geometry::PolyLine{dsf::geometry::Point{0, 1}, dsf::geometry::Point{1, 0}});
     CHECK_EQ(street.angle(), 7 * std::numbers::pi / 4);
   }
 }

@@ -90,8 +90,8 @@ TEST_CASE("RoadNetwork") {
     GIVEN("A Graph object") {
       RoadNetwork graph{};
       graph.addNode(0, dsf::geometry::Point(0., 0.));
-      graph.addNode(1, dsf::geometry::Point(0., -1.));
-      graph.addNode(2, dsf::geometry::Point(-1., 0.));
+      graph.addNode(1, dsf::geometry::Point(-1., 0.));
+      graph.addNode(2, dsf::geometry::Point(0., -1.));
       graph.addNode(3, dsf::geometry::Point(1., 1.));
       graph.addEdge<Street>(1, std::make_pair(0, 1), 1., 50 / 3.6, 3);
       graph.addEdge<Street>(4, std::make_pair(1, 0), 1., 50 / 3.6, 3);
@@ -177,9 +177,9 @@ TEST_CASE("RoadNetwork") {
             CHECK(graph.edge(2, 2));
           }
           THEN("The streets angles are correctly computed") {
-            CHECK_EQ(graph.edge(1)->angle(), std::numbers::pi / 2);
-            CHECK_EQ(graph.edge(3)->angle(), 3 * std::numbers::pi / 2);
-            CHECK_EQ(graph.edge(6)->angle(), 3 * std::numbers::pi / 2);
+            CHECK_EQ(graph.edge(1)->angle(), 0.);
+            CHECK_EQ(graph.edge(3)->angle(), std::numbers::pi);
+            CHECK_EQ(graph.edge(6)->angle(), std::numbers::pi);
             CHECK_EQ(graph.edge(8)->angle(), 0.);
           }
         }

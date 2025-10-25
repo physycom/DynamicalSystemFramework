@@ -57,10 +57,10 @@ int main() {
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
   dsf::Road::setMeanVehicleLength(8.);
-  Street s01{1, dsf::geometry::Point(0, 1), 2281., 13.9, 2};
-  Street s12{7, dsf::geometry::Point(1, 2), 118., 13.9, 2};
-  Street s23{13, dsf::geometry::Point(2, 3), 222., 13.9, 2};
-  Street s34{19, dsf::geometry::Point(3, 4), 651., 13.9, 2};
+  Street s01{1, std::make_pair(0, 1), 2281., 13.9, 2};
+  Street s12{7, std::make_pair(1, 2), 118., 13.9, 2};
+  Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};
+  Street s34{19, std::make_pair(3, 4), 651., 13.9, 2};
   // Viale Aldo Moro
   graph.addNode<TrafficLight>(1, 132);
   auto& tl1 = graph.node<TrafficLight>(1);

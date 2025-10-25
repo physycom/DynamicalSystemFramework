@@ -12,32 +12,50 @@
 namespace dsf {
   /// @brief Geometry related functions
   namespace geometry {
-    struct Point {
-      double x;
-      double y;
+    class Point {
+    private:
+      double m_x;
+      double m_y;
 
-      bool operator==(const Point& other) const {
-        return std::abs(x - other.x) < std::numeric_limits<double>::epsilon() &&
-               std::abs(y - other.y) < std::numeric_limits<double>::epsilon();
+    public:
+      Point() = default;
+      /// @brief Construct a Point with given x and y coordinates.
+      /// @param x The x coordinate
+      /// @param y The y coordinate
+      Point(double x, double y) : m_x(x), m_y(y) {}
+      /// @brief Construct a Point from a string representation.
+      /// @param strPoint The string representation of the point.
+      /// @param format The format of the string representation. Default is "WKT".
+      /// @throws std::invalid_argument if the format is not supported or the string is invalid.
+      Point(std::string const& strPoint, std::string const& format = "WKT");
+      /// @brief Equality operator for Point
+      inline bool operator==(const Point& other) const {
+        return std::abs(m_x - other.m_x) < std::numeric_limits<double>::epsilon() &&
+               std::abs(m_y - other.m_y) < std::numeric_limits<double>::epsilon();
       }
-    };
+      /// @brief Support for structured bindings, e.g., auto const& [x, y] = point;
+      template <std::size_t Index>
+      inline double const& get() const {
+        if constexpr (Index == 0)
+          return m_x;
+        else if constexpr (Index == 1)
+          return m_y;
+      }
 
-    /// @brief Parse a WKT POINT string and return a Point object. A WKT POINT is in the format "POINT(x y)" or "POINT (lon lat)".
-    /// @param strWKTPoint The WKT POINT string to parse
-    /// @return A Point object representing the coordinates of the point
-    /// @throws std::invalid_argument if the input string is not a valid WKT POINT
-    Point parseWKTPoint(const std::string& strWKTPoint);
+      inline double const& x() const { return m_x; }
+      inline double const& y() const { return m_y; }
+    };
 
     /// @brief A polyline represented as a vector of Points
-    struct PolyLine : public std::vector<Point> {
+    class PolyLine : public std::vector<Point> {
+    public:
       using std::vector<Point>::vector;  // Inherit constructors
+      /// @brief Construct a PolyLine from a string representation.
+      /// @param strLine The string representation of the polyline.
+      /// @param format The format of the string representation. Default is "WKT".
+      /// @throws std::invalid_argument if the format is not supported or the string is invalid.
+      PolyLine(std::string const& strLine, std::string const& format = "WKT");
     };
-
-    /// @brief Parse a WKT LINESTRING string and return a PolyLine object. A WKT LINESTRING is in the format "LINESTRING(x1 y1, x2 y2, ...)".
-    /// @param strWKTLineString The WKT LINESTRING string to parse
-    /// @return A PolyLine object representing the coordinates of the linestring
-    /// @throws std::invalid_argument if the input string is not a valid WKT LINESTRING
-    PolyLine parseWKTLineString(const std::string& strWKTLineString);
   }  // namespace geometry
 }  // namespace dsf
 
@@ -48,7 +66,7 @@ struct std::formatter<dsf::geometry::Point> {
 
   template <typename FormatContext>
   auto format(dsf::geometry::Point const& point, FormatContext&& ctx) {
-    return std::format_to(ctx.out(), "POINT ({}, {})", point.x, point.y);
+    return std::format_to(ctx.out(), "POINT ({}, {})", point.x(), point.y());
   }
 };
 // Specialization of fmt::formatter for dsf::geometry::Point (for fmt library compatibility)
@@ -58,7 +76,7 @@ struct fmt::formatter<dsf::geometry::Point> {
 
   template <typename FormatContext>
   auto format(dsf::geometry::Point const& point, FormatContext& ctx) const {
-    return fmt::format_to(ctx.out(), "POINT ({}, {})", point.x, point.y);
+    return fmt::format_to(ctx.out(), "POINT ({}, {})", point.x(), point.y());
   }
 };
 // Specialization of std::formatter for dsf::geometry::PolyLine
@@ -73,7 +91,7 @@ struct std::formatter<dsf::geometry::PolyLine> {
       if (i > 0) {
         out = std::format_to(out, ", ");
       }
-      out = std::format_to(out, "{} {}", polyline[i].x, polyline[i].y);
+      out = std::format_to(out, "{} {}", polyline[i].x(), polyline[i].y());
     }
     return std::format_to(out, ")");
   }
@@ -89,8 +107,30 @@ struct fmt::formatter<dsf::geometry::PolyLine> {
       if (i > 0) {
         out = fmt::format_to(out, ", ");
       }
-      out = fmt::format_to(out, "{} {}", polyline[i].x, polyline[i].y);
+      out = fmt::format_to(out, "{} {}", polyline[i].x(), polyline[i].y());
     }
     return fmt::format_to(out, ")");
   }
 };
+
+// Structured binding support for dsf::geometry::Point
+namespace std {
+  template <>
+  struct tuple_size<dsf::geometry::Point> : std::integral_constant<std::size_t, 2> {};
+
+  template <>
+  struct tuple_element<0, dsf::geometry::Point> {
+    using type = double;
+  };
+
+  template <>
+  struct tuple_element<1, dsf::geometry::Point> {
+    using type = double;
+  };
+}  // namespace std
+
+// ADL-based get for structured bindings
+template <std::size_t I>
+inline double const& get(dsf::geometry::Point const& point) {
+  return point.get<I>();
+}

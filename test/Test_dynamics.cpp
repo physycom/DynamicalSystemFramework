@@ -660,10 +660,10 @@ TEST_CASE("FirstOrderDynamics") {
         tl.setComplementaryCycle(8, 11);
         tl.setComplementaryCycle(21, 11);
       }
-      graph2.addNode<dsf::Intersection>(0, dsf::geometry::Point(0, -1));
-      graph2.addNode<dsf::Intersection>(2, dsf::geometry::Point(0, 1));
-      graph2.addNode<dsf::Intersection>(3, dsf::geometry::Point(-1, 0));
-      graph2.addNode<dsf::Intersection>(4, dsf::geometry::Point(1, 0));
+      graph2.addNode<dsf::Intersection>(0, dsf::geometry::Point(-1, 0));
+      graph2.addNode<dsf::Intersection>(2, dsf::geometry::Point(1, 0));
+      graph2.addNode<dsf::Intersection>(3, dsf::geometry::Point(0, -1));
+      graph2.addNode<dsf::Intersection>(4, dsf::geometry::Point(0, 1));
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
       graph2.adjustNodeCapacities();
 
@@ -723,10 +723,10 @@ TEST_CASE("FirstOrderDynamics") {
         tl.setComplementaryCycle(8, 11);
         tl.setComplementaryCycle(21, 11);
       }
-      graph2.addNode<dsf::Intersection>(0, dsf::geometry::Point(0, -1));
-      graph2.addNode<dsf::Intersection>(2, dsf::geometry::Point(0, 1));
-      graph2.addNode<dsf::Intersection>(3, dsf::geometry::Point(-1, 0));
-      graph2.addNode<dsf::Intersection>(4, dsf::geometry::Point(1, 0));
+      graph2.addNode<dsf::Intersection>(0, dsf::geometry::Point(-1, 0));
+      graph2.addNode<dsf::Intersection>(2, dsf::geometry::Point(1, 0));
+      graph2.addNode<dsf::Intersection>(3, dsf::geometry::Point(0, -1));
+      graph2.addNode<dsf::Intersection>(4, dsf::geometry::Point(0, 1));
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
       graph2.adjustNodeCapacities();
       graph2.autoMapStreetLanes();
@@ -966,9 +966,9 @@ TEST_CASE("FirstOrderDynamics") {
     GIVEN("A dynamics object with five nodes and eight streets") {
       RoadNetwork graph2;
       graph2.addNode<Intersection>(0, dsf::geometry::Point(0, 0));
-      graph2.addNode<Intersection>(1, dsf::geometry::Point(-1, 1));   // A
+      graph2.addNode<Intersection>(1, dsf::geometry::Point(1, -1));   // A
       graph2.addNode<Intersection>(2, dsf::geometry::Point(1, 1));    // B
-      graph2.addNode<Intersection>(3, dsf::geometry::Point(1, -1));   // C
+      graph2.addNode<Intersection>(3, dsf::geometry::Point(-1, 1));   // C
       graph2.addNode<Intersection>(4, dsf::geometry::Point(-1, -1));  // D
       graph2.addEdge<Street>(1, std::make_pair(0, 1), 30., 10.);
       graph2.addEdge<Street>(2, std::make_pair(0, 2), 30., 10.);
