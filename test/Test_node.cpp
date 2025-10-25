@@ -13,52 +13,128 @@ using Intersection = dsf::Intersection;
 using TrafficLight = dsf::TrafficLight;
 using Station = dsf::Station;
 
+TEST_CASE("Node basic") {
+  SUBCASE("Constructors and getters") {
+    dsf::Node n1{5};
+    CHECK_EQ(n1.id(), 5);
+    CHECK_FALSE(n1.geometry().has_value());
+    CHECK_EQ(n1.name(), "");
+    CHECK(n1.ingoingEdges().empty());
+    CHECK(n1.outgoingEdges().empty());
+    CHECK_FALSE(n1.isStation());
+
+    dsf::Node n2{6, dsf::geometry::Point{1.0, 2.0}};
+    CHECK_EQ(n2.id(), 6);
+    REQUIRE(n2.geometry().has_value());
+    CHECK_EQ(n2.geometry()->x(), 1.0);
+    CHECK_EQ(n2.geometry()->y(), 2.0);
+  }
+
+  SUBCASE("Copy and assignment") {
+    dsf::Node n1{7, dsf::geometry::Point{3.0, 4.0}};
+    n1.setName("A node");
+    n1.addIngoingEdge(10);
+    n1.addOutgoingEdge(11);
+
+    dsf::Node n2 = n1;  // copy ctor
+    CHECK_EQ(n2.id(), 7);
+    REQUIRE(n2.geometry().has_value());
+    CHECK_EQ(n2.geometry()->x(), 3.0);
+    CHECK_EQ(n2.name(), "A node");
+    CHECK_EQ(n2.ingoingEdges().size(), 1);
+    CHECK_EQ(n2.outgoingEdges().size(), 1);
+
+    dsf::Node n3{0};
+    n3 = n1;  // assignment
+    CHECK_EQ(n3.id(), 7);
+    CHECK_EQ(n3.name(), "A node");
+    CHECK_EQ(n3.ingoingEdges().front(), 10);
+    CHECK_EQ(n3.outgoingEdges().front(), 11);
+  }
+
+  SUBCASE("Setters and edge additions") {
+    dsf::Node n{8};
+    n.setId(9);
+    CHECK_EQ(n.id(), 9);
+    n.setGeometry(dsf::geometry::Point{4.5, -1.2});
+    REQUIRE(n.geometry().has_value());
+    CHECK_EQ(n.geometry()->x(), 4.5);
+    n.setName("Test node");
+    CHECK_EQ(n.name(), "Test node");
+
+    n.addIngoingEdge(20);
+    CHECK_EQ(n.ingoingEdges().size(), 1);
+    CHECK_EQ(n.ingoingEdges().front(), 20);
+
+    n.addOutgoingEdge(30);
+    CHECK_EQ(n.outgoingEdges().size(), 1);
+    CHECK_EQ(n.outgoingEdges().front(), 30);
+
+    // adding duplicate should throw
+    CHECK_THROWS_AS(n.addIngoingEdge(20), std::invalid_argument);
+    CHECK_THROWS_AS(n.addOutgoingEdge(30), std::invalid_argument);
+  }
+}
+
 TEST_CASE("Intersection") {
   SUBCASE("Constructor") {
-    GIVEN("Some parameters") {
-      constexpr dsf::Id id = 1;
-      constexpr double lat = 2.5;
-      constexpr double lon = 3.5;
-      const std::string name = "MyName";
-      WHEN("An Intersection is created using only an Id") {
-        Intersection intersection{id};
-        THEN("Parameters are set correctly") {
-          CHECK_EQ(intersection.id(), id);
-          CHECK_FALSE(intersection.geometry().has_value());
-          CHECK_EQ(intersection.capacity(), 1);
-          CHECK_EQ(intersection.transportCapacity(), 1);
-          CHECK(intersection.name().empty());
-        }
-      }
-      WHEN("An Intersection is created using an Id and coordinates") {
-        Intersection intersection{id, dsf::geometry::Point{lon, lat}};
-        THEN("Parameters are set correctly") {
-          CHECK_EQ(intersection.id(), id);
-          CHECK(intersection.geometry().has_value());
-          CHECK_EQ(intersection.geometry().value().x(), lon);
-          CHECK_EQ(intersection.geometry().value().y(), lat);
-          CHECK_EQ(intersection.capacity(), 1);
-          CHECK_EQ(intersection.transportCapacity(), 1);
-          CHECK(intersection.name().empty());
-        }
-      }
-      WHEN("An intersection is created using copy constructor") {
-        // Intersection base{id, std::make_pair(lat, lon)};
-        // base.setCapacity(capacity);
-        // base.setTransportCapacity(transportCapacity);
-        // base.setName(name);
-        // auto copy = base;
-        // THEN("Parameters are set correctly") {
-        //   CHECK_EQ(copy.id(), id);
-        //   CHECK(copy.coords().has_value());
-        //   CHECK_EQ(copy.coords().value().first, lat);
-        //   CHECK_EQ(copy.coords().value().second, lon);
-        //   CHECK_EQ(copy.capacity(), capacity);
-        //   CHECK_EQ(copy.transportCapacity(), transportCapacity);
-        //   CHECK_EQ(copy.name(), name);
-        // }
-      }
-    }
+    constexpr dsf::Id id = 1;
+    constexpr double lat = 2.5;
+    constexpr double lon = 3.5;
+    Intersection intersection{id};
+    CHECK_EQ(intersection.id(), id);
+    CHECK_FALSE(intersection.geometry().has_value());
+    CHECK_EQ(intersection.capacity(), 1);
+    CHECK_EQ(intersection.transportCapacity(), 1);
+    CHECK(intersection.name().empty());
+    Intersection intersection2{id, dsf::geometry::Point{lon, lat}};
+    CHECK_EQ(intersection2.id(), id);
+    CHECK(intersection2.geometry().has_value());
+    CHECK_EQ(intersection2.geometry().value().x(), lon);
+    CHECK_EQ(intersection2.geometry().value().y(), lat);
+    CHECK_EQ(intersection2.capacity(), 1);
+    CHECK_EQ(intersection2.transportCapacity(), 1);
+    CHECK(intersection2.name().empty());
+  }
+
+  SUBCASE("Agent management and priorities") {
+    Intersection intersection{42};
+    intersection.setCapacity(3);
+    // Add agents with different angles
+    auto agent1 = std::make_unique<dsf::Agent>(1);
+    auto agent2 = std::make_unique<dsf::Agent>(2);
+    auto agent3 = std::make_unique<dsf::Agent>(3);
+    intersection.addAgent(10.0, std::move(agent1));
+    intersection.addAgent(5.0, std::move(agent2));
+    intersection.addAgent(20.0, std::move(agent3));
+    CHECK_EQ(intersection.nAgents(), 3);
+    CHECK(intersection.isFull());
+    // Density calculation
+    CHECK_EQ(intersection.density(), doctest::Approx(1.0));
+    // Street priorities
+    std::set<dsf::Id> priorities{100, 101};
+    intersection.addIngoingEdge(100);
+    intersection.addIngoingEdge(101);
+    intersection.setStreetPriorities(priorities);
+    CHECK_EQ(intersection.streetPriorities(), priorities);
+    intersection.addStreetPriority(100);
+    CHECK(intersection.streetPriorities().count(100));
+    // Error on adding non-existent street priority
+    CHECK_THROWS_AS(intersection.addStreetPriority(999), std::invalid_argument);
+  }
+
+  SUBCASE("Capacity and error handling") {
+    Intersection intersection{99};
+    intersection.setCapacity(2);
+    auto agent1 = std::make_unique<dsf::Agent>(1);
+    auto agent2 = std::make_unique<dsf::Agent>(2);
+    intersection.addAgent(0.0, std::move(agent1));
+    intersection.addAgent(1.0, std::move(agent2));
+    CHECK(intersection.isFull());
+    auto agent3 = std::make_unique<dsf::Agent>(3);
+    CHECK_THROWS_AS(intersection.addAgent(2.0, std::move(agent3)), std::runtime_error);
+    // Lowering capacity below current agent count throws
+    CHECK_THROWS_AS(intersection.setCapacity(1), std::runtime_error);
   }
 }
 

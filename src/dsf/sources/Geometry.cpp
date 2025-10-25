@@ -15,7 +15,12 @@ namespace dsf {
         }
         std::string coordStr = strPoint.substr(start + 1, end - start - 1);
         std::istringstream coordStream(coordStr);
-        coordStream >> m_x >> m_y;
+        double x, y;
+        if (!(coordStream >> x >> y)) {
+          throw std::invalid_argument("Malformed WKT POINT coordinates: " + strPoint);
+        }
+        m_x = x;
+        m_y = y;
       } else {
         throw std::invalid_argument("Unsupported format: " + format);
       }
@@ -37,7 +42,15 @@ namespace dsf {
         while (std::getline(coordsStream, pointStr, ',')) {
           std::istringstream pointStream(pointStr);
           double x, y;
-          pointStream >> x >> y;
+          std::string extra;
+          if (!(pointStream >> x >> y)) {
+            throw std::invalid_argument("Malformed WKT LINESTRING point: " + pointStr);
+          }
+          // Should not be any extra tokens after two numbers
+          if (pointStream >> extra) {
+            throw std::invalid_argument("Too many values in WKT LINESTRING point: " +
+                                        pointStr);
+          }
           this->push_back(Point{x, y});
         }
       } else {

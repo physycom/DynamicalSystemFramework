@@ -263,3 +263,257 @@ TEST_CASE("SpireStreet") {
     }
   }
 }
+
+TEST_CASE("Road") {
+  SUBCASE("Constructor") {
+    GIVEN("Valid road parameters") {
+      WHEN("A road is constructed with basic parameters") {
+        Street road{1, std::make_pair(0, 1), 100.0, 13.8888888889, 2, "Main Street"};
+        THEN("All parameters are set correctly") {
+          CHECK_EQ(road.id(), 1);
+          CHECK_EQ(road.nodePair().first, 0);
+          CHECK_EQ(road.nodePair().second, 1);
+          CHECK_EQ(road.length(), 100.0);
+          CHECK_EQ(road.maxSpeed(), 13.8888888889);
+          CHECK_EQ(road.nLanes(), 2);
+          CHECK_EQ(road.name(), "Main Street");
+          // capacity = ceil((length * nLanes) / meanVehicleLength)
+          CHECK_EQ(road.capacity(),
+                   static_cast<int>(std::ceil((100.0 * 2) / Road::meanVehicleLength())));
+          CHECK_EQ(road.transportCapacity(), 1.0);
+          CHECK_EQ(road.priority(), 200);  // 2 * 100
+        }
+      }
+
+      WHEN("A road is constructed with explicit capacity") {
+        Street road{2,
+                    std::make_pair(1, 2),
+                    50.0,
+                    20.0,
+                    1,
+                    "Side Street",
+                    dsf::geometry::PolyLine{},
+                    25,
+                    2.5};
+        THEN("Capacity is set to explicit value") {
+          CHECK_EQ(road.capacity(), 25);
+          CHECK_EQ(road.transportCapacity(), 2.5);
+        }
+      }
+    }
+
+    GIVEN("Invalid road parameters") {
+      WHEN("Length is non-positive") {
+        THEN("Constructor throws invalid_argument") {
+          CHECK_THROWS_AS(Street(1, std::make_pair(0, 1), 0.0), std::invalid_argument);
+          CHECK_THROWS_AS(Street(1, std::make_pair(0, 1), -5.0), std::invalid_argument);
+        }
+      }
+
+      WHEN("Max speed is non-positive") {
+        THEN("Constructor throws invalid_argument") {
+          CHECK_THROWS_AS(Street(1, std::make_pair(0, 1), 100.0, 0.0),
+                          std::invalid_argument);
+          CHECK_THROWS_AS(Street(1, std::make_pair(0, 1), 100.0, -10.0),
+                          std::invalid_argument);
+        }
+      }
+
+      WHEN("Number of lanes is zero or negative") {
+        THEN("Constructor throws invalid_argument") {
+          CHECK_THROWS_AS(Street(1, std::make_pair(0, 1), 100.0, 13.8888888889, 0),
+                          std::invalid_argument);
+          CHECK_THROWS_AS(Street(1, std::make_pair(0, 1), 100.0, 13.8888888889, -1),
+                          std::invalid_argument);
+        }
+      }
+
+      WHEN("Transport capacity is non-positive") {
+        THEN("Constructor throws invalid_argument") {
+          CHECK_THROWS_AS(Street(1,
+                                 std::make_pair(0, 1),
+                                 100.0,
+                                 13.8888888889,
+                                 1,
+                                 "",
+                                 dsf::geometry::PolyLine{},
+                                 std::nullopt,
+                                 0.0),
+                          std::invalid_argument);
+          CHECK_THROWS_AS(Street(1,
+                                 std::make_pair(0, 1),
+                                 100.0,
+                                 13.8888888889,
+                                 1,
+                                 "",
+                                 dsf::geometry::PolyLine{},
+                                 std::nullopt,
+                                 -1.0),
+                          std::invalid_argument);
+        }
+      }
+    }
+  }
+
+  SUBCASE("Mean Vehicle Length") {
+    GIVEN("Default mean vehicle length") {
+      THEN("It should be positive") { CHECK(Road::meanVehicleLength() > 0.0); }
+    }
+
+    WHEN("Mean vehicle length is set to a valid value") {
+      Road::setMeanVehicleLength(4.5);
+      THEN("The new value is returned") { CHECK_EQ(Road::meanVehicleLength(), 4.5); }
+    }
+
+    WHEN("Mean vehicle length is set to invalid value") {
+      THEN("setMeanVehicleLength throws invalid_argument") {
+        CHECK_THROWS_AS(Road::setMeanVehicleLength(0.0), std::invalid_argument);
+        CHECK_THROWS_AS(Road::setMeanVehicleLength(-1.0), std::invalid_argument);
+      }
+    }
+  }
+
+  SUBCASE("Setters") {
+    Street road{1, std::make_pair(0, 1), 100.0};
+
+    SUBCASE("setMaxSpeed") {
+      WHEN("Valid speed is set") {
+        road.setMaxSpeed(25.0);
+        THEN("Max speed is updated") { CHECK_EQ(road.maxSpeed(), 25.0); }
+      }
+
+      WHEN("Invalid speed is set") {
+        THEN("setMaxSpeed throws invalid_argument") {
+          CHECK_THROWS_AS(road.setMaxSpeed(0.0), std::invalid_argument);
+          CHECK_THROWS_AS(road.setMaxSpeed(-5.0), std::invalid_argument);
+        }
+      }
+    }
+
+    SUBCASE("setCapacity") {
+      WHEN("Valid capacity is set") {
+        road.setCapacity(50);
+        THEN("Capacity is updated") { CHECK_EQ(road.capacity(), 50); }
+      }
+
+      WHEN("Invalid capacity is set") {
+        THEN("setCapacity throws invalid_argument") {
+          CHECK_THROWS_AS(road.setCapacity(0), std::invalid_argument);
+          CHECK_THROWS_AS(road.setCapacity(-1), std::invalid_argument);
+        }
+      }
+    }
+
+    SUBCASE("setTransportCapacity") {
+      WHEN("Valid transport capacity is set") {
+        road.setTransportCapacity(3.5);
+        THEN("Transport capacity is updated") { CHECK_EQ(road.transportCapacity(), 3.5); }
+      }
+
+      WHEN("Invalid transport capacity is set") {
+        THEN("setTransportCapacity throws invalid_argument") {
+          CHECK_THROWS_AS(road.setTransportCapacity(0.0), std::invalid_argument);
+          CHECK_THROWS_AS(road.setTransportCapacity(-2.0), std::invalid_argument);
+        }
+      }
+    }
+
+    SUBCASE("setPriority") {
+      WHEN("Priority is set") {
+        road.setPriority(150);
+        THEN("Priority is updated") { CHECK_EQ(road.priority(), 150); }
+      }
+    }
+  }
+
+  SUBCASE("Forbidden Turns") {
+    Street road{1, std::make_pair(0, 1), 100.0};
+
+    SUBCASE("addForbiddenTurn") {
+      WHEN("A forbidden turn is added") {
+        road.addForbiddenTurn(5);
+        THEN("The forbidden turn is in the set") {
+          CHECK(road.forbiddenTurns().count(5) == 1);
+        }
+
+        WHEN("Another forbidden turn is added") {
+          road.addForbiddenTurn(10);
+          THEN("Both forbidden turns are in the set") {
+            CHECK(road.forbiddenTurns().count(5) == 1);
+            CHECK(road.forbiddenTurns().count(10) == 1);
+          }
+        }
+      }
+    }
+
+    SUBCASE("setForbiddenTurns") {
+      WHEN("Forbidden turns are set") {
+        std::set<dsf::Id> turns{2, 4, 6};
+        road.setForbiddenTurns(turns);
+        THEN("The forbidden turns are set correctly") {
+          CHECK_EQ(road.forbiddenTurns(), turns);
+        }
+      }
+    }
+  }
+
+  SUBCASE("Getters") {
+    Street road{1, std::make_pair(0, 1), 100.0, 20.0, 2, "Test Road"};
+
+    CHECK_EQ(road.length(), 100.0);
+    CHECK_EQ(road.maxSpeed(), 20.0);
+    CHECK_EQ(road.nLanes(), 2);
+    CHECK_EQ(road.capacity(),
+             static_cast<int>(std::ceil((100.0 * 2) / Road::meanVehicleLength())));
+    CHECK_EQ(road.transportCapacity(), 1.0);
+    CHECK_EQ(road.name(), "Test Road");
+    CHECK_EQ(road.priority(), 200);  // 2 * 100
+    CHECK(road.forbiddenTurns().empty());
+  }
+
+  SUBCASE("turnDirection") {
+    Street road{1, std::make_pair(0, 1), 100.0};
+    road.setGeometry(
+        dsf::geometry::PolyLine{dsf::geometry::Point{0, 0}, dsf::geometry::Point{1, 0}});
+
+    WHEN("Previous street angle is straight ahead") {
+      double previousAngle = 0.0;
+      THEN("Turn direction is STRAIGHT") {
+        CHECK_EQ(road.turnDirection(previousAngle), dsf::Direction::STRAIGHT);
+      }
+    }
+
+    WHEN("Previous street angle creates small right turn") {
+      double previousAngle = -std::numbers::pi / 16;  // Small negative angle
+      THEN("Turn direction is STRAIGHT") {
+        CHECK_EQ(road.turnDirection(previousAngle), dsf::Direction::STRAIGHT);
+      }
+    }
+
+    WHEN("Previous street angle creates right turn") {
+      double previousAngle = std::numbers::pi / 4;  // 45 degrees
+      THEN("Turn direction is RIGHT") {
+        CHECK_EQ(road.turnDirection(previousAngle), dsf::Direction::RIGHT);
+      }
+    }
+
+    WHEN("Previous street angle creates left turn") {
+      double previousAngle = -std::numbers::pi / 4;  // -45 degrees
+      THEN("Turn direction is LEFT") {
+        CHECK_EQ(road.turnDirection(previousAngle), dsf::Direction::LEFT);
+      }
+    }
+
+    WHEN("Previous street angle creates U-turn") {
+      double previousAngle = std::numbers::pi;  // exactly pi
+      THEN("Turn direction is UTURN") {
+        CHECK_EQ(road.turnDirection(previousAngle), dsf::Direction::UTURN);
+      }
+
+      double previousAngle2 = -std::numbers::pi;  // -pi
+      THEN("Turn direction is UTURN") {
+        CHECK_EQ(road.turnDirection(previousAngle2), dsf::Direction::UTURN);
+      }
+    }
+  }
+}

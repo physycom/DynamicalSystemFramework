@@ -18,7 +18,6 @@ namespace dsf {
       double m_y;
 
     public:
-      Point() = default;
       /// @brief Construct a Point with given x and y coordinates.
       /// @param x The x coordinate
       /// @param y The y coordinate
@@ -65,7 +64,7 @@ struct std::formatter<dsf::geometry::Point> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
   template <typename FormatContext>
-  auto format(dsf::geometry::Point const& point, FormatContext&& ctx) {
+  auto format(dsf::geometry::Point const& point, FormatContext& ctx) const {
     return std::format_to(ctx.out(), "POINT ({}, {})", point.x(), point.y());
   }
 };
@@ -75,7 +74,7 @@ struct fmt::formatter<dsf::geometry::Point> {
   constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
 
   template <typename FormatContext>
-  auto format(dsf::geometry::Point const& point, FormatContext& ctx) const {
+  auto format(dsf::geometry::Point const& point, FormatContext&& ctx) const {
     return fmt::format_to(ctx.out(), "POINT ({}, {})", point.x(), point.y());
   }
 };
@@ -85,7 +84,7 @@ struct std::formatter<dsf::geometry::PolyLine> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
   template <typename FormatContext>
-  auto format(dsf::geometry::PolyLine const& polyline, FormatContext&& ctx) {
+  auto format(dsf::geometry::PolyLine const& polyline, FormatContext&& ctx) const {
     auto out = std::format_to(ctx.out(), "LINESTRING (");
     for (std::size_t i = 0; i < polyline.size(); ++i) {
       if (i > 0) {
