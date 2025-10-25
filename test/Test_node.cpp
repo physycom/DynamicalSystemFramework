@@ -24,19 +24,19 @@ TEST_CASE("Intersection") {
         Intersection intersection{id};
         THEN("Parameters are set correctly") {
           CHECK_EQ(intersection.id(), id);
-          CHECK_FALSE(intersection.coords().has_value());
+          CHECK_FALSE(intersection.geometry().has_value());
           CHECK_EQ(intersection.capacity(), 1);
           CHECK_EQ(intersection.transportCapacity(), 1);
           CHECK(intersection.name().empty());
         }
       }
       WHEN("An Intersection is created using an Id and coordinates") {
-        Intersection intersection{id, std::make_pair(lat, lon)};
+        Intersection intersection{id, dsf::geometry::Point{lon, lat}};
         THEN("Parameters are set correctly") {
           CHECK_EQ(intersection.id(), id);
-          CHECK(intersection.coords().has_value());
-          CHECK_EQ(intersection.coords().value().first, lat);
-          CHECK_EQ(intersection.coords().value().second, lon);
+          CHECK(intersection.geometry().has_value());
+          CHECK_EQ(intersection.geometry().value().x(), lon);
+          CHECK_EQ(intersection.geometry().value().y(), lat);
           CHECK_EQ(intersection.capacity(), 1);
           CHECK_EQ(intersection.transportCapacity(), 1);
           CHECK(intersection.name().empty());
@@ -72,15 +72,15 @@ TEST_CASE("TrafficLight") {
       }
     }
     GIVEN("A node object") {
-      Intersection intersection(0, std::make_pair(1., 2.));
+      Intersection intersection(0, dsf::geometry::Point{1., 2.});
       WHEN("The node is converted to a traffic light") {
         TrafficLight tl(intersection, 60);
         THEN("The traffic light is created with correct parameters") {
           CHECK_EQ(tl.id(), 0);
           CHECK_EQ(tl.cycleTime(), 60);
-          CHECK(tl.coords().has_value());
-          CHECK_EQ(tl.coords().value().first, 1.);
-          CHECK_EQ(tl.coords().value().second, 2.);
+          CHECK(tl.geometry().has_value());
+          CHECK_EQ(tl.geometry().value().x(), 1.);
+          CHECK_EQ(tl.geometry().value().y(), 2.);
         }
       }
     }
@@ -229,7 +229,7 @@ TEST_CASE("Station") {
         }
       }
       WHEN("The Station is created using an Id and coordinates") {
-        Station station{id, std::make_pair(lat, lon), managementTime};
+        Station station{id, dsf::geometry::Point(lat, lon), managementTime};
         THEN("Parameters are set correctly") {
           CHECK_EQ(station.id(), id);
           CHECK_EQ(station.managementTime(), managementTime);
@@ -239,7 +239,7 @@ TEST_CASE("Station") {
         }
       }
       WHEN("The Station is created using a copy constructor") {
-        Station base{id, std::make_pair(lat, lon), managementTime};
+        Station base{id, dsf::geometry::Point(lat, lon), managementTime};
         base.setCapacity(2);
         base.setTransportCapacity(3);
         base.setName(name);

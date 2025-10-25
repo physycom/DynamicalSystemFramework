@@ -23,9 +23,9 @@ namespace dsf {
     Station(Id id, Delay managementTime);
     /// @brief Construct a new Station object
     /// @param id The station's id
-    /// @param coords A std::pair containing the station's coordinates (lat, lon)
+    /// @param point A geometry::Point containing the station's coordinates
     /// @param managementTime The time it takes between two train departures/arrivals
-    Station(Id id, std::pair<double, double> coords, Delay managementTime);
+    Station(Id id, geometry::Point point, Delay managementTime);
     /// @brief Construct a new Station object
     /// @param node A Node object representing the station
     /// @param managementTime The time it takes between two train departures/arrivals

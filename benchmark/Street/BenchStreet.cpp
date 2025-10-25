@@ -13,7 +13,7 @@ using SparseMatrix = dsf::SparseMatrix<bool>;
 using Bench = sb::Bench<long long int>;
 
 int main() {
-  Street street(0, std::make_pair(0, 1), 5000.);
+  Street street(0, dsf::geometry::Point(0, 1), 5000.);
   Agent agent(0, 0, 0);
   Bench b(1000);
 

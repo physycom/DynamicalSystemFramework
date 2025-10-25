@@ -36,7 +36,7 @@ namespace dsf {
          double maxSpeed = 13.8888888889,
          int nLanes = 1,
          std::string name = std::string(),
-         std::vector<std::pair<double, double>> geometry = {},
+         geometry::PolyLine geometry = {},
          std::optional<int> capacity = std::nullopt,
          double transportCapacity = 1.);
     /// @brief Set the mean vehicle length, in meters (default is 5)

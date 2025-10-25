@@ -15,10 +15,10 @@ namespace dsf {
              double maxSpeed,
              int nLanes,
              std::string name,
-             std::vector<std::pair<double, double>> geometry,
+             geometry::PolyLine polyline,
              std::optional<int> capacity,
              double transportCapacity)
-      : Edge(id, std::move(nodePair), std::move(geometry)),
+      : Edge(id, std::move(nodePair), std::move(polyline)),
         m_length{length},
         m_maxSpeed{maxSpeed},
         m_nLanes{nLanes},

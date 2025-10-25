@@ -673,8 +673,11 @@ namespace dsf {
         bool overtimed{false};
         {
           auto const timeDiff{this->time_step() - pAgentTemp->freeTime()};
-          auto const timeTolerance{3 *
-                                   std::ceil(pStreet->length() / pStreet->maxSpeed())};
+          // A minute of delay has never hurt anyone, right?
+          auto const timeTolerance{
+              std::max(static_cast<std::time_t>(60),
+                       static_cast<std::time_t>(
+                           3 * std::ceil(pStreet->length() / pStreet->maxSpeed())))};
           if (timeDiff > timeTolerance) {
             overtimed = true;
             spdlog::warn(

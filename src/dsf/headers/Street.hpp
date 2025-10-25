@@ -67,7 +67,7 @@ namespace dsf {
            double maxSpeed = 13.8888888889,
            int nLanes = 1,
            std::string name = std::string(),
-           std::vector<std::pair<double, double>> geometry = {},
+           geometry::PolyLine geometry = {},
            std::optional<int> capacity = std::nullopt,
            double transportCapacity = 1.);
     Street(Street&&) = default;
@@ -156,7 +156,7 @@ namespace dsf {
                      double maxSpeed = 13.8888888889,
                      int nLanes = 1,
                      std::string name = std::string(),
-                     std::vector<std::pair<double, double>> geometry = {},
+                     geometry::PolyLine geometry = {},
                      double flowRate = 1.,
                      std::optional<int> capacity = std::nullopt,
                      double transportCapacity = 1.);

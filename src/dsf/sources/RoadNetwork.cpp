@@ -1,3 +1,4 @@
+#include "../headers/Geometry.hpp"
 #include "../headers/RoadNetwork.hpp"
 
 #include <algorithm>
@@ -44,53 +45,9 @@ namespace dsf {
       auto const streetId = csvReader.GetCell<Id>("id", i);
       auto const dLength = csvReader.GetCell<double>("length", i);
       auto const name = csvReader.GetCell<std::string>("name", i);
-      std::vector<std::pair<double, double>> coords;
+      geometry::PolyLine polyline;
       if (bHasGeometry) {
-        auto const geometry = csvReader.GetCell<std::string>("geometry", i);
-        if (!geometry.empty()) {
-          // Geometry is LINESTRING(lon,lat lon,lat ...)
-          std::istringstream geom{geometry};
-          std::string pair;
-          std::getline(geom, pair, '(');
-          while (std::getline(geom, pair, ',')) {
-            pair.erase(pair.begin(),
-                       std::find_if(pair.begin(), pair.end(), [](unsigned char ch) {
-                         return !std::isspace(ch);
-                       }));
-
-            // Trim trailing spaces
-            pair.erase(std::find_if(pair.rbegin(),
-                                    pair.rend(),
-                                    [](unsigned char ch) { return !std::isspace(ch); })
-                           .base(),
-                       pair.end());
-            // Create a stream for each coordinate pair to split by comma
-            std::istringstream pairStream(pair);
-            std::string lon, lat;
-            std::getline(pairStream, lon, ' ');
-            std::getline(pairStream, lat);  // read the rest for latitude
-            // Remove ')' from lat if present
-            if (lat.back() == ')') {
-              lat.pop_back();
-            }
-            auto dLon{0.}, dLat{0.};
-            try {
-              dLon = std::stod(lon);
-              dLat = std::stod(lat);
-            } catch (const std::invalid_argument& e) {
-              spdlog::error("Invalid coordinates ({}, {}) for edge {}->{}",
-                            lon,
-                            lat,
-                            sourceId,
-                            targetId);
-            }
-            // Note: The original code stored as (lat, lon) based on your comment.
-            coords.emplace_back(dLon, dLat);
-          }
-        } else {
-          coords.emplace_back(node(sourceId)->coords().value());
-          coords.emplace_back(node(targetId)->coords().value());
-        }
+        polyline = geometry::PolyLine(csvReader.GetCell<std::string>("geometry", i));
       }
 
       auto iLanes = 1;
@@ -121,7 +78,7 @@ namespace dsf {
                        dMaxSpeed,
                        iLanes,
                        name,
-                       coords));
+                       polyline));
 
       if (bHasCoilcode) {
         auto strCoilCode = csvReader.GetCell<std::string>("coilcode", i);
@@ -194,57 +151,21 @@ namespace dsf {
       } else if (strType.find("roundabout") != std::string::npos) {
         makeRoundabout(nodeId);
       }
-
-      std::pair<double, double> coords;
       auto const& strGeometry = csvReader.GetCell<std::string>("geometry", i);
       if (!strGeometry.empty()) {
-        // Geometry is POINT (lon lat)
-        std::istringstream geom{strGeometry};
-        std::string pair;
-        std::getline(geom, pair, '(');
-        while (std::getline(geom, pair, ',')) {
-          pair.erase(pair.begin(),
-                     std::find_if(pair.begin(), pair.end(), [](unsigned char ch) {
-                       return !std::isspace(ch);
-                     }));
-
-          // Trim trailing spaces
-          pair.erase(std::find_if(pair.rbegin(),
-                                  pair.rend(),
-                                  [](unsigned char ch) { return !std::isspace(ch); })
-                         .base(),
-                     pair.end());
-          // Create a stream for each coordinate pair to split by comma
-          std::istringstream pairStream(pair);
-          std::string lon, lat;
-          std::getline(pairStream, lon, ' ');
-          std::getline(pairStream, lat);  // read the rest for latitude
-          // Remove ')' from lat if present
-          if (lat.back() == ')') {
-            lat.pop_back();
-          }
-          auto dLon{0.}, dLat{0.};
-          try {
-            dLon = std::stod(lon);
-            dLat = std::stod(lat);
-          } catch (const std::invalid_argument& e) {
-            spdlog::error("Invalid coordinates ({}, {}) for node {}", lon, lat, nodeId);
-          }
-          // Note: The original code stored as (lat, lon) based on your comment.
-          coords = std::make_pair(dLon, dLat);
-        }
+        auto const point = geometry::Point(strGeometry);
         auto const& pNode{node(nodeId)};
-        // Assign coords or check if these coords match the existing ones
-        if (!pNode->coords().has_value()) {
-          pNode->setCoords(coords);
+        // Assign geometry or check if these geometry match the existing ones
+        if (!pNode->geometry().has_value()) {
+          pNode->setGeometry(point);
         } else {
-          auto const& [oldLon, oldLat] = pNode->coords().value();
-          auto const& [newLon, newLat] = coords;
+          auto const& [oldLon, oldLat] = pNode->geometry().value();
+          auto const& [newLon, newLat] = point;
           if (std::abs(oldLat - newLat) > std::numeric_limits<double>::epsilon() ||
               std::abs(oldLon - newLon) > std::numeric_limits<double>::epsilon()) {
             spdlog::error(
-                "Node {} coordinates from properties file ({}, {}) do not match existing "
-                "coordinates ({}, {}). Keeping existing coordinates.",
+                "Node {} geometry from properties file ({}, {}) do not match existing "
+                "geometry ({}, {}). Keeping existing geometry.",
                 nodeId,
                 newLat,
                 newLon,
@@ -277,7 +198,7 @@ namespace dsf {
         continue;
       }
 
-      std::vector<std::pair<double, double>> geometry;
+      geometry::PolyLine geometry;
       for (auto const& coord : feature["geometry"]["coordinates"]) {
         auto const& lat = coord.at(1);
         auto const& lon = coord.at(0);
@@ -353,14 +274,13 @@ namespace dsf {
                          edge_lanes,
                          name,
                          geometry));
-        addStreet(Street(
-            edge_id * 10 + 1,
-            std::make_pair(dst_node_id, src_node_id),
-            edge_length,
-            edge_maxspeed,
-            edge_lanes,
-            name,
-            std::vector<std::pair<double, double>>(geometry.rbegin(), geometry.rend())));
+        addStreet(Street(edge_id * 10 + 1,
+                         std::make_pair(dst_node_id, src_node_id),
+                         edge_length,
+                         edge_maxspeed,
+                         edge_lanes,
+                         name,
+                         geometry::PolyLine(geometry.rbegin(), geometry.rend())));
       }
     }
     this->m_nodes.rehash(0);
@@ -415,9 +335,9 @@ namespace dsf {
                      inNeighbours.size(),
                      pNode->id());
         // Replace with a normal intersection
-        auto const& coordinates{pNode->coords()};
-        if (coordinates.has_value()) {
-          pNode = std::make_unique<Intersection>(pNode->id(), *coordinates);
+        auto const& geometry{pNode->geometry()};
+        if (geometry.has_value()) {
+          pNode = std::make_unique<Intersection>(pNode->id(), *geometry);
         } else {
           pNode = std::make_unique<Intersection>(pNode->id());
         }
@@ -836,157 +756,6 @@ namespace dsf {
     }
   }
 
-  void RoadNetwork::importMatrix(const std::string& fileName,
-                                 bool isAdj,
-                                 double defaultSpeed) {
-    // check the file extension
-    std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
-    if (fileExt == "dsf") {
-      std::ifstream file{fileName};
-      if (!file.is_open()) {
-        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
-      }
-      Size rows, cols;
-      file >> rows >> cols;
-      if (rows != cols) {
-        throw std::invalid_argument("Adjacency matrix must be square");
-      }
-      Size n{rows};
-      addNDefaultNodes<Intersection>(n);
-      // each line has 2 elements
-      while (!file.eof()) {
-        Id index;
-        double val;
-        file >> index >> val;
-        const auto srcId{static_cast<Id>(index / n)};
-        const auto dstId{static_cast<Id>(index % n)};
-        if (isAdj) {
-          addStreet(Street(index, std::make_pair(srcId, dstId)));
-        } else {
-          addStreet(Street(index, std::make_pair(srcId, dstId), val));
-        }
-        edge(index)->setMaxSpeed(defaultSpeed);
-      }
-    } else {
-      // default case: read the file as a matrix with the first two elements being the number of rows and columns and
-      // the following elements being the matrix elements
-      std::ifstream file{fileName};
-      if (!file.is_open()) {
-        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
-      }
-      Size rows, cols;
-      file >> rows >> cols;
-      if (rows != cols) {
-        throw std::invalid_argument(
-            "Adjacency matrix must be square. Rows: " + std::to_string(rows) +
-            " Cols: " + std::to_string(cols));
-      }
-      Size n{rows};
-      addNDefaultNodes<Intersection>(n);
-      if (n * n > std::numeric_limits<Id>::max()) {
-        throw std::invalid_argument(
-            "Matrix size is too large for the current type of Id.");
-      }
-      Id index{0};
-      while (!file.eof()) {
-        double value;
-        file >> value;
-        if (value < 0) {
-          throw std::invalid_argument(
-              std::format("Element at index {} is negative ({}).", index, value));
-        }
-        if (value > 0) {
-          const auto srcId{static_cast<Id>(index / n)};
-          const auto dstId{static_cast<Id>(index % n)};
-          if (isAdj) {
-            addStreet(Street(index, std::make_pair(srcId, dstId)));
-          } else {
-            addStreet(Street(index, std::make_pair(srcId, dstId), value));
-          }
-          edge(index)->setMaxSpeed(defaultSpeed);
-        }
-        ++index;
-      }
-    }
-    this->m_updateMaxAgentCapacity();
-  }
-
-  void RoadNetwork::importCoordinates(const std::string& fileName) {
-    std::string fileExt = fileName.substr(fileName.find_last_of(".") + 1);
-    if (fileExt == "dsf") {
-      // first input number is the number of nodes
-      std::ifstream file{fileName};
-      if (!file.is_open()) {
-        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
-      }
-      Size n;
-      file >> n;
-      if (n < this->nNodes()) {
-        throw std::invalid_argument("Number of node coordinates in file is too small.");
-      }
-      double lat, lon;
-      for (Size i{0}; i < n; ++i) {
-        file >> lon >> lat;
-        try {
-          node(i)->setCoords(std::make_pair(lon, lat));
-        } catch (...) {
-          spdlog::warn(std::format("Node with id {} not found.", i));
-        }
-      }
-    } else if (fileExt == "csv") {
-      std::ifstream ifs{fileName};
-      if (!ifs.is_open()) {
-        throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
-      }
-      // Check if the first line is nodeId;lat;lon
-      std::string line;
-      std::getline(ifs, line);
-      if (line != "id;lat;lon;type") {
-        throw std::invalid_argument("Invalid file format.");
-      }
-      double dLat, dLon;
-      while (!ifs.eof()) {
-        std::getline(ifs, line);
-        if (line.empty()) {
-          continue;
-        }
-        std::istringstream iss{line};
-        std::string nodeId, lat, lon, type;
-        std::getline(iss, nodeId, ';');
-        std::getline(iss, lat, ';');
-        std::getline(iss, lon, ';');
-        std::getline(iss, type, '\n');
-        dLon = lon == "Nan" ? 0. : std::stod(lon);
-        dLat = lat == "Nan" ? 0. : std::stod(lat);
-        auto const& nodes{this->nodes()};
-        auto it = nodes.find(std::stoul(nodeId));
-        if (it != nodes.cend()) {
-          auto const& pNode{it->second};
-          pNode->setCoords(std::make_pair(dLat, dLon));
-          if (type == "traffic_light" && !pNode->isTrafficLight()) {
-            makeTrafficLight(it->first, 60);
-          } else if (type == "roundabout" && !pNode->isRoundabout()) {
-            makeRoundabout(it->first);
-          }
-        } else {
-          spdlog::warn("Node with id {} not found. Skipping coordinates ({}, {}).",
-                       nodeId,
-                       dLat,
-                       dLon);
-        }
-      }
-    } else {
-      throw std::invalid_argument(
-          std::format("File extension ({}) not supported", fileExt));
-    }
-    for (auto const& [_, pEdge] : edges()) {
-      auto const& pSourceNode{node(pEdge->source())};
-      auto const& pTargetNode{node(pEdge->target())};
-      pEdge->setGeometry(std::vector<std::pair<double, double>>{
-          *(pSourceNode->coords()), *(pTargetNode->coords())});
-    }
-  }
-
   void RoadNetwork::importTrafficLights(const std::string& fileName) {
     std::ifstream file{fileName};
     if (!file.is_open()) {
@@ -1012,7 +781,7 @@ namespace dsf {
       auto& pNode{node(std::stoul(strId))};
       if (!pNode->isTrafficLight()) {
         pNode = std::make_unique<TrafficLight>(
-            pNode->id(), cycleTime, pNode->coords().value());
+            pNode->id(), cycleTime, pNode->geometry().value());
       }
       auto& tl = static_cast<TrafficLight&>(*pNode);
       auto const streetId{edge(std::stoul(streetSource), pNode->id())->id()};
@@ -1028,24 +797,6 @@ namespace dsf {
         auto cycle = TrafficLightCycle(greenTime, storedGT);
         tl.setCycle(streetId, dsf::Direction::ANY, cycle);
       }
-    }
-  }
-
-  void RoadNetwork::exportMatrix(std::string path, bool isAdj) {
-    std::ofstream file{path};
-    if (!file.is_open()) {
-      throw std::runtime_error("Error opening file \"" + path + "\" for writing.");
-    }
-    auto const N{nNodes()};
-    file << N << '\t' << N;
-    if (isAdj) {
-      std::for_each(m_edges.cbegin(), m_edges.cend(), [&N, &file](auto const& pair) {
-        file << '\n' << pair.second->source() * N + pair.second->target() << '\t' << 1;
-      });
-    } else {
-      std::for_each(m_edges.cbegin(), m_edges.cend(), [&N, &file](auto const& pair) {
-        file << '\n' << pair.second->id() << '\t' << pair.second->length();
-      });
     }
   }
 
