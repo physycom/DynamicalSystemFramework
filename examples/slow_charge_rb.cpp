@@ -31,9 +31,6 @@ std::atomic<bool> bExitFlag{false};
 #define PRINT_OUT_SPIRES
 // #define PRINT_SPEEDS
 
-using Unit = unsigned int;
-using Delay = uint8_t;
-
 using RoadNetwork = dsf::RoadNetwork;
 using Dynamics = dsf::FirstOrderDynamics;
 using Street = dsf::Street;
@@ -67,8 +64,6 @@ int main(int argc, char** argv) {
   std::cout << "Initial number of agents: " << nAgents << '\n';
   std::cout << "-------------------------------------------------\n";
 
-  const std::string IN_MATRIX{"./data/matrix.dat"};       // input matrix file
-  const std::string IN_COORDS{"./data/coordinates.dsf"};  // input coords file
   const std::string OUT_FOLDER{std::format("{}output_scrb_{}_{}/",
                                            BASE_OUT_FOLDER,
                                            ERROR_PROBABILITY,
@@ -87,15 +82,15 @@ int main(int argc, char** argv) {
   std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
-  graph.importMatrix(IN_MATRIX, false);
-  graph.importCoordinates(IN_COORDS);
+  graph.importEdges("./data/manhattan_edges.csv");
+  graph.importNodeProperties("./data/manhattan_nodes.csv");
   std::cout << "Setting street parameters..." << '\n';
 
   std::cout << "Number of nodes: " << graph.nNodes() << '\n';
   std::cout << "Number of streets: " << graph.nEdges() << '\n';
 
   std::cout << "Rounding the simulation...\n";
-  for (Unit i{0}; i < graph.nNodes(); ++i) {
+  for (std::size_t i{0}; i < graph.nNodes(); ++i) {
     graph.makeRoundabout(i);
   }
   std::cout << "Making every street a spire...\n";
@@ -110,7 +105,7 @@ int main(int argc, char** argv) {
   Dynamics dynamics{graph, true, SEED, 0.6};
 
   {
-    std::vector<Unit> destinationNodes;
+    std::vector<dsf::Id> destinationNodes;
     for (auto const& [nodeId, pNode] : dynamics.graph().nodes()) {
       if (pNode->outgoingEdges().size() < 4) {
         destinationNodes.push_back(nodeId);

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <numeric>
 #include <random>
 #include <set>
@@ -31,9 +32,6 @@ std::atomic<bool> bExitFlag{false};
 // #define PRINT_SPEEDS
 // #define PRINT_TP
 
-using Unit = unsigned int;
-using Delay = uint8_t;
-
 using RoadNetwork = dsf::RoadNetwork;
 using Dynamics = dsf::FirstOrderDynamics;
 using Street = dsf::Street;
@@ -53,6 +51,7 @@ int main(int argc, char** argv) {
         << " <SEED> <ERROR_PROBABILITY> <OUT_FOLDER_BASE> <OPTIMIZE> <INIT_NAGENTS>\n";
     return 1;
   }
+  spdlog::set_level(spdlog::level::err);  // turn off spdlog logging
 
   const int SEED = std::stoi(argv[1]);  // seed for random number generator
   const double ERROR_PROBABILITY{std::stod(argv[2])};
@@ -61,8 +60,6 @@ int main(int argc, char** argv) {
   BASE_OUT_FOLDER += OPTIMIZE ? "_op/" : "/";
   auto nAgents{std::stoul(argv[5])};
 
-  const std::string IN_MATRIX{"./data/matrix.dat"};       // input matrix file
-  const std::string IN_COORDS{"./data/coordinates.dsf"};  // input coords file
   std::string OUT_FOLDER{std::format("{}output_sctl_{}_{}/",
                                      BASE_OUT_FOLDER,
                                      ERROR_PROBABILITY,
@@ -92,8 +89,8 @@ int main(int argc, char** argv) {
   std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};
   std::cout << "Importing matrix.dat...\n";
-  graph.importMatrix(IN_MATRIX, false);
-  graph.importCoordinates(IN_COORDS);
+  graph.importEdges("./data/manhattan_edges.csv");
+  graph.importNodeProperties("./data/manhattan_nodes.csv");
   std::cout << "Setting street parameters..." << '\n';
 
   // graph.addStreet(Street(100002, std::make_pair(0, 108)));
@@ -141,14 +138,14 @@ int main(int argc, char** argv) {
   // graph.addStreet(Street(100043, std::make_pair(108, 119)));
   // graph.addStreet(Street(100044, std::make_pair(119, 108)));
 
-  // graph.buildAdj();
-
   std::cout << "Number of nodes: " << graph.nNodes() << '\n';
   std::cout << "Number of streets: " << graph.nEdges() << '\n';
 
   std::cout << "Traffic Lightning the simulation...\n";
-  for (Unit i{0}; i < graph.nNodes(); ++i) {
-    graph.makeTrafficLight(i, 120);
+  for (auto const& [nodeId, pNode] : graph.nodes()) {
+    if (pNode->outgoingEdges().size() > 3) {
+      graph.makeTrafficLight(nodeId, 120);
+    }
   }
   std::cout << "Making every street a spire...\n";
   for (const auto& pair : graph.edges()) {
@@ -161,29 +158,46 @@ int main(int argc, char** argv) {
   std::normal_distribution d(60., 10.);
   std::array<uint8_t, 2> sda{0, 0};
   auto random = [&d, &gen]() { return std::round(d(gen)); };
-  std::cout << "Setting traffic light parameters..." << '\n';
+  std::cout << "Adjusting node capacities...\n";
   graph.adjustNodeCapacities();
+  std::cout << "Setting traffic light parameters..." << '\n';
   for (const auto& [nodeId, pNode] : graph.nodes()) {
+    if (!pNode->isTrafficLight()) {
+      continue;
+    }
     auto& tl = dynamic_cast<TrafficLight&>(*pNode);
     double value = -1.;
     while (value < 0.) {
       value = random();
     }
-    const auto& col = pNode->ingoingEdges();
-    std::set<Unit> streets;
-    const auto& refLat = pNode->geometry().value().y;
-    for (const auto& inEdgeId : col) {
+    const auto& ingoingEdges = pNode->ingoingEdges();
+    if (ingoingEdges.empty()) {
+      spdlog::error("Node {} has no ingoing edges.", nodeId);
+      continue;
+    }
+    std::set<dsf::Id> streets;
+    if (!pNode->geometry().has_value()) {
+      std::cerr << "Warning: Node " << nodeId << " has no geometry, skipping.\n";
+      continue;
+    }
+    const auto& refLat = (*pNode->geometry()).y();
+    for (const auto& inEdgeId : ingoingEdges) {
       auto const& pEdge{graph.edge(inEdgeId)};
-      const auto& lat = pEdge->geometry().front().y;
+      const auto& edgeGeometry = pEdge->geometry();
+      if (edgeGeometry.empty()) {
+        std::cerr << "Warning: Edge " << inEdgeId << " has empty geometry, skipping.\n";
+        continue;
+      }
+      const auto& lat = edgeGeometry.front().y();
       // std::cout << "Lat: " << lat << " RefLat: " << refLat << '\n';
-      if (lat == refLat) {
+      if (std::abs(lat - refLat) < std::numeric_limits<double>::epsilon()) {
         streets.emplace(inEdgeId);
       }
     }
     for (auto const& streetId : streets) {
       tl.setCycle(streetId, dsf::Direction::ANY, {static_cast<dsf::Delay>(value), 0});
     }
-    for (const auto& streetId : col) {
+    for (const auto& streetId : ingoingEdges) {
       if (!streets.contains(streetId)) {
         tl.setComplementaryCycle(streetId, *streets.begin());
       }
@@ -199,10 +213,10 @@ int main(int argc, char** argv) {
   std::cout << "Creating dynamics...\n";
 
   Dynamics dynamics{graph, true, SEED, 0.6};
-  Unit n{0};
+  std::size_t n{0};
   {
-    std::vector<Unit> destinationNodes;
-    for (auto const& [nodeId, pNode] : graph.nodes()) {
+    std::vector<dsf::Id> destinationNodes;
+    for (auto const& [nodeId, pNode] : dynamics.graph().nodes()) {
       if (pNode->outgoingEdges().size() < 4) {
         destinationNodes.push_back(pNode->id());
         ++n;
