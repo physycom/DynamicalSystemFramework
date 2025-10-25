@@ -481,5 +481,6 @@ setup(
         "networkx>=3",
         "numpy",
         "geopandas",
+        "shapely",
     ],
 )

@@ -13,6 +13,7 @@ import numpy as np
 import osmnx as ox
 from shapely.geometry import LineString, Point
 
+
 def get_cartography(
     place_name: str | None = None,
     bbox: tuple[float, float, float, float] | None = None,
@@ -320,6 +321,7 @@ def graph_to_gdfs(
 
     return gdf_edges, gdf_nodes
 
+
 def create_manhattan_cartography(
     n_x: int = 10,
     n_y: int = 10,
@@ -348,19 +350,19 @@ def create_manhattan_cartography(
 
     # Create a grid graph
     G = nx.grid_2d_graph(n_x, n_y)
-    
+
     # Convert to DiGraph with bidirectional edges
     G_directed = nx.DiGraph()
-    
+
     # Convert grid coordinates to geographic coordinates (approximate)
     # Approximate conversion: 1 meter ≈ 0.000009 degrees at equator
     meters_to_degrees = 0.000009
     spacing_deg = spacing * meters_to_degrees
-    
+
     # Calculate offsets to center the grid
     x_offset = center_lon - (n_x - 1) * spacing_deg / 2
     y_offset = center_lat - (n_y - 1) * spacing_deg / 2
-    
+
     # Create node mapping and add nodes with attributes
     node_mapping = {}
     node_id = 0
@@ -378,24 +380,24 @@ def create_manhattan_cartography(
                 geometry=Point(lon, lat),
             )
             node_id += 1
-    
+
     # Add bidirectional edges
     edge_id = 0
-    for (u, v) in G.edges():
+    for u, v in G.edges():
         u_id = node_mapping[u]
         v_id = node_mapping[v]
-        
+
         # Get coordinates
-        u_lon, u_lat = G_directed.nodes[u_id]['x'], G_directed.nodes[u_id]['y']
-        v_lon, v_lat = G_directed.nodes[v_id]['x'], G_directed.nodes[v_id]['y']
-        
+        u_lon, u_lat = G_directed.nodes[u_id]["x"], G_directed.nodes[u_id]["y"]
+        v_lon, v_lat = G_directed.nodes[v_id]["x"], G_directed.nodes[v_id]["y"]
+
         # Calculate length (Euclidean distance in degrees, then convert to meters)
-        length_deg = np.sqrt((v_lon - u_lon)**2 + (v_lat - u_lat)**2)
+        length_deg = np.sqrt((v_lon - u_lon) ** 2 + (v_lat - u_lat) ** 2)
         length_m = length_deg / meters_to_degrees
-        
+
         # Create geometry
         line_geom = LineString([(u_lon, u_lat), (v_lon, v_lat)])
-        
+
         # Add edge u -> v
         G_directed.add_edge(
             u_id,
@@ -409,7 +411,7 @@ def create_manhattan_cartography(
             geometry=line_geom,
         )
         edge_id += 1
-        
+
         # Add edge v -> u
         G_directed.add_edge(
             v_id,
@@ -423,56 +425,60 @@ def create_manhattan_cartography(
             geometry=line_geom,
         )
         edge_id += 1
-    
+
     # Convert to GeoDataFrames
     # Edges GeoDataFrame
     edges_data = []
     for u, v, data in G_directed.edges(data=True):
-        edges_data.append({
-            'id': data['id'],
-            'source': u,
-            'target': v,
-            'maxspeed': data['maxspeed'],
-            'nlanes': data['nlanes'],
-            'type': data['type'],
-            'name': data['name'],
-            'length': data['length'],
-            'geometry': data['geometry'],
-        })
+        edges_data.append(
+            {
+                "id": data["id"],
+                "source": u,
+                "target": v,
+                "maxspeed": data["maxspeed"],
+                "nlanes": data["nlanes"],
+                "type": data["type"],
+                "name": data["name"],
+                "length": data["length"],
+                "geometry": data["geometry"],
+            }
+        )
     gdf_edges = gpd.GeoDataFrame(edges_data, crs="EPSG:4326")
-    
+
     # Nodes GeoDataFrame
     nodes_data = []
     for _, data in G_directed.nodes(data=True):
-        nodes_data.append({
-            'id': data['id'],
-            'type': data['type'],
-            'geometry': data['geometry'],
-        })
+        nodes_data.append(
+            {
+                "id": data["id"],
+                "type": data["type"],
+                "geometry": data["geometry"],
+            }
+        )
     gdf_nodes = gpd.GeoDataFrame(nodes_data, crs="EPSG:4326")
-    
+
     return gdf_edges, gdf_nodes
 
 
-if __name__ == "__main__":
-    # # Produce data for tests
-    # edges, nodes = get_cartography(
-    #     "Postua, Piedmont, Italy", consolidate_intersections=False, infer_speeds=True
-    # )
-    # edges.to_csv("../../../test/data/postua_edges.csv", index=False, sep=";")
-    # edges.to_file(
-    #     "../../../test/data/postua_edges.geojson", index=False, driver="GeoJSON"
-    # )
-    # nodes.to_csv("../../../test/data/postua_nodes.csv", index=False, sep=";")
-    # edges, nodes = get_cartography("Forlì, Emilia-Romagna, Italy", infer_speeds=True)
-    # edges.to_csv("../../../test/data/forlì_edges.csv", index=False, sep=";")
-    # nodes.to_csv("../../../test/data/forlì_nodes.csv", index=False, sep=";")
+# if __name__ == "__main__":
+#     # Produce data for tests
+#     edges, nodes = get_cartography(
+#         "Postua, Piedmont, Italy", consolidate_intersections=False, infer_speeds=True
+#     )
+#     edges.to_csv("../../../test/data/postua_edges.csv", index=False, sep=";")
+#     edges.to_file(
+#         "../../../test/data/postua_edges.geojson", index=False, driver="GeoJSON"
+#     )
+#     nodes.to_csv("../../../test/data/postua_nodes.csv", index=False, sep=";")
+#     edges, nodes = get_cartography("Forlì, Emilia-Romagna, Italy", infer_speeds=True)
+#     edges.to_csv("../../../test/data/forlì_edges.csv", index=False, sep=";")
+#     nodes.to_csv("../../../test/data/forlì_nodes.csv", index=False, sep=";")
 
-    # # Produce data for examples
-    # edges, nodes = create_manhattan_cartography(n_x=12, n_y=10)
-    # edges.to_csv("../../../examples/data/manhattan_edges.csv", index=False, sep=";")
-    # nodes.to_csv("../../../examples/data/manhattan_nodes.csv", index=False, sep=";")
-    # import matplotlib.pyplot as plt
-    # # Can you plot and show edges using geometry column and gdf.plot from geopandas
-    # edges.plot()
-    # plt.show()
+#     # Produce data for examples
+#     edges, nodes = create_manhattan_cartography(n_x=12, n_y=10)
+#     edges.to_csv("../../../examples/data/manhattan_edges.csv", index=False, sep=";")
+#     nodes.to_csv("../../../examples/data/manhattan_nodes.csv", index=False, sep=";")
+#     import matplotlib.pyplot as plt
+#     # Can you plot and show edges using geometry column and gdf.plot from geopandas
+#     edges.plot()
+#     plt.show()
