@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
   // Starting
   std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};
-  std::cout << "Importing matrix.dat...\n";
+  std::cout << "Importing Manhattan-like network...\n";
   graph.importEdges("../test/data/manhattan_edges.csv");
   graph.importNodeProperties("../test/data/manhattan_nodes.csv");
   std::cout << "Setting street parameters..." << '\n';

@@ -91,7 +91,7 @@ TEST_CASE("FirstOrderDynamics") {
     GIVEN("A dynamics object and a destination node") {
       FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
       WHEN("We add a span of destination nodes") {
-        std::array<uint32_t, 3> nodes{0, 1, 2};
+        std::array<dsf::Id, 3> nodes{0, 1, 2};
         dynamics.setDestinationNodes(nodes);
         THEN("The destination nodes are added") {
           const auto& itineraries = dynamics.itineraries();
@@ -145,13 +145,6 @@ TEST_CASE("FirstOrderDynamics") {
             "same as "
             "the itinerary") {
           CHECK_EQ(dynamics.nAgents(), 3);
-          for (auto const& [id, pStreet] : dynamics.graph().edges()) {
-            if (pStreet->nAgents() == 0) {
-              continue;
-            }
-            std::cout << "Street " << id << " has "
-                      << pStreet->movingAgents().top()->itineraryId() << std::endl;
-          }
 #ifdef __APPLE__
           CHECK_EQ(dynamics.graph().edge(422)->nAgents(), 1);
           CHECK_EQ(dynamics.graph().edge(422)->movingAgents().top()->itineraryId(), 2);
