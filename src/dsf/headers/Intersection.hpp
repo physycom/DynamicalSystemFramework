@@ -115,20 +115,20 @@ struct std::formatter<dsf::Intersection> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
   template <typename FormatContext>
-  auto format(dsf::Intersection const& intersection, FormatContext&& ctx) {
-    return std::format_to(
+  auto format(dsf::Intersection const& intersection, FormatContext&& ctx) const {
+    auto out = std::format_to(
         ctx.out(),
         "Intersection(id: {}, name: {}, capacity: {}, transportCapacity: {}, "
-        "nAgents: {}, coords: {})",
+        "nAgents: {}, coords: ",
         intersection.id(),
         intersection.name(),
         intersection.capacity(),
         intersection.transportCapacity(),
         intersection.nAgents());
     if (intersection.geometry().has_value()) {
-      return std::format_to(ctx.out(), "{})", *intersection.geometry());
+      return std::format_to(out, "{})", *intersection.geometry());
     } else {
-      return std::format_to(ctx.out(), "N/A)");
+      return std::format_to(out, "N/A)");
     }
   }
 };

@@ -7,7 +7,7 @@
 namespace dsf {
   void Intersection::setCapacity(Size capacity) {
     if (capacity < m_agents.size()) {
-      throw std::logic_error(std::format(
+      throw std::runtime_error(std::format(
           "Intersection capacity ({}) is smaller than the current queue size ({}).",
           capacity,
           m_agents.size()));
@@ -16,7 +16,9 @@ namespace dsf {
   }
 
   void Intersection::addAgent(double angle, std::unique_ptr<Agent> pAgent) {
-    assert(!isFull());
+    if (isFull()) {
+      throw std::runtime_error(std::format("{} is full.", *this));
+    }
     auto iAngle{static_cast<int16_t>(angle * 100)};
     m_agents.emplace(iAngle, std::move(pAgent));
     ++m_agentCounter;
