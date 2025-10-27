@@ -10,18 +10,23 @@
 #include <spdlog/spdlog.h>  // For logging functionality
 
 PYBIND11_MODULE(dsf_cpp, m) {
-  m.doc() = "Python bindings for the DSM library";
+  m.doc() = "Python bindings for the DSF library";
   m.attr("__version__") = dsf::version();
 
+  // Create mobility submodule
+  auto mobility = m.def_submodule("mobility",
+                                  "Bindings for mobility-related classes and functions, "
+                                  "under the dsf::mobility C++ namespace.");
+
   // Bind PathWeight enum
-  pybind11::enum_<dsf::PathWeight>(m, "PathWeight")
+  pybind11::enum_<dsf::PathWeight>(mobility, "PathWeight")
       .value("LENGTH", dsf::PathWeight::LENGTH)
       .value("TRAVELTIME", dsf::PathWeight::TRAVELTIME)
       .value("WEIGHT", dsf::PathWeight::WEIGHT)
       .export_values();
 
   // Bind TrafficLightOptimization enum
-  pybind11::enum_<dsf::TrafficLightOptimization>(m, "TrafficLightOptimization")
+  pybind11::enum_<dsf::TrafficLightOptimization>(mobility, "TrafficLightOptimization")
       .value("SINGLE_TAIL", dsf::TrafficLightOptimization::SINGLE_TAIL)
       .value("DOUBLE_TAIL", dsf::TrafficLightOptimization::DOUBLE_TAIL)
       .export_values();
@@ -45,6 +50,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
 
   m.def("get_log_level", &spdlog::get_level, "Get the current global log level");
 
+  // Bind Measurement to main module (can be used across different contexts)
   pybind11::class_<dsf::Measurement<double>>(m, "Measurement")
       .def(pybind11::init<double, double>(),
            pybind11::arg("mean"),
@@ -57,6 +63,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
                      &dsf::Measurement<double>::std,
                      dsf::g_docstrings.at("dsf::Measurement::std").c_str());
 
+  // Bind AdjacencyMatrix to main module (general graph structure)
   pybind11::class_<dsf::AdjacencyMatrix>(m, "AdjacencyMatrix")
       .def(pybind11::init<>(),
            dsf::g_docstrings.at("dsf::AdjacencyMatrix::AdjacencyMatrix").c_str())
@@ -124,7 +131,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("fileName"),
            dsf::g_docstrings.at("dsf::AdjacencyMatrix::save").c_str());  // Added save
 
-  pybind11::class_<dsf::mobility::RoadNetwork>(m, "RoadNetwork")
+  // Bind mobility-related classes to mobility submodule
+  pybind11::class_<dsf::mobility::RoadNetwork>(mobility, "RoadNetwork")
       .def(pybind11::init<>(),
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::RoadNetwork").c_str())
       .def(pybind11::init<const dsf::AdjacencyMatrix&>(),
@@ -224,7 +232,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("id"),
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::makeSpireStreet").c_str());
 
-  pybind11::class_<dsf::mobility::Itinerary>(m, "Itinerary")
+  pybind11::class_<dsf::mobility::Itinerary>(mobility, "Itinerary")
       .def(pybind11::init<dsf::Id, dsf::Id>(),
            pybind11::arg("id"),
            pybind11::arg("destination"),
@@ -241,7 +249,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
            dsf::g_docstrings.at("dsf::mobility::Itinerary::destination").c_str());
   // .def("path", &dsf::mobility::Itinerary::path, pybind11::return_value_policy::reference_internal);
 
-  pybind11::class_<dsf::mobility::FirstOrderDynamics>(m, "Dynamics")
+  pybind11::class_<dsf::mobility::FirstOrderDynamics>(mobility, "Dynamics")
       //     // Constructors are not directly exposed due to the template nature and complexity.
       //     // Users should use derived classes like FirstOrderDynamics.
       .def(pybind11::init<dsf::mobility::RoadNetwork&,
