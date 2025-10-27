@@ -19,7 +19,7 @@ namespace dsf {
       /// @brief Construct a Point with given x and y coordinates.
       /// @param x The x coordinate
       /// @param y The y coordinate
-      Point(double x, double y);
+      Point(double x, double y) : m_x(x), m_y(y) {}
       /// @brief Construct a Point from a string representation.
       /// @param strPoint The string representation of the point.
       /// @param format The format of the string representation. Default is "WKT".

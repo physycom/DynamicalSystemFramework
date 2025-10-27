@@ -138,7 +138,7 @@ namespace dsf::mobility {
     /// @brief Resets all traffic light cycles
     /// @details For more info, see @ref TrafficLightCycle::reset()
     void resetCycles();
-    inline bool isTrafficLight() const noexcept { return true; }
+    constexpr bool isTrafficLight() const noexcept { return true; }
   };
 }  // namespace dsf::mobility
 

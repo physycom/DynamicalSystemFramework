@@ -33,6 +33,4 @@ namespace dsf::mobility {
   }
 
   bool Station::isFull() const { return m_trains.size() >= this->capacity(); }
-
-  bool Station::isStation() const noexcept { return true; }
 }  // namespace dsf::mobility

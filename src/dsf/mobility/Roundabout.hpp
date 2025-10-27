@@ -55,6 +55,6 @@ namespace dsf::mobility {
     bool isFull() const override { return m_agents.size() == this->capacity(); }
     /// @brief Returns true if the node is a roundabout
     /// @return bool True if the node is a roundabout
-    bool isRoundabout() const noexcept override { return true; }
+    constexpr bool isRoundabout() const noexcept final { return true; }
   };
 }  // namespace dsf::mobility

@@ -1,7 +1,5 @@
 #include "Intersection.hpp"
 
-#include <algorithm>
-#include <cmath>
 #include <stdexcept>
 
 namespace dsf::mobility {

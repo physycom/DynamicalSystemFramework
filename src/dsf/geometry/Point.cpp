@@ -5,7 +5,6 @@
 
 namespace dsf {
   namespace geometry {
-    Point::Point(double x, double y) : m_x(x), m_y(y) {}
     Point::Point(const std::string& strPoint, const std::string& format) {
       if (format == "WKT") {
         auto start = strPoint.find('(');

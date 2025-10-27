@@ -103,10 +103,11 @@ namespace dsf::mobility {
     /// @details This function returns the number of agents that have passed through the node
     ///          since the last time this function was called. It also resets the counter.
     Size agentCounter();
-
+    /// @brief Returns the number of agents currently in the node
+    /// @return Size The number of agents currently in the node
     Size nAgents() const { return m_agents.size(); }
 
-    bool isIntersection() const noexcept final { return true; }
+    constexpr bool isIntersection() const noexcept final { return true; }
   };
 }  // namespace dsf::mobility
 
