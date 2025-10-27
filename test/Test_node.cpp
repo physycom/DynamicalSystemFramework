@@ -1,17 +1,18 @@
 #include <cstdint>
 
-#include "Node.hpp"
-#include "Intersection.hpp"
-#include "TrafficLight.hpp"
-#include "Station.hpp"
-#include "../utility/Typedef.hpp"
+#include "../src/dsf/base/Node.hpp"
+#include "../src/dsf/mobility/Intersection.hpp"
+#include "../src/dsf/mobility/TrafficLight.hpp"
+#include "../src/dsf/mobility/Roundabout.hpp"
+#include "../src/dsf/mobility/Station.hpp"
+#include "../src/dsf/utility/Typedef.hpp"
 
 #include "doctest.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-using Intersection = dsf::Intersection;
-using TrafficLight = dsf::TrafficLight;
-using Station = dsf::Station;
+using Intersection = dsf::mobility::Intersection;
+using TrafficLight = dsf::mobility::TrafficLight;
+using Station = dsf::mobility::Station;
 
 TEST_CASE("Node basic") {
   SUBCASE("Constructors and getters") {
@@ -101,9 +102,9 @@ TEST_CASE("Intersection") {
     Intersection intersection{42};
     intersection.setCapacity(3);
     // Add agents with different angles
-    auto agent1 = std::make_unique<dsf::Agent>(1);
-    auto agent2 = std::make_unique<dsf::Agent>(2);
-    auto agent3 = std::make_unique<dsf::Agent>(3);
+    auto agent1 = std::make_unique<dsf::mobility::Agent>(1);
+    auto agent2 = std::make_unique<dsf::mobility::Agent>(2);
+    auto agent3 = std::make_unique<dsf::mobility::Agent>(3);
     intersection.addAgent(10.0, std::move(agent1));
     intersection.addAgent(5.0, std::move(agent2));
     intersection.addAgent(20.0, std::move(agent3));
@@ -126,12 +127,12 @@ TEST_CASE("Intersection") {
   SUBCASE("Capacity and error handling") {
     Intersection intersection{99};
     intersection.setCapacity(2);
-    auto agent1 = std::make_unique<dsf::Agent>(1);
-    auto agent2 = std::make_unique<dsf::Agent>(2);
+    auto agent1 = std::make_unique<dsf::mobility::Agent>(1);
+    auto agent2 = std::make_unique<dsf::mobility::Agent>(2);
     intersection.addAgent(0.0, std::move(agent1));
     intersection.addAgent(1.0, std::move(agent2));
     CHECK(intersection.isFull());
-    auto agent3 = std::make_unique<dsf::Agent>(3);
+    auto agent3 = std::make_unique<dsf::mobility::Agent>(3);
     CHECK_THROWS_AS(intersection.addAgent(2.0, std::move(agent3)), std::runtime_error);
     // Lowering capacity below current agent count throws
     CHECK_THROWS_AS(intersection.setCapacity(1), std::runtime_error);

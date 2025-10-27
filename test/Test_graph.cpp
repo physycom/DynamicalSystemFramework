@@ -1,18 +1,18 @@
 #include <cassert>
 #include <cstdint>
 
-#include "RoadNetwork.hpp"
-#include "Node.hpp"
-#include "Road.hpp"
-#include "Street.hpp"
-#include "AdjacencyMatrix.hpp"
+#include "../src/dsf/mobility/RoadNetwork.hpp"
+#include "../src/dsf/base/Node.hpp"
+#include "../src/dsf/mobility/Road.hpp"
+#include "../src/dsf/mobility/Street.hpp"
+#include "../src/dsf/base/AdjacencyMatrix.hpp"
 
 #include "doctest.h"
 
-using RoadNetwork = dsf::RoadNetwork;
+using RoadNetwork = dsf::mobility::RoadNetwork;
 using AdjacencyMatrix = dsf::AdjacencyMatrix;
-using Street = dsf::Street;
-using Road = dsf::Road;
+using Street = dsf::mobility::Street;
+using Road = dsf::mobility::Road;
 using Path = std::vector<uint>;
 
 template <typename T1, typename T2>
@@ -223,7 +223,7 @@ TEST_CASE("RoadNetwork") {
         WHEN("We auto-init Traffic Lights") {
           graph2.initTrafficLights();
           THEN("Parameters are correctly set") {
-            auto& tl{graph2.node<dsf::TrafficLight>(1)};
+            auto& tl{graph2.node<dsf::mobility::TrafficLight>(1)};
             CHECK_EQ(tl.cycleTime(), 120);
             auto const& cycles{tl.cycles()};
             CHECK_EQ(cycles.size(), 4);

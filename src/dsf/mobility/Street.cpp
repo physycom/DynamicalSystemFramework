@@ -1,10 +1,10 @@
 
-#include "../headers/Street.hpp"
+#include "Street.hpp"
 
 #include <algorithm>
 #include <spdlog/spdlog.h>
 
-namespace dsf {
+namespace dsf::mobility {
   Street::Street(Id id,
                  std::pair<Id, Id> nodePair,
                  double length,
@@ -205,4 +205,4 @@ namespace dsf {
     increaseOutputCounter();
     return Street::dequeue(index);
   }
-};  // namespace dsf
+};  // namespace dsf::mobility

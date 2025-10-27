@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Edge.hpp"
+#include "../base/Edge.hpp"
 
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
 
-namespace dsf {
+namespace dsf::mobility {
   class Road : public Edge {
   protected:
     static double m_meanVehicleLength;
@@ -111,4 +111,4 @@ namespace dsf {
     virtual double nExitingAgents(Direction direction, bool normalizeOnNLanes) const = 0;
     virtual double density(bool normalized = false) const = 0;
   };
-}  // namespace dsf
+}  // namespace dsf::mobility

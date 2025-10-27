@@ -1,4 +1,4 @@
-#include "../headers/Edge.hpp"
+#include "Edge.hpp"
 
 #include <cassert>
 #include <cmath>

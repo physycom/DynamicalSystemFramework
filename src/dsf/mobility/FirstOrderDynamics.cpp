@@ -1,6 +1,6 @@
-#include "../headers/FirstOrderDynamics.hpp"
+#include "FirstOrderDynamics.hpp"
 
-namespace dsf {
+namespace dsf::mobility {
   double FirstOrderDynamics::m_speedFactor(double const& density) const {
     return (1. - m_alpha * density);
   }

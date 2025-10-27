@@ -10,7 +10,7 @@
 
 #include "../utility/Typedef.hpp"
 
-namespace dsf {
+namespace dsf::mobility {
   /// @brief The Counter class contains two counters to count input and output.
   class Counter {
   protected:
@@ -31,4 +31,4 @@ namespace dsf {
     /// @param reset If true, the counter is reset to 0. Default is true
     int outputCounts(bool reset = true);
   };
-}  // namespace dsf
+}  // namespace dsf::mobility

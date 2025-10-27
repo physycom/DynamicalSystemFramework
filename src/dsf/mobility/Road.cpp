@@ -1,4 +1,4 @@
-#include "../headers/Road.hpp"
+#include "Road.hpp"
 
 #include <cassert>
 #include <cmath>
@@ -6,7 +6,7 @@
 #include <numbers>
 #include <stdexcept>
 
-namespace dsf {
+namespace dsf::mobility {
   double Road::m_meanVehicleLength = 5.;
 
   Road::Road(Id id,
@@ -110,4 +110,4 @@ namespace dsf {
   std::string Road::name() const { return m_name; }
   int Road::priority() const { return m_priority; }
   std::set<Id> const& Road::forbiddenTurns() const { return m_forbiddenTurns; }
-};  // namespace dsf
+};  // namespace dsf::mobility

@@ -2,18 +2,18 @@
 #include <optional>
 #include <numbers>
 
-#include "Agent.hpp"
-#include "Intersection.hpp"
-#include "Street.hpp"
-#include "../utility/Typedef.hpp"
+#include "../src/dsf/mobility/Agent.hpp"
+#include "../src/dsf/mobility/Intersection.hpp"
+#include "../src/dsf/mobility/Street.hpp"
+#include "../src/dsf/utility/Typedef.hpp"
 
 #include "doctest.h"
 
-using Agent = dsf::Agent;
-using Intersection = dsf::Intersection;
-using Street = dsf::Street;
-using Road = dsf::Road;
-using SpireStreet = dsf::SpireStreet;
+using Agent = dsf::mobility::Agent;
+using Intersection = dsf::mobility::Intersection;
+using Street = dsf::mobility::Street;
+using Road = dsf::mobility::Road;
+using SpireStreet = dsf::mobility::SpireStreet;
 
 TEST_CASE("Street") {
   Road::setMeanVehicleLength(1.);

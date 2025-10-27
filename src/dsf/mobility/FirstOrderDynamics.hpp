@@ -2,7 +2,7 @@
 
 #include "RoadDynamics.hpp"
 
-namespace dsf {
+namespace dsf::mobility {
   class FirstOrderDynamics : public RoadDynamics<Delay> {
     double m_alpha;
     double m_speedFluctuationSTD;
@@ -50,4 +50,4 @@ namespace dsf {
     /// @return Measurement The mean speed of the agents and the standard deviation
     Measurement<double> streetMeanSpeed(double threshold, bool above) const override;
   };
-}  // namespace dsf
+}  // namespace dsf::mobility

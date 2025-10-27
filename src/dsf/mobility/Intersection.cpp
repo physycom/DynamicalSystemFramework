@@ -1,10 +1,10 @@
-#include "../headers/Intersection.hpp"
+#include "Intersection.hpp"
 
 #include <algorithm>
-#include <format>
+#include <cmath>
 #include <stdexcept>
 
-namespace dsf {
+namespace dsf::mobility {
   void Intersection::setCapacity(Size capacity) {
     if (capacity < m_agents.size()) {
       throw std::runtime_error(std::format(
@@ -37,4 +37,4 @@ namespace dsf {
     m_agentCounter = 0;
     return copy;
   }
-}  // namespace dsf
+}  // namespace dsf::mobility

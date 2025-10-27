@@ -3,14 +3,15 @@
 #include <iomanip>
 #include <iostream>
 
-#include "FirstOrderDynamics.hpp"
-#include "RoadNetwork.hpp"
-#include "Itinerary.hpp"
-#include "Street.hpp"
+#include "../src/dsf/mobility/FirstOrderDynamics.hpp"
+#include "../src/dsf/mobility/RoadNetwork.hpp"
+#include "../src/dsf/mobility/Itinerary.hpp"
+#include "../src/dsf/mobility/Street.hpp"
 
 #include "doctest.h"
 
 using namespace dsf;
+using namespace dsf::mobility;
 
 TEST_CASE("Measurement") {
   SUBCASE("STL vector") {
@@ -648,10 +649,10 @@ TEST_CASE("FirstOrderDynamics") {
         tl.setComplementaryCycle(8, 11);
         tl.setComplementaryCycle(21, 11);
       }
-      graph2.addNode<dsf::Intersection>(0, dsf::geometry::Point(-1, 0));
-      graph2.addNode<dsf::Intersection>(2, dsf::geometry::Point(1, 0));
-      graph2.addNode<dsf::Intersection>(3, dsf::geometry::Point(0, -1));
-      graph2.addNode<dsf::Intersection>(4, dsf::geometry::Point(0, 1));
+      graph2.addNode<dsf::mobility::Intersection>(0, dsf::geometry::Point(-1, 0));
+      graph2.addNode<dsf::mobility::Intersection>(2, dsf::geometry::Point(1, 0));
+      graph2.addNode<dsf::mobility::Intersection>(3, dsf::geometry::Point(0, -1));
+      graph2.addNode<dsf::mobility::Intersection>(4, dsf::geometry::Point(0, 1));
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
       graph2.adjustNodeCapacities();
 
@@ -711,10 +712,10 @@ TEST_CASE("FirstOrderDynamics") {
         tl.setComplementaryCycle(8, 11);
         tl.setComplementaryCycle(21, 11);
       }
-      graph2.addNode<dsf::Intersection>(0, dsf::geometry::Point(-1, 0));
-      graph2.addNode<dsf::Intersection>(2, dsf::geometry::Point(1, 0));
-      graph2.addNode<dsf::Intersection>(3, dsf::geometry::Point(0, -1));
-      graph2.addNode<dsf::Intersection>(4, dsf::geometry::Point(0, 1));
+      graph2.addNode<dsf::mobility::Intersection>(0, dsf::geometry::Point(-1, 0));
+      graph2.addNode<dsf::mobility::Intersection>(2, dsf::geometry::Point(1, 0));
+      graph2.addNode<dsf::mobility::Intersection>(3, dsf::geometry::Point(0, -1));
+      graph2.addNode<dsf::mobility::Intersection>(4, dsf::geometry::Point(0, 1));
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1, s3_1, s1_3, s4_1, s1_4);
       graph2.adjustNodeCapacities();
       graph2.autoMapStreetLanes();

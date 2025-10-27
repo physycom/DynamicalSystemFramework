@@ -1,4 +1,4 @@
-#include "../headers/TrafficLight.hpp"
+#include "TrafficLight.hpp"
 
 #include <format>
 #include <numeric>
@@ -6,7 +6,7 @@
 
 #include <spdlog/spdlog.h>
 
-namespace dsf {
+namespace dsf::mobility {
   bool TrafficLightCycle::isGreen(Delay const cycleTime, Delay const counter) const {
     auto const greenStart = m_phase % cycleTime;
     auto const greenEnd = (m_phase + m_greenTime) % cycleTime;

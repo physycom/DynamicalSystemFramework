@@ -10,7 +10,7 @@
 
 #include <map>
 
-namespace dsf {
+namespace dsf::mobility {
   class Station : public RoadJunction {
   private:
     Delay m_managementTime;
@@ -51,6 +51,6 @@ namespace dsf {
     bool isFull() const;
     /// @brief Check if the node is a station
     /// @return True
-    bool isStation() const noexcept final;
+    bool isStation() const noexcept;
   };
-}  // namespace dsf
+}  // namespace dsf::mobility

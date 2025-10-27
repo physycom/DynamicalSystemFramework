@@ -46,12 +46,12 @@ endif()
 
 # add as executable all cpp files into '.' folder
 file(GLOB TEST_SOURCES "*.cpp")
-file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp")
+file(GLOB SRC_SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp")
 list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 
 # Define the executable
 add_executable(dsf_tests.out ${SOURCES})
-target_include_directories(dsf_tests.out PRIVATE ../src/dsf/headers/ ../src/dsf/utility/TypeTraits/)
+target_include_directories(dsf_tests.out PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
 target_include_directories(dsf_tests.out SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
 target_include_directories(dsf_tests.out PRIVATE ${rapidcsv_SOURCE_DIR}/src)
 target_link_libraries(dsf_tests.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)

@@ -29,7 +29,7 @@
 #include <tbb/tbb.h>
 #include <spdlog/spdlog.h>
 
-#include "Dynamics.hpp"
+#include "../base/Dynamics.hpp"
 #include "Agent.hpp"
 #include "Itinerary.hpp"
 #include "RoadNetwork.hpp"
@@ -37,7 +37,7 @@
 
 static auto constexpr g_cacheFolder = "./.dsfcache/";
 
-namespace dsf {
+namespace dsf::mobility {
   /// @brief The RoadDynamics class represents the dynamics of the network.
   /// @tparam delay_t The type of the agent's delay
   template <typename delay_t>
@@ -2407,4 +2407,4 @@ namespace dsf {
 
     file.close();
   }
-};  // namespace dsf
+};  // namespace dsf::mobility

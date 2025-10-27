@@ -8,11 +8,13 @@
 namespace dsf {
   class Node;
 
-  class Intersection;
+  namespace mobility {
+    class Intersection;
 
-  class TrafficLight;
+    class TrafficLight;
 
-  class Roundabout;
+    class Roundabout;
+  }  // namespace mobility
 
   // define is_node type trait
   template <typename T>
@@ -30,42 +32,42 @@ namespace dsf {
   template <>
   struct is_node<std::unique_ptr<Node>> : std::true_type {};
 
-  // TODO: this is bad, I'll rework the type-traits
+    // TODO: this is bad, I'll rework the type-traits
   template <>
-  struct is_node<Intersection> : std::true_type {};
+  struct is_node<mobility::Intersection> : std::true_type {};
 
   template <>
-  struct is_node<const Intersection> : std::true_type {};
+  struct is_node<const mobility::Intersection> : std::true_type {};
 
   template <>
-  struct is_node<const Intersection&> : std::true_type {};
+  struct is_node<const mobility::Intersection&> : std::true_type {};
 
   template <>
-  struct is_node<std::unique_ptr<Intersection>> : std::true_type {};
+  struct is_node<std::unique_ptr<mobility::Intersection>> : std::true_type {};
 
   template <>
-  struct is_node<TrafficLight> : std::true_type {};
+  struct is_node<mobility::TrafficLight> : std::true_type {};
 
   template <>
-  struct is_node<const TrafficLight> : std::true_type {};
+  struct is_node<const mobility::TrafficLight> : std::true_type {};
 
   template <>
-  struct is_node<const TrafficLight&> : std::true_type {};
+  struct is_node<const mobility::TrafficLight&> : std::true_type {};
 
   template <>
-  struct is_node<std::unique_ptr<TrafficLight>> : std::true_type {};
+  struct is_node<std::unique_ptr<mobility::TrafficLight>> : std::true_type {};
 
   template <>
-  struct is_node<Roundabout> : std::true_type {};
+  struct is_node<mobility::Roundabout> : std::true_type {};
 
   template <>
-  struct is_node<const Roundabout> : std::true_type {};
+  struct is_node<const mobility::Roundabout> : std::true_type {};
 
   template <>
-  struct is_node<const Roundabout&> : std::true_type {};
+  struct is_node<const mobility::Roundabout&> : std::true_type {};
 
   template <>
-  struct is_node<std::unique_ptr<Roundabout>> : std::true_type {};
+  struct is_node<std::unique_ptr<mobility::Roundabout>> : std::true_type {};
 
   template <typename T>
   inline constexpr bool is_node_v = is_node<T>::value;

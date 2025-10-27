@@ -1,10 +1,10 @@
 #include <cstdint>
 
-#include "Itinerary.hpp"
+#include "../src/dsf/mobility/Itinerary.hpp"
 
 #include "doctest.h"
 
-using Itinerary = dsf::Itinerary;
+using Itinerary = dsf::mobility::Itinerary;
 
 TEST_CASE("Itinerary") {
   SUBCASE("Constructors") {

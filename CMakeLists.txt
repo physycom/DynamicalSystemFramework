@@ -28,7 +28,7 @@ find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(simdjson REQUIRED)
 
-file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp")
+file(GLOB SOURCES "src/dsf/base/*.cpp" "src/dsf/mobility/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp")
 
 include(FetchContent)
 # Get rapidcsv
@@ -43,7 +43,7 @@ endif()
 
 add_library(dsf STATIC ${SOURCES})
 target_include_directories(dsf PUBLIC 
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/headers>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:include>
 )
 

@@ -16,7 +16,7 @@
 #include <memory>
 #include <set>
 
-namespace dsf {
+namespace dsf::mobility {
   /// @brief The Intersection class represents a node in the network.
   /// @tparam Id The type of the node's id. It must be an unsigned integral type.
   class Intersection : public RoadJunction {
@@ -108,14 +108,14 @@ namespace dsf {
 
     bool isIntersection() const noexcept final { return true; }
   };
-}  // namespace dsf
+}  // namespace dsf::mobility
 
 template <>
-struct std::formatter<dsf::Intersection> {
+struct std::formatter<dsf::mobility::Intersection> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
   template <typename FormatContext>
-  auto format(dsf::Intersection const& intersection, FormatContext&& ctx) const {
+  auto format(dsf::mobility::Intersection const& intersection, FormatContext&& ctx) const {
     auto out = std::format_to(
         ctx.out(),
         "Intersection(id: {}, name: {}, capacity: {}, transportCapacity: {}, "

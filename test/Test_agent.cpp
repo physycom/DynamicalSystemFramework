@@ -1,11 +1,11 @@
 #include <cstdint>
 
-#include "Agent.hpp"
-#include "Itinerary.hpp"
+#include "../src/dsf/mobility/Agent.hpp"
+#include "../src/dsf/mobility/Itinerary.hpp"
 
 #include "doctest.h"
 
-using Agent = dsf::Agent;
+using Agent = dsf::mobility::Agent;
 
 TEST_CASE("Agent") {
   SUBCASE("Constructors") {

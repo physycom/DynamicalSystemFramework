@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "../headers/Street.hpp"
 #include "../utility/Typedef.hpp"
 
 namespace dsf {
@@ -21,7 +20,6 @@ namespace dsf {
     std::vector<Id> indices(const AdjacencyMatrix& adj);
   }  // namespace test
 
-  class Street;
   /// @brief The AdjacencyMatrix class represents the adjacency matrix of the network.
   /// @details The AdjacencyMatrix class represents the adjacency matrix of the network.
   ///          It is defined as \f$A = (a_{ij})\f$, where \f$a_{ij} \in \{0, 1\}\f$.

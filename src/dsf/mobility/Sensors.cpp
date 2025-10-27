@@ -1,6 +1,6 @@
-#include "../headers/Sensors.hpp"
+#include "Sensors.hpp"
 
-namespace dsf {
+namespace dsf::mobility {
   void Counter::setCode(Id const code) { m_code = code; }
   void Counter::increaseInputCounter() { m_counters.first++; }
   void Counter::increaseOutputCounter() { m_counters.second++; }

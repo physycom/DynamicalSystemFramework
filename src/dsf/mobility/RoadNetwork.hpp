@@ -9,8 +9,8 @@
 
 #pragma once
 
-#include "AdjacencyMatrix.hpp"
-#include "Network.hpp"
+#include "../base/AdjacencyMatrix.hpp"
+#include "../base/Network.hpp"
 #include "RoadJunction.hpp"
 #include "Intersection.hpp"
 #include "TrafficLight.hpp"
@@ -40,7 +40,7 @@
 
 #include <spdlog/spdlog.h>
 
-namespace dsf {
+namespace dsf::mobility {
   /// @brief The RoadNetwork class represents a graph in the network.
   /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
   /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
@@ -379,4 +379,4 @@ namespace dsf {
 
     return result;
   }
-};  // namespace dsf
+};  // namespace dsf::mobility

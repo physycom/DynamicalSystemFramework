@@ -1,5 +1,5 @@
 
-#include "../headers/AdjacencyMatrix.hpp"
+#include "AdjacencyMatrix.hpp"
 
 #include <cassert>
 #include <fstream>

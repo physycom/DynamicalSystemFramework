@@ -1,10 +1,10 @@
 
-#include "../headers/Itinerary.hpp"
+#include "Itinerary.hpp"
 
 #include <fstream>
 #include <stdexcept>
 
-namespace dsf {
+namespace dsf::mobility {
   Itinerary::Itinerary(Id id, Id destination) : m_id{id}, m_destination{destination} {}
 
   void Itinerary::load(const std::string& fileName) {
@@ -61,4 +61,4 @@ namespace dsf {
     outFile.close();
   }
 
-};  // namespace dsf
+};  // namespace dsf::mobility

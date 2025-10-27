@@ -24,7 +24,7 @@
 
 #include <fmt/format.h>
 
-namespace dsf {
+namespace dsf::mobility {
   /// @brief The Agent class represents an agent in the network.
   class Agent {
   private:
@@ -121,14 +121,14 @@ namespace dsf {
     /// @return True if the agent is a random agent, false otherwise
     inline bool isRandom() const noexcept { return m_trip.empty(); };
   };
-};  // namespace dsf
+};  // namespace dsf::mobility
 
-// Specialization of std::formatter for dsf::Agent
+// Specialization of std::formatter for dsf::mobility::Agent
 template <>
-struct std::formatter<dsf::Agent> {
+struct std::formatter<dsf::mobility::Agent> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(const dsf::Agent& agent, FormatContext&& ctx) const {
+  auto format(const dsf::mobility::Agent& agent, FormatContext&& ctx) const {
     auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
                                                    : std::to_string(agent.itineraryId());
     return std::format_to(
@@ -148,12 +148,12 @@ struct std::formatter<dsf::Agent> {
         agent.freeTime());
   }
 };
-// Specialization of fmt::formatter for dsf::Agent
+// Specialization of fmt::formatter for dsf::mobility::Agent
 template <>
-struct fmt::formatter<dsf::Agent> {
+struct fmt::formatter<dsf::mobility::Agent> {
   constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(const dsf::Agent& agent, FormatContext& ctx) const {
+  auto format(const dsf::mobility::Agent& agent, FormatContext& ctx) const {
     auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
                                                    : std::to_string(agent.itineraryId());
     return fmt::format_to(

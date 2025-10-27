@@ -1,9 +1,9 @@
-#include "../headers/Roundabout.hpp"
+#include "Roundabout.hpp"
 
 #include <format>
 #include <stdexcept>
 
-namespace dsf {
+namespace dsf::mobility {
   Roundabout::Roundabout(const RoadJunction& node) : RoadJunction{node} {}
 
   void Roundabout::enqueue(std::unique_ptr<Agent> pAgent) {

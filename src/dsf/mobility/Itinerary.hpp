@@ -18,7 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace dsf {
+namespace dsf::mobility {
   /// @brief The Itinerary class represents an itinerary in the network.
   /// @tparam Id The type of the itinerary's id. It must be an unsigned integral type.
   class Itinerary {
@@ -57,4 +57,4 @@ namespace dsf {
 
     void save(const std::string& fileName) const;
   };
-};  // namespace dsf
+};  // namespace dsf::mobility

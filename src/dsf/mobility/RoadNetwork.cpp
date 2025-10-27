@@ -1,6 +1,6 @@
 #include "../geometry/Point.hpp"
 #include "../geometry/PolyLine.hpp"
-#include "../headers/RoadNetwork.hpp"
+#include "RoadNetwork.hpp"
 
 #include <algorithm>
 #include <ranges>
@@ -8,7 +8,7 @@
 #include <rapidcsv.h>
 #include <simdjson.h>
 
-namespace dsf {
+namespace dsf::mobility {
   void RoadNetwork::m_updateMaxAgentCapacity() {
     m_capacity = 0;
     for (auto const& [_, pStreet] : this->edges()) {
@@ -866,4 +866,4 @@ namespace dsf {
       return nullptr;
     }
   }
-};  // namespace dsf
+}  // namespace dsf::mobility

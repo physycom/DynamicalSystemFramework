@@ -29,7 +29,7 @@
 
 #include <fmt/format.h>
 
-namespace dsf {
+namespace dsf::mobility {
 
   class AgentComparator {
   public:
@@ -217,14 +217,14 @@ namespace dsf {
     bool isSpire() const final { return true; };
   };
 
-};  // namespace dsf
+};  // namespace dsf::mobility
 
 // Specialization of std::formatter for dsf::Street
 template <>
-struct std::formatter<dsf::Street> {
+struct std::formatter<dsf::mobility::Street> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(const dsf::Street& street, FormatContext&& ctx) const {
+  auto format(const dsf::mobility::Street& street, FormatContext&& ctx) const {
     auto const& name =
         street.name().empty() ? std::string() : std::format(" \"{}\"", street.name());
     return std::format_to(ctx.out(),
@@ -243,10 +243,10 @@ struct std::formatter<dsf::Street> {
 };
 // Specialization of fmt::formatter for dsf::Street
 template <>
-struct fmt::formatter<dsf::Street> {
+struct fmt::formatter<dsf::mobility::Street> {
   constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(const dsf::Street& street, FormatContext& ctx) const {
+  auto format(const dsf::mobility::Street& street, FormatContext& ctx) const {
     auto const& name =
         street.name().empty() ? std::string() : fmt::format(" \"{}\"", street.name());
     return fmt::format_to(ctx.out(),

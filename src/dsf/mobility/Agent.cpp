@@ -1,6 +1,6 @@
-#include "../headers/Agent.hpp"
+#include "Agent.hpp"
 
-namespace dsf {
+namespace dsf::mobility {
   Agent::Agent(std::time_t const& spawnTime,
                std::optional<Id> itineraryId,
                std::optional<Id> srcNodeId)
@@ -76,4 +76,4 @@ namespace dsf {
     }
     return m_trip[m_itineraryIdx];
   }
-}  // namespace dsf
+}  // namespace dsf::mobility

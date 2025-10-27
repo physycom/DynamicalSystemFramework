@@ -1,6 +1,6 @@
-#include "../headers/RoadJunction.hpp"
+#include "RoadJunction.hpp"
 
-namespace dsf {
+namespace dsf::mobility {
   RoadJunction::RoadJunction(Id id) : Node(id), m_capacity{1}, m_transportCapacity{1.} {}
   RoadJunction::RoadJunction(Id id, geometry::Point point)
       : Node(id, point), m_capacity{1}, m_transportCapacity{1.} {}
@@ -23,4 +23,4 @@ namespace dsf {
   bool RoadJunction::isIntersection() const noexcept { return false; }
   bool RoadJunction::isTrafficLight() const noexcept { return false; }
   bool RoadJunction::isRoundabout() const noexcept { return false; }
-}  // namespace dsf
+}  // namespace dsf::mobility

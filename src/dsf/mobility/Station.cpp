@@ -1,6 +1,6 @@
-#include "../headers/Station.hpp"
+#include "Station.hpp"
 
-namespace dsf {
+namespace dsf::mobility {
   Station::Station(Id id, Delay managementTime)
       : RoadJunction(id), m_managementTime{managementTime} {}
 
@@ -35,4 +35,4 @@ namespace dsf {
   bool Station::isFull() const { return m_trains.size() >= this->capacity(); }
 
   bool Station::isStation() const noexcept { return true; }
-}  // namespace dsf
+}  // namespace dsf::mobility

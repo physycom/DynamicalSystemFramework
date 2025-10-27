@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Node.hpp"
+#include "../base/Node.hpp"
 
 #include "../utility/Typedef.hpp"
 
 #include <format>
 #include <fmt/format.h>
 
-namespace dsf {
+namespace dsf::mobility {
   class RoadJunction : public Node {
     Size m_capacity;
     double m_transportCapacity;
@@ -47,14 +47,14 @@ namespace dsf {
     virtual bool isTrafficLight() const noexcept;
     virtual bool isRoundabout() const noexcept;
   };
-}  // namespace dsf
+}  // namespace dsf::mobility
 
-// Specialization of std::formatter for dsf::RoadJunction
+// Specialization of std::formatter for dsf::mobility::RoadJunction
 template <>
-struct std::formatter<dsf::RoadJunction> {
+struct std::formatter<dsf::mobility::RoadJunction> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(dsf::RoadJunction const& junction, FormatContext&& ctx) const {
+  auto format(dsf::mobility::RoadJunction const& junction, FormatContext&& ctx) const {
     auto out =
         std::format_to(ctx.out(),
                        "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
@@ -71,12 +71,12 @@ struct std::formatter<dsf::RoadJunction> {
     return out;
   }
 };
-// Specialization of fmt::formatter for dsf::RoadJunction
+// Specialization of fmt::formatter for dsf::mobility::RoadJunction
 template <>
-struct fmt::formatter<dsf::RoadJunction> {
+struct fmt::formatter<dsf::mobility::RoadJunction> {
   constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
-  auto format(dsf::RoadJunction const& junction, FormatContext& ctx) const {
+  auto format(const dsf::mobility::RoadJunction& junction, FormatContext& ctx) const {
     auto out =
         fmt::format_to(ctx.out(),
                        "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "

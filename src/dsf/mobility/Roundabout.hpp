@@ -13,7 +13,7 @@
 
 #include <memory>
 
-namespace dsf {
+namespace dsf::mobility {
   /// @brief The Roundabout class represents a roundabout node in the network.
   /// @tparam Id The type of the node's id
   /// @tparam Size The type of the node's capacity
@@ -57,4 +57,4 @@ namespace dsf {
     /// @return bool True if the node is a roundabout
     bool isRoundabout() const noexcept override { return true; }
   };
-}  // namespace dsf
+}  // namespace dsf::mobility
