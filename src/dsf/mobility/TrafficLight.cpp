@@ -170,4 +170,4 @@ namespace dsf::mobility {
   void TrafficLight::resetCycles() {
     m_defaultCycles.empty() ? m_defaultCycles = m_cycles : m_cycles = m_defaultCycles;
   }
-}  // namespace dsf
+}  // namespace dsf::mobility

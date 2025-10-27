@@ -115,7 +115,8 @@ struct std::formatter<dsf::mobility::Intersection> {
   constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
   template <typename FormatContext>
-  auto format(dsf::mobility::Intersection const& intersection, FormatContext&& ctx) const {
+  auto format(dsf::mobility::Intersection const& intersection,
+              FormatContext&& ctx) const {
     auto out = std::format_to(
         ctx.out(),
         "Intersection(id: {}, name: {}, capacity: {}, transportCapacity: {}, "

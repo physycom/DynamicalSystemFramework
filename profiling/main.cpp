@@ -8,9 +8,9 @@
 
 using unit = uint32_t;
 
-using RoadNetwork = dsf::RoadNetwork;
-using Itinerary = dsf::Itinerary;
-using Dynamics = dsf::FirstOrderDynamics;
+using RoadNetwork = dsf::mobility::RoadNetwork;
+using Itinerary = dsf::mobility::Itinerary;
+using Dynamics = dsf::mobility::FirstOrderDynamics;
 
 int main() {
   RoadNetwork graph{};

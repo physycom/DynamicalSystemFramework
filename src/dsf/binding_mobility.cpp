@@ -1,6 +1,6 @@
-#include "../dsf.hpp"
+#include "dsf.hpp"
 
-#include "../.docstrings.hpp"
+#include ".docstrings.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>         // Changed to include all stl type casters
@@ -150,9 +150,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def("capacity",
            &dsf::mobility::RoadNetwork::capacity,
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::capacity").c_str())
-      .def("adjustNodeCapacities",
-           &dsf::mobility::RoadNetwork::adjustNodeCapacities,
-           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::adjustNodeCapacities").c_str())
+      .def(
+          "adjustNodeCapacities",
+          &dsf::mobility::RoadNetwork::adjustNodeCapacities,
+          dsf::g_docstrings.at("dsf::mobility::RoadNetwork::adjustNodeCapacities").c_str())
       .def("initTrafficLights",
            &dsf::mobility::RoadNetwork::initTrafficLights,
            pybind11::arg("minGreenTime") = 30,
@@ -169,9 +170,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::importEdges").c_str())
       .def(
           "importEdges",
-          [](dsf::mobility::RoadNetwork& self, std::string const& fileName, char const separator) {
-            self.importEdges(fileName, separator);
-          },
+          [](dsf::mobility::RoadNetwork& self,
+             std::string const& fileName,
+             char const separator) { self.importEdges(fileName, separator); },
           pybind11::arg("fileName"),
           pybind11::arg("separator"),
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::importEdges").c_str())
@@ -185,19 +186,22 @@ PYBIND11_MODULE(dsf_cpp, m) {
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::importEdges").c_str())
       .def(
           "importNodeProperties",
-          [](dsf::mobility::RoadNetwork& self, std::string const& fileName, char const separator) {
-            self.importNodeProperties(fileName, separator);
-          },
+          [](dsf::mobility::RoadNetwork& self,
+             std::string const& fileName,
+             char const separator) { self.importNodeProperties(fileName, separator); },
           pybind11::arg("fileName"),
           pybind11::arg("separator") = ';',
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::importNodeProperties").c_str())
-      .def("importTrafficLights",
-           &dsf::mobility::RoadNetwork::importTrafficLights,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::importTrafficLights").c_str())
+      .def(
+          "importTrafficLights",
+          &dsf::mobility::RoadNetwork::importTrafficLights,
+          pybind11::arg("fileName"),
+          dsf::g_docstrings.at("dsf::mobility::RoadNetwork::importTrafficLights").c_str())
       .def(
           "makeRoundabout",
-          [](dsf::mobility::RoadNetwork& self, dsf::Id id) -> void { self.makeRoundabout(id); },
+          [](dsf::mobility::RoadNetwork& self, dsf::Id id) -> void {
+            self.makeRoundabout(id);
+          },
           pybind11::arg("id"),
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::makeRoundabout").c_str())
       .def(
@@ -214,7 +218,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::makeTrafficLight").c_str())
       .def(
           "makeSpireStreet",
-          [](dsf::mobility::RoadNetwork& self, dsf::Id id) -> void { self.makeSpireStreet(id); },
+          [](dsf::mobility::RoadNetwork& self, dsf::Id id) -> void {
+            self.makeSpireStreet(id);
+          },
           pybind11::arg("id"),
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::makeSpireStreet").c_str());
 
@@ -227,7 +233,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::mobility::Itinerary::setPath,
            pybind11::arg("path"),
            dsf::g_docstrings.at("dsf::mobility::Itinerary::setPath").c_str())
-      .def("id", &dsf::mobility::Itinerary::id, dsf::g_docstrings.at("dsf::mobility::Itinerary::id").c_str())
+      .def("id",
+           &dsf::mobility::Itinerary::id,
+           dsf::g_docstrings.at("dsf::mobility::Itinerary::id").c_str())
       .def("destination",
            &dsf::mobility::Itinerary::destination,
            dsf::g_docstrings.at("dsf::mobility::Itinerary::destination").c_str());
@@ -248,7 +256,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("alpha") = 0.,
            pybind11::arg("weightFunction") = dsf::PathWeight::TRAVELTIME,
            pybind11::arg("weightThreshold") = std::nullopt,
-           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::FirstOrderDynamics").c_str())
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::FirstOrderDynamics")
+               .c_str())
       // Note: Constructors with std::function parameters are not exposed to avoid stub generation issues
       .def("setInitTime",
            &dsf::mobility::FirstOrderDynamics::setInitTime,
@@ -263,10 +272,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("datetime"),
           dsf::g_docstrings.at("dsf::Dynamics::setInitTime").c_str())
-      .def("setForcePriorities",
-           &dsf::mobility::FirstOrderDynamics::setForcePriorities,
-           pybind11::arg("forcePriorities"),
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setForcePriorities").c_str())
+      .def(
+          "setForcePriorities",
+          &dsf::mobility::FirstOrderDynamics::setForcePriorities,
+          pybind11::arg("forcePriorities"),
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setForcePriorities").c_str())
       .def(
           "setDataUpdatePeriod",
           [](dsf::mobility::FirstOrderDynamics& self, int dataUpdatePeriod) {
@@ -285,10 +295,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("maxTravelTime"),
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setMaxTravelTime").c_str())
-      .def("setErrorProbability",
-           &dsf::mobility::FirstOrderDynamics::setErrorProbability,
-           pybind11::arg("errorProbability"),
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setErrorProbability").c_str())
+      .def(
+          "setErrorProbability",
+          &dsf::mobility::FirstOrderDynamics::setErrorProbability,
+          pybind11::arg("errorProbability"),
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setErrorProbability").c_str())
       .def("setWeightFunction",
            &dsf::mobility::FirstOrderDynamics::setWeightFunction,
            pybind11::arg("weightFunction"),
@@ -311,7 +322,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setOriginNodes").c_str())
       .def(
           "setOriginNodes",
-          [](dsf::mobility::FirstOrderDynamics& self, pybind11::array_t<dsf::Id> originNodes) {
+          [](dsf::mobility::FirstOrderDynamics& self,
+             pybind11::array_t<dsf::Id> originNodes) {
             // Convert numpy array to vector with equal weights
             auto buf = originNodes.request();
             auto* ptr = static_cast<dsf::Id*>(buf.ptr);
@@ -325,7 +337,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setOriginNodes").c_str())
       .def(
           "setDestinationNodes",
-          [](dsf::mobility::FirstOrderDynamics& self, pybind11::array_t<dsf::Id> destinationNodes) {
+          [](dsf::mobility::FirstOrderDynamics& self,
+             pybind11::array_t<dsf::Id> destinationNodes) {
             // Convert numpy array to vector
             auto buf = destinationNodes.request();
             auto* ptr = static_cast<dsf::Id*>(buf.ptr);
@@ -348,11 +361,12 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def("updatePaths",
            &dsf::mobility::FirstOrderDynamics::updatePaths,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::updatePaths").c_str())
-      .def("addAgentsUniformly",
-           &dsf::mobility::FirstOrderDynamics::addAgentsUniformly,
-           pybind11::arg("nAgents"),
-           pybind11::arg("itineraryId") = std::nullopt,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgentsUniformly").c_str())
+      .def(
+          "addAgentsUniformly",
+          &dsf::mobility::FirstOrderDynamics::addAgentsUniformly,
+          pybind11::arg("nAgents"),
+          pybind11::arg("itineraryId") = std::nullopt,
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgentsUniformly").c_str())
       .def(
           "addAgentsRandomly",
           [](dsf::mobility::FirstOrderDynamics& self, dsf::Size nAgents) {
@@ -382,7 +396,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("logFile") = "",
            pybind11::arg("threshold") = 0.,
            pybind11::arg("ratio") = 1.3,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::optimizeTrafficLights").c_str())
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::optimizeTrafficLights")
+               .c_str())
       .def("nAgents",
            &dsf::mobility::FirstOrderDynamics::nAgents,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::nAgents").c_str())
@@ -399,10 +414,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::mobility::FirstOrderDynamics::meanTravelTime,
            pybind11::arg("clearData") = false,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanTravelTime").c_str())
-      .def("meanTravelDistance",
-           &dsf::mobility::FirstOrderDynamics::meanTravelDistance,
-           pybind11::arg("clearData") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanTravelDistance").c_str())
+      .def(
+          "meanTravelDistance",
+          &dsf::mobility::FirstOrderDynamics::meanTravelDistance,
+          pybind11::arg("clearData") = false,
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanTravelDistance").c_str())
       .def("meanTravelSpeed",
            &dsf::mobility::FirstOrderDynamics::meanTravelSpeed,
            pybind11::arg("clearData") = false,
@@ -436,7 +452,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
             }
             return py_result;
           },
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::normalizedTurnCounts").c_str())
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::normalizedTurnCounts")
+              .c_str())
       //  .def("turnProbabilities",
       //       &dsf::mobility::FirstOrderDynamics::turnProbabilities,
       //       pybind11::arg("reset") = true)
@@ -449,32 +466,37 @@ PYBIND11_MODULE(dsf_cpp, m) {
       // .def("streetMeanDensity", &dsf::mobility::FirstOrderDynamics::streetMeanDensity, pybind11::arg("normalized") = false)
       // .def("streetMeanFlow", static_cast<dsf::Measurement<double> (dsf::mobility::FirstOrderDynamics::*)() const>(&dsf::mobility::FirstOrderDynamics::streetMeanFlow))
       // .def("streetMeanFlow", static_cast<dsf::Measurement<double> (dsf::mobility::FirstOrderDynamics::*)(double, bool) const>(&dsf::mobility::FirstOrderDynamics::streetMeanFlow), pybind11::arg("threshold"), pybind11::arg("above"))
-      .def("meanSpireInputFlow",
-           &dsf::mobility::FirstOrderDynamics::meanSpireInputFlow,
-           pybind11::arg("resetValue") = true,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanSpireInputFlow").c_str())
-      .def("meanSpireOutputFlow",
-           &dsf::mobility::FirstOrderDynamics::meanSpireOutputFlow,
-           pybind11::arg("resetValue") = true,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanSpireOutputFlow").c_str())
-      .def("saveStreetDensities",
-           &dsf::mobility::FirstOrderDynamics::saveStreetDensities,
-           pybind11::arg("filename"),
-           pybind11::arg("normalized") = true,
-           pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetDensities").c_str())
+      .def(
+          "meanSpireInputFlow",
+          &dsf::mobility::FirstOrderDynamics::meanSpireInputFlow,
+          pybind11::arg("resetValue") = true,
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanSpireInputFlow").c_str())
+      .def(
+          "meanSpireOutputFlow",
+          &dsf::mobility::FirstOrderDynamics::meanSpireOutputFlow,
+          pybind11::arg("resetValue") = true,
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanSpireOutputFlow").c_str())
+      .def(
+          "saveStreetDensities",
+          &dsf::mobility::FirstOrderDynamics::saveStreetDensities,
+          pybind11::arg("filename"),
+          pybind11::arg("normalized") = true,
+          pybind11::arg("separator") = ';',
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetDensities").c_str())
       .def("saveInputStreetCounts",
            &dsf::mobility::FirstOrderDynamics::saveInputStreetCounts,
            pybind11::arg("filename"),
            pybind11::arg("reset") = false,
            pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveInputStreetCounts").c_str())
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveInputStreetCounts")
+               .c_str())
       .def("saveOutputStreetCounts",
            &dsf::mobility::FirstOrderDynamics::saveOutputStreetCounts,
            pybind11::arg("filename"),
            pybind11::arg("reset") = false,
            pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveOutputStreetCounts").c_str())
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveOutputStreetCounts")
+               .c_str())
       .def("saveTravelData",
            &dsf::mobility::FirstOrderDynamics::saveTravelData,
            pybind11::arg("filename"),
@@ -484,5 +506,6 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::mobility::FirstOrderDynamics::saveMacroscopicObservables,
            pybind11::arg("filename"),
            pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveMacroscopicObservables").c_str());
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveMacroscopicObservables")
+               .c_str());
 }

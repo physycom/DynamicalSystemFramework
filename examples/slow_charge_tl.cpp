@@ -32,11 +32,11 @@ std::atomic<bool> bExitFlag{false};
 // #define PRINT_SPEEDS
 // #define PRINT_TP
 
-using RoadNetwork = dsf::RoadNetwork;
-using Dynamics = dsf::FirstOrderDynamics;
-using Street = dsf::Street;
-using SpireStreet = dsf::SpireStreet;
-using TrafficLight = dsf::TrafficLight;
+using RoadNetwork = dsf::mobility::RoadNetwork;
+using Dynamics = dsf::mobility::FirstOrderDynamics;
+using Street = dsf::mobility::Street;
+using SpireStreet = dsf::mobility::SpireStreet;
+using TrafficLight = dsf::mobility::TrafficLight;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"

@@ -28,7 +28,8 @@ if(NOT rapidcsv_POPULATED)
   FetchContent_MakeAvailable(rapidcsv)
 endif()
 
-file(GLOB SOURCES "../src/dsf/base/*.cpp src/dsf/mobility/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp")
+file(GLOB SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp")
+list(FILTER SOURCES EXCLUDE REGEX ".*binding.*\\.cpp$")
 
 # Define the executable
 add_executable(prof.out main.cpp ${SOURCES})

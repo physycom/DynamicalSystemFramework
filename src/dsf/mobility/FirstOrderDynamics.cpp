@@ -111,4 +111,4 @@ namespace dsf::mobility {
     }
     return Measurement<double>(speeds);
   }
-}  // namespace dsf
+}  // namespace dsf::mobility

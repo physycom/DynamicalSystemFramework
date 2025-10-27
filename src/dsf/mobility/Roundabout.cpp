@@ -17,4 +17,4 @@ namespace dsf::mobility {
     m_agents.pop();
     return pAgent;
   }
-}  // namespace dsf
+}  // namespace dsf::mobility

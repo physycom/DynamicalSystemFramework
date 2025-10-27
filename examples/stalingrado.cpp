@@ -26,12 +26,12 @@ std::atomic<unsigned int> progress{0};
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using RoadNetwork = dsf::RoadNetwork;
-using Itinerary = dsf::Itinerary;
-using Dynamics = dsf::FirstOrderDynamics;
-using Street = dsf::Street;
-using SpireStreet = dsf::SpireStreet;
-using TrafficLight = dsf::TrafficLight;
+using RoadNetwork = dsf::mobility::RoadNetwork;
+using Itinerary = dsf::mobility::Itinerary;
+using Dynamics = dsf::mobility::FirstOrderDynamics;
+using Street = dsf::mobility::Street;
+using SpireStreet = dsf::mobility::SpireStreet;
+using TrafficLight = dsf::mobility::TrafficLight;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"
@@ -56,7 +56,7 @@ int main() {
   RoadNetwork graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
-  dsf::Road::setMeanVehicleLength(8.);
+  dsf::mobility::Road::setMeanVehicleLength(8.);
   Street s01{1, std::make_pair(0, 1), 2281., 13.9, 2};
   Street s12{7, std::make_pair(1, 2), 118., 13.9, 2};
   Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};

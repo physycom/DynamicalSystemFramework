@@ -4,10 +4,10 @@
 #include <random>
 #include "Bench.hpp"
 
-#include "RoadNetwork.hpp"
+#include "mobility/RoadNetwork.hpp"
 
-using Agent = dsf::Agent;
-using Street = dsf::Street;
+using Agent = dsf::mobility::Agent;
+using Street = dsf::mobility::Street;
 using SparseMatrix = dsf::SparseMatrix<bool>;
 
 using Bench = sb::Bench<long long int>;

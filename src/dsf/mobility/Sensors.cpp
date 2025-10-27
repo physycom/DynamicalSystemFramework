@@ -22,4 +22,4 @@ namespace dsf::mobility {
     }
     return m_counters.second;
   }
-}  // namespace dsf
+}  // namespace dsf::mobility

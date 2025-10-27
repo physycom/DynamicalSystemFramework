@@ -32,7 +32,7 @@ namespace dsf {
   template <>
   struct is_node<std::unique_ptr<Node>> : std::true_type {};
 
-    // TODO: this is bad, I'll rework the type-traits
+  // TODO: this is bad, I'll rework the type-traits
   template <>
   struct is_node<mobility::Intersection> : std::true_type {};
 
