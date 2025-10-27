@@ -28,7 +28,7 @@ find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(simdjson REQUIRED)
 
-file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp")
+file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp")
 
 include(FetchContent)
 # Get rapidcsv

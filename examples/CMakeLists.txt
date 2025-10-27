@@ -35,7 +35,7 @@ endif()
 
 # add as executable all cpp files into '.' folder
 file(GLOB SOURCES "*.cpp")
-file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
+file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp")
 
 # Loop through each source file and create an executable
 foreach(SOURCE ${SOURCES})

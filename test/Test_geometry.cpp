@@ -1,4 +1,5 @@
-#include "../src/dsf/headers/Geometry.hpp"
+#include "../src/dsf/geometry/Point.hpp"
+#include "../src/dsf/geometry/PolyLine.hpp"
 #include "doctest.h"
 #include <string>
 

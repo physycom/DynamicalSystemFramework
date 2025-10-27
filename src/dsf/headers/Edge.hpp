@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Geometry.hpp"
+#include "../geometry/Point.hpp"
+#include "../geometry/PolyLine.hpp"
 #include "../utility/Typedef.hpp"
 
 #include <format>

@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Geometry.hpp"
+#include "../geometry/Point.hpp"
 #include "../utility/queue.hpp"
 #include "../utility/Typedef.hpp"
 

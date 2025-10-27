@@ -28,7 +28,7 @@ if(NOT rapidcsv_POPULATED)
   FetchContent_MakeAvailable(rapidcsv)
 endif()
 
-file(GLOB SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
+file(GLOB SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp")
 
 # Define the executable
 add_executable(prof.out main.cpp ${SOURCES})
