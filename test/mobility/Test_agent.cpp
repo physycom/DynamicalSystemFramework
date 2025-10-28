@@ -42,7 +42,7 @@ TEST_CASE("Agent") {
         }
       }
     }
-    GIVEN("An agent it") {
+    GIVEN("No initinerary ids and no source node id") {
       WHEN("The agent is constructed") {
         auto randomAgent = Agent{0};
         THEN("The agent is a random agent") { CHECK(randomAgent.isRandom()); }
