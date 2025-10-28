@@ -7,43 +7,40 @@
 
 #include "fmt/format.h"
 
-namespace dsf {
-  /// @brief Geometry related functions
-  namespace geometry {
-    class Point {
-    private:
-      double m_x;
-      double m_y;
+namespace dsf::geometry {
+  class Point {
+  private:
+    double m_x;
+    double m_y;
 
-    public:
-      /// @brief Construct a Point with given x and y coordinates.
-      /// @param x The x coordinate
-      /// @param y The y coordinate
-      Point(double x, double y) : m_x(x), m_y(y) {}
-      /// @brief Construct a Point from a string representation.
-      /// @param strPoint The string representation of the point.
-      /// @param format The format of the string representation. Default is "WKT".
-      /// @throws std::invalid_argument if the format is not supported or the string is invalid.
-      Point(std::string const& strPoint, std::string const& format = "WKT");
-      /// @brief Equality operator for Point
-      inline bool operator==(const Point& other) const {
-        return std::abs(m_x - other.m_x) < std::numeric_limits<double>::epsilon() &&
-               std::abs(m_y - other.m_y) < std::numeric_limits<double>::epsilon();
-      }
-      /// @brief Support for structured bindings, e.g., auto const& [x, y] = point;
-      template <std::size_t Index>
-      inline double const& get() const {
-        if constexpr (Index == 0)
-          return m_x;
-        else if constexpr (Index == 1)
-          return m_y;
-      }
+  public:
+    /// @brief Construct a Point with given x and y coordinates.
+    /// @param x The x coordinate
+    /// @param y The y coordinate
+    Point(double x, double y) : m_x(x), m_y(y) {}
+    /// @brief Construct a Point from a string representation.
+    /// @param strPoint The string representation of the point.
+    /// @param format The format of the string representation. Default is "WKT".
+    /// @throws std::invalid_argument if the format is not supported or the string is invalid.
+    Point(std::string const& strPoint, std::string const& format = "WKT");
+    /// @brief Equality operator for Point
+    inline bool operator==(const Point& other) const {
+      return std::abs(m_x - other.m_x) < std::numeric_limits<double>::epsilon() &&
+             std::abs(m_y - other.m_y) < std::numeric_limits<double>::epsilon();
+    }
+    /// @brief Support for structured bindings, e.g., auto const& [x, y] = point;
+    template <std::size_t Index>
+    inline double const& get() const {
+      if constexpr (Index == 0)
+        return m_x;
+      else if constexpr (Index == 1)
+        return m_y;
+    }
 
-      inline double const& x() const { return m_x; }
-      inline double const& y() const { return m_y; }
-    };
-  }  // namespace geometry
-}  // namespace dsf
+    inline double const& x() const { return m_x; }
+    inline double const& y() const { return m_y; }
+  };
+}  // namespace dsf::geometry
 
 // Specialization of std::formatter for dsf::geometry::Point
 template <>

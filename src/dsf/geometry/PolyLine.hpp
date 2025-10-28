@@ -7,20 +7,18 @@
 #include "Point.hpp"
 #include "fmt/format.h"
 
-namespace dsf {
-  namespace geometry {
-    /// @brief A polyline represented as a vector of Points
-    class PolyLine : public std::vector<Point> {
-    public:
-      using std::vector<Point>::vector;  // Inherit constructors
-      /// @brief Construct a PolyLine from a string representation.
-      /// @param strLine The string representation of the polyline.
-      /// @param format The format of the string representation. Default is "WKT".
-      /// @throws std::invalid_argument if the format is not supported or the string is invalid.
-      PolyLine(std::string const& strLine, std::string const& format = "WKT");
-    };
-  }  // namespace geometry
-}  // namespace dsf
+namespace dsf::geometry {
+  /// @brief A polyline represented as a vector of Points
+  class PolyLine : public std::vector<Point> {
+  public:
+    using std::vector<Point>::vector;  // Inherit constructors
+    /// @brief Construct a PolyLine from a string representation.
+    /// @param strLine The string representation of the polyline.
+    /// @param format The format of the string representation. Default is "WKT".
+    /// @throws std::invalid_argument if the format is not supported or the string is invalid.
+    PolyLine(std::string const& strLine, std::string const& format = "WKT");
+  };
+}  // namespace dsf::geometry
 
 // Specialization of std::formatter for dsf::geometry::PolyLine
 template <>
