@@ -1,15 +1,15 @@
 #include <cstdint>
 
-#include "RoadNetwork.hpp"
-#include "Itinerary.hpp"
-#include "FirstOrderDynamics.hpp"
+#include "mobility/RoadNetwork.hpp"
+#include "mobility/Itinerary.hpp"
+#include "mobility/FirstOrderDynamics.hpp"
 #include "Bench.hpp"
 
 #include <spdlog/spdlog.h>
 
-using RoadNetwork = dsf::RoadNetwork;
-using Itinerary = dsf::Itinerary;
-using Dynamics = dsf::FirstOrderDynamics;
+using RoadNetwork = dsf::mobility::RoadNetwork;
+using Itinerary = dsf::mobility::Itinerary;
+using Dynamics = dsf::mobility::FirstOrderDynamics;
 
 using Bench = sb::Bench<long long int>;
 

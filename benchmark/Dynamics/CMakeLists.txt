@@ -26,10 +26,10 @@ if(NOT rapidcsv_POPULATED)
   FetchContent_MakeAvailable(rapidcsv)
 endif()
 
-include_directories(../../src/dsf/headers)
+include_directories(../../src/dsf)
 include_directories(../../src/dsf/utility/)
 
-file(GLOB SOURCES "../../src/dsf/sources/*.cpp" "../../src/dsf/utility/*.cpp")
+file(GLOB SOURCES "../../src/dsf/base/*.cpp" "../../src/dsf/mobility/*.cpp" "../../src/dsf/utility/*.cpp" "../../src/dsf/geometry/*.cpp")
 
 # Compile
 add_executable(bench_dynamics.out BenchDynamics.cpp ${SOURCES})

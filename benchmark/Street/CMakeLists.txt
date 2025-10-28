@@ -13,10 +13,10 @@ string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -O3")
 # Set the folder for the executable
 set(EXECUTABLE_OUTPUT_PATH ../../)
 
-include_directories(../../src/dsf/headers)
+include_directories(../../src/dsf)
 include_directories(../../src/dsf/utility/)
 
-file(GLOB SOURCES "../../src/dsf/sources/*.cpp" "../../src/dsf/utility/*.cpp")
+file(GLOB SOURCES "../../src/dsf/base/*.cpp" "../../src/dsf/mobility/*.cpp" "../../src/dsf/utility/*.cpp" "../../src/dsf/geometry/*.cpp")
 
 # Compile
 add_executable(bench_street.out BenchStreet.cpp ${SOURCES})

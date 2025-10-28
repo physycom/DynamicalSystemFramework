@@ -28,7 +28,7 @@ find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(simdjson REQUIRED)
 
-file(GLOB SOURCES "src/dsf/sources/*.cpp" "src/dsf/utility/*.cpp")
+file(GLOB SOURCES "src/dsf/base/*.cpp" "src/dsf/mobility/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp")
 
 include(FetchContent)
 # Get rapidcsv
@@ -43,7 +43,7 @@ endif()
 
 add_library(dsf STATIC ${SOURCES})
 target_include_directories(dsf PUBLIC 
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/headers>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:include>
 )
 
@@ -84,7 +84,7 @@ if(BUILD_PYTHON_BINDINGS)
     endif()
 
     # Add the Python binding module
-    add_library(dsf_python_module MODULE src/dsf/binding.cpp)
+    add_library(dsf_python_module MODULE src/dsf/binding_mobility.cpp)
 
     # Ensure the Python module name has no 'lib' prefix on Unix systems
     set_target_properties(dsf_python_module PROPERTIES
@@ -97,7 +97,7 @@ if(BUILD_PYTHON_BINDINGS)
 
     # Set include directories (if binding.cpp needs headers from your project)
     target_include_directories(dsf_python_module PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/headers
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
 endif()
 

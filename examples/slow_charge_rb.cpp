@@ -31,11 +31,11 @@ std::atomic<bool> bExitFlag{false};
 #define PRINT_OUT_SPIRES
 // #define PRINT_SPEEDS
 
-using RoadNetwork = dsf::RoadNetwork;
-using Dynamics = dsf::FirstOrderDynamics;
-using Street = dsf::Street;
-using SpireStreet = dsf::SpireStreet;
-using Roundabout = dsf::Roundabout;
+using RoadNetwork = dsf::mobility::RoadNetwork;
+using Dynamics = dsf::mobility::FirstOrderDynamics;
+using Street = dsf::mobility::Street;
+using SpireStreet = dsf::mobility::SpireStreet;
+using Roundabout = dsf::mobility::Roundabout;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"

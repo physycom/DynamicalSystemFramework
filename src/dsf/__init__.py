@@ -1,5 +1,8 @@
 from dsf_cpp import *
 from dsf_cpp import __version__
+
+from dsf_cpp import mobility
+
 from .python.cartography import (
     get_cartography,
     graph_from_gdfs,

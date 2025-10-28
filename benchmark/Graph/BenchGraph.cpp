@@ -5,11 +5,11 @@
 #include <utility>
 #include "Bench.hpp"
 
-#include "RoadNetwork.hpp"
+#include "mobility/RoadNetwork.hpp"
 
-using RoadNetwork = dsf::RoadNetwork;
-using Intersection = dsf::Intersection;
-using Street = dsf::Street;
+using RoadNetwork = dsf::mobility::RoadNetwork;
+using Intersection = dsf::mobility::Intersection;
+using Street = dsf::mobility::Street;
 using SparseMatrix = dsf::SparseMatrix<bool>;
 
 using Bench = sb::Bench<long long int>;
