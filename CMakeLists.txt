@@ -28,7 +28,7 @@ find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(simdjson REQUIRED)
 
-file(GLOB SOURCES "src/dsf/base/*.cpp" "src/dsf/mobility/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp")
+file(GLOB SOURCES "src/dsf/base/*.cpp" "src/dsf/mobility/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp" "src/dsf/mdt/*.cpp")
 
 include(FetchContent)
 # Get rapidcsv
@@ -84,7 +84,7 @@ if(BUILD_PYTHON_BINDINGS)
     endif()
 
     # Add the Python binding module
-    add_library(dsf_python_module MODULE src/dsf/binding_mobility.cpp)
+    add_library(dsf_python_module MODULE src/dsf/bindings.cpp)
 
     # Ensure the Python module name has no 'lib' prefix on Unix systems
     set_target_properties(dsf_python_module PROPERTIES

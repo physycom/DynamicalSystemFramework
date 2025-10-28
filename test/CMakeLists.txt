@@ -46,7 +46,7 @@ endif()
 
 # add as executable all cpp files into '.' folder and subdirectories
 file(GLOB TEST_SOURCES "*.cpp" "*/*.cpp")
-file(GLOB SRC_SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp")
+file(GLOB SRC_SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp" "../src/dsf/mdt/*.cpp")
 list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 
 # Define the executable

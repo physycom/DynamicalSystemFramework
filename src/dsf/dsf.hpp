@@ -28,6 +28,7 @@ namespace dsf {
 #include "mobility/Roundabout.hpp"
 #include "mobility/Street.hpp"
 #include "mobility/TrafficLight.hpp"
+#include "mdt/TrajectoryCollection.hpp"
 #include "utility/TypeTraits/is_node.hpp"
 #include "utility/TypeTraits/is_street.hpp"
 #include "utility/TypeTraits/is_numeric.hpp"

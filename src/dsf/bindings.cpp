@@ -17,6 +17,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
   auto mobility = m.def_submodule("mobility",
                                   "Bindings for mobility-related classes and functions, "
                                   "under the dsf::mobility C++ namespace.");
+  auto mdt = m.def_submodule("mdt",
+                             "Bindings for movement data tools (MDT) related classes and "
+                             "functions, under the dsf::mdt C++ namespace.");
 
   // Bind PathWeight enum
   pybind11::enum_<dsf::PathWeight>(mobility, "PathWeight")
@@ -516,4 +519,20 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("separator") = ';',
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveMacroscopicObservables")
                .c_str());
+
+  // Bind TrajectoryCollection class to mdt submodule
+  pybind11::class_<dsf::mdt::TrajectoryCollection>(mdt, "TrajectoryCollection")
+      .def(pybind11::init<const std::string&>(),
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::TrajectoryCollection")
+               .c_str())
+      .def("filter",
+           &dsf::mdt::TrajectoryCollection::filter,
+           pybind11::arg("radius"),
+           pybind11::arg("max_speed") = 150.0,
+           dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::filter").c_str())
+      .def("to_csv",
+           &dsf::mdt::TrajectoryCollection::to_csv,
+           pybind11::arg("fileName"),
+           dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::to_csv").c_str());
 }
