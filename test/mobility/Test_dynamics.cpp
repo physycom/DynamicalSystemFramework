@@ -3,10 +3,10 @@
 #include <iomanip>
 #include <iostream>
 
-#include "../src/dsf/mobility/FirstOrderDynamics.hpp"
-#include "../src/dsf/mobility/RoadNetwork.hpp"
-#include "../src/dsf/mobility/Itinerary.hpp"
-#include "../src/dsf/mobility/Street.hpp"
+#include "../../src/dsf/mobility/FirstOrderDynamics.hpp"
+#include "../../src/dsf/mobility/RoadNetwork.hpp"
+#include "../../src/dsf/mobility/Itinerary.hpp"
+#include "../../src/dsf/mobility/Street.hpp"
 
 #include "doctest.h"
 

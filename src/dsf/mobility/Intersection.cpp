@@ -19,7 +19,6 @@ namespace dsf::mobility {
     }
     auto iAngle{static_cast<int16_t>(angle * 100)};
     m_agents.emplace(iAngle, std::move(pAgent));
-    ++m_agentCounter;
   }
 
   void Intersection::addAgent(std::unique_ptr<Agent> pAgent) {
@@ -28,11 +27,5 @@ namespace dsf::mobility {
       lastKey = m_agents.rbegin()->first + 1;
     }
     addAgent(static_cast<double>(lastKey), std::move(pAgent));
-  }
-
-  Size Intersection::agentCounter() {
-    Size copy{m_agentCounter};
-    m_agentCounter = 0;
-    return copy;
   }
 }  // namespace dsf::mobility

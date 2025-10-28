@@ -181,7 +181,6 @@ namespace dsf::mobility {
     m_flowRate = flowRate;
   }
   double StochasticStreet::flowRate() const { return m_flowRate; }
-  bool StochasticStreet::isStochastic() const { return true; }
 
   void SpireStreet::addAgent(std::unique_ptr<Agent> pAgent) {
     Street::addAgent(std::move(pAgent));

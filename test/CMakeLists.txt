@@ -44,8 +44,8 @@ if(NOT rapidcsv_POPULATED)
   FetchContent_MakeAvailable(rapidcsv)
 endif()
 
-# add as executable all cpp files into '.' folder
-file(GLOB TEST_SOURCES "*.cpp")
+# add as executable all cpp files into '.' folder and subdirectories
+file(GLOB TEST_SOURCES "*.cpp" "*/*.cpp")
 file(GLOB SRC_SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp" "../src/dsf/utility/*.cpp" "../src/dsf/geometry/*.cpp")
 list(APPEND SOURCES ${TEST_SOURCES} ${SRC_SOURCES})
 

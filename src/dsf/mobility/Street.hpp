@@ -164,7 +164,7 @@ namespace dsf::mobility {
     void setFlowRate(double const flowRate);
     double flowRate() const;
 
-    bool isStochastic() const final;
+    constexpr bool isStochastic() const final { return true; };
   };
 
   /// @brief The SpireStreet class represents a street which is able to count agent flows in both input and output.
@@ -193,7 +193,7 @@ namespace dsf::mobility {
     std::unique_ptr<Agent> dequeue(size_t index) final;
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
-    bool isSpire() const final { return true; };
+    constexpr bool isSpire() const final { return true; };
   };
 
   class StochasticSpireStreet : public StochasticStreet, public Counter {
@@ -214,7 +214,7 @@ namespace dsf::mobility {
     std::unique_ptr<Agent> dequeue(size_t index) final;
     /// @brief Check if the street is a spire
     /// @return bool True if the street is a spire, false otherwise
-    bool isSpire() const final { return true; };
+    constexpr bool isSpire() const final { return true; };
   };
 
 };  // namespace dsf::mobility

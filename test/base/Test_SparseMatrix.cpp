@@ -1,4 +1,4 @@
-#include "../src/dsf/base/SparseMatrix.hpp"
+#include "../../src/dsf/base/SparseMatrix.hpp"
 
 #include "doctest.h"
 

@@ -1,11 +1,13 @@
 #include <cstdint>
+#include <format>
+#include <string>
 
-#include "../src/dsf/base/Node.hpp"
-#include "../src/dsf/mobility/Intersection.hpp"
-#include "../src/dsf/mobility/TrafficLight.hpp"
-// #include "../src/dsf/mobility/Roundabout.hpp"
-#include "../src/dsf/mobility/Station.hpp"
-#include "../src/dsf/utility/Typedef.hpp"
+#include "../../src/dsf/base/Node.hpp"
+#include "../../src/dsf/mobility/Intersection.hpp"
+#include "../../src/dsf/mobility/TrafficLight.hpp"
+// #include "../../src/dsf/mobility/Roundabout.hpp"
+#include "../../src/dsf/mobility/Station.hpp"
+#include "../../src/dsf/utility/Typedef.hpp"
 
 #include "doctest.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
@@ -136,6 +138,29 @@ TEST_CASE("Intersection") {
     CHECK_THROWS_AS(intersection.addAgent(2.0, std::move(agent3)), std::runtime_error);
     // Lowering capacity below current agent count throws
     CHECK_THROWS_AS(intersection.setCapacity(1), std::runtime_error);
+  }
+
+  SUBCASE("Single parameter addAgent") {
+    Intersection intersection{50};
+    intersection.setCapacity(3);
+    // Add agents using single parameter version (without explicit angle)
+    auto agent1 = std::make_unique<dsf::mobility::Agent>(10);
+    auto agent2 = std::make_unique<dsf::mobility::Agent>(20);
+    auto agent3 = std::make_unique<dsf::mobility::Agent>(30);
+
+    intersection.addAgent(std::move(agent1));
+    CHECK_EQ(intersection.nAgents(), 1);
+
+    intersection.addAgent(std::move(agent2));
+    CHECK_EQ(intersection.nAgents(), 2);
+
+    intersection.addAgent(std::move(agent3));
+    CHECK_EQ(intersection.nAgents(), 3);
+    CHECK(intersection.isFull());
+
+    // Verify that adding another agent when full throws an error
+    auto agent4 = std::make_unique<dsf::mobility::Agent>(40);
+    CHECK_THROWS_AS(intersection.addAgent(std::move(agent4)), std::runtime_error);
   }
 }
 
@@ -349,5 +374,64 @@ TEST_CASE("Station") {
         }
       }
     }
+  }
+}
+
+TEST_CASE("TrafficLight formatting") {
+  using TrafficLightCycle = dsf::mobility::TrafficLightCycle;
+
+  SUBCASE("std::format TrafficLightCycle") {
+    TrafficLightCycle cycle{30, 5};
+
+    std::string formatted = std::format("{}", cycle);
+    CHECK(formatted.find("TrafficLightCycle") != std::string::npos);
+    CHECK(formatted.find("green time: 30") != std::string::npos);
+    CHECK(formatted.find("phase shift: 5") != std::string::npos);
+  }
+
+  SUBCASE("std::format TrafficLight without cycles") {
+    TrafficLight tl{10, 60};
+    tl.setName("Intersection A");
+
+    std::string formatted = std::format("{}", tl);
+    CHECK(formatted.find("TrafficLight \"Intersection A\"") != std::string::npos);
+    CHECK(formatted.find("(10)") != std::string::npos);
+    CHECK(formatted.find("cycle time 60") != std::string::npos);
+    CHECK(formatted.find("counter 0") != std::string::npos);
+  }
+
+  SUBCASE("std::format TrafficLight with cycles") {
+    TrafficLight tl{20, 90};
+    tl.setName("Main Intersection");
+
+    // Add cycles for different streets and directions
+    TrafficLightCycle cycle1{40, 0};
+    TrafficLightCycle cycle2{50, 40};
+
+    tl.setCycle(1, dsf::Direction::STRAIGHT, cycle1);
+    tl.setCycle(1, dsf::Direction::LEFT, cycle2);
+    tl.setCycle(2, dsf::Direction::STRAIGHT, cycle2);
+    tl.setCycle(2, dsf::Direction::RIGHT, cycle1);
+
+    std::string formatted = std::format("{}", tl);
+    CHECK(formatted.find("TrafficLight \"Main Intersection\"") != std::string::npos);
+    CHECK(formatted.find("(20)") != std::string::npos);
+    CHECK(formatted.find("cycle time 90") != std::string::npos);
+    CHECK(formatted.find("Street 1:") != std::string::npos);
+    CHECK(formatted.find("Street 2:") != std::string::npos);
+    CHECK(formatted.find("dir STRAIGHT") != std::string::npos);
+    CHECK(formatted.find("dir LEFT") != std::string::npos);
+    CHECK(formatted.find("dir RIGHT") != std::string::npos);
+  }
+
+  SUBCASE("std::format TrafficLight after counter increment") {
+    TrafficLight tl{30, 60};
+    tl.setName("Test Light");
+    ++tl;
+    ++tl;
+    ++tl;
+
+    std::string formatted = std::format("{}", tl);
+    CHECK(formatted.find("counter 3") != std::string::npos);
   }
 }

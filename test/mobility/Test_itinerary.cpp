@@ -1,6 +1,6 @@
 #include <cstdint>
 
-#include "../src/dsf/mobility/Itinerary.hpp"
+#include "../../src/dsf/mobility/Itinerary.hpp"
 
 #include "doctest.h"
 

@@ -24,7 +24,6 @@ namespace dsf::mobility {
     std::multimap<int16_t, std::unique_ptr<Agent>> m_agents;
     std::set<Id>
         m_streetPriorities;  // A set containing the street ids that have priority - like main roads
-    Size m_agentCounter;
 
   public:
     /// @brief Construct a new Intersection object
@@ -98,11 +97,6 @@ namespace dsf::mobility {
     /// @brief Get the node's agent ids
     /// @return std::set<Id> A std::set containing the node's agent ids
     std::multimap<int16_t, std::unique_ptr<Agent>>& agents() { return m_agents; };
-    /// @brief Returns the number of agents that have passed through the node
-    /// @return Size The number of agents that have passed through the node
-    /// @details This function returns the number of agents that have passed through the node
-    ///          since the last time this function was called. It also resets the counter.
-    Size agentCounter();
     /// @brief Returns the number of agents currently in the node
     /// @return Size The number of agents currently in the node
     Size nAgents() const { return m_agents.size(); }

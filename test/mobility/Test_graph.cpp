@@ -1,11 +1,11 @@
 #include <cassert>
 #include <cstdint>
 
-#include "../src/dsf/mobility/RoadNetwork.hpp"
-#include "../src/dsf/base/Node.hpp"
-#include "../src/dsf/mobility/Road.hpp"
-#include "../src/dsf/mobility/Street.hpp"
-#include "../src/dsf/base/AdjacencyMatrix.hpp"
+#include "../../src/dsf/mobility/RoadNetwork.hpp"
+#include "../../src/dsf/base/Node.hpp"
+#include "../../src/dsf/mobility/Road.hpp"
+#include "../../src/dsf/mobility/Street.hpp"
+#include "../../src/dsf/base/AdjacencyMatrix.hpp"
 
 #include "doctest.h"
 

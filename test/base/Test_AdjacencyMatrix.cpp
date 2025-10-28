@@ -1,5 +1,5 @@
-#include "../src/dsf/base/AdjacencyMatrix.hpp"
-#include "../src/dsf/mobility/RoadNetwork.hpp"
+#include "../../src/dsf/base/AdjacencyMatrix.hpp"
+#include "../../src/dsf/mobility/RoadNetwork.hpp"
 
 #include "doctest.h"
 
