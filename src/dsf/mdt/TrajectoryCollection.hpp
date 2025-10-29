@@ -1,18 +1,15 @@
 #pragma once
 
 #include "Trajectory.hpp"
+#include "../utility/Typedef.hpp"
 
 #include <string>
 #include <unordered_map>
 
-#include <tbb/concurrent_unordered_map.h>
-
 namespace dsf::mdt {
   class TrajectoryCollection {
   private:
-    std::unordered_map<std::string, Trajectory<dsf::geometry::Point>> m_pointTrajectories;
-    tbb::concurrent_unordered_map<std::string, Trajectory<dsf::mdt::PointsCluster>>
-        m_clusterTrajectories;
+    std::unordered_map<Id, Trajectory> m_trajectories;
 
   public:
     /// @brief Construct a TrajectoryCollection, optionally importing from a CSV file.

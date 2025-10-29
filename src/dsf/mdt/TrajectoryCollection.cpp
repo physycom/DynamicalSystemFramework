@@ -2,7 +2,6 @@
 
 #include <fstream>
 
-#include <rapidcsv.h>
 #include <tbb/parallel_for_each.h>
 
 namespace dsf::mdt {
@@ -13,56 +12,37 @@ namespace dsf::mdt {
   }
 
   void TrajectoryCollection::import(std::string const& fileName) {
+    constexpr auto HEADER_LINE = "uid timestamp lat lon";
     std::ifstream file{fileName};
     if (!file.is_open()) {
       throw std::runtime_error("Error opening file \"" + fileName + "\" for reading.");
     }
 
-    rapidcsv::Document csvReader(
-        file, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(';'));
-    auto const rowCount = csvReader.GetRowCount();
-
-    if (rowCount == 0) {
-      return;  // Nothing to import
+    // Read the CSV file with header: uid;timestamp;lon;lat
+    std::string line;
+    std::getline(file, line);  // Skip header line
+    // Assert that header is correct
+    if (line != HEADER_LINE) {
+      throw std::runtime_error("Invalid CSV header in file \"" + fileName + "\". Expected: \"" +
+                               HEADER_LINE + "\", got: \"" + line + "\"");
     }
-
-    // Read all columns at once for better performance
-    auto const uids = csvReader.GetColumn<std::string>("uid");
-    auto const timestamps = csvReader.GetColumn<std::time_t>("timestamp");
-    auto const lons = csvReader.GetColumn<double>("lon");
-    auto const lats = csvReader.GetColumn<double>("lat");
-
-    // Build trajectories by grouping consecutive rows with same uid
-    std::string currentUid = uids[0];
-    Trajectory<dsf::geometry::Point> trajectory;
-
-    for (std::size_t i = 0; i < rowCount; ++i) {
-      if (uids[i] != currentUid) {
-        // Store the previous trajectory
-        m_pointTrajectories.emplace(std::move(currentUid), std::move(trajectory));
-        // Start a new trajectory
-        currentUid = uids[i];
-        trajectory = Trajectory<dsf::geometry::Point>();
-      }
-
-      dsf::geometry::Point point(lons[i], lats[i]);
-      trajectory.addPoint(timestamps[i], point);
-    }
-
-    // Don't forget to store the last trajectory!
-    if (!trajectory.empty()) {
-      m_pointTrajectories.emplace(std::move(currentUid), std::move(trajectory));
+    while (std::getline(file, line)) {
+      std::istringstream ss(line);
+      Id uid;
+      std::time_t timestamp;
+      double lat, lon;
+      // Data are separated by "\t" so just read with "\t" delimiter
+      ss >> uid >> timestamp >> lat >> lon;
+      m_trajectories[uid].addPoint(timestamp, dsf::geometry::Point(lon, lat));
     }
   }
 
   void TrajectoryCollection::filter(double const clusterRadius, double const maxSpeed) {
     tbb::parallel_for_each(
-        m_pointTrajectories.cbegin(),
-        m_pointTrajectories.cend(),
-        [this, clusterRadius, maxSpeed](auto const& pair) {
-          auto const& [uid, trajectory] = pair;
-          auto filteredTrajectory = trajectory.filter(clusterRadius, maxSpeed);
-          m_clusterTrajectories.emplace(uid, std::move(filteredTrajectory));
+        m_trajectories.begin(),
+        m_trajectories.end(),
+        [this, clusterRadius, maxSpeed](auto& pair) {
+          pair.second.filter(clusterRadius, maxSpeed);
         });
   }
   void TrajectoryCollection::to_csv(std::string const& fileName) const {
@@ -74,8 +54,8 @@ namespace dsf::mdt {
     // Write CSV header
     file << "uid;lon;lat;timestamp_in;timestamp_out\n";
 
-    for (auto const& [uid, trajectory] : m_clusterTrajectories) {
-      for (auto const& [timestamp, cluster] : trajectory.points()) {
+    for (auto const& [uid, trajectory] : m_trajectories) {
+      for (auto const& cluster : trajectory.points()) {
         auto const centroid = cluster.centroid();
         file << uid << ";" << centroid.x() << ";" << centroid.y() << ";"
              << cluster.firstTimestamp() << ";" << cluster.lastTimestamp() << "\n";

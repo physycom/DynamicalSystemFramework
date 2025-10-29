@@ -7,14 +7,18 @@ namespace dsf::mdt {
     if (m_points.empty()) {
       throw std::runtime_error("Cannot compute centroid of an empty PointsCluster.");
     }
+    if (m_points.size() == 1) {
+      m_centroid = m_points.begin()->point;
+      return;
+    }
     // Collect x and y coordinates
     std::vector<double> xs;
     std::vector<double> ys;
     xs.reserve(m_points.size());
     ys.reserve(m_points.size());
-    for (const auto& [timestamp, point] : m_points) {
-      xs.push_back(point.x());
-      ys.push_back(point.y());
+    for (auto const& activityPoint : m_points) {
+      xs.push_back(activityPoint.point.x());
+      ys.push_back(activityPoint.point.y());
     }
 
     // Helper to compute median; take vector by value so we can modify it
@@ -38,13 +42,19 @@ namespace dsf::mdt {
     m_centroid = dsf::geometry::Point(compute_median(xs), compute_median(ys));
   }
 
-  void PointsCluster::addPoint(std::time_t timestamp, dsf::geometry::Point const& point) {
-    if (m_points.contains(timestamp)) {
-      throw std::invalid_argument(std::format(
-          "A point with the given timestamp ({}) already exists in the cluster.",
-          timestamp));
+  void PointsCluster::addPoint(ActivityPoint const& activityPoint) {
+    m_points.emplace_back(activityPoint);
+    m_bSorted = false;
+    m_centroid.reset();
+  }
+  void PointsCluster::sort() const {
+    if (!m_bSorted) {
+      std::sort(m_points.begin(), m_points.end(),
+                [](ActivityPoint const& a, ActivityPoint const& b) {
+                  return a.timestamp < b.timestamp;
+                });
+      m_bSorted = true;
     }
-    m_points.emplace(timestamp, point);
   }
 
   dsf::geometry::Point PointsCluster::centroid() const {

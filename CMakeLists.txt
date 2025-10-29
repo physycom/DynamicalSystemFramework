@@ -99,5 +99,7 @@ if(BUILD_PYTHON_BINDINGS)
     target_include_directories(dsf_python_module PRIVATE 
         ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
+
+    target_compile_options(dsf_python_module PRIVATE -Ofast)
 endif()
 
