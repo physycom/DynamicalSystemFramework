@@ -2,16 +2,16 @@
 
 #include <format>
 #include <fstream>
-#include <mutex>
 
 #include <rapidcsv.h>
+
+#include <tbb/parallel_for_each.h>
 
 namespace dsf::mdt {
   TrajectoryCollection::TrajectoryCollection(std::string const& fileName) {
     if (!fileName.empty()) {
       this->import(fileName);
     }
-    m_tbbArena.initialize();
   }
 
   void TrajectoryCollection::import(std::string const& fileName, char const sep) {
@@ -21,32 +21,18 @@ namespace dsf::mdt {
     auto const& lats = doc.GetColumn<double>("lat");
     auto const& lons = doc.GetColumn<double>("lon");
     
-    // for (std::size_t i = 0; i < uids.size(); ++i) {
-    //   m_trajectories[uids[i]].addPoint(timestamps[i], dsf::geometry::Point(lons[i], lats[i]));
-    // }
-
-    m_tbbArena.execute([&]{
-      tbb::parallel_for(std::size_t(0), uids.size(), [&](std::size_t i){
-        m_trajectories[uids[i]].addPoint(timestamps[i], dsf::geometry::Point(lons[i], lats[i]));
-      });
-    });
+    for (std::size_t i = 0; i < uids.size(); ++i) {
+      m_trajectories[uids[i]].addPoint(timestamps[i], dsf::geometry::Point(lons[i], lats[i]));
+    }
   }
 
   void TrajectoryCollection::filter(double const clusterRadius, double const maxSpeed) {
-    m_tbbArena.execute([&]{
-      tbb::parallel_for_each(
-          m_trajectories.begin(),
-          m_trajectories.end(),
-          [this, clusterRadius, maxSpeed](auto& pair) {
-            pair.second.filter(clusterRadius, maxSpeed);
-          });
-    });
-    // tbb::parallel_for_each(
-    //     m_trajectories.begin(),
-    //     m_trajectories.end(),
-    //     [this, clusterRadius, maxSpeed](auto& pair) {
-    //       pair.second.filter(clusterRadius, maxSpeed);
-    //     });
+    tbb::parallel_for_each(
+        m_trajectories.begin(),
+        m_trajectories.end(),
+        [this, clusterRadius, maxSpeed](auto& pair) {
+          pair.second.filter(clusterRadius, maxSpeed);
+        });
   }
   void TrajectoryCollection::to_csv(std::string const& fileName, char const sep) const {
     std::ofstream file{fileName};
