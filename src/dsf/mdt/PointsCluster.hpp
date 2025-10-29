@@ -2,6 +2,7 @@
 
 #include "../geometry/Point.hpp"
 
+#include <optional>
 #include <vector>
 
 namespace dsf::mdt {
