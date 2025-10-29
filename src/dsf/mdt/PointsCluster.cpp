@@ -1,8 +1,9 @@
 #include "PointsCluster.hpp"
-#include "../utility/Typedef.hpp"
 
 #include <algorithm>
 #include <vector>
+
+#include <tbb/parallel_sort.h>
 
 namespace dsf::mdt {
   void PointsCluster::m_updateCentroid() const {
@@ -53,9 +54,9 @@ namespace dsf::mdt {
   void PointsCluster::addPoint(std::time_t timestamp, dsf::geometry::Point const& point) noexcept {
     this->addActivityPoint(ActivityPoint{timestamp, point});
   }
-  void PointsCluster::sort() const {
+  void PointsCluster::sort() const noexcept{
     if (!m_bSorted) {
-      std::sort(DSF_EXECUTION m_points.begin(), m_points.end(),
+      tbb::parallel_sort(m_points.begin(), m_points.end(),
                 [](ActivityPoint const& a, ActivityPoint const& b) {
                   return a.timestamp < b.timestamp;
                 });

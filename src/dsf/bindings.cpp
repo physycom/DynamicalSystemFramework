@@ -528,11 +528,12 @@ PYBIND11_MODULE(dsf_cpp, m) {
                .c_str())
       .def("filter",
            &dsf::mdt::TrajectoryCollection::filter,
-           pybind11::arg("radius"),
-           pybind11::arg("max_speed") = 150.0,
+           pybind11::arg("radius_km"),
+           pybind11::arg("max_speed_kmh") = 150.0,
            dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::filter").c_str())
       .def("to_csv",
            &dsf::mdt::TrajectoryCollection::to_csv,
            pybind11::arg("fileName"),
+           pybind11::arg("sep") = ';',
            dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::to_csv").c_str());
 }

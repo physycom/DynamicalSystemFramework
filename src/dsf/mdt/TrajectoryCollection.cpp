@@ -40,21 +40,21 @@ namespace dsf::mdt {
     //   m_trajectories[uid].addPoint(timestamp, dsf::geometry::Point(lon, lat));
     // }
 
-    rapidcsv::Document doc(fileName, rapidcsv::LabelParams(-1, -1), rapidcsv::SeparatorParams(sep));
+    rapidcsv::Document doc(fileName, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(sep));
     auto const& uids = doc.GetColumn<Id>("uid");
     auto const& timestamps = doc.GetColumn<std::time_t>("timestamp");
     auto const& lats = doc.GetColumn<double>("lat");
     auto const& lons = doc.GetColumn<double>("lon");
     
-    // for (std::size_t i = 0; i < uids.size(); ++i) {
-    //   m_trajectories[uids[i]].addPoint(timestamps[i], dsf::geometry::Point(lons[i], lats[i]));
-    // }
-
-    tbb::parallel_for(std::size_t(0), uids.size(), [&](std::size_t i){
-      static std::mutex mtx;
-      std::scoped_lock lock(mtx);
+    for (std::size_t i = 0; i < uids.size(); ++i) {
       m_trajectories[uids[i]].addPoint(timestamps[i], dsf::geometry::Point(lons[i], lats[i]));
-    });
+    }
+
+    // tbb::parallel_for(std::size_t(0), uids.size(), [&](std::size_t i){
+    //   static std::mutex mtx;
+    //   std::scoped_lock lock(mtx);
+    //   m_trajectories[uids[i]].addPoint(timestamps[i], dsf::geometry::Point(lons[i], lats[i]));
+    // });
   }
 
   void TrajectoryCollection::filter(double const clusterRadius, double const maxSpeed) {
