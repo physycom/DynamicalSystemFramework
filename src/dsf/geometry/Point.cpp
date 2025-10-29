@@ -25,9 +25,9 @@ namespace dsf::geometry {
     }
   }
 
-  double haversine_m(dsf::geometry::Point const& p1,
+  double haversine_km(dsf::geometry::Point const& p1,
                      dsf::geometry::Point const& p2) noexcept {
-    constexpr double EARTH_RADIUS_M = 6371000.0;  // Earth radius in meters
+    constexpr double EARTH_RADIUS_KM = 6371.0;  // Earth radius in kilometers
     constexpr double DEG_TO_RAD = std::numbers::pi / 180.0;
 
     double const lat1 = p1.y() * DEG_TO_RAD;
@@ -36,10 +36,10 @@ namespace dsf::geometry {
     double const dLon = (p2.x() - p1.x()) * DEG_TO_RAD;
 
     double const a =
-        std::sin(dLat / 2.0) * std::sin(dLat / 2.0) +
-        std::cos(lat1) * std::cos(lat2) * std::sin(dLon / 2.0) * std::sin(dLon / 2.0);
+        std::sin(dLat * 0.5) * std::sin(dLat * 0.5) +
+        std::cos(lat1) * std::cos(lat2) * std::sin(dLon * 0.5) * std::sin(dLon * 0.5);
     double const c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
 
-    return EARTH_RADIUS_M * c;
+    return EARTH_RADIUS_KM * c;
   }
 }  // namespace dsf::geometry

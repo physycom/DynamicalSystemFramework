@@ -1,4 +1,6 @@
 #include "PointsCluster.hpp"
+#include "../utility/Typedef.hpp"
+
 #include <algorithm>
 #include <vector>
 
@@ -11,6 +13,9 @@ namespace dsf::mdt {
       m_centroid = m_points.begin()->point;
       return;
     }
+    // Ensure points are sorted by timestamp
+    this->sort();
+
     // Collect x and y coordinates
     std::vector<double> xs;
     std::vector<double> ys;
@@ -23,11 +28,9 @@ namespace dsf::mdt {
 
     // Helper to compute median; take vector by value so we can modify it
     auto compute_median = [](std::vector<double> v) -> double {
-      const size_t n = v.size();
-      const size_t mid = n / 2;
-      if (n == 0) {
-        throw std::runtime_error("Cannot compute median of empty vector");
-      }
+      auto const n = v.size();
+      auto const mid = static_cast<std::size_t>(n * 0.5);
+      
       std::nth_element(v.begin(), v.begin() + mid, v.end());
       double high = v[mid];
       if (n % 2 == 1) {
@@ -36,20 +39,23 @@ namespace dsf::mdt {
       // even: need the lower middle as well
       std::nth_element(v.begin(), v.begin() + (mid - 1), v.end());
       double low = v[mid - 1];
-      return (low + high) / 2.0;
+      return (low + high) * 0.5;
     };
 
     m_centroid = dsf::geometry::Point(compute_median(xs), compute_median(ys));
   }
 
-  void PointsCluster::addPoint(ActivityPoint const& activityPoint) {
+  void PointsCluster::addActivityPoint(ActivityPoint const& activityPoint) noexcept {
     m_points.emplace_back(activityPoint);
     m_bSorted = false;
     m_centroid.reset();
   }
+  void PointsCluster::addPoint(std::time_t timestamp, dsf::geometry::Point const& point) noexcept {
+    this->addActivityPoint(ActivityPoint{timestamp, point});
+  }
   void PointsCluster::sort() const {
     if (!m_bSorted) {
-      std::sort(m_points.begin(), m_points.end(),
+      std::sort(DSF_EXECUTION m_points.begin(), m_points.end(),
                 [](ActivityPoint const& a, ActivityPoint const& b) {
                   return a.timestamp < b.timestamp;
                 });
@@ -62,5 +68,29 @@ namespace dsf::mdt {
       this->m_updateCentroid();
     }
     return *m_centroid;
+  }
+
+  std::time_t PointsCluster::firstTimestamp() const {
+    if (m_points.empty()) {
+      throw std::runtime_error("PointsCluster is empty, no first timestamp available.");
+    }
+    this->sort();
+    return m_points.begin()->timestamp;
+  }
+  std::time_t PointsCluster::lastTimestamp() const {
+    if (m_points.empty()) {
+      throw std::runtime_error("PointsCluster is empty, no last timestamp available.");
+    }
+    this->sort();
+    return m_points.rbegin()->timestamp;
+  }
+  std::time_t PointsCluster::duration() const {
+    if (m_points.empty()) {
+      throw std::runtime_error("PointsCluster is empty, no duration available.");
+    }
+    if (m_points.size() == 1) {
+      return 0;
+    }
+    return this->lastTimestamp() - this->firstTimestamp();
   }
 }  // namespace dsf::mdt

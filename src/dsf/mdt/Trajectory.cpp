@@ -1,29 +1,28 @@
 #include "Trajectory.hpp"
 
 namespace dsf::mdt {
+    void Trajectory::addPoint(PointsCluster&& cluster) {
+        m_points.push_back(std::move(cluster));
+    }
   void Trajectory::addPoint(std::time_t timestamp, dsf::geometry::Point const& point) {
     // Create a new PointsCluster containing the single activity point and add it
     PointsCluster cluster;
-    cluster.addPoint(ActivityPoint{timestamp, point});
-    m_points.push_back(std::move(cluster));
+    cluster.addPoint(timestamp, point);
+    addPoint(std::move(cluster));
   }
 
-  void Trajectory::filter(double const clusterRadius,
-                          double const maxSpeed) {
+  void Trajectory::filter(double const cluster_radius_km,
+                          double const max_speed_kph) {
     auto rawPoints = std::move(m_points);
     if (rawPoints.empty()) {
       return;
     }
 
-    constexpr double KMH_TO_MS = 1000.0 / 3600.0;  // Convert km/h to m/s
-    double const maxSpeedMS =
-        maxSpeed * KMH_TO_MS;  // maxSpeed is in km/h, convert to m/s
-
     std::vector<PointsCluster> clusterCandidates;
 
     auto it = rawPoints.begin();
     PointsCluster currentCluster;
-    currentCluster.addPoint(ActivityPoint{it->firstTimestamp(), it->centroid()});
+    currentCluster.addPoint(it->firstTimestamp(), it->centroid());
 
     ++it;
     for (; it != rawPoints.end(); ++it) {
@@ -32,11 +31,11 @@ namespace dsf::mdt {
 
       // Compute distance from current point to cluster centroid
       double const distance =
-          dsf::geometry::haversine_m(currentCluster.centroid(), point);
+          dsf::geometry::haversine_km(currentCluster.centroid(), point);
 
-      if (distance < clusterRadius) {
+      if (distance < cluster_radius_km) {
         // Add point to current cluster
-        currentCluster.addPoint(ActivityPoint{timestamp, point});
+        currentCluster.addPoint(timestamp, point);
       } else {
         // Distance exceeds threshold - finalize current cluster and start new one
         if (!currentCluster.empty()) {
@@ -45,7 +44,7 @@ namespace dsf::mdt {
 
         // Start new cluster with current point
         currentCluster = PointsCluster();
-        currentCluster.addPoint(ActivityPoint{timestamp, point});
+        currentCluster.addPoint(timestamp, point);
       }
     }
 
@@ -73,14 +72,14 @@ namespace dsf::mdt {
         dsf::geometry::Point const firstPt = cluster.points().front().point;
         dsf::geometry::Point const lastPt = cluster.points().back().point;
         double const distanceTraveled =
-            dsf::geometry::haversine_m(firstPt, lastPt);  // in meters
+            dsf::geometry::haversine_km(firstPt, lastPt);  // in kilometers
 
-        // Compute average speed in m/s
-        double const avgSpeedMS = distanceTraveled / static_cast<double>(duration);
+        // Compute average speed in km/h
+        double const avgSpeedKPH = distanceTraveled / static_cast<double>(duration) * 3600.0;
 
         // Only add clusters where average speed is below maxSpeed threshold
         // These represent stop points or slow-moving areas
-        if (avgSpeedMS < maxSpeedMS) {
+        if (avgSpeedKPH < max_speed_kph) {
             m_points.push_back(cluster);
         }
       } else {

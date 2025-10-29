@@ -17,10 +17,12 @@ namespace dsf::mdt {
     TrajectoryCollection(std::string const& fileName = std::string());
     /// @brief Import trajectories from a CSV file.
     /// @param fileName The path to the CSV file.
-    void import(std::string const& fileName);
+    /// @param sep The character used to separate values in the CSV file.
+    void import(std::string const& fileName, char const sep = ';');
     /// @brief Export clustered trajectories to a CSV file.
     /// @param fileName The path to the output CSV file.
-    void to_csv(std::string const& fileName) const;
+    /// @param sep The character used to separate values in the CSV file.
+    void to_csv(std::string const& fileName, char const sep = ';') const;
     /// @brief Filter all point trajectories to identify stop points based on clustering and speed
     /// criteria.
     /// @param clusterRadius The radius (in meters) to use for clustering points.

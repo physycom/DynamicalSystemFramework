@@ -17,13 +17,18 @@ namespace dsf::mdt {
   public:
     Trajectory() = default;
 
+    /// @brief Add a PointsCluster to the trajectory.
+    /// @param cluster The PointsCluster to add.
+    void addPoint(PointsCluster&& cluster);
+    /// @brief Add a point with timestamp to the trajectory.
+    /// @param timestamp The timestamp of the activity point.
+    /// @param point The geometric point of the activity point.
     void addPoint(std::time_t timestamp, dsf::geometry::Point const& point);
 
     /// @brief Filter the trajectory to identify stop points based on clustering and speed criteria.
-    /// @param clusterRadius The radius (in meters) to use for clustering points.
-    /// @param maxSpeed The max allowed speed (in km/h) to consider a cluster as a stop point.
-    /// @return A filtered trajectory with identified stop points.
-  void filter(double const clusterRadius, double const maxSpeed = 150.0);
+    /// @param cluster_radius_km The radius (in kilometers) to use for clustering points.
+    /// @param max_speed_kph The max allowed speed (in km/h) to consider a cluster as a stop point.
+    void filter(double const cluster_radius_km, double const max_speed_kph = 150.0);
 
     /// @brief Get the number of points in the trajectory.
     /// @return The size of the trajectory.
