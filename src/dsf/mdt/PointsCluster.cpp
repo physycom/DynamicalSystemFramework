@@ -56,14 +56,15 @@ namespace dsf::mdt {
     this->addActivityPoint(ActivityPoint{timestamp, point});
   }
   void PointsCluster::sort() const noexcept {
-    if (!m_bSorted) {
-      tbb::parallel_sort(m_points.begin(),
-                         m_points.end(),
-                         [](ActivityPoint const& a, ActivityPoint const& b) {
-                           return a.timestamp < b.timestamp;
-                         });
-      m_bSorted = true;
+    if (m_bSorted) {
+      return;
     }
+    tbb::parallel_sort(m_points.begin(),
+                       m_points.end(),
+                       [](ActivityPoint const& a, ActivityPoint const& b) {
+                         return a.timestamp < b.timestamp;
+                       });
+    m_bSorted = true;
   }
 
   dsf::geometry::Point PointsCluster::centroid() const {

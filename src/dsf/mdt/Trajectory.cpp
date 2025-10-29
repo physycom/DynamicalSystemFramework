@@ -1,8 +1,11 @@
 #include "Trajectory.hpp"
 
+#include <tbb/parallel_sort.h>
+
 namespace dsf::mdt {
   void Trajectory::addPoint(PointsCluster&& cluster) {
     m_points.push_back(std::move(cluster));
+    m_bSorted = false;
   }
   void Trajectory::addPoint(std::time_t timestamp, dsf::geometry::Point const& point) {
     // Create a new PointsCluster containing the single activity point and add it
@@ -12,6 +15,7 @@ namespace dsf::mdt {
   }
 
   void Trajectory::filter(double const cluster_radius_km, double const max_speed_kph) {
+    this->sort();
     auto rawPoints = std::move(m_points);
     if (rawPoints.empty()) {
       return;
@@ -87,5 +91,17 @@ namespace dsf::mdt {
         m_points.push_back(cluster);
       }
     }
+  }
+
+  void Trajectory::sort() noexcept {
+    if (m_bSorted) {
+      return;
+    }
+    tbb::parallel_sort(m_points.begin(),
+                       m_points.end(),
+                       [](PointsCluster const& a, PointsCluster const& b) {
+                         return a.firstTimestamp() < b.firstTimestamp();
+                       });
+    m_bSorted = true;
   }
 }  // namespace dsf::mdt
