@@ -470,7 +470,6 @@ setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
-        "License :: Free For Educational Use",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: C++",
