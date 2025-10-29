@@ -6,10 +6,13 @@
 #include <string>
 #include <unordered_map>
 
+#include <tbb/tbb.h>
+
 namespace dsf::mdt {
   class TrajectoryCollection {
   private:
-    std::unordered_map<Id, Trajectory> m_trajectories;
+    tbb::concurrent_unordered_map<Id, Trajectory> m_trajectories;
+    tbb::task_arena m_tbbArena;
 
   public:
     /// @brief Construct a TrajectoryCollection, optionally importing from a CSV file.
