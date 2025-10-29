@@ -1,6 +1,7 @@
 #include "Point.hpp"
 
 #include <cmath>
+#include <numbers>
 #include <sstream>
 #include <stdexcept>
 
@@ -26,7 +27,7 @@ namespace dsf::geometry {
   }
 
   double haversine_km(dsf::geometry::Point const& p1,
-                     dsf::geometry::Point const& p2) noexcept {
+                      dsf::geometry::Point const& p2) noexcept {
     constexpr double EARTH_RADIUS_KM = 6371.0;  // Earth radius in kilometers
     constexpr double DEG_TO_RAD = std::numbers::pi / 180.0;
 

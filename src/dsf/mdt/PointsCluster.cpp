@@ -31,7 +31,7 @@ namespace dsf::mdt {
     auto compute_median = [](std::vector<double> v) -> double {
       auto const n = v.size();
       auto const mid = static_cast<std::size_t>(n * 0.5);
-      
+
       std::nth_element(v.begin(), v.begin() + mid, v.end());
       double high = v[mid];
       if (n % 2 == 1) {
@@ -51,15 +51,17 @@ namespace dsf::mdt {
     m_bSorted = false;
     m_centroid.reset();
   }
-  void PointsCluster::addPoint(std::time_t timestamp, dsf::geometry::Point const& point) noexcept {
+  void PointsCluster::addPoint(std::time_t timestamp,
+                               dsf::geometry::Point const& point) noexcept {
     this->addActivityPoint(ActivityPoint{timestamp, point});
   }
-  void PointsCluster::sort() const noexcept{
+  void PointsCluster::sort() const noexcept {
     if (!m_bSorted) {
-      tbb::parallel_sort(m_points.begin(), m_points.end(),
-                [](ActivityPoint const& a, ActivityPoint const& b) {
-                  return a.timestamp < b.timestamp;
-                });
+      tbb::parallel_sort(m_points.begin(),
+                         m_points.end(),
+                         [](ActivityPoint const& a, ActivityPoint const& b) {
+                           return a.timestamp < b.timestamp;
+                         });
       m_bSorted = true;
     }
   }

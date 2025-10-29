@@ -1,9 +1,9 @@
 #include "Trajectory.hpp"
 
 namespace dsf::mdt {
-    void Trajectory::addPoint(PointsCluster&& cluster) {
-        m_points.push_back(std::move(cluster));
-    }
+  void Trajectory::addPoint(PointsCluster&& cluster) {
+    m_points.push_back(std::move(cluster));
+  }
   void Trajectory::addPoint(std::time_t timestamp, dsf::geometry::Point const& point) {
     // Create a new PointsCluster containing the single activity point and add it
     PointsCluster cluster;
@@ -11,8 +11,7 @@ namespace dsf::mdt {
     addPoint(std::move(cluster));
   }
 
-  void Trajectory::filter(double const cluster_radius_km,
-                          double const max_speed_kph) {
+  void Trajectory::filter(double const cluster_radius_km, double const max_speed_kph) {
     auto rawPoints = std::move(m_points);
     if (rawPoints.empty()) {
       return;
@@ -75,17 +74,18 @@ namespace dsf::mdt {
             dsf::geometry::haversine_km(firstPt, lastPt);  // in kilometers
 
         // Compute average speed in km/h
-        double const avgSpeedKPH = distanceTraveled / static_cast<double>(duration) * 3600.0;
+        double const avgSpeedKPH =
+            distanceTraveled / static_cast<double>(duration) * 3600.0;
 
         // Only add clusters where average speed is below maxSpeed threshold
         // These represent stop points or slow-moving areas
         if (avgSpeedKPH < max_speed_kph) {
-            m_points.push_back(cluster);
+          m_points.push_back(cluster);
         }
       } else {
         // Duration is 0 - all points have same timestamp, treat as stopped
         m_points.push_back(cluster);
       }
     }
-    }
+  }
 }  // namespace dsf::mdt
