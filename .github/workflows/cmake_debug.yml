@@ -41,17 +41,16 @@ jobs:
           echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
           echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
 
-      - name: Build and install on Ubuntu
+      - name: Build on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}
         run: |
           mkdir -p build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
-          cmake --build . -j$(nproc) --config Release
-          cmake --install . --prefix ${GITHUB_WORKSPACE}/install
+          cmake .. -DCMAKE_BUILD_TYPE=Coverage -DDSF_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
+          cmake --build . -j$(nproc) --config Coverage
 
-      - name: Build and install on macOS
+      - name: Build on macOS
         if: matrix.os == 'macos-latest'
         working-directory: ${{ github.workspace }}
         run: |
@@ -59,12 +58,12 @@ jobs:
           cd build
           cmake .. \
             -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix fmt):$(brew --prefix spdlog):$(brew --prefix simdjson)" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
-          cmake --build . -j$(nproc) --config Release
-          cmake --install . --prefix ${GITHUB_WORKSPACE}/install
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DDSF_BUILD_TESTS=ON \
+            -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
+          cmake --build . -j$(sysctl -n hw.ncpu) --config Debug
 
-      - name: Build and install on Windows
+      - name: Build on Windows
         if: matrix.os == 'windows-latest'
         working-directory: ${{ github.workspace }}
         shell: powershell
@@ -72,9 +71,88 @@ jobs:
           New-Item -ItemType Directory -Force -Path build | Out-Null
           cd build
           $vcpkg_toolchain = "$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
-          cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
-          cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Release
-          cmake --install . --config Release --prefix "$env:GITHUB_WORKSPACE\install"
+          cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Debug -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
+          cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Debug
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: build/
+          retention-days: 1
+
+  install:
+    needs: build
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake libtbb-dev libspdlog-dev libsimdjson-dev libfmt-dev
+
+      - name: Install dependencies on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install tbb spdlog simdjson fmt
+
+      - name: Install dependencies on Windows (vcpkg)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git vcpkg
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          .\vcpkg install spdlog:x64-windows tbb:x64-windows fmt:x64-windows simdjson:x64-windows
+          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
+          echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: artifact-download
+
+      - name: Move artifacts to build directory (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mv artifact-download build
+
+      - name: Move artifacts to build directory (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mv artifact-download build
+
+      - name: Move artifacts to build directory (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          Move-Item -Path "artifact-download" -Destination "build" -Force
+
+      - name: Install on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}
+        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install
+
+      - name: Install on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}
+        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install
+
+      - name: Install on Windows
+        if: matrix.os == 'windows-latest'
+        working-directory: ${{ github.workspace }}
+        shell: powershell
+        run: cmake --install build --config Debug --prefix "$env:GITHUB_WORKSPACE\install"
 
       - name: Test include on Ubuntu
         if: matrix.os == 'ubuntu-latest'
@@ -211,3 +289,64 @@ jobs:
             Write-Host "FAILED: Cannot compile/link test program on Windows (exit code $LASTEXITCODE)"
             exit 1
           }
+
+  test:
+    needs: build
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest] #, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake libtbb-dev libspdlog-dev libsimdjson-dev libfmt-dev
+
+      - name: Install dependencies on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install tbb spdlog simdjson fmt
+
+      - name: Install dependencies on Windows (vcpkg)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git vcpkg
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          .\vcpkg install spdlog:x64-windows tbb:x64-windows fmt:x64-windows simdjson:x64-windows
+          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
+          echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: build
+
+      - name: Fix permissions for test executables
+        if: matrix.os != 'windows-latest'
+        run: chmod +x ${{ github.workspace }}/build/Test_*
+
+      - name: Run tests on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure -j$(nproc)
+
+      - name: Run tests on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure -j$(sysctl -n hw.ncpu)
+
+      - name: Run tests on Windows
+        if: matrix.os == 'windows-latest'
+        working-directory: ${{ github.workspace }}/build
+        shell: powershell
+        run: ctest --output-on-failure -C Debug -j $env:NUMBER_OF_PROCESSORS
