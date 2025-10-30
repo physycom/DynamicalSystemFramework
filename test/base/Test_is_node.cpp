@@ -1,8 +1,11 @@
+#include "dsf/utility/TypeTraits/is_node.hpp"
+
 #include <cassert>
 #include <cstdint>
 #include <memory>
 
-#include "is_node.hpp"
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
 
 using dsf::is_node;
 using dsf::is_node_v;

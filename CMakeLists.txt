@@ -21,6 +21,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Ensure optimization flags are applied only in Release mode
 if (CMAKE_BUILD_TYPE MATCHES "Release")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto=auto")
+elseif(CMAKE_BUILD_TYPE MATCHES "Coverage")
+    message(STATUS "Enable code coverage")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g --coverage -fprofile-update=atomic")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+else() # Default to Debug settings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g -fsanitize=address")
 endif()
 
 find_package(TBB REQUIRED CONFIG)
@@ -101,3 +107,35 @@ if(BUILD_PYTHON_BINDINGS)
     )
 endif()
 
+# Tests
+option(DSF_BUILD_TESTS "Build DSF tests" OFF)
+message(STATUS "Build DSF tests: ${DSF_BUILD_TESTS}")
+if (DSF_BUILD_TESTS)
+    include(CTest)
+    enable_testing()
+
+    # Get Doctest library
+    FetchContent_Declare(doctest
+        GIT_REPOSITORY https://github.com/doctest/doctest.git
+        GIT_TAG v2.4.12
+    )
+    FetchContent_GetProperties(doctest)
+    if(NOT doctest_POPULATED)
+    FetchContent_MakeAvailable(doctest)
+    endif()
+
+    macro(add_unit_test testname)
+        add_executable(${testname} ${ARGN})
+        target_include_directories(${testname} PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
+        target_include_directories(${testname} SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
+        target_include_directories(${testname} PRIVATE ${rapidcsv_SOURCE_DIR}/src)
+        target_link_libraries(${testname} PRIVATE dsf fmt::fmt spdlog::spdlog simdjson::simdjson TBB::tbb)
+        add_test(NAME ${testname} COMMAND ${testname})
+    endmacro()
+
+    file(GLOB TEST_SOURCES "test/*/*.cpp")
+    foreach(testsource ${TEST_SOURCES})
+        get_filename_component(testname ${testsource} NAME_WE)
+        add_unit_test(${testname} ${testsource})
+    endforeach()
+endif()

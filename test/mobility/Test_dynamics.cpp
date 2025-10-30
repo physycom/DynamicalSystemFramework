@@ -1,17 +1,22 @@
+#include "dsf/mobility/FirstOrderDynamics.hpp"
+#include "dsf/mobility/RoadNetwork.hpp"
+#include "dsf/mobility/Itinerary.hpp"
+#include "dsf/mobility/Street.hpp"
+
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 
-#include "../../src/dsf/mobility/FirstOrderDynamics.hpp"
-#include "../../src/dsf/mobility/RoadNetwork.hpp"
-#include "../../src/dsf/mobility/Itinerary.hpp"
-#include "../../src/dsf/mobility/Street.hpp"
-
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
 using namespace dsf;
 using namespace dsf::mobility;
+
+static const auto DATA_FOLDER =
+    std::filesystem::path(__FILE__).parent_path().parent_path() / "data";
 
 TEST_CASE("Measurement") {
   SUBCASE("STL vector") {
@@ -44,8 +49,8 @@ TEST_CASE("Measurement") {
 TEST_CASE("FirstOrderDynamics") {
   // dsf::Logger::setLogLevel(dsf::log_level_t::DEBUG);
   auto defaultNetwork = RoadNetwork{};
-  defaultNetwork.importEdges("./data/manhattan_edges.csv");
-  defaultNetwork.importNodeProperties("./data/manhattan_nodes.csv");
+  defaultNetwork.importEdges((DATA_FOLDER / "manhattan_edges.csv").string());
+  defaultNetwork.importNodeProperties((DATA_FOLDER / "manhattan_nodes.csv").string());
   SUBCASE("Constructor") {
     GIVEN("A graph object") {
       WHEN("A dynamics object is created") {

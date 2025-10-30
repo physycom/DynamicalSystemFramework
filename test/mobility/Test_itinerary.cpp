@@ -2,6 +2,7 @@
 
 #include "../../src/dsf/mobility/Itinerary.hpp"
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
 using Itinerary = dsf::mobility::Itinerary;
