@@ -42,7 +42,7 @@ TEST_CASE("Trajectory - addPoint with PointsCluster") {
   cluster.addPoint(1000, Point(10.0, 20.0));
   cluster.addPoint(1100, Point(10.1, 20.1));
 
-  trajectory.addPoint(std::move(cluster));
+  trajectory.addCluster(std::move(cluster));
 
   CHECK_EQ(trajectory.size(), 1);
   auto const& points = trajectory.points();

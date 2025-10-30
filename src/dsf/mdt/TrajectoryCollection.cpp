@@ -25,33 +25,73 @@ namespace dsf::mdt {
     auto const& lons = doc.GetColumn<double>("lon");
 
     for (std::size_t i = 0; i < uids.size(); ++i) {
-      m_trajectories[uids[i]].addPoint(timestamps[i],
+      if (m_trajectories.find(uids[i]) == m_trajectories.end()) {
+        m_trajectories[uids[i]] = std::vector<Trajectory>{};
+        m_trajectories[uids[i]].emplace_back();
+      }
+      m_trajectories[uids[i]][0].addPoint(timestamps[i],
                                        dsf::geometry::Point(lons[i], lats[i]));
     }
   }
 
-  void TrajectoryCollection::filter(std::size_t const min_points_per_trajectory, double const cluster_radius_km, double const max_speed_kph) {
+  void TrajectoryCollection::filter(double const cluster_radius_km, double const max_speed_kph, std::size_t const min_points_per_trajectory, std::optional<std::time_t> const min_duration_min) {
     // Collect IDs to remove in parallel
     tbb::concurrent_vector<Id> to_remove;
+    tbb::concurrent_vector<Id> to_split;
     
     tbb::parallel_for_each(m_trajectories.begin(),
                            m_trajectories.end(),
-                           [&to_remove, min_points_per_trajectory, cluster_radius_km, max_speed_kph](auto& pair) {
-                             if (pair.second.size() < min_points_per_trajectory) {
+                           [&to_remove, &to_split, min_points_per_trajectory, cluster_radius_km, max_speed_kph, min_duration_min](auto& pair) {
+                             auto& trajectory = pair.second[0];
+                             if (min_points_per_trajectory > 0 && trajectory.size() < min_points_per_trajectory) {
                                to_remove.push_back(pair.first);
                                return;
                              }
-                             pair.second.filter(cluster_radius_km, max_speed_kph);
-                             if (pair.second.size() < min_points_per_trajectory) {
+                             // By now, each trajectory has only one segment as they
+                             // were not split yet
+                             trajectory.filter(cluster_radius_km, max_speed_kph);
+                             if (min_points_per_trajectory > 0 && trajectory.size() < min_points_per_trajectory) {
                                to_remove.push_back(pair.first);
                                return;
+                             }
+                             if (!min_duration_min.has_value()) {
+                               return;
+                             }
+                             for (auto const& cluster : trajectory.points()) {
+                               if (cluster.duration() < min_duration_min.value() * 60) {
+                                 to_split.push_back(pair.first);
+                                 return;
+                               }
                              }
                            });
     
     // Remove trajectories sequentially (fast for unordered_map)
-    spdlog::info("Removing {} trajectories that do not meet the minimum points requirement after filtering.", to_remove.size());
+    spdlog::debug("Removing {} ({}%) trajectories that do not meet the minimum points requirement after filtering.", to_remove.size(), (to_remove.size() * 100.0 / m_trajectories.size()));
     for (auto const& id : to_remove) {
       m_trajectories.erase(id);
+    }
+
+    spdlog::debug("Splitting {} trajectories based on minimum duration requirement.", to_split.size());
+    for (auto const& trajIdx : to_split) {
+      // Extract the trajectory
+      if (!m_trajectories.contains(trajIdx)) {
+        continue;
+      }
+      auto& trajectories = m_trajectories[trajIdx];
+      auto originalTrajectory = std::move(trajectories[0]);
+
+      Trajectory newTrajectory;
+      for (auto const& cluster : originalTrajectory.points()) {
+        auto copy = cluster;
+        newTrajectory.addCluster(copy);
+        if (cluster.duration() < min_duration_min.value() * 60) {
+          continue;
+        }
+        // Cluster meets minimum duration - finalize current trajectory and start a new one
+        if (!newTrajectory.empty()) {
+          trajectories.emplace_back(std::move(newTrajectory));
+        }
+      }
     }
   }
   void TrajectoryCollection::to_csv(std::string const& fileName, char const sep) const {
@@ -61,15 +101,19 @@ namespace dsf::mdt {
     }
 
     auto const HEADER_LINE =
-        std::format("uid{}lon{}lat{}timestamp_in{}timestamp_out\n", sep, sep, sep, sep);
+        std::format("uid{}segment{}lon{}lat{}timestamp_in{}timestamp_out\n", sep, sep, sep, sep, sep);
     // Write CSV header
     file << HEADER_LINE;
 
-    for (auto const& [uid, trajectory] : m_trajectories) {
-      for (auto const& cluster : trajectory.points()) {
-        auto const centroid = cluster.centroid();
-        file << uid << sep << centroid.x() << sep << centroid.y() << sep
-             << cluster.firstTimestamp() << sep << cluster.lastTimestamp() << "\n";
+    for (auto const& [uid, trajectories] : m_trajectories) {
+      std::size_t trajIdx = 0;
+      for (auto const& trajectory : trajectories) {
+        for (auto const& cluster : trajectory.points()) {
+          auto const centroid = cluster.centroid();
+          file << uid << sep << trajIdx << sep << centroid.x() << sep << centroid.y() << sep
+              << cluster.firstTimestamp() << sep << cluster.lastTimestamp() << "\n";
+        }
+        ++trajIdx;
       }
     }
   }

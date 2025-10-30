@@ -3,15 +3,19 @@
 #include <tbb/parallel_sort.h>
 
 namespace dsf::mdt {
-  void Trajectory::addPoint(PointsCluster&& cluster) {
+  void Trajectory::addCluster(PointsCluster&& cluster) {
     m_points.push_back(std::move(cluster));
+    m_bSorted = false;
+  }
+  void Trajectory::addCluster(PointsCluster const& cluster) {
+    m_points.push_back(cluster);
     m_bSorted = false;
   }
   void Trajectory::addPoint(std::time_t timestamp, dsf::geometry::Point const& point) {
     // Create a new PointsCluster containing the single activity point and add it
     PointsCluster cluster;
     cluster.addPoint(timestamp, point);
-    addPoint(std::move(cluster));
+    addCluster(std::move(cluster));
   }
 
   void Trajectory::filter(double const cluster_radius_km, double const max_speed_kph) {

@@ -528,8 +528,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
                .c_str())
       .def("filter",
            &dsf::mdt::TrajectoryCollection::filter,
-           pybind11::arg("radius_km"),
-           pybind11::arg("max_speed_kmh") = 150.0,
+           pybind11::arg("cluster_radius_km"),
+           pybind11::arg("max_speed_kph") = 150.0,
+           pybind11::arg("min_points_per_trajectory") = 2,
+           pybind11::arg("min_duration_min") = pybind11::none(),
            dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::filter").c_str())
       .def("to_csv",
            &dsf::mdt::TrajectoryCollection::to_csv,

@@ -20,7 +20,9 @@ namespace dsf::mdt {
 
     /// @brief Add a PointsCluster to the trajectory.
     /// @param cluster The PointsCluster to add.
-    void addPoint(PointsCluster&& cluster);
+    void addCluster(PointsCluster&& cluster);
+
+    void addCluster(PointsCluster const& cluster);
     /// @brief Add a point with timestamp to the trajectory.
     /// @param timestamp The timestamp of the activity point.
     /// @param point The geometric point of the activity point.

@@ -221,7 +221,7 @@ TEST_CASE("TrajectoryCollection - Multiple users workflow") {
   TrajectoryCollection collection(importFile);
 
   // Filter to identify stop points
-  collection.filter(0.5, 150.0);
+  collection.filter(0.5, 150.0, 0);
 
   // Export filtered results
   collection.to_csv(exportFile);
@@ -325,7 +325,7 @@ TEST_CASE("TrajectoryCollection - Comprehensive workflow") {
 
   // Step 2: Filter to identify stop points
   // Use 500m radius and 150 km/h max speed
-  collection.filter(0.5, 150.0);
+  collection.filter(0.5, 150.0, 0);
 
   // Step 3: Export results
   collection.to_csv(exportFile);

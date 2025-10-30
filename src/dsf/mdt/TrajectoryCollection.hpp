@@ -3,13 +3,15 @@
 #include "Trajectory.hpp"
 #include "../utility/Typedef.hpp"
 
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace dsf::mdt {
   class TrajectoryCollection {
   private:
-    std::unordered_map<Id, Trajectory> m_trajectories;
+    std::unordered_map<Id, std::vector<Trajectory>> m_trajectories;
 
   public:
     /// @brief Construct a TrajectoryCollection, optionally importing from a CSV file.
@@ -25,9 +27,11 @@ namespace dsf::mdt {
     void to_csv(std::string const& fileName, char const sep = ';') const;
     /// @brief Filter all point trajectories to identify stop points based on clustering and speed
     /// criteria.
-    /// @param min_points_per_trajectory The minimum number of points required for a trajectory to be considered valid.
     /// @param cluster_radius_km The radius (in kilometers) to use for clustering points.
-    /// @param max_speed_kph The max allowed speed (in km/h) to consider a cluster as a stop point.
-    void filter(std::size_t const min_points_per_trajectory, double const cluster_radius_km, double const max_speed_kph = 150.0);
+    /// @param max_speed_kph The max allowed speed (in km/h) to consider a cluster as a stop point. Default is 150.0 km/h.
+    /// @param min_points_per_trajectory The minimum number of points required for a trajectory to be considered valid. Default is 2.
+    /// @param min_duration_min The minimum duration (in minutes) for a cluster to be considered a stop point.
+    /// If stops are detected, trajectories may be split into multiple segments.
+    void filter(double const cluster_radius_km, double const max_speed_kph = 150.0, std::size_t const min_points_per_trajectory = 2, std::optional<std::time_t> const min_duration_min = std::nullopt);
   };
 }  // namespace dsf::mdt
