@@ -29,7 +29,7 @@ namespace dsf::mdt {
     /// @brief Filter the trajectory to identify stop points based on clustering and speed criteria.
     /// @param cluster_radius_km The radius (in kilometers) to use for clustering points.
     /// @param max_speed_kph The max allowed speed (in km/h) to consider a cluster as a stop point.
-    void filter(double const cluster_radius_km, double const max_speed_kph = 150.0);
+    void filter(double const cluster_radius_km, double const max_speed_kph);
     /// @brief Sort the trajectory points by timestamp.
     void sort() noexcept;
     /// @brief Get the number of points in the trajectory.

@@ -4,8 +4,10 @@
 #include <fstream>
 
 #include <rapidcsv.h>
+#include <spdlog/spdlog.h>
 
 #include <tbb/parallel_for_each.h>
+#include <tbb/concurrent_vector.h>
 
 namespace dsf::mdt {
   TrajectoryCollection::TrajectoryCollection(std::string const& fileName) {
@@ -28,12 +30,29 @@ namespace dsf::mdt {
     }
   }
 
-  void TrajectoryCollection::filter(double const clusterRadius, double const maxSpeed) {
+  void TrajectoryCollection::filter(std::size_t const min_points_per_trajectory, double const cluster_radius_km, double const max_speed_kph) {
+    // Collect IDs to remove in parallel
+    tbb::concurrent_vector<Id> to_remove;
+    
     tbb::parallel_for_each(m_trajectories.begin(),
                            m_trajectories.end(),
-                           [this, clusterRadius, maxSpeed](auto& pair) {
-                             pair.second.filter(clusterRadius, maxSpeed);
+                           [&to_remove, min_points_per_trajectory, cluster_radius_km, max_speed_kph](auto& pair) {
+                             if (pair.second.size() < min_points_per_trajectory) {
+                               to_remove.push_back(pair.first);
+                               return;
+                             }
+                             pair.second.filter(cluster_radius_km, max_speed_kph);
+                             if (pair.second.size() < min_points_per_trajectory) {
+                               to_remove.push_back(pair.first);
+                               return;
+                             }
                            });
+    
+    // Remove trajectories sequentially (fast for unordered_map)
+    spdlog::info("Removing {} trajectories that do not meet the minimum points requirement after filtering.", to_remove.size());
+    for (auto const& id : to_remove) {
+      m_trajectories.erase(id);
+    }
   }
   void TrajectoryCollection::to_csv(std::string const& fileName, char const sep) const {
     std::ofstream file{fileName};

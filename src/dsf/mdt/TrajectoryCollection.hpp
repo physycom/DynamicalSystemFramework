@@ -25,8 +25,9 @@ namespace dsf::mdt {
     void to_csv(std::string const& fileName, char const sep = ';') const;
     /// @brief Filter all point trajectories to identify stop points based on clustering and speed
     /// criteria.
-    /// @param clusterRadius The radius (in meters) to use for clustering points.
-    /// @param maxSpeed The max allowed speed (in km/h) to consider a cluster as a stop point.
-    void filter(double const clusterRadius, double const maxSpeed = 150.0);
+    /// @param min_points_per_trajectory The minimum number of points required for a trajectory to be considered valid.
+    /// @param cluster_radius_km The radius (in kilometers) to use for clustering points.
+    /// @param max_speed_kph The max allowed speed (in km/h) to consider a cluster as a stop point.
+    void filter(std::size_t const min_points_per_trajectory, double const cluster_radius_km, double const max_speed_kph = 150.0);
   };
 }  // namespace dsf::mdt
