@@ -32,6 +32,9 @@ namespace dsf::mdt {
     /// @param min_points_per_trajectory The minimum number of points required for a trajectory to be considered valid. Default is 2.
     /// @param min_duration_min The minimum duration (in minutes) for a cluster to be considered a stop point.
     /// If stops are detected, trajectories may be split into multiple segments.
-    void filter(double const cluster_radius_km, double const max_speed_kph = 150.0, std::size_t const min_points_per_trajectory = 2, std::optional<std::time_t> const min_duration_min = std::nullopt);
+    void filter(double const cluster_radius_km,
+                double const max_speed_kph = 150.0,
+                std::size_t const min_points_per_trajectory = 2,
+                std::optional<std::time_t> const min_duration_min = std::nullopt);
   };
 }  // namespace dsf::mdt
