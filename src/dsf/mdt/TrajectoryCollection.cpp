@@ -67,8 +67,10 @@ namespace dsf::mdt {
     
     // Remove trajectories sequentially (fast for unordered_map)
     spdlog::debug("Removing {} ({}%) trajectories that do not meet the minimum points requirement after filtering.", to_remove.size(), (to_remove.size() * 100.0 / m_trajectories.size()));
-    for (auto const& id : to_remove) {
-      m_trajectories.erase(id);
+    for (auto const& trajIdx : to_remove) {
+      if(!m_trajectories.erase(trajIdx)) {
+        throw std::runtime_error("Failed to erase trajectory with ID " + std::to_string(trajIdx));
+      }
     }
 
     spdlog::debug("Splitting {} trajectories based on minimum duration requirement.", to_split.size());
@@ -79,6 +81,8 @@ namespace dsf::mdt {
       }
       auto& trajectories = m_trajectories[trajIdx];
       auto originalTrajectory = std::move(trajectories[0]);
+      // Clear existing trajectories
+      trajectories.clear();
 
       Trajectory newTrajectory;
       for (auto const& cluster : originalTrajectory.points()) {

@@ -1,8 +1,4 @@
-from dsf_cpp import *
-from dsf_cpp import __version__
-
-from dsf_cpp import mobility
-from dsf_cpp import mdt
+from dsf_cpp import __version__, LogLevel, get_log_level, set_log_level, mobility, mdt
 
 from .python.cartography import (
     get_cartography,
