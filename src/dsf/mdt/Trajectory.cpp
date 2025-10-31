@@ -18,7 +18,8 @@ namespace dsf::mdt {
     addCluster(std::move(cluster));
   }
 
-  void Trajectory::filter(double const cluster_radius_km, double const max_speed_kph) {
+  void Trajectory::filter(double const cluster_radius_km,
+                          double const max_speed_kph) {
     this->sort();
     auto rawPoints = std::move(m_points);
     m_points.clear();
@@ -62,7 +63,7 @@ namespace dsf::mdt {
 
     // Apply speed filtering: only keep clusters with average speed below maxSpeed
     // Speed is computed from first to last point in the cluster
-    for (auto cluster : clusterCandidates) {
+    for (auto const& cluster : clusterCandidates) {
       if (cluster.size() < 2) {
         // Single point cluster - always consider it a stop point (speed = 0)
         m_points.push_back(cluster);

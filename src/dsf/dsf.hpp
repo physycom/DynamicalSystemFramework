@@ -5,15 +5,15 @@
 #include <format>
 
 static constexpr uint8_t DSF_VERSION_MAJOR = 4;
-static constexpr uint8_t DSF_VERSION_MINOR = 0;
-static constexpr uint8_t DSF_VERSION_PATCH = 2;
+static constexpr uint8_t DSF_VERSION_MINOR = 1;
+static constexpr uint8_t DSF_VERSION_PATCH = 0;
 
 static auto const DSF_VERSION =
     std::format("{}.{}.{}", DSF_VERSION_MAJOR, DSF_VERSION_MINOR, DSF_VERSION_PATCH);
 
 namespace dsf {
-  /// @brief Returns the version of the DSM library
-  /// @return The version of the DSM library
+  /// @brief Returns the version of the DSF library
+  /// @return The version of the DSF library
   auto const& version() { return DSF_VERSION; };
 }  // namespace dsf
 
