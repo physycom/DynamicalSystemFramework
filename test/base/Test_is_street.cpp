@@ -1,8 +1,11 @@
+#include "dsf/utility/TypeTraits/is_street.hpp"
+
 #include <cassert>
 #include <cstdint>
 #include <memory>
 
-#include "is_street.hpp"
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
 
 using dsf::is_street;
 using dsf::is_street_v;

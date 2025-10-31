@@ -1,19 +1,22 @@
+#include "dsf/mobility/RoadNetwork.hpp"
+#include "dsf/base/Node.hpp"
+#include "dsf/mobility/Road.hpp"
+#include "dsf/mobility/Street.hpp"
+#include "dsf/base/AdjacencyMatrix.hpp"
+
 #include <cassert>
 #include <cstdint>
+#include <filesystem>
 
-#include "../../src/dsf/mobility/RoadNetwork.hpp"
-#include "../../src/dsf/base/Node.hpp"
-#include "../../src/dsf/mobility/Road.hpp"
-#include "../../src/dsf/mobility/Street.hpp"
-#include "../../src/dsf/base/AdjacencyMatrix.hpp"
-
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
-using RoadNetwork = dsf::mobility::RoadNetwork;
-using AdjacencyMatrix = dsf::AdjacencyMatrix;
-using Street = dsf::mobility::Street;
-using Road = dsf::mobility::Road;
+using namespace dsf;
+using namespace dsf::mobility;
 using Path = std::vector<uint>;
+
+static const auto DATA_FOLDER =
+    std::filesystem::path(__FILE__).parent_path().parent_path() / "data";
 
 template <typename T1, typename T2>
 bool checkPath(const std::vector<T1>& path1, const std::vector<T2>& path2) {
@@ -132,9 +135,9 @@ TEST_CASE("RoadNetwork") {
     GIVEN("A graph object") {
       RoadNetwork graph;
       WHEN("We import edges and then node properties from OSM") {
-        graph.importEdges("./data/postua_edges.csv");
-        graph.importNodeProperties("./data/postua_nodes.csv");
-        std::ifstream fNodes{"./data/postua_nodes.csv"};
+        graph.importEdges((DATA_FOLDER / "postua_edges.csv").string());
+        graph.importNodeProperties((DATA_FOLDER / "postua_nodes.csv").string());
+        std::ifstream fNodes{(DATA_FOLDER / "postua_nodes.csv").string()};
         // get number of lines
         std::string line;
         int nNodes{-1};  // -1 because of the header
@@ -142,7 +145,7 @@ TEST_CASE("RoadNetwork") {
           ++nNodes;
         }
         fNodes.close();
-        std::ifstream fEdges{"./data/postua_edges.csv"};
+        std::ifstream fEdges{(DATA_FOLDER / "postua_edges.csv").string()};
         int nEdges{-1};  // -1 because of the header
         while (std::getline(fEdges, line)) {
           ++nEdges;
@@ -157,7 +160,7 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.nTrafficLights(), 0);
         }
         RoadNetwork graph2;
-        graph2.importEdges("./data/postua_edges.geojson");
+        graph2.importEdges((DATA_FOLDER / "postua_edges.geojson").string());
         THEN("Sizes are correct also with geojson") {
           CHECK_EQ(graph2.nEdges(), graph.nEdges());
           CHECK_EQ(graph2.nNodes(), graph.nNodes());
@@ -167,9 +170,9 @@ TEST_CASE("RoadNetwork") {
         }
       }
       WHEN("We import many nodes and edges from OSM") {
-        graph.importEdges("./data/forlì_edges.csv");
-        graph.importNodeProperties("./data/forlì_nodes.csv");
-        std::ifstream fNodes{"./data/forlì_nodes.csv"};
+        graph.importEdges((DATA_FOLDER / "forlì_edges.csv").string());
+        graph.importNodeProperties((DATA_FOLDER / "forlì_nodes.csv").string());
+        std::ifstream fNodes{(DATA_FOLDER / "forlì_nodes.csv").string()};
         // get number of lines
         std::string line;
         int nNodes{-1};  // -1 because of the header
@@ -177,7 +180,7 @@ TEST_CASE("RoadNetwork") {
           ++nNodes;
         }
         fNodes.close();
-        std::ifstream fEdges{"./data/forlì_edges.csv"};
+        std::ifstream fEdges{(DATA_FOLDER / "forlì_edges.csv").string()};
         int nEdges{-1};  // -1 because of the header
         while (std::getline(fEdges, line)) {
           ++nEdges;
@@ -539,7 +542,7 @@ TEST_CASE("Dijkstra") {
 
   SUBCASE("Case 9 - Equal Lengths") {
     RoadNetwork graph{};
-    graph.importEdges("./data/manhattan_edges.csv");
+    graph.importEdges((DATA_FOLDER / "manhattan_edges.csv").string());
     // check correct import
     CHECK_EQ(graph.nNodes(), 120);
     CHECK_EQ(graph.nEdges(), 436);

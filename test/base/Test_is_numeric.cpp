@@ -1,7 +1,10 @@
+#include "dsf/utility/TypeTraits/is_numeric.hpp"
+
 #include <cassert>
 #include <cstdint>
 
-#include "is_numeric.hpp"
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
 
 using dsf::is_numeric;
 using dsf::is_numeric_v;

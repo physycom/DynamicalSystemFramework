@@ -1,4 +1,6 @@
-#include "../../src/dsf/geometry/PolyLine.hpp"
+#include "dsf/geometry/PolyLine.hpp"
+
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include <string>
 

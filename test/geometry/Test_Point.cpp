@@ -1,5 +1,6 @@
-#include "../../src/dsf/geometry/Point.hpp"
+#include "dsf/geometry/Point.hpp"
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include <string>
 
