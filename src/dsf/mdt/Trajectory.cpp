@@ -18,8 +18,7 @@ namespace dsf::mdt {
     addCluster(std::move(cluster));
   }
 
-  void Trajectory::filter(double const cluster_radius_km,
-                          double const max_speed_kph) {
+  void Trajectory::filter(double const cluster_radius_km, double const max_speed_kph) {
     this->sort();
     auto rawPoints = std::move(m_points);
     m_points.clear();
