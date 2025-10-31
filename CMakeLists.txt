@@ -28,12 +28,12 @@ if (CMAKE_BUILD_TYPE MATCHES "Release")
 elseif(CMAKE_BUILD_TYPE MATCHES "Coverage")
     message(STATUS "Enable code coverage")
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g --coverage -fprofile-update=atomic")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g --coverage -fprofile-update=atomic")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
     endif()
 else() # Default to Debug settings
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g -fsanitize=address")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -fsanitize=address")
     elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
     endif()
@@ -140,7 +140,19 @@ if (DSF_BUILD_TESTS)
         target_include_directories(${testname} SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
         target_include_directories(${testname} PRIVATE ${rapidcsv_SOURCE_DIR}/src)
         target_link_libraries(${testname} PRIVATE dsf fmt::fmt spdlog::spdlog simdjson::simdjson TBB::tbb)
-        add_test(NAME ${testname} COMMAND ${testname})
+        # Put test binaries under build/tests so they are easy to find.
+        # Use per-config output dirs to play nicely with multi-config generators.
+        set_target_properties(${testname} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
+            RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/tests
+            RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/tests
+            RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/tests
+            RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/tests
+        )
+
+        # Register the test using the full target file so CTest invokes the
+        # correct executable regardless of output directory or generator.
+        add_test(NAME ${testname} COMMAND $<TARGET_FILE:${testname}>)
     endmacro()
 
     file(GLOB TEST_SOURCES "test/*/*.cpp")
