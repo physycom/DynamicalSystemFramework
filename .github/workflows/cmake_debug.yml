@@ -1,4 +1,4 @@
-name: "CI: Test the installation with cmake"
+name: "CI: Test the installation with cmake (FetchContent-aware)"
 
 on:
   push:
@@ -18,80 +18,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies on Ubuntu
+      # Minimal tool install for Linux (compiler + cmake). Dependencies are fetched by CMake via FetchContent.
+      - name: Install build tools on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt install -y build-essential cmake libtbb-dev libspdlog-dev libsimdjson-dev libfmt-dev
+          sudo apt install -y build-essential cmake ninja-build
 
-      - name: Install dependencies on macOS
-        if: matrix.os == 'macos-latest'
+      # Configure & build on all platforms. Use an explicit configure step so FetchContent has a chance to run during configure.
+      - name: Configure CMake (all platforms)
+        working-directory: ${{ github.workspace }}
         run: |
-          brew update
-          brew install tbb spdlog simdjson fmt
-
-      - name: Install dependencies on Windows (vcpkg)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git vcpkg
-          cd vcpkg
-          .\bootstrap-vcpkg.bat
-          .\vcpkg install spdlog:x64-windows tbb:x64-windows fmt:x64-windows simdjson:x64-windows
-          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
-          echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
+          mkdir -p build
+          cmake -S . -B build -DDSF_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 
       - name: Build on Ubuntu
         if: matrix.os == 'ubuntu-latest'
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir -p build
-          cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Coverage -DDSF_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
-          cmake --build . -j$(nproc) --config Coverage
+        working-directory: ${{ github.workspace }}/build
+        run: cmake --build . -j$(nproc) --config Coverage
 
       - name: Build on macOS
         if: matrix.os == 'macos-latest'
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir -p build
-          cd build
-          cmake .. \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix fmt):$(brew --prefix spdlog):$(brew --prefix simdjson)" \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DDSF_BUILD_TESTS=ON \
-            -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
-          cmake --build . -j$(sysctl -n hw.ncpu) --config Debug
+        working-directory: ${{ github.workspace }}/build
+        run: cmake --build . -j$(sysctl -n hw.ncpu) --config Debug
+
+      - name: Setup MSVC environment on Windows
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
       - name: Build on Windows
         if: matrix.os == 'windows-latest'
-        working-directory: ${{ github.workspace }}
+        working-directory: ${{ github.workspace }}/build
         shell: powershell
-        run: |
-          New-Item -ItemType Directory -Force -Path build | Out-Null
-          cd build
-          $vcpkg_toolchain = "$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
-          cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Debug -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
-          cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Debug
+        run: cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Debug
 
-      # Install the build
-      - name: Install on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
+      # Install the build (to a repository-local prefix). FetchContent-based dependencies should be installed there too.
+      - name: Install build
         working-directory: ${{ github.workspace }}
-        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install
+        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install --config Debug
 
-      - name: Install on macOS
-        if: matrix.os == 'macos-latest'
-        working-directory: ${{ github.workspace }}
-        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install
-
-      - name: Install on Windows
-        if: matrix.os == 'windows-latest'
-        working-directory: ${{ github.workspace }}
-        shell: powershell
-        run: cmake --install build --config Debug --prefix "$env:GITHUB_WORKSPACE\install"
-
-      # Quick include/link tests per platform
+      # Quick include/link tests per platform — only use the repository-local install prefix created by CMake+FetchContent.
       - name: Test include on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}
@@ -101,7 +69,8 @@ jobs:
           g++ test.cpp -std=c++20 \
             -I${GITHUB_WORKSPACE}/install/include \
             -L${GITHUB_WORKSPACE}/install/lib \
-            -ldsf -ltbb -lspdlog -lsimdjson -lfmt \
+            -Wl,-rpath,${GITHUB_WORKSPACE}/install/lib \
+            -ldsf \
             && echo "SUCCESS: dsf library can be included and linked on Ubuntu!" \
             || (echo "FAILED: Cannot include/link dsf on Ubuntu"; exit 1)
 
@@ -113,20 +82,11 @@ jobs:
           echo "int main() { return 0; }" >> test.cpp
           clang++ test.cpp -std=c++20 \
             -I${GITHUB_WORKSPACE}/install/include \
-            -I$(brew --prefix tbb)/include -I$(brew --prefix fmt)/include -I$(brew --prefix spdlog)/include -I$(brew --prefix simdjson)/include \
             -L${GITHUB_WORKSPACE}/install/lib \
-            -L$(brew --prefix tbb)/lib -L$(brew --prefix fmt)/lib -L$(brew --prefix spdlog)/lib -L$(brew --prefix simdjson)/lib \
             -Wl,-rpath,${GITHUB_WORKSPACE}/install/lib \
-            -Wl,-rpath,$(brew --prefix simdjson)/lib \
-            -ldsf -ltbb -lfmt -lspdlog -lsimdjson \
+            -ldsf \
             && echo "SUCCESS: dsf library can be included and linked on macOS!" \
             || (echo "FAILED: Cannot include/link dsf on macOS"; exit 1)
-
-      - name: Setup MSVC environment on Windows
-        if: matrix.os == 'windows-latest'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
 
       - name: Test include on Windows
         if: matrix.os == 'windows-latest'
@@ -137,10 +97,8 @@ jobs:
           echo "int main() { return 0; }" >> test.cpp
 
           $INSTALL_DIR = "$env:GITHUB_WORKSPACE\install"
-          $VCPKG_INSTALLED = $env:VCPKG_INSTALLED
 
           Write-Host "INSTALL_DIR = $INSTALL_DIR"
-          Write-Host "VCPKG_INSTALLED = $VCPKG_INSTALLED"
 
           if (-not (Test-Path "$INSTALL_DIR\include\dsf")) {
             Write-Host "ERROR: dsf headers not found in $INSTALL_DIR\include"
@@ -159,19 +117,13 @@ jobs:
           $libs = @()
 
           $dsfLib = Find-Lib "$INSTALL_DIR\lib" "dsf*.lib"
-          if ($dsfLib) { $libs += $dsfLib.Name }
+          if ($dsfLib) { $libs += $dsfLib.Name } else { Write-Host "ERROR: dsf lib not found in $INSTALL_DIR\lib"; exit 1 }
 
-          $tbbLib = Find-Lib "$VCPKG_INSTALLED\lib" "tbb*.lib"
-          if ($tbbLib) { $libs += $tbbLib.Name } else { Write-Host "ERROR: TBB lib not found in $VCPKG_INSTALLED\lib"; exit 1 }
-
-          $fmtLib = Find-Lib "$VCPKG_INSTALLED\lib" "fmt*.lib"
-          if ($fmtLib) { $libs += $fmtLib.Name }
-
-          $spdLib = Find-Lib "$VCPKG_INSTALLED\lib" "spdlog*.lib"
-          if ($spdLib) { $libs += $spdLib.Name }
-
-          $simdLib = Find-Lib "$VCPKG_INSTALLED\lib" "simdjson*.lib"
-          if ($simdLib) { $libs += $simdLib.Name }
+          # Also attempt to pick up any dependency libs installed into the same prefix (e.g. tbb, fmt, spdlog, simdjson)
+          foreach ($pat in @("tbb*.lib","fmt*.lib","spdlog*.lib","simdjson*.lib")) {
+            $f = Find-Lib "$INSTALL_DIR\lib" $pat
+            if ($f) { $libs += $f.Name }
+          }
 
           Write-Host "Libraries to link: $($libs -join ', ')"
 
@@ -179,10 +131,8 @@ jobs:
             "/nologo", "/std:c++20", "/utf-8", "/EHsc",
             "test.cpp",
             "/I`"$INSTALL_DIR\include`"",
-            "/I`"$VCPKG_INSTALLED\include`"",
             "/link",
-            "/LIBPATH:`"$INSTALL_DIR\lib`"",
-            "/LIBPATH:`"$VCPKG_INSTALLED\lib`""
+            "/LIBPATH:`"$INSTALL_DIR\lib`""
           )
           $compilerArgs += $libs
 

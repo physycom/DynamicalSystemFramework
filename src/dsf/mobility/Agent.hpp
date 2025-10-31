@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include <fmt/format.h>
+#include <spdlog/fmt/bundled/format.h>
 
 namespace dsf::mobility {
   /// @brief The Agent class represents an agent in the network.

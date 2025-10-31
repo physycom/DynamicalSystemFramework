@@ -2,12 +2,11 @@
 #include <format>
 #include <string>
 
-#include "../../src/dsf/mobility/Agent.hpp"
-#include "../../src/dsf/mobility/Itinerary.hpp"
+#include "dsf/mobility/Agent.hpp"
+#include "dsf/mobility/Itinerary.hpp"
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
-#include <fmt/format.h>
 
 using Agent = dsf::mobility::Agent;
 

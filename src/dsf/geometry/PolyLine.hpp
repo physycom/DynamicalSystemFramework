@@ -1,11 +1,12 @@
 #pragma once
 
+#include "Point.hpp"
+
 #include <format>
 #include <string>
 #include <vector>
 
-#include "Point.hpp"
-#include "fmt/format.h"
+#include <spdlog/fmt/bundled/format.h>
 
 namespace dsf::geometry {
   /// @brief A polyline represented as a vector of Points

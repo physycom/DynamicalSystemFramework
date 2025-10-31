@@ -38,14 +38,16 @@ print(dsf.__version__)
 The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, and `spdlog` (with `fmt`).
 To install requirements on Ubuntu:
 ```shell
-sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev cmake
+sudo apt install cmake
 ```
 To install requirements on macOS:
 ```shell
-brew install tbb simdjson spdlog cmake
+brew install cmake
 ```
 
-Utilities are written in python. To install their dependencies:
+Other dependencies are automatically installed via `cmake` using `FetchContent`.
+
+Utilities are (deprecated) written in python. To install their dependencies:
 ```shell
 pip install -r ./requirements.txt
 ```
@@ -88,9 +90,10 @@ If you encounter issues, ensure that the installation path is in your `PYTHONPAT
 ## Testing
 This project uses [Doctest](https://github.com/doctest/doctest) for testing.
 
-To compile tests you can simply add the flag `-DDSF_BUILD_TESTS=ON` when configuring the project with CMake:
+Tests are automatically compiled when building the project in `Debug` or `Coverage` mode.
+To force the compilation in other cases add the flag `-DDSF_TESTS=ON` when configuring the project with CMake:
 ```shell
-cmake -B build -DDSF_BUILD_TESTS=ON
+cmake -B build -DDSF_TESTS=ON
 cmake --build build -j$(nproc)
 ```
 

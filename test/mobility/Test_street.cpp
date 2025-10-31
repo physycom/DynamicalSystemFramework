@@ -11,7 +11,6 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
-#include <fmt/format.h>
 
 using Agent = dsf::mobility::Agent;
 using Intersection = dsf::mobility::Intersection;

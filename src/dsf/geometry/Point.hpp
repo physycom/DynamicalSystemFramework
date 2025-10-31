@@ -5,7 +5,7 @@
 #include <limits>
 #include <string>
 
-#include "fmt/format.h"
+#include <spdlog/fmt/bundled/format.h>
 
 namespace dsf::geometry {
   class Point {

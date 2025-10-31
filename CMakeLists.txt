@@ -13,6 +13,8 @@ set(DSF_VERSION "${DSF_VERSION_MAJOR}.${DSF_VERSION_MINOR}.${DSF_VERSION_PATCH}"
 
 project(dsf VERSION ${DSF_VERSION} LANGUAGES CXX)
 
+option(DSF_TEST "Build DSF tests" OFF)
+
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,23 +28,20 @@ if (CMAKE_BUILD_TYPE MATCHES "Release")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
     endif()
 elseif(CMAKE_BUILD_TYPE MATCHES "Coverage")
+    set(DSF_TEST ON)
     message(STATUS "Enable code coverage")
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g --coverage -fprofile-update=atomic")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
     endif()
 else() # Default to Debug settings
+    set(DSF_TEST ON)
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -fsanitize=address")
     elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
     endif()
 endif()
-
-find_package(TBB REQUIRED CONFIG)
-find_package(fmt REQUIRED)
-find_package(spdlog REQUIRED)
-find_package(simdjson REQUIRED)
 
 file(GLOB SOURCES "src/dsf/base/*.cpp" "src/dsf/mobility/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp" "src/dsf/mdt/*.cpp")
 
@@ -56,6 +55,34 @@ FetchContent_GetProperties(rapidcsv)
 if(NOT rapidcsv_POPULATED)
   FetchContent_MakeAvailable(rapidcsv)
 endif()
+# Get simdjson
+FetchContent_Declare(simdjson
+  GIT_REPOSITORY https://github.com/simdjson/simdjson
+  GIT_TAG v4.1.0
+)
+FetchContent_GetProperties(simdjson)
+if(NOT simdjson_POPULATED)
+  FetchContent_MakeAvailable(simdjson)
+endif()
+# Get spdlog
+FetchContent_Declare(spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog
+  GIT_TAG v1.16.0
+)
+FetchContent_GetProperties(spdlog)
+if(NOT spdlog_POPULATED)
+  FetchContent_MakeAvailable(spdlog)
+endif()
+# Get TBB
+set(TBB_TEST OFF CACHE BOOL "Disable TBB tests")
+FetchContent_Declare(tbb
+  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB
+  GIT_TAG v2022.3.0
+)
+FetchContent_GetProperties(tbb)
+if(NOT tbb_POPULATED)
+  FetchContent_MakeAvailable(tbb)
+endif()
 
 add_library(dsf STATIC ${SOURCES})
 target_include_directories(dsf PUBLIC 
@@ -64,10 +91,9 @@ target_include_directories(dsf PUBLIC
 )
 
 # Include csv headers privately
-target_include_directories(dsf PRIVATE "${rapidcsv_SOURCE_DIR}/src")
+target_include_directories(dsf PRIVATE "${rapidcsv_SOURCE_DIR}/src" "${simdjson_SOURCE_DIR}/include" "${spdlog_SOURCE_DIR}/include" "${tbb_SOURCE_DIR}/include")
 
-# Link other libraries - no csv dependency needed now
-target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
+target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson)
 
 # Install dsf library
 install(TARGETS dsf
@@ -118,9 +144,8 @@ if(BUILD_PYTHON_BINDINGS)
 endif()
 
 # Tests
-option(DSF_BUILD_TESTS "Build DSF tests" OFF)
-message(STATUS "Build DSF tests: ${DSF_BUILD_TESTS}")
-if (DSF_BUILD_TESTS)
+message(STATUS "Build DSF tests: ${DSF_TEST}")
+if (DSF_TEST)
     include(CTest)
     enable_testing()
 
@@ -138,8 +163,8 @@ if (DSF_BUILD_TESTS)
         add_executable(${testname} ${ARGN})
         target_include_directories(${testname} PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
         target_include_directories(${testname} SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
-        target_include_directories(${testname} PRIVATE ${rapidcsv_SOURCE_DIR}/src)
-        target_link_libraries(${testname} PRIVATE dsf fmt::fmt spdlog::spdlog simdjson::simdjson TBB::tbb)
+        target_include_directories(${testname} PRIVATE "${rapidcsv_SOURCE_DIR}/src" "${simdjson_SOURCE_DIR}/include" "${spdlog_SOURCE_DIR}/include" "${tbb_SOURCE_DIR}/include")
+        target_link_libraries(${testname} PRIVATE dsf simdjson::simdjson)
         # Put test binaries under build/tests so they are easy to find.
         # Use per-config output dirs to play nicely with multi-config generators.
         set_target_properties(${testname} PROPERTIES
