@@ -10,19 +10,19 @@
 #include <tbb/concurrent_set.h>
 
 namespace dsf::mdt {
-  TrajectoryCollection::TrajectoryCollection(std::string const& fileName) {
-    if (!fileName.empty()) {
-      this->import(fileName);
-    }
-  }
-
-  void TrajectoryCollection::import(std::string const& fileName, char const sep) {
-    rapidcsv::Document doc(
-        fileName, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(sep));
-    auto const& uids = doc.GetColumn<Id>("uid");
-    auto const& timestamps = doc.GetColumn<std::time_t>("timestamp");
-    auto const& lats = doc.GetColumn<double>("lat");
-    auto const& lons = doc.GetColumn<double>("lon");
+  TrajectoryCollection::TrajectoryCollection(
+      std::unordered_map<std::string,
+                         std::variant<std::vector<Id>,
+                                      std::vector<std::time_t>,
+                                      std::vector<double>>>&& dataframe) {
+    auto const& uids =
+        std::get<std::vector<Id>>(dataframe.at("uid"));
+    auto const& timestamps =
+        std::get<std::vector<std::time_t>>(dataframe.at("timestamp"));
+    auto const& lats =
+        std::get<std::vector<double>>(dataframe.at("lat"));
+    auto const& lons =
+        std::get<std::vector<double>>(dataframe.at("lon"));
 
     for (std::size_t i = 0; i < uids.size(); ++i) {
       if (m_trajectories.find(uids[i]) == m_trajectories.end()) {
@@ -32,6 +32,27 @@ namespace dsf::mdt {
       m_trajectories[uids[i]][0].addPoint(timestamps[i],
                                           dsf::geometry::Point(lons[i], lats[i]));
     }
+  }
+
+  TrajectoryCollection::TrajectoryCollection(std::string const& fileName) {
+    if (!fileName.empty()) {
+      this->import(fileName);
+    }
+  }
+
+  void TrajectoryCollection::import(std::string const& fileName, char const sep) {
+    rapidcsv::Document doc(
+        fileName, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(sep));
+    
+    std::unordered_map<std::string,
+                           std::variant<std::vector<Id>,
+                                        std::vector<std::time_t>,
+                                        std::vector<double>>> dataframe;
+    dataframe["uid"] = doc.GetColumn<Id>("uid");
+    dataframe["timestamp"] = doc.GetColumn<std::time_t>("timestamp");
+    dataframe["lat"] = doc.GetColumn<double>("lat");
+    dataframe["lon"] = doc.GetColumn<double>("lon");
+    *this = TrajectoryCollection(std::move(dataframe));
   }
 
   void TrajectoryCollection::filter(double const cluster_radius_km,

@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 namespace dsf::mdt {
@@ -14,9 +15,15 @@ namespace dsf::mdt {
     std::unordered_map<Id, std::vector<Trajectory>> m_trajectories;
 
   public:
+    TrajectoryCollection(
+        std::unordered_map<std::string,
+                           std::variant<std::vector<Id>,
+                                        std::vector<std::time_t>,
+                                        std::vector<double>>>&& dataframe);
     /// @brief Construct a TrajectoryCollection, optionally importing from a CSV file.
     /// @param fileName The path to the CSV file.
     TrajectoryCollection(std::string const& fileName = std::string());
+
     /// @brief Import trajectories from a CSV file.
     /// @param fileName The path to the CSV file.
     /// @param sep The character used to separate values in the CSV file.

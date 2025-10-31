@@ -526,6 +526,85 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("fileName"),
            dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::TrajectoryCollection")
                .c_str())
+      // Construct from pandas: pass df.columns and df.to_numpy()
+      .def(
+          pybind11::init([](pybind11::object df) {
+            pybind11::object columns = df.attr("columns");
+            pybind11::array arr = df.attr("to_numpy")();
+            // Expect a 2D numpy array (rows x cols) and an iterable of column names
+            auto info = arr.request();
+            if (info.ndim != 2) {
+              throw std::runtime_error(
+                  "TrajectoryCollection constructor expects a 2D numpy array from "
+                  "df.to_numpy()");
+            }
+            std::size_t n_rows = static_cast<std::size_t>(info.shape[0]);
+            std::size_t n_cols = static_cast<std::size_t>(info.shape[1]);
+
+            // Collect column names
+            std::vector<std::string> colnames;
+            for (auto item : columns) {
+              colnames.push_back(pybind11::str(item));
+            }
+
+            // Build unordered_map<string, vector<string>> where each key is a column name
+            std::unordered_map<std::string,
+                               std::variant<std::vector<dsf::Id>,
+                                            std::vector<std::time_t>,
+                                            std::vector<double>>>
+                dataframe;
+            dataframe.reserve(n_cols);
+
+            // Columns should be uid timestamp lat lon
+            dataframe["uid"] = std::vector<dsf::Id>();
+            std::get<std::vector<dsf::Id>>(dataframe.at("uid")).reserve(n_rows);
+            dataframe["timestamp"] = std::vector<std::time_t>();
+            std::get<std::vector<std::time_t>>(dataframe.at("timestamp")).reserve(n_rows);
+            dataframe["lat"] = std::vector<double>();
+            std::get<std::vector<double>>(dataframe.at("lat")).reserve(n_rows);
+            dataframe["lon"] = std::vector<double>();
+            std::get<std::vector<double>>(dataframe.at("lon")).reserve(n_rows);
+
+            for (auto const& colname : colnames) {
+              if (colname == "uid") {
+                for (std::size_t i = 0; i < n_rows; ++i) {
+                  pybind11::object cell = arr[pybind11::make_tuple(i, 0)];
+                  std::get<std::vector<dsf::Id>>(dataframe.at("uid"))
+                      .push_back(static_cast<dsf::Id>(pybind11::cast<double>(cell)));
+                }
+              } else if (colname == "timestamp") {
+                for (std::size_t i = 0; i < n_rows; ++i) {
+                  pybind11::object cell = arr[pybind11::make_tuple(i, 1)];
+                  std::get<std::vector<std::time_t>>(dataframe.at("timestamp"))
+                      .push_back(static_cast<std::time_t>(pybind11::cast<double>(cell)));
+                }
+              } else if (colname == "lat") {
+                for (std::size_t i = 0; i < n_rows; ++i) {
+                  pybind11::object cell = arr[pybind11::make_tuple(i, 2)];
+                  std::get<std::vector<double>>(dataframe.at("lat"))
+                      .push_back(pybind11::cast<double>(cell));
+                }
+              } else if (colname == "lon") {
+                for (std::size_t i = 0; i < n_rows; ++i) {
+                  pybind11::object cell = arr[pybind11::make_tuple(i, 3)];
+                  std::get<std::vector<double>>(dataframe.at("lon"))
+                      .push_back(pybind11::cast<double>(cell));
+                }
+              }
+            }
+
+            return new dsf::mdt::TrajectoryCollection(std::move(dataframe));
+          }),
+          pybind11::arg("df"),
+          // Write this docstring manually as it is not in g_docstrings
+          "Constructor that builds a TrajectoryCollection from a pandas or polars "
+          "DataFrame.\n\nArgs:\n\tdf (pandas.DataFrame | polars.DataFrame): Input "
+          "DataFrame. Must contain the following columns:\n\t\t'uid' (identifier), "
+          "'timestamp' (epoch seconds), 'lat' (latitude),\n\t\t'lon' (longitude). The "
+          "constructor will call ``df.columns`` and\n\t\t``df.to_numpy()`` internally. "
+          "All cell values are converted to strings\n\t\twhen building the underlying "
+          "C++ data structure.\n\nReturns:\n\tdsf.mdt.TrajectoryCollection: A new "
+          "TrajectoryCollection constructed from\n\tthe provided DataFrame.")
       .def("filter",
            &dsf::mdt::TrajectoryCollection::filter,
            pybind11::arg("cluster_radius_km"),
