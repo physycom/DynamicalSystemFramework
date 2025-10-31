@@ -134,13 +134,17 @@ if(BUILD_PYTHON_BINDINGS)
         OUTPUT_NAME "dsf_cpp"
     )
 
-    # Link the pybind11 module with your static library and pybind11
-    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers)
-
     # Set include directories (if binding.cpp needs headers from your project)
     target_include_directories(dsf_python_module PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${spdlog_SOURCE_DIR}/include"
+        "${simdjson_SOURCE_DIR}/include"
+        "${rapidcsv_SOURCE_DIR}/src"
+        "${tbb_SOURCE_DIR}/include"
     )
+
+    # Link the pybind11 module with your static library and pybind11
+    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers TBB::tbb simdjson::simdjson)
 endif()
 
 # Tests

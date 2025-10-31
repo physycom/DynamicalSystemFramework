@@ -25,6 +25,40 @@ FetchContent_GetProperties(rapidcsv)
 if(NOT rapidcsv_POPULATED)
   FetchContent_MakeAvailable(rapidcsv)
 endif()
+# Get simdjson
+FetchContent_Declare(simdjson
+  GIT_REPOSITORY https://github.com/simdjson/simdjson
+  GIT_TAG v4.1.0
+)
+FetchContent_GetProperties(simdjson)
+if(NOT simdjson_POPULATED)
+  FetchContent_MakeAvailable(simdjson)
+endif()
+# Get spdlog
+FetchContent_Declare(spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog
+  GIT_TAG v1.16.0
+)
+FetchContent_GetProperties(spdlog)
+if(NOT spdlog_POPULATED)
+  FetchContent_MakeAvailable(spdlog)
+endif()
+# Get TBB
+set(TBB_TEST OFF CACHE BOOL "Disable TBB tests")
+FetchContent_Declare(tbb
+  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB
+  GIT_TAG v2022.3.0
+)
+FetchContent_GetProperties(tbb)
+if(NOT tbb_POPULATED)
+  FetchContent_MakeAvailable(tbb)
+endif()
+
+add_library(dsf STATIC ${SOURCES})
+target_include_directories(dsf PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:include>
+)
 
 include_directories(../../src/dsf)
 include_directories(../../src/dsf/utility/)
@@ -33,5 +67,5 @@ file(GLOB SOURCES "../../src/dsf/base/*.cpp" "../../src/dsf/mobility/*.cpp" "../
 
 # Compile
 add_executable(bench_dynamics.out BenchDynamics.cpp ${SOURCES})
-target_include_directories(bench_dynamics.out PRIVATE ${rapidcsv_SOURCE_DIR}/src)
-target_link_libraries(bench_dynamics.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
+target_include_directories(bench_dynamics.out PRIVATE "${rapidcsv_SOURCE_DIR}/src" "${simdjson_SOURCE_DIR}/include" "${spdlog_SOURCE_DIR}/include" "${tbb_SOURCE_DIR}/include")
+target_link_libraries(bench_dynamics.out PRIVATE TBB::tbb spdlog::spdlog simdjson::simdjson)
