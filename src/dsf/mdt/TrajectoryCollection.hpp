@@ -43,5 +43,8 @@ namespace dsf::mdt {
                 double const max_speed_kph = 150.0,
                 std::size_t const min_points_per_trajectory = 2,
                 std::optional<std::time_t> const min_duration_min = std::nullopt);
+    /// @brief Get the underlying trajectories map.
+    /// @return A const reference to the map of trajectories.
+    inline auto const& trajectories() const noexcept { return m_trajectories; }
   };
 }  // namespace dsf::mdt

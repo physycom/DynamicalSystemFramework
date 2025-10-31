@@ -616,5 +616,97 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::mdt::TrajectoryCollection::to_csv,
            pybind11::arg("fileName"),
            pybind11::arg("sep") = ';',
-           dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::to_csv").c_str());
+           dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::to_csv").c_str())
+      .def(
+          "to_pandas",
+          [](const dsf::mdt::TrajectoryCollection& self) {
+            // Convert the internal data to a pandas DataFrame
+            pybind11::module_ pd = pybind11::module_::import("pandas");
+            pybind11::dict data_dict;
+
+            // Prepare columns
+            std::vector<dsf::Id> uids;
+            std::vector<std::size_t> trajectoryIds;
+            std::vector<std::time_t> timestamps_in;
+            std::vector<std::time_t> timestamps_out;
+            std::vector<double> lats;
+            std::vector<double> lons;
+
+            for (auto const& [uid, trajectories] : self.trajectories()) {
+              std::size_t trajIdx = 0;
+              for (auto const& trajectory : trajectories) {
+                for (auto const& cluster : trajectory.points()) {
+                  auto const centroid = cluster.centroid();
+                  uids.push_back(uid);
+                  trajectoryIds.push_back(trajIdx);
+                  timestamps_in.push_back(cluster.firstTimestamp());
+                  timestamps_out.push_back(cluster.lastTimestamp());
+                  lats.push_back(centroid.y());
+                  lons.push_back(centroid.x());
+                }
+                ++trajIdx;
+              }
+            }
+
+            data_dict["uid"] = pybind11::array(uids.size(), uids.data());
+            data_dict["trajectory_id"] =
+                pybind11::array(trajectoryIds.size(), trajectoryIds.data());
+            data_dict["timestamp_in"] =
+                pybind11::array(timestamps_in.size(), timestamps_in.data());
+            data_dict["timestamp_out"] =
+                pybind11::array(timestamps_out.size(), timestamps_out.data());
+            data_dict["lat"] = pybind11::array(lats.size(), lats.data());
+            data_dict["lon"] = pybind11::array(lons.size(), lons.data());
+
+            return pd.attr("DataFrame")(data_dict);
+          },
+          "Convert the TrajectoryCollection to a pandas DataFrame.\n\nReturns:\n\tpandas."
+          "DataFrame: DataFrame containing the trajectory data with columns 'uid', "
+          "'timestamp', 'lat', and 'lon'.")
+      .def(
+          "to_polars",
+          [](const dsf::mdt::TrajectoryCollection& self) {
+            // Convert the internal data to a polars DataFrame
+            pybind11::module_ pl = pybind11::module_::import("polars");
+            pybind11::dict data_dict;
+
+            // Prepare columns
+            std::vector<dsf::Id> uids;
+            std::vector<std::size_t> trajectoryIds;
+            std::vector<std::time_t> timestamps_in;
+            std::vector<std::time_t> timestamps_out;
+            std::vector<double> lats;
+            std::vector<double> lons;
+
+            for (auto const& [uid, trajectories] : self.trajectories()) {
+              std::size_t trajIdx = 0;
+              for (auto const& trajectory : trajectories) {
+                for (auto const& cluster : trajectory.points()) {
+                  auto const centroid = cluster.centroid();
+                  uids.push_back(uid);
+                  trajectoryIds.push_back(trajIdx);
+                  timestamps_in.push_back(cluster.firstTimestamp());
+                  timestamps_out.push_back(cluster.lastTimestamp());
+                  lats.push_back(centroid.y());
+                  lons.push_back(centroid.x());
+                }
+                ++trajIdx;
+              }
+            }
+
+            data_dict["uid"] = pybind11::array(uids.size(), uids.data());
+            data_dict["trajectory_id"] =
+                pybind11::array(trajectoryIds.size(), trajectoryIds.data());
+            data_dict["timestamp_in"] =
+                pybind11::array(timestamps_in.size(), timestamps_in.data());
+            data_dict["timestamp_out"] =
+                pybind11::array(timestamps_out.size(), timestamps_out.data());
+            data_dict["lat"] = pybind11::array(lats.size(), lats.data());
+            data_dict["lon"] = pybind11::array(lons.size(), lons.data());
+
+            return pl.attr("DataFrame")(data_dict);
+          },
+          "Convert the TrajectoryCollection to a polars DataFrame.\n\nReturns:\n\tpolars."
+          "DataFrame: DataFrame containing the trajectory data with columns 'uid', "
+          "'timestamp', 'lat', and 'lon'.");
 }
