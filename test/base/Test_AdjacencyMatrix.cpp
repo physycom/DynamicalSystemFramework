@@ -1,6 +1,7 @@
-#include "../../src/dsf/base/AdjacencyMatrix.hpp"
-#include "../../src/dsf/mobility/RoadNetwork.hpp"
+#include "dsf/base/AdjacencyMatrix.hpp"
+#include "dsf/mobility/RoadNetwork.hpp"
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
 using namespace dsf;

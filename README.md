@@ -88,14 +88,15 @@ If you encounter issues, ensure that the installation path is in your `PYTHONPAT
 ## Testing
 This project uses [Doctest](https://github.com/doctest/doctest) for testing.
 
-To compile tests run:
+To compile tests you can simply add the flag `-DDSF_BUILD_TESTS=ON` when configuring the project with CMake:
 ```shell
-cd test
-cmake -B build && make -C build -j$(nproc)
+cmake -B build -DDSF_BUILD_TESTS=ON
+cmake --build build -j$(nproc)
 ```
-To run all the tests together use the command:
+
+To run the tests use the command:
 ```shell
-./dsf_tests.out
+ctest --test-dir build -j$(nproc)
 ```
 
 ## Benchmarking

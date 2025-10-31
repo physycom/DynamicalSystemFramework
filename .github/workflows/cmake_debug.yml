@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -41,17 +41,16 @@ jobs:
           echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
           echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
 
-      - name: Build and install on Ubuntu
+      - name: Build on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}
         run: |
           mkdir -p build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
-          cmake --build . -j$(nproc) --config Release
-          cmake --install . --prefix ${GITHUB_WORKSPACE}/install
+          cmake .. -DCMAKE_BUILD_TYPE=Coverage -DDSF_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
+          cmake --build . -j$(nproc) --config Coverage
 
-      - name: Build and install on macOS
+      - name: Build on macOS
         if: matrix.os == 'macos-latest'
         working-directory: ${{ github.workspace }}
         run: |
@@ -59,12 +58,12 @@ jobs:
           cd build
           cmake .. \
             -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix fmt):$(brew --prefix spdlog):$(brew --prefix simdjson)" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install
-          cmake --build . -j$(nproc) --config Release
-          cmake --install . --prefix ${GITHUB_WORKSPACE}/install
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DDSF_BUILD_TESTS=ON \
+            -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
+          cmake --build . -j$(sysctl -n hw.ncpu) --config Debug
 
-      - name: Build and install on Windows
+      - name: Build on Windows
         if: matrix.os == 'windows-latest'
         working-directory: ${{ github.workspace }}
         shell: powershell
@@ -72,10 +71,27 @@ jobs:
           New-Item -ItemType Directory -Force -Path build | Out-Null
           cd build
           $vcpkg_toolchain = "$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
-          cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
-          cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Release
-          cmake --install . --config Release --prefix "$env:GITHUB_WORKSPACE\install"
+          cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Debug -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
+          cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Debug
 
+      # Install the build
+      - name: Install on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}
+        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install
+
+      - name: Install on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}
+        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install
+
+      - name: Install on Windows
+        if: matrix.os == 'windows-latest'
+        working-directory: ${{ github.workspace }}
+        shell: powershell
+        run: cmake --install build --config Debug --prefix "$env:GITHUB_WORKSPACE\install"
+
+      # Quick include/link tests per platform
       - name: Test include on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}
@@ -134,64 +150,31 @@ jobs:
           Write-Host "=== debug: list install/include ==="
           Get-ChildItem -Force "$INSTALL_DIR\include" -Depth 1 | ForEach-Object { $_.FullName }
 
-          # helper to find the first matching lib by pattern
           function Find-Lib($dir, $pattern) {
             if (-not (Test-Path $dir)) { return $null }
             $found = Get-ChildItem -Path $dir -Filter $pattern -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             return $found
           }
 
-          # Collect libs (exact filenames) to link; prefer installed dsf first, then vcpkg libs
           $libs = @()
 
           $dsfLib = Find-Lib "$INSTALL_DIR\lib" "dsf*.lib"
-          if ($dsfLib) {
-            Write-Host "Found dsf lib: $($dsfLib.Name)"
-            $libs += $dsfLib.Name
-          } else {
-            Write-Host "No dsf.lib found in install (assuming header-only or not produced)."
-          }
+          if ($dsfLib) { $libs += $dsfLib.Name }
 
-          # tbb (vcpkg may name it tbb12.lib etc.)
           $tbbLib = Find-Lib "$VCPKG_INSTALLED\lib" "tbb*.lib"
-          if ($tbbLib) {
-            Write-Host "Found TBB lib: $($tbbLib.Name)"
-            $libs += $tbbLib.Name
-          } else {
-            Write-Host "ERROR: TBB lib not found in $VCPKG_INSTALLED\lib"
-            exit 1
-          }
+          if ($tbbLib) { $libs += $tbbLib.Name } else { Write-Host "ERROR: TBB lib not found in $VCPKG_INSTALLED\lib"; exit 1 }
 
-          # fmt (may be header-only or have a lib)
           $fmtLib = Find-Lib "$VCPKG_INSTALLED\lib" "fmt*.lib"
-          if ($fmtLib) {
-            Write-Host "Found fmt lib: $($fmtLib.Name)"
-            $libs += $fmtLib.Name
-          } else {
-            Write-Host "fmt lib not found (fmt may be header-only); continuing."
-          }
+          if ($fmtLib) { $libs += $fmtLib.Name }
 
-          # spdlog
           $spdLib = Find-Lib "$VCPKG_INSTALLED\lib" "spdlog*.lib"
-          if ($spdLib) {
-            Write-Host "Found spdlog lib: $($spdLib.Name)"
-            $libs += $spdLib.Name
-          } else {
-            Write-Host "spdlog lib not found (may be header-only); continuing."
-          }
+          if ($spdLib) { $libs += $spdLib.Name }
 
-          # simdjson
           $simdLib = Find-Lib "$VCPKG_INSTALLED\lib" "simdjson*.lib"
-          if ($simdLib) {
-            Write-Host "Found simdjson lib: $($simdLib.Name)"
-            $libs += $simdLib.Name
-          } else {
-            Write-Host "simdjson lib not found (may be header-only); continuing."
-          }
+          if ($simdLib) { $libs += $simdLib.Name }
 
           Write-Host "Libraries to link: $($libs -join ', ')"
 
-          # Build the cl/link command - use array expansion for proper argument passing
           $compilerArgs = @(
             "/nologo", "/std:c++20", "/utf-8", "/EHsc",
             "test.cpp",
@@ -202,12 +185,29 @@ jobs:
             "/LIBPATH:`"$VCPKG_INSTALLED\lib`""
           )
           $compilerArgs += $libs
-          
+
           & cl.exe @compilerArgs
 
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "SUCCESS: dsf library can be included and linked on Windows!"
-          } else {
-            Write-Host "FAILED: Cannot compile/link test program on Windows (exit code $LASTEXITCODE)"
-            exit 1
-          }
+          if ($LASTEXITCODE -ne 0) { Write-Host "FAILED: Cannot compile/link test program on Windows (exit code $LASTEXITCODE)"; exit 1 }
+
+      # Make test executables runnable where needed
+      - name: Fix permissions for test executables
+        if: matrix.os != 'windows-latest'
+        run: chmod +x ${{ github.workspace }}/build/Test_* || true
+
+      # Run CTest where available
+      - name: Run tests on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure -j$(nproc)
+
+      - name: Run tests on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure -j$(sysctl -n hw.ncpu)
+
+      - name: Run tests on Windows
+        if: matrix.os == 'windows-latest'
+        working-directory: ${{ github.workspace }}/build
+        shell: powershell
+        run: ctest --output-on-failure -C Debug -j $env:NUMBER_OF_PROCESSORS

@@ -1,8 +1,10 @@
-#include "../../src/dsf/mdt/TrajectoryCollection.hpp"
+#include "dsf/mdt/TrajectoryCollection.hpp"
 
-#include "doctest.h"
 #include <filesystem>
 #include <fstream>
+
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
 
 using namespace dsf::mdt;
 using namespace dsf::geometry;

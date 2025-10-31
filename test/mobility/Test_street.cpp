@@ -9,6 +9,7 @@
 #include "../../src/dsf/mobility/Street.hpp"
 #include "../../src/dsf/utility/Typedef.hpp"
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 #include <fmt/format.h>
 

@@ -1,8 +1,14 @@
-#include "../../src/dsf/base/SparseMatrix.hpp"
+#include "dsf/base/SparseMatrix.hpp"
 
+#include <filesystem>
+
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
 using namespace dsf;
+
+static const auto DATA_FOLDER =
+    std::filesystem::path(__FILE__).parent_path().parent_path() / "data";
 
 TEST_CASE("Double matrix") {
   using Matrix = SparseMatrix<double>;
@@ -39,13 +45,13 @@ TEST_CASE("Double matrix") {
     CHECK_EQ(testMat, moved);
   }
   SUBCASE("Save and read") {
-    auto path = "./data/sparse_matrix.dsf";
+    auto path = (DATA_FOLDER / "sparse_matrix.dsf").string();
     testMat.save(path);
     Matrix mat(path);
     CHECK_EQ(testMat, mat);
   }
   SUBCASE("csv format") {
-    Matrix readMat("./data/sparsematrix.csv", "csv");
+    Matrix readMat((DATA_FOLDER / "sparsematrix.csv").string(), "csv");
     CHECK_EQ(readMat(0, 1), 3.270491);
     CHECK_EQ(readMat(0, 3), 10.995416);
     CHECK_EQ(readMat(0, 4), 53.969164);
