@@ -16,6 +16,10 @@ namespace dsf::mdt {
     std::unordered_map<Id, std::vector<Trajectory>> m_trajectories;
 
   public:
+    /// @brief Construct a TrajectoryCollection from a dataframe.
+    /// @param dataframe An unordered_map representing the dataframe with columns: 'uid',
+    /// 'timestamp', 'lat', 'lon'.
+    /// @param bbox Optional bounding box [minX, minY, maxX, maxY] to limit the area of interest. Default is empty (no bounding box).
     TrajectoryCollection(
         std::unordered_map<
             std::string,
@@ -26,6 +30,7 @@ namespace dsf::mdt {
     /// @param fileName The path to the CSV file.
     /// @param column_mapping A mapping of column names.
     /// @param sep The character used to separate values in the CSV file.
+    /// @param bbox Optional bounding box [minX, minY, maxX, maxY] to limit the area of interest. Default is empty (no bounding box).
     TrajectoryCollection(
         std::string const& fileName = std::string(),
         std::unordered_map<std::string, std::string> const& column_mapping = {},
@@ -41,7 +46,8 @@ namespace dsf::mdt {
                 std::unordered_map<std::string, std::string> const& column_mapping = {},
                 char const sep = ';',
                 std::array<double, 4> const& bbox = {});
-    /// @brief Export clustered trajectories to a CSV file.
+    /// @brief Export clustered trajectories to a CSV file with columns 'uid', 'trajectory_id',
+    /// 'lon', 'lat', 'timestamp_in', 'timestamp_out'.
     /// @param fileName The path to the output CSV file.
     /// @param sep The character used to separate values in the CSV file.
     void to_csv(std::string const& fileName, char const sep = ';') const;

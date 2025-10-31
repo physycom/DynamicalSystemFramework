@@ -67,7 +67,7 @@ TEST_CASE("TrajectoryCollection - Import with custom separator") {
   createTestCSV(testFile, csvContent);
 
   TrajectoryCollection collection;
-  collection.import(testFile, ',');
+  collection.import(testFile, std::unordered_map<std::string, std::string>{}, ',');
 
   // Clean up
   std::filesystem::remove(testFile);
