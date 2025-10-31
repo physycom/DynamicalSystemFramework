@@ -40,6 +40,12 @@ namespace dsf::geometry {
     inline double const& x() const { return m_x; }
     inline double const& y() const { return m_y; }
   };
+
+  /// @brief Compute the Haversine distance between two geographic points.
+  /// @param p1 The first point (longitude, latitude)
+  /// @param p2 The second point (longitude, latitude)
+  /// @return The distance in kilometers.
+  double haversine_km(Point const& p1, Point const& p2) noexcept;
 }  // namespace dsf::geometry
 
 // Specialization of std::formatter for dsf::geometry::Point

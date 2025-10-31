@@ -17,6 +17,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
   auto mobility = m.def_submodule("mobility",
                                   "Bindings for mobility-related classes and functions, "
                                   "under the dsf::mobility C++ namespace.");
+  auto mdt = m.def_submodule("mdt",
+                             "Bindings for movement data tools (MDT) related classes and "
+                             "functions, under the dsf::mdt C++ namespace.");
 
   // Bind PathWeight enum
   pybind11::enum_<dsf::PathWeight>(mobility, "PathWeight")
@@ -462,18 +465,6 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::normalizedTurnCounts")
               .c_str())
-      //  .def("turnProbabilities",
-      //       &dsf::mobility::FirstOrderDynamics::turnProbabilities,
-      //       pybind11::arg("reset") = true)
-      //  .def("turnMapping",
-      //       &dsf::mobility::FirstOrderDynamics::turnMapping,
-      //       pybind11::return_value_policy::reference_internal)
-      // .def("streetMeanSpeed", static_cast<double (dsf::mobility::FirstOrderDynamics::*)(dsf::Id) const>(&dsf::mobility::FirstOrderDynamics::streetMeanSpeed), pybind11::arg("streetId"))
-      // .def("streetMeanSpeed", static_cast<dsf::Measurement<double> (dsf::mobility::FirstOrderDynamics::*)() const>(&dsf::mobility::FirstOrderDynamics::streetMeanSpeed))
-      // .def("streetMeanSpeed", static_cast<dsf::Measurement<double> (dsf::mobility::FirstOrderDynamics::*)(double, bool) const>(&dsf::mobility::FirstOrderDynamics::streetMeanSpeed), pybind11::arg("threshold"), pybind11::arg("above"))
-      // .def("streetMeanDensity", &dsf::mobility::FirstOrderDynamics::streetMeanDensity, pybind11::arg("normalized") = false)
-      // .def("streetMeanFlow", static_cast<dsf::Measurement<double> (dsf::mobility::FirstOrderDynamics::*)() const>(&dsf::mobility::FirstOrderDynamics::streetMeanFlow))
-      // .def("streetMeanFlow", static_cast<dsf::Measurement<double> (dsf::mobility::FirstOrderDynamics::*)(double, bool) const>(&dsf::mobility::FirstOrderDynamics::streetMeanFlow), pybind11::arg("threshold"), pybind11::arg("above"))
       .def(
           "meanSpireInputFlow",
           &dsf::mobility::FirstOrderDynamics::meanSpireInputFlow,
@@ -516,4 +507,202 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("separator") = ';',
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveMacroscopicObservables")
                .c_str());
+
+  // Bind TrajectoryCollection class to mdt submodule
+  pybind11::class_<dsf::mdt::TrajectoryCollection>(mdt, "TrajectoryCollection")
+      .def(pybind11::init<std::string const&,
+                          std::unordered_map<std::string, std::string> const&,
+                          char const,
+                          std::array<double, 4> const&>(),
+           pybind11::arg("fileName"),
+           pybind11::arg("column_mapping") =
+               std::unordered_map<std::string, std::string>{},
+           pybind11::arg("separator") = ';',
+           pybind11::arg("bbox") = std::array<double, 4>{},
+           dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::TrajectoryCollection")
+               .c_str())
+      .def(
+          pybind11::init([](pybind11::object df) {
+            pybind11::object columns = df.attr("columns");
+            pybind11::array arr = df.attr("to_numpy")();
+            // Expect a 2D numpy array (rows x cols) and an iterable of column names
+            auto info = arr.request();
+            if (info.ndim != 2) {
+              throw std::runtime_error(
+                  "TrajectoryCollection constructor expects a 2D numpy array from "
+                  "df.to_numpy()");
+            }
+            std::size_t n_rows = static_cast<std::size_t>(info.shape[0]);
+            std::size_t n_cols = static_cast<std::size_t>(info.shape[1]);
+
+            // Collect column names
+            std::vector<std::string> colnames;
+            for (auto item : columns) {
+              colnames.push_back(pybind11::str(item));
+            }
+
+            // Build unordered_map<string, vector<string>> where each key is a column name
+            std::unordered_map<std::string,
+                               std::variant<std::vector<dsf::Id>,
+                                            std::vector<std::time_t>,
+                                            std::vector<double>>>
+                dataframe;
+            dataframe.reserve(n_cols);
+
+            // Columns should be uid timestamp lat lon
+            dataframe["uid"] = std::vector<dsf::Id>();
+            std::get<std::vector<dsf::Id>>(dataframe.at("uid")).reserve(n_rows);
+            dataframe["timestamp"] = std::vector<std::time_t>();
+            std::get<std::vector<std::time_t>>(dataframe.at("timestamp")).reserve(n_rows);
+            dataframe["lat"] = std::vector<double>();
+            std::get<std::vector<double>>(dataframe.at("lat")).reserve(n_rows);
+            dataframe["lon"] = std::vector<double>();
+            std::get<std::vector<double>>(dataframe.at("lon")).reserve(n_rows);
+
+            for (auto const& colname : colnames) {
+              if (colname == "uid") {
+                for (std::size_t i = 0; i < n_rows; ++i) {
+                  pybind11::object cell = arr[pybind11::make_tuple(i, 0)];
+                  std::get<std::vector<dsf::Id>>(dataframe.at("uid"))
+                      .push_back(static_cast<dsf::Id>(pybind11::cast<double>(cell)));
+                }
+              } else if (colname == "timestamp") {
+                for (std::size_t i = 0; i < n_rows; ++i) {
+                  pybind11::object cell = arr[pybind11::make_tuple(i, 1)];
+                  std::get<std::vector<std::time_t>>(dataframe.at("timestamp"))
+                      .push_back(static_cast<std::time_t>(pybind11::cast<double>(cell)));
+                }
+              } else if (colname == "lat") {
+                for (std::size_t i = 0; i < n_rows; ++i) {
+                  pybind11::object cell = arr[pybind11::make_tuple(i, 2)];
+                  std::get<std::vector<double>>(dataframe.at("lat"))
+                      .push_back(pybind11::cast<double>(cell));
+                }
+              } else if (colname == "lon") {
+                for (std::size_t i = 0; i < n_rows; ++i) {
+                  pybind11::object cell = arr[pybind11::make_tuple(i, 3)];
+                  std::get<std::vector<double>>(dataframe.at("lon"))
+                      .push_back(pybind11::cast<double>(cell));
+                }
+              }
+            }
+
+            return new dsf::mdt::TrajectoryCollection(std::move(dataframe));
+          }),
+          pybind11::arg("df"),
+          // Write this docstring manually as it is not in g_docstrings
+          "Constructor that builds a TrajectoryCollection from a pandas or polars "
+          "DataFrame.\n\nArgs:\n\tdf (pandas.DataFrame | polars.DataFrame): Input "
+          "DataFrame. Must contain the following columns:\n\t\t'uid' (identifier), "
+          "'timestamp' (epoch seconds), 'lat' (latitude),\n\t\t'lon' (longitude). The "
+          "constructor will call ``df.columns`` and\n\t\t``df.to_numpy()`` internally. "
+          "All cell values are converted to strings\n\t\twhen building the underlying "
+          "C++ data structure.\n\nReturns:\n\tdsf.mdt.TrajectoryCollection: A new "
+          "TrajectoryCollection constructed from\n\tthe provided DataFrame.")
+      .def("filter",
+           &dsf::mdt::TrajectoryCollection::filter,
+           pybind11::arg("cluster_radius_km"),
+           pybind11::arg("max_speed_kph") = 150.0,
+           pybind11::arg("min_points_per_trajectory") = 2,
+           pybind11::arg("min_duration_min") = pybind11::none(),
+           dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::filter").c_str())
+      .def("to_csv",
+           &dsf::mdt::TrajectoryCollection::to_csv,
+           pybind11::arg("fileName"),
+           pybind11::arg("sep") = ';',
+           dsf::g_docstrings.at("dsf::mdt::TrajectoryCollection::to_csv").c_str())
+      .def(
+          "to_pandas",
+          [](const dsf::mdt::TrajectoryCollection& self) {
+            // Convert the internal data to a pandas DataFrame
+            pybind11::module_ pd = pybind11::module_::import("pandas");
+            pybind11::dict data_dict;
+
+            // Prepare columns
+            std::vector<dsf::Id> uids;
+            std::vector<std::size_t> trajectoryIds;
+            std::vector<double> lons;
+            std::vector<double> lats;
+            std::vector<std::time_t> timestamps_in;
+            std::vector<std::time_t> timestamps_out;
+
+            for (auto const& [uid, trajectories] : self.trajectories()) {
+              std::size_t trajIdx = 0;
+              for (auto const& trajectory : trajectories) {
+                for (auto const& cluster : trajectory.points()) {
+                  auto const centroid = cluster.centroid();
+                  uids.push_back(uid);
+                  trajectoryIds.push_back(trajIdx);
+                  lons.push_back(centroid.x());
+                  lats.push_back(centroid.y());
+                  timestamps_in.push_back(cluster.firstTimestamp());
+                  timestamps_out.push_back(cluster.lastTimestamp());
+                }
+                ++trajIdx;
+              }
+            }
+
+            data_dict["uid"] = pybind11::array(uids.size(), uids.data());
+            data_dict["trajectory_id"] =
+                pybind11::array(trajectoryIds.size(), trajectoryIds.data());
+
+            data_dict["lon"] = pybind11::array(lons.size(), lons.data());
+            data_dict["lat"] = pybind11::array(lats.size(), lats.data());
+            data_dict["timestamp_in"] =
+                pybind11::array(timestamps_in.size(), timestamps_in.data());
+            data_dict["timestamp_out"] =
+                pybind11::array(timestamps_out.size(), timestamps_out.data());
+
+            return pd.attr("DataFrame")(data_dict);
+          },
+          "Convert the TrajectoryCollection to a pandas DataFrame.\n\nReturns:\n\tpandas."
+          "DataFrame: DataFrame containing the trajectory data with columns 'uid', "
+          "'trajectory_id', 'lon', 'lat', 'timestamp_in', and 'timestamp_out'.")
+      .def(
+          "to_polars",
+          [](const dsf::mdt::TrajectoryCollection& self) {
+            // Convert the internal data to a polars DataFrame
+            pybind11::module_ pl = pybind11::module_::import("polars");
+            pybind11::dict data_dict;
+
+            // Prepare columns
+            std::vector<dsf::Id> uids;
+            std::vector<std::size_t> trajectoryIds;
+            std::vector<double> lons;
+            std::vector<double> lats;
+            std::vector<std::time_t> timestamps_in;
+            std::vector<std::time_t> timestamps_out;
+
+            for (auto const& [uid, trajectories] : self.trajectories()) {
+              std::size_t trajIdx = 0;
+              for (auto const& trajectory : trajectories) {
+                for (auto const& cluster : trajectory.points()) {
+                  auto const centroid = cluster.centroid();
+                  uids.push_back(uid);
+                  trajectoryIds.push_back(trajIdx);
+                  lons.push_back(centroid.x());
+                  lats.push_back(centroid.y());
+                  timestamps_in.push_back(cluster.firstTimestamp());
+                  timestamps_out.push_back(cluster.lastTimestamp());
+                }
+                ++trajIdx;
+              }
+            }
+
+            data_dict["uid"] = pybind11::array(uids.size(), uids.data());
+            data_dict["trajectory_id"] =
+                pybind11::array(trajectoryIds.size(), trajectoryIds.data());
+
+            data_dict["lon"] = pybind11::array(lons.size(), lons.data());
+            data_dict["lat"] = pybind11::array(lats.size(), lats.data());
+            data_dict["timestamp_in"] =
+                pybind11::array(timestamps_in.size(), timestamps_in.data());
+            data_dict["timestamp_out"] =
+                pybind11::array(timestamps_out.size(), timestamps_out.data());
+
+            return pl.attr("DataFrame")(data_dict);
+          },
+          "Convert the TrajectoryCollection to a polars DataFrame.\n\nReturns:\n\tpolars."
+          "DataFrame: DataFrame containing the trajectory data with columns 'uid', "
+          "'trajectory_id', 'lon', 'lat', 'timestamp_in', and 'timestamp_out'.");
 }
