@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -74,70 +74,7 @@ jobs:
           cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Debug -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
           cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Debug
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.os }}
-          path: build/
-          retention-days: 1
-
-  install:
-    needs: build
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install dependencies on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt update
-          sudo apt install -y build-essential cmake libtbb-dev libspdlog-dev libsimdjson-dev libfmt-dev
-
-      - name: Install dependencies on macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install tbb spdlog simdjson fmt
-
-      - name: Install dependencies on Windows (vcpkg)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git vcpkg
-          cd vcpkg
-          .\bootstrap-vcpkg.bat
-          .\vcpkg install spdlog:x64-windows tbb:x64-windows fmt:x64-windows simdjson:x64-windows
-          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
-          echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-${{ matrix.os }}
-          path: artifact-download
-
-      - name: Move artifacts to build directory (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          mv artifact-download build
-
-      - name: Move artifacts to build directory (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          mv artifact-download build
-
-      - name: Move artifacts to build directory (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
-          Move-Item -Path "artifact-download" -Destination "build" -Force
-
+      # Install the build
       - name: Install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}
@@ -154,6 +91,7 @@ jobs:
         shell: powershell
         run: cmake --install build --config Debug --prefix "$env:GITHUB_WORKSPACE\install"
 
+      # Quick include/link tests per platform
       - name: Test include on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}
@@ -212,64 +150,31 @@ jobs:
           Write-Host "=== debug: list install/include ==="
           Get-ChildItem -Force "$INSTALL_DIR\include" -Depth 1 | ForEach-Object { $_.FullName }
 
-          # helper to find the first matching lib by pattern
           function Find-Lib($dir, $pattern) {
             if (-not (Test-Path $dir)) { return $null }
             $found = Get-ChildItem -Path $dir -Filter $pattern -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             return $found
           }
 
-          # Collect libs (exact filenames) to link; prefer installed dsf first, then vcpkg libs
           $libs = @()
 
           $dsfLib = Find-Lib "$INSTALL_DIR\lib" "dsf*.lib"
-          if ($dsfLib) {
-            Write-Host "Found dsf lib: $($dsfLib.Name)"
-            $libs += $dsfLib.Name
-          } else {
-            Write-Host "No dsf.lib found in install (assuming header-only or not produced)."
-          }
+          if ($dsfLib) { $libs += $dsfLib.Name }
 
-          # tbb (vcpkg may name it tbb12.lib etc.)
           $tbbLib = Find-Lib "$VCPKG_INSTALLED\lib" "tbb*.lib"
-          if ($tbbLib) {
-            Write-Host "Found TBB lib: $($tbbLib.Name)"
-            $libs += $tbbLib.Name
-          } else {
-            Write-Host "ERROR: TBB lib not found in $VCPKG_INSTALLED\lib"
-            exit 1
-          }
+          if ($tbbLib) { $libs += $tbbLib.Name } else { Write-Host "ERROR: TBB lib not found in $VCPKG_INSTALLED\lib"; exit 1 }
 
-          # fmt (may be header-only or have a lib)
           $fmtLib = Find-Lib "$VCPKG_INSTALLED\lib" "fmt*.lib"
-          if ($fmtLib) {
-            Write-Host "Found fmt lib: $($fmtLib.Name)"
-            $libs += $fmtLib.Name
-          } else {
-            Write-Host "fmt lib not found (fmt may be header-only); continuing."
-          }
+          if ($fmtLib) { $libs += $fmtLib.Name }
 
-          # spdlog
           $spdLib = Find-Lib "$VCPKG_INSTALLED\lib" "spdlog*.lib"
-          if ($spdLib) {
-            Write-Host "Found spdlog lib: $($spdLib.Name)"
-            $libs += $spdLib.Name
-          } else {
-            Write-Host "spdlog lib not found (may be header-only); continuing."
-          }
+          if ($spdLib) { $libs += $spdLib.Name }
 
-          # simdjson
           $simdLib = Find-Lib "$VCPKG_INSTALLED\lib" "simdjson*.lib"
-          if ($simdLib) {
-            Write-Host "Found simdjson lib: $($simdLib.Name)"
-            $libs += $simdLib.Name
-          } else {
-            Write-Host "simdjson lib not found (may be header-only); continuing."
-          }
+          if ($simdLib) { $libs += $simdLib.Name }
 
           Write-Host "Libraries to link: $($libs -join ', ')"
 
-          # Build the cl/link command - use array expansion for proper argument passing
           $compilerArgs = @(
             "/nologo", "/std:c++20", "/utf-8", "/EHsc",
             "test.cpp",
@@ -280,61 +185,17 @@ jobs:
             "/LIBPATH:`"$VCPKG_INSTALLED\lib`""
           )
           $compilerArgs += $libs
-          
+
           & cl.exe @compilerArgs
 
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "SUCCESS: dsf library can be included and linked on Windows!"
-          } else {
-            Write-Host "FAILED: Cannot compile/link test program on Windows (exit code $LASTEXITCODE)"
-            exit 1
-          }
+          if ($LASTEXITCODE -ne 0) { Write-Host "FAILED: Cannot compile/link test program on Windows (exit code $LASTEXITCODE)"; exit 1 }
 
-  test:
-    needs: build
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest] #, windows-latest]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install dependencies on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt update
-          sudo apt install -y build-essential cmake libtbb-dev libspdlog-dev libsimdjson-dev libfmt-dev
-
-      - name: Install dependencies on macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install tbb spdlog simdjson fmt
-
-      - name: Install dependencies on Windows (vcpkg)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git vcpkg
-          cd vcpkg
-          .\bootstrap-vcpkg.bat
-          .\vcpkg install spdlog:x64-windows tbb:x64-windows fmt:x64-windows simdjson:x64-windows
-          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
-          echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-${{ matrix.os }}
-          path: build
-
+      # Make test executables runnable where needed
       - name: Fix permissions for test executables
         if: matrix.os != 'windows-latest'
-        run: chmod +x ${{ github.workspace }}/build/Test_*
+        run: chmod +x ${{ github.workspace }}/build/Test_* || true
 
+      # Run CTest where available
       - name: Run tests on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}/build
