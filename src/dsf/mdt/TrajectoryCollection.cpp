@@ -11,48 +11,71 @@
 
 namespace dsf::mdt {
   TrajectoryCollection::TrajectoryCollection(
-      std::unordered_map<std::string,
-                         std::variant<std::vector<Id>,
-                                      std::vector<std::time_t>,
-                                      std::vector<double>>>&& dataframe) {
-    auto const& uids =
-        std::get<std::vector<Id>>(dataframe.at("uid"));
+      std::unordered_map<
+          std::string,
+          std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>>>&&
+          dataframe,
+      std::array<double, 4> const& bbox) {
+    auto const& uids = std::get<std::vector<Id>>(dataframe.at("uid"));
     auto const& timestamps =
         std::get<std::vector<std::time_t>>(dataframe.at("timestamp"));
-    auto const& lats =
-        std::get<std::vector<double>>(dataframe.at("lat"));
-    auto const& lons =
-        std::get<std::vector<double>>(dataframe.at("lon"));
+    auto const& lats = std::get<std::vector<double>>(dataframe.at("lat"));
+    auto const& lons = std::get<std::vector<double>>(dataframe.at("lon"));
 
     for (std::size_t i = 0; i < uids.size(); ++i) {
+      auto const point = dsf::geometry::Point(lons[i], lats[i]);
+      // If bbox is the default-initialized array (all zeros) we treat it as unset.
+      bool bbox_set =
+          !(bbox[0] == 0.0 && bbox[1] == 0.0 && bbox[2] == 0.0 && bbox[3] == 0.0);
+      if (bbox_set && (point.x() < bbox[0] || point.x() > bbox[2] ||
+                       point.y() < bbox[1] || point.y() > bbox[3])) {
+        continue;
+      }
       if (m_trajectories.find(uids[i]) == m_trajectories.end()) {
         m_trajectories[uids[i]] = std::vector<Trajectory>{};
         m_trajectories[uids[i]].emplace_back();
       }
-      m_trajectories[uids[i]][0].addPoint(timestamps[i],
-                                          dsf::geometry::Point(lons[i], lats[i]));
+      m_trajectories[uids[i]][0].addPoint(timestamps[i], point);
     }
   }
 
-  TrajectoryCollection::TrajectoryCollection(std::string const& fileName) {
+  TrajectoryCollection::TrajectoryCollection(
+      std::string const& fileName,
+      std::unordered_map<std::string, std::string> const& column_mapping,
+      char const sep,
+      std::array<double, 4> const& bbox) {
     if (!fileName.empty()) {
-      this->import(fileName);
+      this->import(fileName, column_mapping, sep, bbox);
     }
   }
 
-  void TrajectoryCollection::import(std::string const& fileName, char const sep) {
+  void TrajectoryCollection::import(
+      std::string const& fileName,
+      std::unordered_map<std::string, std::string> const& column_mapping,
+      char const sep,
+      std::array<double, 4> const& bbox) {
     rapidcsv::Document doc(
         fileName, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(sep));
-    
-    std::unordered_map<std::string,
-                           std::variant<std::vector<Id>,
-                                        std::vector<std::time_t>,
-                                        std::vector<double>>> dataframe;
-    dataframe["uid"] = doc.GetColumn<Id>("uid");
-    dataframe["timestamp"] = doc.GetColumn<std::time_t>("timestamp");
-    dataframe["lat"] = doc.GetColumn<double>("lat");
-    dataframe["lon"] = doc.GetColumn<double>("lon");
-    *this = TrajectoryCollection(std::move(dataframe));
+
+    std::unordered_map<std::string, std::string> column_names = {
+        {"uid", "uid"}, {"timestamp", "timestamp"}, {"lat", "lat"}, {"lon", "lon"}};
+    for (auto const& [key, value] : column_mapping) {
+      if (!column_names.contains(key)) {
+        spdlog::warn("Ignoring unknown column mapping key: {}", key);
+        continue;
+      }
+      column_names[key] = value;
+    }
+
+    std::unordered_map<
+        std::string,
+        std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>>>
+        dataframe;
+    dataframe["uid"] = doc.GetColumn<Id>(column_names.at("uid"));
+    dataframe["timestamp"] = doc.GetColumn<std::time_t>(column_names.at("timestamp"));
+    dataframe["lat"] = doc.GetColumn<double>(column_names.at("lat"));
+    dataframe["lon"] = doc.GetColumn<double>(column_names.at("lon"));
+    *this = TrajectoryCollection(std::move(dataframe), bbox);
   }
 
   void TrajectoryCollection::filter(double const cluster_radius_km,
@@ -143,8 +166,13 @@ namespace dsf::mdt {
       throw std::runtime_error("Error opening file \"" + fileName + "\" for writing.");
     }
 
-    auto const HEADER_LINE = std::format(
-        "uid{}segment{}lon{}lat{}timestamp_in{}timestamp_out\n", sep, sep, sep, sep, sep);
+    auto const HEADER_LINE =
+        std::format("uid{}trajectory_id{}lon{}lat{}timestamp_in{}timestamp_out\n",
+                    sep,
+                    sep,
+                    sep,
+                    sep,
+                    sep);
     // Write CSV header
     file << HEADER_LINE;
 

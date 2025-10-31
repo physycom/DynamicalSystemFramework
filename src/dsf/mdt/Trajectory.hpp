@@ -2,6 +2,7 @@
 
 #include "PointsCluster.hpp"
 
+#include <array>
 #include <cmath>
 #include <numbers>
 #include <type_traits>

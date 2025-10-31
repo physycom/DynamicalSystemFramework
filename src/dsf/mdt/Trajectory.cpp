@@ -31,7 +31,6 @@ namespace dsf::mdt {
     auto it = rawPoints.begin();
     PointsCluster currentCluster;
     currentCluster.addPoint(it->firstTimestamp(), it->centroid());
-
     ++it;
     for (; it != rawPoints.end(); ++it) {
       std::time_t timestamp = it->firstTimestamp();

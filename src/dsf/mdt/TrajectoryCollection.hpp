@@ -3,6 +3,7 @@
 #include "Trajectory.hpp"
 #include "../utility/Typedef.hpp"
 
+#include <array>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -16,18 +17,30 @@ namespace dsf::mdt {
 
   public:
     TrajectoryCollection(
-        std::unordered_map<std::string,
-                           std::variant<std::vector<Id>,
-                                        std::vector<std::time_t>,
-                                        std::vector<double>>>&& dataframe);
+        std::unordered_map<
+            std::string,
+            std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>>>&&
+            dataframe,
+        std::array<double, 4> const& bbox = {});
     /// @brief Construct a TrajectoryCollection, optionally importing from a CSV file.
     /// @param fileName The path to the CSV file.
-    TrajectoryCollection(std::string const& fileName = std::string());
+    /// @param column_mapping A mapping of column names.
+    /// @param sep The character used to separate values in the CSV file.
+    TrajectoryCollection(
+        std::string const& fileName = std::string(),
+        std::unordered_map<std::string, std::string> const& column_mapping = {},
+        char const sep = ';',
+        std::array<double, 4> const& bbox = {});
 
     /// @brief Import trajectories from a CSV file.
-    /// @param fileName The path to the CSV file.
+    /// @param fileName The path to the CSV file. Accepts columns: 'uid', 'timestamp', 'lat', 'lon'.
+    /// @param column_mapping A mapping of column names.
     /// @param sep The character used to separate values in the CSV file.
-    void import(std::string const& fileName, char const sep = ';');
+    /// @param bbox Optional bounding box [minX, minY, maxX, maxY] to limit the area of interest. Default is empty (no bounding box).
+    void import(std::string const& fileName,
+                std::unordered_map<std::string, std::string> const& column_mapping = {},
+                char const sep = ';',
+                std::array<double, 4> const& bbox = {});
     /// @brief Export clustered trajectories to a CSV file.
     /// @param fileName The path to the output CSV file.
     /// @param sep The character used to separate values in the CSV file.
