@@ -5,10 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(TBB REQUIRED CONFIG)
-find_package(spdlog REQUIRED)
-find_package(simdjson REQUIRED)
-
 # Set the C++ flags
 string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -Ofast -march=native -flto=auto")
 
