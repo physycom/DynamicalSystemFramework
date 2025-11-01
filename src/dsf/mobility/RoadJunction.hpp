@@ -5,7 +5,7 @@
 #include "../utility/Typedef.hpp"
 
 #include <format>
-#include <fmt/format.h>
+#include <spdlog/fmt/bundled/format.h>
 
 namespace dsf::mobility {
   class RoadJunction : public Node {

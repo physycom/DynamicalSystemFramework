@@ -18,9 +18,6 @@ jobs:
         profile_type: [exec_time, mem_usage]
 
     steps:
-    - name: Install tools manually
-      run: sudo apt update && sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev
-
     - name: Install valgrind for memory profiling
       if: matrix.profile_type == 'mem_usage'
       run: sudo apt update && sudo apt install -y valgrind

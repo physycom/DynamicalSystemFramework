@@ -17,9 +17,6 @@ jobs:
     - name: Update apt repo
       run: sudo apt update
 
-    - name: Install tools manually
-      run: sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev
-
     - uses: actions/checkout@v4
       with:
         submodules: true

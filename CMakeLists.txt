@@ -13,6 +13,9 @@ set(DSF_VERSION "${DSF_VERSION_MAJOR}.${DSF_VERSION_MINOR}.${DSF_VERSION_PATCH}"
 
 project(dsf VERSION ${DSF_VERSION} LANGUAGES CXX)
 
+option(DSF_TEST "Build DSF tests" OFF)
+option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
+
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,12 +29,14 @@ if (CMAKE_BUILD_TYPE MATCHES "Release")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
     endif()
 elseif(CMAKE_BUILD_TYPE MATCHES "Coverage")
+    set(DSF_TEST ON)
     message(STATUS "Enable code coverage")
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g --coverage -fprofile-update=atomic")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
     endif()
 else() # Default to Debug settings
+    set(DSF_TEST ON)
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -fsanitize=address")
     elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
@@ -39,12 +44,20 @@ else() # Default to Debug settings
     endif()
 endif()
 
-find_package(TBB REQUIRED CONFIG)
-find_package(fmt REQUIRED)
-find_package(spdlog REQUIRED)
-find_package(simdjson REQUIRED)
-
 file(GLOB SOURCES "src/dsf/base/*.cpp" "src/dsf/mobility/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp" "src/dsf/mdt/*.cpp")
+
+# Determine library type based on whether Python bindings are enabled
+if(BUILD_PYTHON_BINDINGS)
+    set(DSF_LIB_TYPE SHARED)
+    # Ensure all dependencies are built with -fPIC for shared libraries
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    # Set RPATH for the shared library to find dependencies
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+    set(CMAKE_INSTALL_RPATH "$ORIGIN")
+else()
+    set(DSF_LIB_TYPE STATIC)
+endif()
 
 include(FetchContent)
 # Get rapidcsv
@@ -56,18 +69,45 @@ FetchContent_GetProperties(rapidcsv)
 if(NOT rapidcsv_POPULATED)
   FetchContent_MakeAvailable(rapidcsv)
 endif()
+# Get simdjson
+FetchContent_Declare(simdjson
+  GIT_REPOSITORY https://github.com/simdjson/simdjson
+  GIT_TAG v4.1.0
+)
+FetchContent_GetProperties(simdjson)
+if(NOT simdjson_POPULATED)
+  FetchContent_MakeAvailable(simdjson)
+endif()
+# Get spdlog
+FetchContent_Declare(spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog
+  GIT_TAG v1.16.0
+)
+FetchContent_GetProperties(spdlog)
+if(NOT spdlog_POPULATED)
+  FetchContent_MakeAvailable(spdlog)
+endif()
+# Get TBB
+set(TBB_TEST OFF CACHE BOOL "Disable TBB tests")
+FetchContent_Declare(tbb
+  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB
+  GIT_TAG v2022.3.0
+)
+FetchContent_GetProperties(tbb)
+if(NOT tbb_POPULATED)
+  FetchContent_MakeAvailable(tbb)
+endif()
 
-add_library(dsf STATIC ${SOURCES})
+add_library(dsf ${DSF_LIB_TYPE} ${SOURCES})
 target_include_directories(dsf PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:include>
 )
 
 # Include csv headers privately
-target_include_directories(dsf PRIVATE "${rapidcsv_SOURCE_DIR}/src")
+target_include_directories(dsf PRIVATE "${rapidcsv_SOURCE_DIR}/src" "${simdjson_SOURCE_DIR}/include" "${spdlog_SOURCE_DIR}/include" "${tbb_SOURCE_DIR}/include")
 
-# Link other libraries - no csv dependency needed now
-target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
+target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson)
 
 # Install dsf library
 install(TARGETS dsf
@@ -82,9 +122,6 @@ install(EXPORT dsfConfig
         FILE dsfConfig.cmake
         NAMESPACE dsf::
         DESTINATION lib/cmake/dsf)
-
-# Optional Python bindings - only build if requested
-option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
 if(BUILD_PYTHON_BINDINGS)
     include(FetchContent)
@@ -108,19 +145,33 @@ if(BUILD_PYTHON_BINDINGS)
         OUTPUT_NAME "dsf_cpp"
     )
 
-    # Link the pybind11 module with your static library and pybind11
-    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers)
-
     # Set include directories (if binding.cpp needs headers from your project)
     target_include_directories(dsf_python_module PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${spdlog_SOURCE_DIR}/include"
+        "${simdjson_SOURCE_DIR}/include"
+        "${rapidcsv_SOURCE_DIR}/src"
+        "${tbb_SOURCE_DIR}/include"
+    )
+
+    # Link the pybind11 module with your shared library and pybind11
+    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers TBB::tbb simdjson::simdjson spdlog::spdlog)
+    
+    # Copy TBB and dsf shared libraries next to the Python module for runtime access
+    add_custom_command(TARGET dsf_python_module POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:TBB::tbb>
+            $<TARGET_FILE_DIR:dsf_python_module>/$<TARGET_SONAME_FILE_NAME:TBB::tbb>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:dsf>
+            $<TARGET_FILE_DIR:dsf_python_module>/
+        COMMENT "Copying shared libraries to Python module directory"
     )
 endif()
 
 # Tests
-option(DSF_BUILD_TESTS "Build DSF tests" OFF)
-message(STATUS "Build DSF tests: ${DSF_BUILD_TESTS}")
-if (DSF_BUILD_TESTS)
+message(STATUS "Build DSF tests: ${DSF_TEST}")
+if (DSF_TEST)
     include(CTest)
     enable_testing()
 
@@ -138,8 +189,8 @@ if (DSF_BUILD_TESTS)
         add_executable(${testname} ${ARGN})
         target_include_directories(${testname} PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
         target_include_directories(${testname} SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
-        target_include_directories(${testname} PRIVATE ${rapidcsv_SOURCE_DIR}/src)
-        target_link_libraries(${testname} PRIVATE dsf fmt::fmt spdlog::spdlog simdjson::simdjson TBB::tbb)
+        target_include_directories(${testname} PRIVATE "${rapidcsv_SOURCE_DIR}/src" "${simdjson_SOURCE_DIR}/include" "${spdlog_SOURCE_DIR}/include" "${tbb_SOURCE_DIR}/include")
+        target_link_libraries(${testname} PRIVATE dsf simdjson::simdjson)
         # Put test binaries under build/tests so they are easy to find.
         # Use per-config output dirs to play nicely with multi-config generators.
         set_target_properties(${testname} PROPERTIES
