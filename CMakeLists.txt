@@ -14,6 +14,7 @@ set(DSF_VERSION "${DSF_VERSION_MAJOR}.${DSF_VERSION_MINOR}.${DSF_VERSION_PATCH}"
 project(dsf VERSION ${DSF_VERSION} LANGUAGES CXX)
 
 option(DSF_TEST "Build DSF tests" OFF)
+option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -44,6 +45,19 @@ else() # Default to Debug settings
 endif()
 
 file(GLOB SOURCES "src/dsf/base/*.cpp" "src/dsf/mobility/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp" "src/dsf/mdt/*.cpp")
+
+# Determine library type based on whether Python bindings are enabled
+if(BUILD_PYTHON_BINDINGS)
+    set(DSF_LIB_TYPE SHARED)
+    # Ensure all dependencies are built with -fPIC for shared libraries
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    # Set RPATH for the shared library to find dependencies
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+    set(CMAKE_INSTALL_RPATH "$ORIGIN")
+else()
+    set(DSF_LIB_TYPE STATIC)
+endif()
 
 include(FetchContent)
 # Get rapidcsv
@@ -84,7 +98,7 @@ if(NOT tbb_POPULATED)
   FetchContent_MakeAvailable(tbb)
 endif()
 
-add_library(dsf STATIC ${SOURCES})
+add_library(dsf ${DSF_LIB_TYPE} ${SOURCES})
 target_include_directories(dsf PUBLIC 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:include>
@@ -108,9 +122,6 @@ install(EXPORT dsfConfig
         FILE dsfConfig.cmake
         NAMESPACE dsf::
         DESTINATION lib/cmake/dsf)
-
-# Optional Python bindings - only build if requested
-option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
 if(BUILD_PYTHON_BINDINGS)
     include(FetchContent)
@@ -143,8 +154,19 @@ if(BUILD_PYTHON_BINDINGS)
         "${tbb_SOURCE_DIR}/include"
     )
 
-    # Link the pybind11 module with your static library and pybind11
-    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers TBB::tbb simdjson::simdjson)
+    # Link the pybind11 module with your shared library and pybind11
+    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers TBB::tbb simdjson::simdjson spdlog::spdlog)
+    
+    # Copy TBB and dsf shared libraries next to the Python module for runtime access
+    add_custom_command(TARGET dsf_python_module POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:TBB::tbb>
+            $<TARGET_FILE_DIR:dsf_python_module>/$<TARGET_SONAME_FILE_NAME:TBB::tbb>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:dsf>
+            $<TARGET_FILE_DIR:dsf_python_module>/
+        COMMENT "Copying shared libraries to Python module directory"
+    )
 endif()
 
 # Tests
