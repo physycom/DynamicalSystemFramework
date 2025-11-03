@@ -18,6 +18,7 @@ project(
   LANGUAGES CXX)
 
 option(DSF_TESTS "Build DSF tests" OFF)
+option(DSF_EXAMPLES "Build DSF examples" OFF)
 option(DSF_BUILD_PIC "Build DSF with position-independent code" OFF)
 option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
@@ -230,4 +231,10 @@ if(DSF_TESTS)
     get_filename_component(testname ${testsource} NAME_WE)
     add_unit_test(${testname} ${testsource})
   endforeach()
+endif()
+
+# Examples
+if(DSF_EXAMPLES)
+  set(CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX};${CMAKE_PREFIX_PATH}")
+  add_subdirectory(examples)
 endif()

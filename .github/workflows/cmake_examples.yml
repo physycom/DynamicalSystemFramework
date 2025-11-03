@@ -23,20 +23,19 @@ jobs:
       run: |
         if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
           sudo apt update
-          sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev binutils
+          sudo apt install libtbb-dev libsimdjson-dev binutils
         elif [ ${{ matrix.os }} == 'macos-latest' ]; then
-          brew install tbb spdlog simdjson
+          brew install tbb simdjson
         fi
 
     - uses: actions/checkout@v4
 
-    - name: Configure CMake
-      working-directory: ${{github.workspace}}/examples
-      run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-
-    - name: Build
-      working-directory: ${{github.workspace}}/examples
-      run: cmake --build build -j$(nproc)
+    - name: Install DSF and build examples
+      working-directory: ${{github.workspace}}
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DDSF_BUILD_EXAMPLES=ON
+        cmake --build build -j$(nproc)
+        sudo cmake --install build
 
     - name: Stalingrado
       working-directory: ${{github.workspace}}/examples

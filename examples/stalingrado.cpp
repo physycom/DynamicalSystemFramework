@@ -2,7 +2,7 @@
  * @brief Main function to simulate traffic dynamics over Via Stalingrado, in Bologna.
  */
 
-#include "../src/dsf/dsf.hpp"
+#include <dsf/dsf.hpp>
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -19,19 +19,14 @@
 #endif
 #include <atomic>
 
-#include <spdlog/spdlog.h>
+#include <dsf/bundled/spdlog/spdlog.h>
 
 std::atomic<unsigned int> progress{0};
 
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using RoadNetwork = dsf::mobility::RoadNetwork;
-using Itinerary = dsf::mobility::Itinerary;
-using Dynamics = dsf::mobility::FirstOrderDynamics;
-using Street = dsf::mobility::Street;
-using SpireStreet = dsf::mobility::SpireStreet;
-using TrafficLight = dsf::mobility::TrafficLight;
+using namespace dsf::mobility;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"
@@ -87,7 +82,7 @@ int main() {
   spdlog::info("Streets: {}", graph.nEdges());
 
   // Create the dynamics
-  Dynamics dynamics{graph, false, 69, 0.6};
+  FirstOrderDynamics dynamics{graph, false, 69, 0.6};
   dynamics.setSpeedFluctuationSTD(0.2);
   dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(4, 4)));
   dynamics.updatePaths();

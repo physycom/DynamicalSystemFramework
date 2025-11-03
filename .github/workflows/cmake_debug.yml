@@ -1,4 +1,4 @@
-name: "CI: Test the installation with cmake"
+name: "CI: Cmake installation and testing"
 
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Coverage -DDSF_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
+          cmake .. -DCMAKE_BUILD_TYPE=Coverage -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
           cmake --build . -j$(nproc) --config Coverage
 
       - name: Build on macOS
@@ -58,8 +58,6 @@ jobs:
           cd build
           cmake .. \
             -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix simdjson)" \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DDSF_BUILD_TESTS=ON \
             -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
           cmake --build . -j$(sysctl -n hw.ncpu) --config Debug
 
