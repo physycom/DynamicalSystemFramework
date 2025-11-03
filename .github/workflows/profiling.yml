@@ -1,51 +1,51 @@
-name: "CI: Profile simulations"
+# name: "CI: Profile simulations"
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+# on:
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+#     branches: [ "main" ]
 
-env:
-  BUILD_TYPE: Release
+# env:
+#   BUILD_TYPE: Release
 
-jobs:
-  profile:
-    runs-on: ubuntu-latest
+# jobs:
+#   profile:
+#     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        profile_type: [exec_time, mem_usage]
+#     strategy:
+#       matrix:
+#         profile_type: [exec_time, mem_usage]
 
-    steps:
-    - name: Install tools manually
-      run: sudo apt update && sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev
+#     steps:
+#     - name: Install tools manually
+#       run: sudo apt update && sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev
 
-    - name: Install valgrind for memory profiling
-      if: matrix.profile_type == 'mem_usage'
-      run: sudo apt update && sudo apt install -y valgrind
+#     - name: Install valgrind for memory profiling
+#       if: matrix.profile_type == 'mem_usage'
+#       run: sudo apt update && sudo apt install -y valgrind
 
-    - uses: actions/checkout@v4
+#     - uses: actions/checkout@v4
 
-    - name: Build test simulation
-      working-directory: ${{github.workspace}}/profiling
-      run: cmake -B build && make -C build
+#     - name: Build test simulation
+#       working-directory: ${{github.workspace}}/profiling
+#       run: cmake -B build && make -C build
 
-    - name: Profile execution time
-      if: matrix.profile_type == 'exec_time'
-      working-directory: ${{github.workspace}}/profiling
-      run: |
-        ./prof.out
-        gprof -b ./prof.out
+#     - name: Profile execution time
+#       if: matrix.profile_type == 'exec_time'
+#       working-directory: ${{github.workspace}}/profiling
+#       run: |
+#         ./prof.out
+#         gprof -b ./prof.out
 
-    - name: Profile memory usage
-      if: matrix.profile_type == 'mem_usage'
-      working-directory: ${{github.workspace}}/profiling
-      run: |
-        valgrind --tool=massif ./mem.out
-        ms_print ./massif.out.*
+#     - name: Profile memory usage
+#       if: matrix.profile_type == 'mem_usage'
+#       working-directory: ${{github.workspace}}/profiling
+#       run: |
+#         valgrind --tool=massif ./mem.out
+#         ms_print ./massif.out.*
 
-    - name: Parse memory usage data
-      if: matrix.profile_type == 'mem_usage'
-      working-directory: ${{github.workspace}}/profiling
-      run: ./parse_massif.out massif.out.*
+#     - name: Parse memory usage data
+#       if: matrix.profile_type == 'mem_usage'
+#       working-directory: ${{github.workspace}}/profiling
+#       run: ./parse_massif.out massif.out.*
