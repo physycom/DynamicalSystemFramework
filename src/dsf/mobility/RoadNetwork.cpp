@@ -530,13 +530,13 @@ namespace dsf::mobility {
       int maxPriority{0};
       std::for_each(inNeighbours.cbegin(),
                     inNeighbours.cend(),
-                    [this, &pNode, &maxPriority](auto const& edgeId) {
+                    [this, &maxPriority](auto const& edgeId) {
                       auto const& pStreet{this->edge(edgeId)};
                       maxPriority = std::max(maxPriority, pStreet->priority());
                     });
       std::for_each(outNeighbours.cbegin(),
                     outNeighbours.cend(),
-                    [this, &pNode, &maxPriority](auto const& edgeId) {
+                    [this, &maxPriority](auto const& edgeId) {
                       auto const& pStreet{this->edge(edgeId)};
                       maxPriority = std::max(maxPriority, pStreet->priority());
                     });
@@ -553,8 +553,7 @@ namespace dsf::mobility {
             std::for_each(
                 outNeighbours.cbegin(),
                 outNeighbours.cend(),
-                [this, &pNode, &pInStreet, &allowedTurns, &maxPriority](
-                    auto const& edgeId) {
+                [this, &pInStreet, &allowedTurns, &maxPriority](auto const& edgeId) {
                   auto const& pOutStreet{this->edge(edgeId)};
                   if (pOutStreet->target() == pInStreet->source() ||
                       pInStreet->forbiddenTurns().contains(pOutStreet->id())) {
