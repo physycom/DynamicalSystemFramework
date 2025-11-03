@@ -30,7 +30,7 @@ jobs:
 
     - uses: actions/checkout@v4
 
-    - name: Install DSF and build examples
+    - name: Build DSF with examples and install
       working-directory: ${{github.workspace}}
       run: |
         cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DDSF_EXAMPLES=ON
@@ -39,12 +39,12 @@ jobs:
 
     - name: Stalingrado
       working-directory: ${{github.workspace}}/examples
-      run: make stalingrado
+      run: ./stalingrado.out
 
     - name: Slow Charge TL
       working-directory: ${{github.workspace}}/examples
-      run: make slow_charge_tl
+      run: ./slow_charge_tl.out 69 0.3 ./sctl 0 450
 
     - name: Slow Charge RB
       working-directory: ${{github.workspace}}/examples
-      run: make slow_charge_rb
+      run: ./slow_charge_rb.out 69 0.3 ./scrb/ 900

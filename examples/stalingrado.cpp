@@ -19,8 +19,6 @@
 #endif
 #include <atomic>
 
-#include <dsf/bundled/spdlog/spdlog.h>
-
 std::atomic<unsigned int> progress{0};
 
 using Unit = unsigned int;
@@ -77,9 +75,6 @@ int main() {
   graph.adjustNodeCapacities();
   graph.makeSpireStreet(19);
   auto& spire = graph.edge<SpireStreet>(19);
-
-  spdlog::info("Intersections: {}", graph.nNodes());
-  spdlog::info("Streets: {}", graph.nEdges());
 
   // Create the dynamics
   FirstOrderDynamics dynamics{graph, false, 69, 0.6};

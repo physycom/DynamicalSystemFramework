@@ -57,7 +57,7 @@ elseif(CMAKE_BUILD_TYPE MATCHES "Coverage")
   message(STATUS "Enable code coverage")
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g --coverage -fprofile-update=atomic"
+        "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -pg --coverage -fprofile-update=atomic"
     )
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
   endif()
@@ -65,7 +65,7 @@ else() # Default to Debug settings
   set(DSF_TESTS ON)
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -fsanitize=address")
+        "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -pg -fsanitize=address")
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
   endif()
@@ -234,6 +234,7 @@ if(DSF_TESTS)
 endif()
 
 # Examples
+message(STATUS "Build DSF examples: ${DSF_EXAMPLES}")
 if(DSF_EXAMPLES)
   set(CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX};${CMAKE_PREFIX_PATH}")
   add_subdirectory(examples)

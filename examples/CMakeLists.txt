@@ -7,9 +7,22 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(dsf REQUIRED)
-find_package(TBB REQUIRED CONFIG)
-find_package(simdjson REQUIRED)
+# Check if being built as part of the main DSF project or standalone
+if(NOT TARGET dsf)
+    # Standalone build - need to find installed DSF
+    find_package(dsf REQUIRED)
+    find_package(TBB REQUIRED CONFIG)
+    find_package(simdjson REQUIRED)
+else()
+    # Building as part of main project - dsf target already exists
+    # TBB and simdjson should already be found by parent
+    if(NOT TARGET TBB::tbb)
+        find_package(TBB REQUIRED CONFIG)
+    endif()
+    if(NOT TARGET simdjson::simdjson)
+        find_package(simdjson REQUIRED)
+    endif()
+endif()
 
 # add as executable all cpp files into '.' folder
 file(GLOB SOURCES "*.cpp")
