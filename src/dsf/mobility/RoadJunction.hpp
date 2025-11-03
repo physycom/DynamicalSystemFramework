@@ -5,7 +5,6 @@
 #include "../utility/Typedef.hpp"
 
 #include <format>
-#include <fmt/format.h>
 
 namespace dsf::mobility {
   class RoadJunction : public Node {
@@ -67,28 +66,6 @@ struct std::formatter<dsf::mobility::RoadJunction> {
       out = std::format_to(out, "{})", *junction.geometry());
     } else {
       out = std::format_to(out, "N/A)");
-    }
-    return out;
-  }
-};
-// Specialization of fmt::formatter for dsf::mobility::RoadJunction
-template <>
-struct fmt::formatter<dsf::mobility::RoadJunction> {
-  constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
-  template <typename FormatContext>
-  auto format(const dsf::mobility::RoadJunction& junction, FormatContext& ctx) const {
-    auto out =
-        fmt::format_to(ctx.out(),
-                       "RoadJunction(id: {}, name: {}, capacity: {}, transportCapacity: "
-                       "{}, coords: ",
-                       junction.id(),
-                       junction.name(),
-                       junction.capacity(),
-                       junction.transportCapacity());
-    if (junction.geometry().has_value()) {
-      out = fmt::format_to(out, "{})", *junction.geometry());
-    } else {
-      out = fmt::format_to(out, "N/A)");
     }
     return out;
   }

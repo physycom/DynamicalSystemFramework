@@ -27,8 +27,6 @@
 #include <string>
 #include <vector>
 
-#include <fmt/format.h>
-
 namespace dsf::mobility {
 
   class AgentComparator {
@@ -228,28 +226,6 @@ struct std::formatter<dsf::mobility::Street> {
     auto const& name =
         street.name().empty() ? std::string() : std::format(" \"{}\"", street.name());
     return std::format_to(ctx.out(),
-                          "Street(id: {}{}, from {} to {}, length: {} m, max speed: "
-                          "{:.2f} m/s, lanes: {}, agents: {}, n enqueued: {})",
-                          street.id(),
-                          name,
-                          street.nodePair().first,
-                          street.nodePair().second,
-                          street.length(),
-                          street.maxSpeed(),
-                          street.nLanes(),
-                          street.nAgents(),
-                          street.nExitingAgents());
-  }
-};
-// Specialization of fmt::formatter for dsf::Street
-template <>
-struct fmt::formatter<dsf::mobility::Street> {
-  constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
-  template <typename FormatContext>
-  auto format(const dsf::mobility::Street& street, FormatContext& ctx) const {
-    auto const& name =
-        street.name().empty() ? std::string() : fmt::format(" \"{}\"", street.name());
-    return fmt::format_to(ctx.out(),
                           "Street(id: {}{}, from {} to {}, length: {} m, max speed: "
                           "{:.2f} m/s, lanes: {}, agents: {}, n enqueued: {})",
                           street.id(),
