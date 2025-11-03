@@ -71,9 +71,6 @@ else() # Default to Debug settings
   endif()
 endif()
 
-find_package(TBB REQUIRED CONFIG)
-# find_package(simdjson REQUIRED)
-
 file(
   GLOB
   SOURCES
@@ -100,6 +97,9 @@ set(SPDLOG_USE_STD_FORMAT
 set(SPDLOG_FMT_EXTERNAL
     OFF
     CACHE BOOL "Use bundled fmt library" FORCE)
+set(SPDLOG_INSTALL
+    ON
+    CACHE BOOL "Install spdlog targets" FORCE)
 if(BUILD_PYTHON_BINDINGS)
   set(SPDLOG_BUILD_PIC
       ON
@@ -117,10 +117,20 @@ endif()
 FetchContent_Declare(
   simdjson
   GIT_REPOSITORY https://github.com/simdjson/simdjson
-  GIT_TAG v4.2.0)
+  GIT_TAG v4.2.1)
 FetchContent_GetProperties(simdjson)
 if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
+endif()
+# Get TBB
+set(TBB_TEST OFF CACHE BOOL "Disable TBB tests" FORCE)
+FetchContent_Declare(
+  tbb
+  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB
+  GIT_TAG v2022.3.0)
+FetchContent_GetProperties(tbb)
+if(NOT tbb_POPULATED)
+  FetchContent_MakeAvailable(tbb)
 endif()
 
 add_library(dsf STATIC ${SOURCES})
@@ -130,14 +140,12 @@ if(DSF_BUILD_PIC)
 endif()
 target_include_directories(
   dsf PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-             $<INSTALL_INTERFACE:include>
-             $<BUILD_INTERFACE:${spdlog_SOURCE_DIR}/include>
-             $<INSTALL_INTERFACE:include/dsf/bundled>)
+             $<INSTALL_INTERFACE:include>)
 
-target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src ${spdlog_SOURCE_DIR}/include)
+target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src)
 
 # Link other libraries - no csv dependency needed now
-target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson)
+target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson spdlog::spdlog)
 
 # Install dsf library
 install(
@@ -149,10 +157,6 @@ install(
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
-
-# Install spdlog headers bundled under dsf/bundled (private to dsf)
-install(DIRECTORY ${spdlog_SOURCE_DIR}/include/
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/include/dsf/bundled)
 
 install(
   EXPORT dsfConfig
@@ -183,14 +187,13 @@ if(BUILD_PYTHON_BINDINGS)
 
   # Link the pybind11 module with your static library and pybind11
   target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module
-                                                  pybind11::headers)
+                                                  pybind11::headers
+                                                  TBB::tbb
+                                                  spdlog::spdlog)
   target_compile_definitions(dsf_python_module PRIVATE SPDLOG_USE_STD_FORMAT)
 
-  # Set include directories (if binding.cpp needs headers from your project)
   target_include_directories(
-    dsf_python_module PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
-                              ${spdlog_SOURCE_DIR}/include
-                              ${simdjson_SOURCE_DIR}/include)
+    dsf_python_module PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 endif()
 
 # Tests
@@ -214,12 +217,9 @@ if(DSF_TESTS)
     target_include_directories(${testname}
                                PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
     target_include_directories(${testname} SYSTEM
-                               PRIVATE ${doctest_SOURCE_DIR}/doctest)
-    target_include_directories(${testname} PRIVATE ${rapidcsv_SOURCE_DIR}/src
-                                                   ${spdlog_SOURCE_DIR}/include
-                                                   ${simdjson_SOURCE_DIR}/include)
+                               PRIVATE ${doctest_SOURCE_DIR}/doctest ${rapidcsv_SOURCE_DIR}/src)
     target_compile_definitions(${testname} PRIVATE SPDLOG_USE_STD_FORMAT)
-    target_link_libraries(${testname} PRIVATE dsf simdjson::simdjson TBB::tbb)
+    target_link_libraries(${testname} PRIVATE dsf simdjson::simdjson TBB::tbb spdlog::spdlog)
     # Put test binaries under build/tests so they are easy to find. Use
     # per-config output dirs to play nicely with multi-config generators.
     set_target_properties(
