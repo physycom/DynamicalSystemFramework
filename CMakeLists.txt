@@ -120,11 +120,12 @@ if(DSF_BUILD_PIC)
 endif()
 target_include_directories(
   dsf PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-             $<INSTALL_INTERFACE:include>)
+             $<INSTALL_INTERFACE:include>
+             $<BUILD_INTERFACE:${spdlog_SOURCE_DIR}/include>
+             $<INSTALL_INTERFACE:include/dsf/bundled>)
 
 # Include csv headers privately
-target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src
-                                       ${spdlog_SOURCE_DIR}/include)
+target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src)
 
 # Link other libraries - no csv dependency needed now
 target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson)
@@ -139,6 +140,10 @@ install(
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+
+# Install spdlog headers bundled under dsf/bundled (private to dsf)
+install(DIRECTORY ${spdlog_SOURCE_DIR}/include/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/include/dsf/bundled)
 
 install(
   EXPORT dsfConfig

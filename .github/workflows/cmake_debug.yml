@@ -100,8 +100,9 @@ jobs:
           echo "int main() { return 0; }" >> test.cpp
           g++ test.cpp -std=c++20 \
             -I${GITHUB_WORKSPACE}/install/include \
+            -I${GITHUB_WORKSPACE}/install/include/dsf/bundled \
             -L${GITHUB_WORKSPACE}/install/lib \
-            -ldsf -ltbb -lspdlog -lsimdjson \
+            -ldsf -ltbb -lsimdjson \
             && echo "SUCCESS: dsf library can be included and linked on Ubuntu!" \
             || (echo "FAILED: Cannot include/link dsf on Ubuntu"; exit 1)
 
@@ -113,12 +114,13 @@ jobs:
           echo "int main() { return 0; }" >> test.cpp
           clang++ test.cpp -std=c++20 \
             -I${GITHUB_WORKSPACE}/install/include \
+            -I${GITHUB_WORKSPACE}/install/include/dsf/bundled \
             -I$(brew --prefix tbb)/include -I$(brew --prefix simdjson)/include \
             -L${GITHUB_WORKSPACE}/install/lib \
             -L$(brew --prefix tbb)/lib -L$(brew --prefix simdjson)/lib \
             -Wl,-rpath,${GITHUB_WORKSPACE}/install/lib \
             -Wl,-rpath,$(brew --prefix simdjson)/lib \
-            -ldsf -ltbb -lspdlog -lsimdjson \
+            -ldsf -ltbb -lsimdjson \
             && echo "SUCCESS: dsf library can be included and linked on macOS!" \
             || (echo "FAILED: Cannot include/link dsf on macOS"; exit 1)
 
@@ -173,6 +175,7 @@ jobs:
             "/nologo", "/std:c++20", "/utf-8", "/EHsc",
             "test.cpp",
             "/I`"$INSTALL_DIR\include`"",
+            "/I`"$INSTALL_DIR\include/dsf/bundled`"",
             "/I`"$VCPKG_INSTALLED\include`"",
             "/link",
             "/LIBPATH:`"$INSTALL_DIR\lib`"",
