@@ -72,7 +72,7 @@ else() # Default to Debug settings
 endif()
 
 find_package(TBB REQUIRED CONFIG)
-find_package(simdjson REQUIRED)
+# find_package(simdjson REQUIRED)
 
 file(
   GLOB
@@ -113,6 +113,15 @@ FetchContent_GetProperties(spdlog)
 if(NOT spdlog_POPULATED)
   FetchContent_MakeAvailable(spdlog)
 endif()
+# Get simdjson
+FetchContent_Declare(
+  simdjson
+  GIT_REPOSITORY https://github.com/simdjson/simdjson
+  GIT_TAG v4.2.0)
+FetchContent_GetProperties(simdjson)
+if(NOT simdjson_POPULATED)
+  FetchContent_MakeAvailable(simdjson)
+endif()
 
 add_library(dsf STATIC ${SOURCES})
 target_compile_definitions(dsf PRIVATE SPDLOG_USE_STD_FORMAT)
@@ -125,8 +134,7 @@ target_include_directories(
              $<BUILD_INTERFACE:${spdlog_SOURCE_DIR}/include>
              $<INSTALL_INTERFACE:include/dsf/bundled>)
 
-# Include csv headers privately
-target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src)
+target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src ${spdlog_SOURCE_DIR}/include)
 
 # Link other libraries - no csv dependency needed now
 target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson)
@@ -181,7 +189,8 @@ if(BUILD_PYTHON_BINDINGS)
   # Set include directories (if binding.cpp needs headers from your project)
   target_include_directories(
     dsf_python_module PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
-                              ${spdlog_SOURCE_DIR}/include)
+                              ${spdlog_SOURCE_DIR}/include
+                              ${simdjson_SOURCE_DIR}/include)
 endif()
 
 # Tests
@@ -207,7 +216,8 @@ if(DSF_TESTS)
     target_include_directories(${testname} SYSTEM
                                PRIVATE ${doctest_SOURCE_DIR}/doctest)
     target_include_directories(${testname} PRIVATE ${rapidcsv_SOURCE_DIR}/src
-                                                   ${spdlog_SOURCE_DIR}/include)
+                                                   ${spdlog_SOURCE_DIR}/include
+                                                   ${simdjson_SOURCE_DIR}/include)
     target_compile_definitions(${testname} PRIVATE SPDLOG_USE_STD_FORMAT)
     target_link_libraries(${testname} PRIVATE dsf simdjson::simdjson TBB::tbb)
     # Put test binaries under build/tests so they are easy to find. Use
