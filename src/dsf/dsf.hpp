@@ -5,7 +5,7 @@
 #include <format>
 
 static constexpr uint8_t DSF_VERSION_MAJOR = 4;
-static constexpr uint8_t DSF_VERSION_MINOR = 1;
+static constexpr uint8_t DSF_VERSION_MINOR = 2;
 static constexpr uint8_t DSF_VERSION_PATCH = 0;
 
 static auto const DSF_VERSION =

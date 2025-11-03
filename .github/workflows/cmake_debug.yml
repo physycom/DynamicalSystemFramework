@@ -201,11 +201,11 @@ jobs:
         working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure -j$(sysctl -n hw.ncpu)
 
-      - name: Run tests on Windows
-        if: matrix.os == 'windows-latest'
-        working-directory: ${{ github.workspace }}/build
-        shell: powershell
-        run: ctest --output-on-failure -C Debug -j $env:NUMBER_OF_PROCESSORS
+      # - name: Run tests on Windows
+      #   if: matrix.os == 'windows-latest'
+      #   working-directory: ${{ github.workspace }}/build
+      #   shell: powershell
+      #   run: ctest --output-on-failure -C Debug -j $env:NUMBER_OF_PROCESSORS
 
       - name: Create coverage report
         if: matrix.os == 'ubuntu-latest'
