@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/dsf-mobility)](https://pypi.org/project/dsf-mobility/)
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![TBB](https://img.shields.io/badge/TBB-2021.11.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
-[![SPDLOG](https://img.shields.io/badge/spdlog-1.12.0-blue.svg)](https://github.com/gabime/spdlog)
+[![SPDLOG](https://img.shields.io/badge/spdlog-1.16.0-blue.svg)](https://github.com/gabime/spdlog)
 [![CSV](https://img.shields.io/badge/rapidcsv-8.89-blue.svg)](https://github.com/d99kris/rapidcsv)
 [![JSON](https://img.shields.io/badge/simdjson-3.6.4-blue.svg)](https://github.com/simdjson/simdjson)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
@@ -35,14 +35,14 @@ print(dsf.__version__)
 ## Installation (from source)
 
 ### Requirements
-The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, and `spdlog` (with `fmt`).
+The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, `spdlog` and `rapidcsv`.
 To install requirements on Ubuntu:
 ```shell
-sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev cmake
+sudo apt install libtbb-dev libsimdjson-dev cmake
 ```
 To install requirements on macOS:
 ```shell
-brew install tbb simdjson spdlog cmake
+brew install tbb simdjson cmake
 ```
 
 Utilities are written in python. To install their dependencies:
@@ -88,9 +88,10 @@ If you encounter issues, ensure that the installation path is in your `PYTHONPAT
 ## Testing
 This project uses [Doctest](https://github.com/doctest/doctest) for testing.
 
-To compile tests you can simply add the flag `-DDSF_BUILD_TESTS=ON` when configuring the project with CMake:
+If the project is compiled in `Debug` or `Coverage` mode, tests are always built.
+Otherwise, you can add the `-DDSF_TESTS=ON` flag to enable test build.
 ```shell
-cmake -B build -DDSF_BUILD_TESTS=ON
+cmake -B build -DDSF_TESTS=ON
 cmake --build build -j$(nproc)
 ```
 
