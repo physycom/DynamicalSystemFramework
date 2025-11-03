@@ -13,7 +13,6 @@
 
 using namespace dsf;
 using namespace dsf::mobility;
-using Path = std::vector<uint>;
 
 static const auto DATA_FOLDER =
     std::filesystem::path(__FILE__).parent_path().parent_path() / "data";

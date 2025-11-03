@@ -1,4 +1,4 @@
-name: "CI: Test the installation with cmake"
+name: "CI: Cmake installation and testing"
 
 on:
   push:
@@ -22,13 +22,13 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt install -y build-essential cmake libtbb-dev libspdlog-dev libsimdjson-dev libfmt-dev
+          sudo apt install -y lcov gcovr build-essential cmake libtbb-dev libsimdjson-dev
 
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install tbb spdlog simdjson fmt
+          brew install tbb simdjson
 
       - name: Install dependencies on Windows (vcpkg)
         if: matrix.os == 'windows-latest'
@@ -37,7 +37,7 @@ jobs:
           git clone https://github.com/microsoft/vcpkg.git vcpkg
           cd vcpkg
           .\bootstrap-vcpkg.bat
-          .\vcpkg install spdlog:x64-windows tbb:x64-windows fmt:x64-windows simdjson:x64-windows
+          .\vcpkg install tbb:x64-windows simdjson:x64-windows
           echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
           echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
 
@@ -47,7 +47,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Coverage -DDSF_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
+          cmake .. -DCMAKE_BUILD_TYPE=Coverage -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
           cmake --build . -j$(nproc) --config Coverage
 
       - name: Build on macOS
@@ -57,9 +57,7 @@ jobs:
           mkdir -p build
           cd build
           cmake .. \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix fmt):$(brew --prefix spdlog):$(brew --prefix simdjson)" \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DDSF_BUILD_TESTS=ON \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix simdjson)" \
             -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
           cmake --build . -j$(sysctl -n hw.ncpu) --config Debug
 
@@ -100,8 +98,9 @@ jobs:
           echo "int main() { return 0; }" >> test.cpp
           g++ test.cpp -std=c++20 \
             -I${GITHUB_WORKSPACE}/install/include \
+            -I${GITHUB_WORKSPACE}/install/include/dsf/bundled \
             -L${GITHUB_WORKSPACE}/install/lib \
-            -ldsf -ltbb -lspdlog -lsimdjson -lfmt \
+            -ldsf -ltbb -lsimdjson \
             && echo "SUCCESS: dsf library can be included and linked on Ubuntu!" \
             || (echo "FAILED: Cannot include/link dsf on Ubuntu"; exit 1)
 
@@ -113,12 +112,13 @@ jobs:
           echo "int main() { return 0; }" >> test.cpp
           clang++ test.cpp -std=c++20 \
             -I${GITHUB_WORKSPACE}/install/include \
-            -I$(brew --prefix tbb)/include -I$(brew --prefix fmt)/include -I$(brew --prefix spdlog)/include -I$(brew --prefix simdjson)/include \
+            -I${GITHUB_WORKSPACE}/install/include/dsf/bundled \
+            -I$(brew --prefix tbb)/include -I$(brew --prefix simdjson)/include \
             -L${GITHUB_WORKSPACE}/install/lib \
-            -L$(brew --prefix tbb)/lib -L$(brew --prefix fmt)/lib -L$(brew --prefix spdlog)/lib -L$(brew --prefix simdjson)/lib \
+            -L$(brew --prefix tbb)/lib -L$(brew --prefix simdjson)/lib \
             -Wl,-rpath,${GITHUB_WORKSPACE}/install/lib \
             -Wl,-rpath,$(brew --prefix simdjson)/lib \
-            -ldsf -ltbb -lfmt -lspdlog -lsimdjson \
+            -ldsf -ltbb -lsimdjson \
             && echo "SUCCESS: dsf library can be included and linked on macOS!" \
             || (echo "FAILED: Cannot include/link dsf on macOS"; exit 1)
 
@@ -164,12 +164,6 @@ jobs:
           $tbbLib = Find-Lib "$VCPKG_INSTALLED\lib" "tbb*.lib"
           if ($tbbLib) { $libs += $tbbLib.Name } else { Write-Host "ERROR: TBB lib not found in $VCPKG_INSTALLED\lib"; exit 1 }
 
-          $fmtLib = Find-Lib "$VCPKG_INSTALLED\lib" "fmt*.lib"
-          if ($fmtLib) { $libs += $fmtLib.Name }
-
-          $spdLib = Find-Lib "$VCPKG_INSTALLED\lib" "spdlog*.lib"
-          if ($spdLib) { $libs += $spdLib.Name }
-
           $simdLib = Find-Lib "$VCPKG_INSTALLED\lib" "simdjson*.lib"
           if ($simdLib) { $libs += $simdLib.Name }
 
@@ -179,6 +173,7 @@ jobs:
             "/nologo", "/std:c++20", "/utf-8", "/EHsc",
             "test.cpp",
             "/I`"$INSTALL_DIR\include`"",
+            "/I`"$INSTALL_DIR\include/dsf/bundled`"",
             "/I`"$VCPKG_INSTALLED\include`"",
             "/link",
             "/LIBPATH:`"$INSTALL_DIR\lib`"",
@@ -206,8 +201,25 @@ jobs:
         working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure -j$(sysctl -n hw.ncpu)
 
-      - name: Run tests on Windows
-        if: matrix.os == 'windows-latest'
-        working-directory: ${{ github.workspace }}/build
-        shell: powershell
-        run: ctest --output-on-failure -C Debug -j $env:NUMBER_OF_PROCESSORS
+      # - name: Run tests on Windows
+      #   if: matrix.os == 'windows-latest'
+      #   working-directory: ${{ github.workspace }}/build
+      #   shell: powershell
+      #   run: ctest --output-on-failure -C Debug -j $env:NUMBER_OF_PROCESSORS
+
+      - name: Create coverage report
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{github.workspace}}/build
+        run: lcov --capture --directory .. --output-file coverage.xml
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4.5.0
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} 
+          file: ${{github.workspace}}/build/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true

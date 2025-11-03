@@ -5,8 +5,6 @@
 #include <limits>
 #include <string>
 
-#include "fmt/format.h"
-
 namespace dsf::geometry {
   class Point {
   private:
@@ -56,16 +54,6 @@ struct std::formatter<dsf::geometry::Point> {
   template <typename FormatContext>
   auto format(dsf::geometry::Point const& point, FormatContext& ctx) const {
     return std::format_to(ctx.out(), "POINT ({}, {})", point.x(), point.y());
-  }
-};
-// Specialization of fmt::formatter for dsf::geometry::Point (for fmt library compatibility)
-template <>
-struct fmt::formatter<dsf::geometry::Point> {
-  constexpr auto parse(fmt::format_parse_context& ctx) { return ctx.begin(); }
-
-  template <typename FormatContext>
-  auto format(dsf::geometry::Point const& point, FormatContext&& ctx) const {
-    return fmt::format_to(ctx.out(), "POINT ({}, {})", point.x(), point.y());
   }
 };
 

@@ -2,12 +2,11 @@
 #include <format>
 #include <string>
 
-#include "../../src/dsf/mobility/Agent.hpp"
-#include "../../src/dsf/mobility/Itinerary.hpp"
+#include "dsf/mobility/Agent.hpp"
+#include "dsf/mobility/Itinerary.hpp"
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
-#include <fmt/format.h>
 
 using Agent = dsf::mobility::Agent;
 
@@ -159,52 +158,6 @@ TEST_CASE("Agent formatting") {
     Agent agent{10, 99};
 
     std::string formatted = std::format("{}", agent);
-    CHECK(formatted.find("id: 0") != std::string::npos);
-    CHECK(formatted.find("streetId: N/A") != std::string::npos);
-    CHECK(formatted.find("srcNodeId: N/A") != std::string::npos);
-    CHECK(formatted.find("nextStreetId: N/A") != std::string::npos);
-    CHECK(formatted.find("itineraryId: 99") != std::string::npos);
-  }
-
-  SUBCASE("fmt::format with complete agent") {
-    Agent agent{0, 42, 7};
-    agent.setStreetId(10);
-    agent.setNextStreetId(15);
-    agent.setSpeed(13.5);
-    agent.incrementDistance(100.25);
-    agent.setFreeTime(123);
-
-    std::string formatted = fmt::format("{}", agent);
-    CHECK(formatted.find("id: 0") != std::string::npos);
-    CHECK(formatted.find("streetId: 10") != std::string::npos);
-    CHECK(formatted.find("srcNodeId: 7") != std::string::npos);
-    CHECK(formatted.find("nextStreetId: 15") != std::string::npos);
-    CHECK(formatted.find("itineraryId: 42") != std::string::npos);
-    CHECK(formatted.find("speed: 13.50 m/s") != std::string::npos);
-    CHECK(formatted.find("distance: 100.25 m") != std::string::npos);
-    CHECK(formatted.find("spawnTime: 0") != std::string::npos);
-    CHECK(formatted.find("freeTime: 123") != std::string::npos);
-  }
-
-  SUBCASE("fmt::format with random agent") {
-    Agent randomAgent{5};
-
-    std::string formatted = fmt::format("{}", randomAgent);
-    CHECK(formatted.find("id: 0") != std::string::npos);
-    CHECK(formatted.find("streetId: N/A") != std::string::npos);
-    CHECK(formatted.find("srcNodeId: N/A") != std::string::npos);
-    CHECK(formatted.find("nextStreetId: N/A") != std::string::npos);
-    CHECK(formatted.find("itineraryId: RANDOM") != std::string::npos);
-    CHECK(formatted.find("speed: 0.00 m/s") != std::string::npos);
-    CHECK(formatted.find("distance: 0.00 m") != std::string::npos);
-    CHECK(formatted.find("spawnTime: 5") != std::string::npos);
-    CHECK(formatted.find("freeTime: 0") != std::string::npos);
-  }
-
-  SUBCASE("fmt::format with agent with optional nullopts") {
-    Agent agent{10, 99};
-
-    std::string formatted = fmt::format("{}", agent);
     CHECK(formatted.find("id: 0") != std::string::npos);
     CHECK(formatted.find("streetId: N/A") != std::string::npos);
     CHECK(formatted.find("srcNodeId: N/A") != std::string::npos);

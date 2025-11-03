@@ -1066,7 +1066,7 @@ namespace dsf::mobility {
                                                 std::optional<double> weightTreshold) {
     switch (pathWeight) {
       case PathWeight::LENGTH:
-        m_weightFunction = [this](std::unique_ptr<Street> const& pStreet) {
+        m_weightFunction = [](std::unique_ptr<Street> const& pStreet) {
           return pStreet->length();
         };
         m_weightTreshold = weightTreshold.value_or(1.);
@@ -1078,7 +1078,7 @@ namespace dsf::mobility {
         m_weightTreshold = weightTreshold.value_or(0.0069);
         break;
       case PathWeight::WEIGHT:
-        m_weightFunction = [this](std::unique_ptr<Street> const& pStreet) {
+        m_weightFunction = [](std::unique_ptr<Street> const& pStreet) {
           return pStreet->weight();
         };
         m_weightTreshold = weightTreshold.value_or(1.);

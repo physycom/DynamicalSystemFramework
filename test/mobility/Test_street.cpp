@@ -4,14 +4,13 @@
 #include <format>
 #include <string>
 
-#include "../../src/dsf/mobility/Agent.hpp"
-#include "../../src/dsf/mobility/Intersection.hpp"
-#include "../../src/dsf/mobility/Street.hpp"
-#include "../../src/dsf/utility/Typedef.hpp"
+#include "dsf/mobility/Agent.hpp"
+#include "dsf/mobility/Intersection.hpp"
+#include "dsf/mobility/Street.hpp"
+#include "dsf/utility/Typedef.hpp"
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
-#include <fmt/format.h>
 
 using Agent = dsf::mobility::Agent;
 using Intersection = dsf::mobility::Intersection;
@@ -560,44 +559,6 @@ TEST_CASE("Street formatting") {
     street.addAgent(std::move(agent2));
 
     std::string formatted = std::format("{}", street);
-    CHECK(formatted.find("Street(id: 30") != std::string::npos);
-    CHECK(formatted.find("agents: 2") != std::string::npos);
-  }
-
-  SUBCASE("fmt::format with unnamed street") {
-    Street street{10, std::make_pair(5, 8), 100.0, 13.89, 2};
-
-    std::string formatted = fmt::format("{}", street);
-    CHECK(formatted.find("Street(id: 10") != std::string::npos);
-    CHECK(formatted.find("from 5 to 8") != std::string::npos);
-    CHECK(formatted.find("length: 100") != std::string::npos);
-    CHECK(formatted.find("max speed: 13.89 m/s") != std::string::npos);
-    CHECK(formatted.find("lanes: 2") != std::string::npos);
-    CHECK(formatted.find("agents: 0") != std::string::npos);
-    CHECK(formatted.find("n enqueued: 0") != std::string::npos);
-  }
-
-  SUBCASE("fmt::format with named street") {
-    Street street{20, std::make_pair(1, 2), 250.5, 25.0, 3, "Main Street"};
-
-    std::string formatted = fmt::format("{}", street);
-    CHECK(formatted.find("Street(id: 20 \"Main Street\"") != std::string::npos);
-    CHECK(formatted.find("from 1 to 2") != std::string::npos);
-    CHECK(formatted.find("length: 250.5") != std::string::npos);
-    CHECK(formatted.find("max speed: 25.00 m/s") != std::string::npos);
-    CHECK(formatted.find("lanes: 3") != std::string::npos);
-  }
-
-  SUBCASE("fmt::format with street containing agents") {
-    Street street{30, std::make_pair(10, 20), 50.0, 15.0, 1};
-
-    // Add some agents
-    auto agent1 = std::make_unique<Agent>(0, 1);
-    auto agent2 = std::make_unique<Agent>(0, 2);
-    street.addAgent(std::move(agent1));
-    street.addAgent(std::move(agent2));
-
-    std::string formatted = fmt::format("{}", street);
     CHECK(formatted.find("Street(id: 30") != std::string::npos);
     CHECK(formatted.find("agents: 2") != std::string::npos);
   }

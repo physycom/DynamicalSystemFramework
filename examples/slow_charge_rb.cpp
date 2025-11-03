@@ -1,4 +1,4 @@
-#include "../src/dsf/dsf.hpp"
+#include <dsf/dsf.hpp>
 #include <array>
 #include <chrono>
 #include <cmath>

@@ -9,9 +9,36 @@ set(DSF_VERSION_MINOR ${CMAKE_MATCH_1})
 string(REGEX MATCH "DSF_VERSION_PATCH = ([0-9]+)" _ ${DSF_HPP_CONTENT})
 set(DSF_VERSION_PATCH ${CMAKE_MATCH_1})
 
-set(DSF_VERSION "${DSF_VERSION_MAJOR}.${DSF_VERSION_MINOR}.${DSF_VERSION_PATCH}")
+set(DSF_VERSION
+    "${DSF_VERSION_MAJOR}.${DSF_VERSION_MINOR}.${DSF_VERSION_PATCH}")
 
-project(dsf VERSION ${DSF_VERSION} LANGUAGES CXX)
+project(
+  dsf
+  VERSION ${DSF_VERSION}
+  LANGUAGES CXX)
+
+option(DSF_TESTS "Build DSF tests" OFF)
+option(DSF_EXAMPLES "Build DSF examples" OFF)
+option(DSF_BUILD_PIC "Build DSF with position-independent code" OFF)
+option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
+
+# If CMAKE_BUILD_TYPE not set, default to Debug
+if(NOT CMAKE_BUILD_TYPE)
+  if(BUILD_PYTHON_BINDINGS)
+    set(CMAKE_BUILD_TYPE
+        "Release"
+        CACHE STRING
+              "Build type (default: Release when building Python bindings)"
+              FORCE)
+  else()
+    set(CMAKE_BUILD_TYPE
+        "Debug"
+        CACHE STRING "Build type (default: Debug)" FORCE)
+  endif()
+endif()
+if(BUILD_PYTHON_BINDINGS)
+  set(DSF_BUILD_PIC ON)
+endif()
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -19,145 +46,196 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Ensure optimization flags are applied only in Release mode
-if (CMAKE_BUILD_TYPE MATCHES "Release")
-    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto=auto")
-    elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
-    endif()
+if(CMAKE_BUILD_TYPE MATCHES "Release")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto=auto")
+  elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
+  endif()
 elseif(CMAKE_BUILD_TYPE MATCHES "Coverage")
-    message(STATUS "Enable code coverage")
-    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g --coverage -fprofile-update=atomic")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
-    endif()
+  set(DSF_TESTS ON)
+  message(STATUS "Enable code coverage")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -pg --coverage -fprofile-update=atomic"
+    )
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+  endif()
 else() # Default to Debug settings
-    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -fsanitize=address")
-    elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
-    endif()
+  set(DSF_TESTS ON)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -pg -fsanitize=address")
+  elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
+  endif()
 endif()
 
 find_package(TBB REQUIRED CONFIG)
-find_package(fmt REQUIRED)
-find_package(spdlog REQUIRED)
 find_package(simdjson REQUIRED)
 
-file(GLOB SOURCES "src/dsf/base/*.cpp" "src/dsf/mobility/*.cpp" "src/dsf/utility/*.cpp" "src/dsf/geometry/*.cpp" "src/dsf/mdt/*.cpp")
+file(
+  GLOB
+  SOURCES
+  "src/dsf/base/*.cpp"
+  "src/dsf/mobility/*.cpp"
+  "src/dsf/utility/*.cpp"
+  "src/dsf/geometry/*.cpp"
+  "src/dsf/mdt/*.cpp")
 
 include(FetchContent)
 # Get rapidcsv
-FetchContent_Declare(rapidcsv
+FetchContent_Declare(
+  rapidcsv
   GIT_REPOSITORY https://github.com/d99kris/rapidcsv
-  GIT_TAG v8.89
-)
+  GIT_TAG v8.89)
 FetchContent_GetProperties(rapidcsv)
 if(NOT rapidcsv_POPULATED)
   FetchContent_MakeAvailable(rapidcsv)
 endif()
+# Get spdlog
+set(SPDLOG_USE_STD_FORMAT
+    ON
+    CACHE BOOL "Use std::format instead of fmt" FORCE)
+set(SPDLOG_FMT_EXTERNAL
+    OFF
+    CACHE BOOL "Use bundled fmt library" FORCE)
+if(BUILD_PYTHON_BINDINGS)
+  set(SPDLOG_BUILD_PIC
+      ON
+      CACHE BOOL "Build position-independent code for spdlog" FORCE)
+endif()
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog
+  GIT_TAG v1.16.0)
+FetchContent_GetProperties(spdlog)
+if(NOT spdlog_POPULATED)
+  FetchContent_MakeAvailable(spdlog)
+endif()
 
 add_library(dsf STATIC ${SOURCES})
-target_include_directories(dsf PUBLIC 
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    $<INSTALL_INTERFACE:include>
-)
+target_compile_definitions(dsf PRIVATE SPDLOG_USE_STD_FORMAT)
+if(DSF_BUILD_PIC)
+  set_target_properties(dsf PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
+target_include_directories(
+  dsf PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+             $<INSTALL_INTERFACE:include>
+             $<BUILD_INTERFACE:${spdlog_SOURCE_DIR}/include>
+             $<INSTALL_INTERFACE:include/dsf/bundled>)
 
 # Include csv headers privately
-target_include_directories(dsf PRIVATE "${rapidcsv_SOURCE_DIR}/src")
+target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src)
 
 # Link other libraries - no csv dependency needed now
-target_link_libraries(dsf PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson)
+target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson)
 
 # Install dsf library
-install(TARGETS dsf
-        EXPORT dsfConfig
-        ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib
-        RUNTIME DESTINATION bin)
+install(
+  TARGETS dsf
+  EXPORT dsfConfig
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
 
-install(EXPORT dsfConfig
-        FILE dsfConfig.cmake
-        NAMESPACE dsf::
-        DESTINATION lib/cmake/dsf)
+# Install spdlog headers bundled under dsf/bundled (private to dsf)
+install(DIRECTORY ${spdlog_SOURCE_DIR}/include/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/include/dsf/bundled)
+
+install(
+  EXPORT dsfConfig
+  FILE dsfConfig.cmake
+  NAMESPACE dsf::
+  DESTINATION lib/cmake/dsf)
 
 # Optional Python bindings - only build if requested
-option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
-
 if(BUILD_PYTHON_BINDINGS)
-    include(FetchContent)
-    
-    # Get pybind11
-    FetchContent_Declare(pybind11
-        GIT_REPOSITORY https://github.com/pybind/pybind11.git
-        GIT_TAG v3.0.1
-    )
-    FetchContent_GetProperties(pybind11)
-    if(NOT pybind11_POPULATED)
-        FetchContent_MakeAvailable(pybind11)
-    endif()
+  include(FetchContent)
 
-    # Add the Python binding module
-    add_library(dsf_python_module MODULE src/dsf/bindings.cpp)
+  # Get pybind11
+  FetchContent_Declare(
+    pybind11
+    GIT_REPOSITORY https://github.com/pybind/pybind11.git
+    GIT_TAG v3.0.1)
+  FetchContent_GetProperties(pybind11)
+  if(NOT pybind11_POPULATED)
+    FetchContent_MakeAvailable(pybind11)
+  endif()
 
-    # Ensure the Python module name has no 'lib' prefix on Unix systems
-    set_target_properties(dsf_python_module PROPERTIES
-        PREFIX ""
-        OUTPUT_NAME "dsf_cpp"
-    )
+  # Add the Python binding module
+  add_library(dsf_python_module MODULE src/dsf/bindings.cpp)
 
-    # Link the pybind11 module with your static library and pybind11
-    target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module pybind11::headers)
+  # Ensure the Python module name has no 'lib' prefix on Unix systems
+  set_target_properties(dsf_python_module PROPERTIES PREFIX "" OUTPUT_NAME
+                                                               "dsf_cpp")
 
-    # Set include directories (if binding.cpp needs headers from your project)
-    target_include_directories(dsf_python_module PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-    )
+  # Link the pybind11 module with your static library and pybind11
+  target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module
+                                                  pybind11::headers)
+  target_compile_definitions(dsf_python_module PRIVATE SPDLOG_USE_STD_FORMAT)
+
+  # Set include directories (if binding.cpp needs headers from your project)
+  target_include_directories(
+    dsf_python_module PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+                              ${spdlog_SOURCE_DIR}/include)
 endif()
 
 # Tests
-option(DSF_BUILD_TESTS "Build DSF tests" OFF)
-message(STATUS "Build DSF tests: ${DSF_BUILD_TESTS}")
-if (DSF_BUILD_TESTS)
-    include(CTest)
-    enable_testing()
+message(STATUS "Build DSF tests: ${DSF_TESTS}")
+if(DSF_TESTS)
+  include(CTest)
+  enable_testing()
 
-    # Get Doctest library
-    FetchContent_Declare(doctest
-        GIT_REPOSITORY https://github.com/doctest/doctest.git
-        GIT_TAG v2.4.12
-    )
-    FetchContent_GetProperties(doctest)
-    if(NOT doctest_POPULATED)
+  # Get Doctest library
+  FetchContent_Declare(
+    doctest
+    GIT_REPOSITORY https://github.com/doctest/doctest.git
+    GIT_TAG v2.4.12)
+  FetchContent_GetProperties(doctest)
+  if(NOT doctest_POPULATED)
     FetchContent_MakeAvailable(doctest)
-    endif()
+  endif()
 
-    macro(add_unit_test testname)
-        add_executable(${testname} ${ARGN})
-        target_include_directories(${testname} PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
-        target_include_directories(${testname} SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
-        target_include_directories(${testname} PRIVATE ${rapidcsv_SOURCE_DIR}/src)
-        target_link_libraries(${testname} PRIVATE dsf fmt::fmt spdlog::spdlog simdjson::simdjson TBB::tbb)
-        # Put test binaries under build/tests so they are easy to find.
-        # Use per-config output dirs to play nicely with multi-config generators.
-        set_target_properties(${testname} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
-            RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/tests
-            RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/tests
-            RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/tests
-            RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/tests
-        )
+  macro(add_unit_test testname)
+    add_executable(${testname} ${ARGN})
+    target_include_directories(${testname}
+                               PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
+    target_include_directories(${testname} SYSTEM
+                               PRIVATE ${doctest_SOURCE_DIR}/doctest)
+    target_include_directories(${testname} PRIVATE ${rapidcsv_SOURCE_DIR}/src
+                                                   ${spdlog_SOURCE_DIR}/include)
+    target_compile_definitions(${testname} PRIVATE SPDLOG_USE_STD_FORMAT)
+    target_link_libraries(${testname} PRIVATE dsf simdjson::simdjson TBB::tbb)
+    # Put test binaries under build/tests so they are easy to find. Use
+    # per-config output dirs to play nicely with multi-config generators.
+    set_target_properties(
+      ${testname}
+      PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
+                 RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/tests
+                 RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/tests
+                 RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/tests
+                 RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO
+                 ${CMAKE_BINARY_DIR}/tests)
 
-        # Register the test using the full target file so CTest invokes the
-        # correct executable regardless of output directory or generator.
-        add_test(NAME ${testname} COMMAND $<TARGET_FILE:${testname}>)
-    endmacro()
+    # Register the test using the full target file so CTest invokes the correct
+    # executable regardless of output directory or generator.
+    add_test(NAME ${testname} COMMAND $<TARGET_FILE:${testname}>)
+  endmacro()
 
-    file(GLOB TEST_SOURCES "test/*/*.cpp")
-    foreach(testsource ${TEST_SOURCES})
-        get_filename_component(testname ${testsource} NAME_WE)
-        add_unit_test(${testname} ${testsource})
-    endforeach()
+  file(GLOB TEST_SOURCES "test/*/*.cpp")
+  foreach(testsource ${TEST_SOURCES})
+    get_filename_component(testname ${testsource} NAME_WE)
+    add_unit_test(${testname} ${testsource})
+  endforeach()
+endif()
+
+# Examples
+message(STATUS "Build DSF examples: ${DSF_EXAMPLES}")
+if(DSF_EXAMPLES)
+  set(CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX};${CMAKE_PREFIX_PATH}")
+  add_subdirectory(examples)
 endif()
