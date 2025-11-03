@@ -33,7 +33,7 @@ jobs:
     - name: Install DSF and build examples
       working-directory: ${{github.workspace}}
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DDSF_BUILD_EXAMPLES=ON
+        cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DDSF_EXAMPLES=ON
         cmake --build build -j$(nproc)
         sudo cmake --install build
 
