@@ -19,6 +19,7 @@ project(
 
 option(DSF_TESTS "Build DSF tests" OFF)
 option(DSF_EXAMPLES "Build DSF examples" OFF)
+option(DSF_BENCHMARKS "Build DSF benchmarks" OFF)
 option(DSF_BUILD_PIC "Build DSF with position-independent code" OFF)
 option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
@@ -238,4 +239,11 @@ message(STATUS "Build DSF examples: ${DSF_EXAMPLES}")
 if(DSF_EXAMPLES)
   set(CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX};${CMAKE_PREFIX_PATH}")
   add_subdirectory(examples)
+endif()
+
+# Benchmarks
+message(STATUS "Build DSF benchmarks: ${DSF_BENCHMARKS}")
+if(DSF_BENCHMARKS)
+  set(CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX};${CMAKE_PREFIX_PATH}")
+  add_subdirectory(benchmark)
 endif()
