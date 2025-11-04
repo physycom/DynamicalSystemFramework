@@ -67,8 +67,7 @@ else() # Default to Debug settings
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -pg -fsanitize=address")
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -pg")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g -pg")
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
   endif()
@@ -126,7 +125,9 @@ if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
 endif()
 # Get TBB
-set(TBB_TEST OFF CACHE BOOL "Disable TBB tests" FORCE)
+set(TBB_TEST
+    OFF
+    CACHE BOOL "Disable TBB tests" FORCE)
 FetchContent_Declare(
   tbb
   GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB
@@ -189,34 +190,31 @@ if(BUILD_PYTHON_BINDINGS)
                                                                "dsf_cpp")
 
   # Link the pybind11 module with your static library and pybind11
-  target_link_libraries(dsf_python_module PRIVATE dsf pybind11::module
-                                                  pybind11::headers
-                                                  TBB::tbb
-                                                  spdlog::spdlog)
+  target_link_libraries(
+    dsf_python_module PRIVATE dsf pybind11::module pybind11::headers TBB::tbb
+                              spdlog::spdlog)
   target_compile_definitions(dsf_python_module PRIVATE SPDLOG_USE_STD_FORMAT)
 
-  target_include_directories(
-    dsf_python_module PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  target_include_directories(dsf_python_module
+                             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
   if(APPLE)
     # Try to detect Homebrew prefix dynamically
     execute_process(
       COMMAND brew --prefix
       OUTPUT_VARIABLE HOMEBREW_PREFIX
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      ERROR_QUIET
-    )
+      OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
     if(HOMEBREW_PREFIX)
       set(HOMEBREW_LIB "${HOMEBREW_PREFIX}/lib")
     else()
       # Fallback to default Homebrew locations
       set(HOMEBREW_LIB "/opt/homebrew/lib;/usr/local/lib")
     endif()
-    set_target_properties(dsf_python_module PROPERTIES
-      BUILD_WITH_INSTALL_RPATH TRUE
-      INSTALL_RPATH "${HOMEBREW_LIB}"
-      INSTALL_RPATH_USE_LINK_PATH TRUE
-    )
+    set_target_properties(
+      dsf_python_module
+      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                 INSTALL_RPATH "${HOMEBREW_LIB}"
+                 INSTALL_RPATH_USE_LINK_PATH TRUE)
   endif()
 endif()
 
@@ -240,10 +238,11 @@ if(DSF_TESTS)
     add_executable(${testname} ${ARGN})
     target_include_directories(${testname}
                                PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
-    target_include_directories(${testname} SYSTEM
-                               PRIVATE ${doctest_SOURCE_DIR}/doctest ${rapidcsv_SOURCE_DIR}/src)
+    target_include_directories(
+      ${testname} SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest
+                                 ${rapidcsv_SOURCE_DIR}/src)
     target_compile_definitions(${testname} PRIVATE SPDLOG_USE_STD_FORMAT)
-    target_link_libraries(${testname} PRIVATE dsf simdjson::simdjson TBB::tbb spdlog::spdlog)
+    target_link_libraries(${testname} PRIVATE dsf TBB::tbb simdjson::simdjson spdlog::spdlog)
     # Put test binaries under build/tests so they are easy to find. Use
     # per-config output dirs to play nicely with multi-config generators.
     set_target_properties(
