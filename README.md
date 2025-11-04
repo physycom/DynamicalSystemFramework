@@ -2,10 +2,10 @@
 [![Latest Release](https://img.shields.io/github/v/release/physycom/DynamicalSystemFramework)](https://github.com/physycom/DynamicalSystemFramework/releases/latest)
 [![PyPI version](https://img.shields.io/pypi/v/dsf-mobility)](https://pypi.org/project/dsf-mobility/)
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
-[![TBB](https://img.shields.io/badge/TBB-2021.11.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
+[![TBB](https://img.shields.io/badge/TBB-2022.3.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
 [![SPDLOG](https://img.shields.io/badge/spdlog-1.16.0-blue.svg)](https://github.com/gabime/spdlog)
 [![CSV](https://img.shields.io/badge/rapidcsv-8.89-blue.svg)](https://github.com/d99kris/rapidcsv)
-[![JSON](https://img.shields.io/badge/simdjson-3.6.4-blue.svg)](https://github.com/simdjson/simdjson)
+[![JSON](https://img.shields.io/badge/simdjson-4.2.1-blue.svg)](https://github.com/simdjson/simdjson)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
 
 The aim of this project is to rework the original [Traffic Flow Dynamics Model](https://github.com/Grufoony/TrafficFlowDynamicsModel).
@@ -38,11 +38,11 @@ print(dsf.__version__)
 The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, `spdlog` and `rapidcsv`.
 To install requirements on Ubuntu:
 ```shell
-sudo apt install libtbb-dev libsimdjson-dev cmake
+sudo apt install cmake libhwloc-dev
 ```
 To install requirements on macOS:
 ```shell
-brew install tbb simdjson cmake
+brew install cmake
 ```
 
 Utilities are written in python. To install their dependencies:

@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.16.0)
 
-project(dsf_examples VERSION 3.0.0 LANGUAGES CXX)
+project(
+  dsf_examples
+  VERSION 3.0.0
+  LANGUAGES CXX)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -9,19 +12,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Check if being built as part of the main DSF project or standalone
 if(NOT TARGET dsf)
-    # Standalone build - need to find installed DSF
-    find_package(dsf REQUIRED)
-    find_package(TBB REQUIRED CONFIG)
-    find_package(simdjson REQUIRED)
-else()
-    # Building as part of main project - dsf target already exists
-    # TBB and simdjson should already be found by parent
-    if(NOT TARGET TBB::tbb)
-        find_package(TBB REQUIRED CONFIG)
-    endif()
-    if(NOT TARGET simdjson::simdjson)
-        find_package(simdjson REQUIRED)
-    endif()
+  # Standalone build - need to find installed DSF
+  find_package(dsf REQUIRED)
 endif()
 
 # add as executable all cpp files into '.' folder
@@ -32,9 +24,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Loop through each source file and create an executable
 foreach(SOURCE ${SOURCES})
-    get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
-    add_executable(${EXE_NAME}.out ${SOURCE})
-    target_compile_definitions(${EXE_NAME}.out PRIVATE SPDLOG_USE_STD_FORMAT)
-    target_link_libraries(${EXE_NAME}.out PRIVATE dsf TBB::tbb simdjson::simdjson)
-    target_include_directories(${EXE_NAME}.out PRIVATE $<INSTALL_INTERFACE:include>)
+  get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
+  add_executable(${EXE_NAME}.out ${SOURCE})
+  target_compile_definitions(${EXE_NAME}.out PRIVATE SPDLOG_USE_STD_FORMAT)
+  target_link_libraries(${EXE_NAME}.out PRIVATE dsf TBB::tbb simdjson::simdjson
+                                                spdlog::spdlog)
+  target_include_directories(${EXE_NAME}.out
+                             PRIVATE $<INSTALL_INTERFACE:include>)
 endforeach()
