@@ -114,7 +114,10 @@ jobs:
       - name: Create coverage report
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{github.workspace}}/build
-        run: lcov --capture --directory .. --output-file coverage.xml
+        run: |
+          lcov --capture --directory .. --output-file coverage.xml --ignore-errors source,gcov --rc geninfo_unexecuted_blocks=1
+          lcov --remove coverage.xml '*/build/_deps/*' '*/test/*' '*/usr/*' --output-file coverage_filtered.xml --ignore-errors source
+          mv coverage_filtered.xml coverage.xml
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
