@@ -199,7 +199,24 @@ if(BUILD_PYTHON_BINDINGS)
     dsf_python_module PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
   if(APPLE)
-    set_target_properties(dsf_python_module PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "/opt/homebrew/lib;/usr/local/lib" INSTALL_RPATH_USE_LINK_PATH TRUE)
+    # Try to detect Homebrew prefix dynamically
+    execute_process(
+      COMMAND brew --prefix
+      OUTPUT_VARIABLE HOMEBREW_PREFIX
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+    )
+    if(HOMEBREW_PREFIX)
+      set(HOMEBREW_LIB "${HOMEBREW_PREFIX}/lib")
+    else()
+      # Fallback to default Homebrew locations
+      set(HOMEBREW_LIB "/opt/homebrew/lib;/usr/local/lib")
+    endif()
+    set_target_properties(dsf_python_module PROPERTIES
+      BUILD_WITH_INSTALL_RPATH TRUE
+      INSTALL_RPATH "${HOMEBREW_LIB}"
+      INSTALL_RPATH_USE_LINK_PATH TRUE
+    )
   endif()
 endif()
 
