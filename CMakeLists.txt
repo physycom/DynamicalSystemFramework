@@ -25,11 +25,11 @@ option(BUILD_PYTHON_BINDINGS "Build Python bindings" OFF)
 
 # If CMAKE_BUILD_TYPE not set, default to Debug
 if(NOT CMAKE_BUILD_TYPE)
-  if(BUILD_PYTHON_BINDINGS)
+  if(BUILD_PYTHON_BINDINGS OR DSF_BENCHMARKS)
     set(CMAKE_BUILD_TYPE
         "Release"
         CACHE STRING
-              "Build type (default: Release when building Python bindings)"
+              "Build type (default: Release when building Python bindings or benchmarks)"
               FORCE)
   else()
     set(CMAKE_BUILD_TYPE
@@ -52,6 +52,10 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto=auto")
   elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
+  endif()
+elseif(CMAKE_BUILD_TYPE MATCHES "Profile")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -march=native -flto=auto -pg")
   endif()
 elseif(CMAKE_BUILD_TYPE MATCHES "Coverage")
   set(DSF_TESTS ON)

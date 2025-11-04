@@ -10,6 +10,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Add -pg flag to enable profiling if DSF_PROFILE is ON
+if(DSF_PROFILE)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+  endif()
+endif()
+
 # Check if being built as part of the main DSF project or standalone
 if(NOT TARGET dsf)
   # Standalone build - need to find installed DSF
