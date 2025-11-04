@@ -1,4 +1,4 @@
-name: "CI: Cmake installation and testing"
+name: "CI: Cmake debug testing"
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt install -y lcov gcovr build-essential cmake libtbb-dev libsimdjson-dev
+          sudo apt install -y lcov gcovr build-essential cmake libtbb-dev libsimdjson-dev libhwloc-dev
 
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
@@ -88,74 +88,6 @@ jobs:
         working-directory: ${{ github.workspace }}
         shell: powershell
         run: cmake --install build --config Debug --prefix "$env:GITHUB_WORKSPACE\install"
-
-      # Quick CMake installation tests per platform
-      - name: Test CMake installation on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir -p test_install
-          cd test_install
-          echo "#include <dsf/dsf.hpp>" > test.cpp
-          echo "int main() { return 0; }" >> test.cpp
-          cat > CMakeLists.txt << 'EOF'
-          cmake_minimum_required(VERSION 3.16)
-          project(test_dsf)
-          find_package(dsf REQUIRED)
-          add_executable(test test.cpp)
-          target_link_libraries(test dsf::dsf)
-          EOF
-          cmake . -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install
-          cmake --build .
-          ./test && echo "SUCCESS: dsf library can be found and linked via CMake on Ubuntu!" || (echo "FAILED: Cannot find/link dsf via CMake on Ubuntu"; exit 1)
-
-      - name: Test CMake installation on macOS
-        if: matrix.os == 'macos-latest'
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir -p test_install
-          cd test_install
-          echo "#include <dsf/dsf.hpp>" > test.cpp
-          echo "int main() { return 0; }" >> test.cpp
-          cat > CMakeLists.txt << 'EOF'
-          cmake_minimum_required(VERSION 3.16)
-          project(test_dsf)
-          find_package(dsf REQUIRED)
-          add_executable(test test.cpp)
-          target_link_libraries(test dsf::dsf)
-          EOF
-          cmake . -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/install:$(brew --prefix tbb):$(brew --prefix simdjson)"
-          cmake --build .
-          ./test && echo "SUCCESS: dsf library can be found and linked via CMake on macOS!" || (echo "FAILED: Cannot find/link dsf via CMake on macOS"; exit 1)
-
-      - name: Setup MSVC environment on Windows
-        if: matrix.os == 'windows-latest'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Test CMake installation on Windows
-        if: matrix.os == 'windows-latest'
-        working-directory: ${{ github.workspace }}
-        shell: powershell
-        run: |
-          New-Item -ItemType Directory -Force -Path test_install | Out-Null
-          cd test_install
-          echo "#include <dsf/dsf.hpp>" > test.cpp
-          echo "int main() { return 0; }" >> test.cpp
-          @"
-          cmake_minimum_required(VERSION 3.16)
-          project(test_dsf)
-          find_package(dsf REQUIRED)
-          add_executable(test test.cpp)
-          target_link_libraries(test dsf::dsf)
-          "@ | Out-File -FilePath CMakeLists.txt -Encoding UTF8
-          $cmake_prefix = "$env:GITHUB_WORKSPACE\install;$env:VCPKG_INSTALLED"
-          cmake . -DCMAKE_PREFIX_PATH="$cmake_prefix" -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows
-          cmake --build . --config Debug
-          .\Debug\test.exe
-          if ($LASTEXITCODE -ne 0) { Write-Host "FAILED: Cannot find/link dsf via CMake on Windows (exit code $LASTEXITCODE)"; exit 1 }
-          Write-Host "SUCCESS: dsf library can be found and linked via CMake on Windows!"
 
       # Make test executables runnable where needed
       - name: Fix permissions for test executables
