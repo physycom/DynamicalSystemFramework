@@ -11,17 +11,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(NOT TARGET dsf)
     # Standalone build - need to find installed DSF
     find_package(dsf REQUIRED)
-    find_package(TBB REQUIRED CONFIG)
-    find_package(simdjson REQUIRED)
-else()
-    # Building as part of main project - dsf target already exists
-    # TBB and simdjson should already be found by parent
-    if(NOT TARGET TBB::tbb)
-        find_package(TBB REQUIRED CONFIG)
-    endif()
-    if(NOT TARGET simdjson::simdjson)
-        find_package(simdjson REQUIRED)
-    endif()
 endif()
 
 # add as executable all cpp files into '.' folder
@@ -35,6 +24,6 @@ foreach(SOURCE ${SOURCES})
     get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
     add_executable(${EXE_NAME}.out ${SOURCE})
     target_compile_definitions(${EXE_NAME}.out PRIVATE SPDLOG_USE_STD_FORMAT)
-    target_link_libraries(${EXE_NAME}.out PRIVATE dsf TBB::tbb simdjson::simdjson)
+    target_link_libraries(${EXE_NAME}.out PRIVATE dsf TBB::tbb simdjson::simdjson spdlog::spdlog)
     target_include_directories(${EXE_NAME}.out PRIVATE $<INSTALL_INTERFACE:include>)
 endforeach()

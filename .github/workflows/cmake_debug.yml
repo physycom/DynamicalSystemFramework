@@ -89,38 +89,44 @@ jobs:
         shell: powershell
         run: cmake --install build --config Debug --prefix "$env:GITHUB_WORKSPACE\install"
 
-      # Quick include/link tests per platform
-      - name: Test include on Ubuntu
+      # Quick CMake installation tests per platform
+      - name: Test CMake installation on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}
         run: |
+          mkdir -p test_install
+          cd test_install
           echo "#include <dsf/dsf.hpp>" > test.cpp
           echo "int main() { return 0; }" >> test.cpp
-          g++ test.cpp -std=c++20 \
-            -I${GITHUB_WORKSPACE}/install/include \
-            -I${GITHUB_WORKSPACE}/install/include/dsf/bundled \
-            -L${GITHUB_WORKSPACE}/install/lib \
-            -ldsf -ltbb -lsimdjson \
-            && echo "SUCCESS: dsf library can be included and linked on Ubuntu!" \
-            || (echo "FAILED: Cannot include/link dsf on Ubuntu"; exit 1)
+          cat > CMakeLists.txt << 'EOF'
+          cmake_minimum_required(VERSION 3.16)
+          project(test_dsf)
+          find_package(dsf REQUIRED)
+          add_executable(test test.cpp)
+          target_link_libraries(test dsf::dsf)
+          EOF
+          cmake . -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install
+          cmake --build .
+          ./test && echo "SUCCESS: dsf library can be found and linked via CMake on Ubuntu!" || (echo "FAILED: Cannot find/link dsf via CMake on Ubuntu"; exit 1)
 
-      - name: Test include on macOS
+      - name: Test CMake installation on macOS
         if: matrix.os == 'macos-latest'
         working-directory: ${{ github.workspace }}
         run: |
+          mkdir -p test_install
+          cd test_install
           echo "#include <dsf/dsf.hpp>" > test.cpp
           echo "int main() { return 0; }" >> test.cpp
-          clang++ test.cpp -std=c++20 \
-            -I${GITHUB_WORKSPACE}/install/include \
-            -I${GITHUB_WORKSPACE}/install/include/dsf/bundled \
-            -I$(brew --prefix tbb)/include -I$(brew --prefix simdjson)/include \
-            -L${GITHUB_WORKSPACE}/install/lib \
-            -L$(brew --prefix tbb)/lib -L$(brew --prefix simdjson)/lib \
-            -Wl,-rpath,${GITHUB_WORKSPACE}/install/lib \
-            -Wl,-rpath,$(brew --prefix simdjson)/lib \
-            -ldsf -ltbb -lsimdjson \
-            && echo "SUCCESS: dsf library can be included and linked on macOS!" \
-            || (echo "FAILED: Cannot include/link dsf on macOS"; exit 1)
+          cat > CMakeLists.txt << 'EOF'
+          cmake_minimum_required(VERSION 3.16)
+          project(test_dsf)
+          find_package(dsf REQUIRED)
+          add_executable(test test.cpp)
+          target_link_libraries(test dsf::dsf)
+          EOF
+          cmake . -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/install:$(brew --prefix tbb):$(brew --prefix simdjson)"
+          cmake --build .
+          ./test && echo "SUCCESS: dsf library can be found and linked via CMake on macOS!" || (echo "FAILED: Cannot find/link dsf via CMake on macOS"; exit 1)
 
       - name: Setup MSVC environment on Windows
         if: matrix.os == 'windows-latest'
@@ -128,62 +134,28 @@ jobs:
         with:
           arch: x64
 
-      - name: Test include on Windows
+      - name: Test CMake installation on Windows
         if: matrix.os == 'windows-latest'
         working-directory: ${{ github.workspace }}
         shell: powershell
         run: |
+          New-Item -ItemType Directory -Force -Path test_install | Out-Null
+          cd test_install
           echo "#include <dsf/dsf.hpp>" > test.cpp
           echo "int main() { return 0; }" >> test.cpp
-
-          $INSTALL_DIR = "$env:GITHUB_WORKSPACE\install"
-          $VCPKG_INSTALLED = $env:VCPKG_INSTALLED
-
-          Write-Host "INSTALL_DIR = $INSTALL_DIR"
-          Write-Host "VCPKG_INSTALLED = $VCPKG_INSTALLED"
-
-          if (-not (Test-Path "$INSTALL_DIR\include\dsf")) {
-            Write-Host "ERROR: dsf headers not found in $INSTALL_DIR\include"
-            exit 1
-          }
-
-          Write-Host "=== debug: list install/include ==="
-          Get-ChildItem -Force "$INSTALL_DIR\include" -Depth 1 | ForEach-Object { $_.FullName }
-
-          function Find-Lib($dir, $pattern) {
-            if (-not (Test-Path $dir)) { return $null }
-            $found = Get-ChildItem -Path $dir -Filter $pattern -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            return $found
-          }
-
-          $libs = @()
-
-          $dsfLib = Find-Lib "$INSTALL_DIR\lib" "dsf*.lib"
-          if ($dsfLib) { $libs += $dsfLib.Name }
-
-          $tbbLib = Find-Lib "$VCPKG_INSTALLED\lib" "tbb*.lib"
-          if ($tbbLib) { $libs += $tbbLib.Name } else { Write-Host "ERROR: TBB lib not found in $VCPKG_INSTALLED\lib"; exit 1 }
-
-          $simdLib = Find-Lib "$VCPKG_INSTALLED\lib" "simdjson*.lib"
-          if ($simdLib) { $libs += $simdLib.Name }
-
-          Write-Host "Libraries to link: $($libs -join ', ')"
-
-          $compilerArgs = @(
-            "/nologo", "/std:c++20", "/utf-8", "/EHsc",
-            "test.cpp",
-            "/I`"$INSTALL_DIR\include`"",
-            "/I`"$INSTALL_DIR\include/dsf/bundled`"",
-            "/I`"$VCPKG_INSTALLED\include`"",
-            "/link",
-            "/LIBPATH:`"$INSTALL_DIR\lib`"",
-            "/LIBPATH:`"$VCPKG_INSTALLED\lib`""
-          )
-          $compilerArgs += $libs
-
-          & cl.exe @compilerArgs
-
-          if ($LASTEXITCODE -ne 0) { Write-Host "FAILED: Cannot compile/link test program on Windows (exit code $LASTEXITCODE)"; exit 1 }
+          @"
+          cmake_minimum_required(VERSION 3.16)
+          project(test_dsf)
+          find_package(dsf REQUIRED)
+          add_executable(test test.cpp)
+          target_link_libraries(test dsf::dsf)
+          "@ | Out-File -FilePath CMakeLists.txt -Encoding UTF8
+          $cmake_prefix = "$env:GITHUB_WORKSPACE\install;$env:VCPKG_INSTALLED"
+          cmake . -DCMAKE_PREFIX_PATH="$cmake_prefix" -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows
+          cmake --build . --config Debug
+          .\Debug\test.exe
+          if ($LASTEXITCODE -ne 0) { Write-Host "FAILED: Cannot find/link dsf via CMake on Windows (exit code $LASTEXITCODE)"; exit 1 }
+          Write-Host "SUCCESS: dsf library can be found and linked via CMake on Windows!"
 
       # Make test executables runnable where needed
       - name: Fix permissions for test executables
