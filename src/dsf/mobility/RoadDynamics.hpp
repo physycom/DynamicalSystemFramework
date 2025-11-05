@@ -576,7 +576,7 @@ namespace dsf::mobility {
                                              bool reinsert_agents) {
     auto const nLanes = pStreet->nLanes();
     while (!pStreet->movingAgents().empty()) {
-      auto const& pAgent{pStreet->movingAgents().top()};
+      auto const& pAgent{pStreet->movingAgents().front()};
       if (pAgent->freeTime() < this->time_step()) {
         break;
       }
