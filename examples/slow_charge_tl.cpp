@@ -1,5 +1,6 @@
 #include <dsf/dsf.hpp>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -45,13 +46,13 @@ void printLoadingBar(int const i, int const n) {
 }
 
 int main(int argc, char** argv) {
+  auto const start = std::chrono::high_resolution_clock::now();
   if (argc != 6) {
     std::cerr
         << "Usage: " << argv[0]
         << " <SEED> <ERROR_PROBABILITY> <OUT_FOLDER_BASE> <OPTIMIZE> <INIT_NAGENTS>\n";
     return 1;
   }
-  spdlog::set_level(spdlog::level::err);  // turn off spdlog logging
 
   const int SEED = std::stoi(argv[1]);  // seed for random number generator
   const double ERROR_PROBABILITY{std::stod(argv[2])};
@@ -59,12 +60,6 @@ int main(int argc, char** argv) {
   const bool OPTIMIZE{std::string(argv[4]) != std::string("0")};
   BASE_OUT_FOLDER += OPTIMIZE ? "_op/" : "/";
   auto nAgents{std::stoul(argv[5])};
-
-  std::string OUT_FOLDER{std::format("{}output_sctl_{}_{}/",
-                                     BASE_OUT_FOLDER,
-                                     ERROR_PROBABILITY,
-                                     std::to_string(SEED))};  // output folder
-  constexpr auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
 
   std::cout << "-------------------------------------------------\n";
   std::cout << "Input parameters:\n";
@@ -76,7 +71,11 @@ int main(int argc, char** argv) {
     std::cout << "Traffic light optimization ENABLED.\n";
   }
   std::cout << "-------------------------------------------------\n";
-
+  const std::string OUT_FOLDER{std::format("{}output_sctl_{}_{}/",
+                                           BASE_OUT_FOLDER,
+                                           ERROR_PROBABILITY,
+                                           std::to_string(SEED))};  // output folder
+  constexpr auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
   // Clear output folder or create it if it doesn't exist
   if (!fs::exists(BASE_OUT_FOLDER)) {
     fs::create_directory(BASE_OUT_FOLDER);
@@ -151,81 +150,25 @@ int main(int argc, char** argv) {
   for (const auto& pair : graph.edges()) {
     graph.makeSpireStreet(pair.first);
   }
-  // create gaussian random number generator
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  gen.seed(64313);
-  std::normal_distribution d(60., 10.);
-  std::array<uint8_t, 2> sda{0, 0};
-  auto random = [&d, &gen]() { return std::round(d(gen)); };
-  std::cout << "Adjusting node capacities...\n";
   graph.adjustNodeCapacities();
   std::cout << "Setting traffic light parameters..." << '\n';
-  for (const auto& [nodeId, pNode] : graph.nodes()) {
-    if (!pNode->isTrafficLight()) {
-      continue;
-    }
-    auto& tl = dynamic_cast<TrafficLight&>(*pNode);
-    double value = -1.;
-    while (value < 0.) {
-      value = random();
-    }
-    const auto& ingoingEdges = pNode->ingoingEdges();
-    if (ingoingEdges.empty()) {
-      spdlog::error("Node {} has no ingoing edges.", nodeId);
-      continue;
-    }
-    std::set<dsf::Id> streets;
-    if (!pNode->geometry().has_value()) {
-      std::cerr << "Warning: Node " << nodeId << " has no geometry, skipping.\n";
-      continue;
-    }
-    const auto& refLat = (*pNode->geometry()).y();
-    for (const auto& inEdgeId : ingoingEdges) {
-      auto const& pEdge{graph.edge(inEdgeId)};
-      const auto& edgeGeometry = pEdge->geometry();
-      if (edgeGeometry.empty()) {
-        std::cerr << "Warning: Edge " << inEdgeId << " has empty geometry, skipping.\n";
-        continue;
-      }
-      const auto& lat = edgeGeometry.front().y();
-      // std::cout << "Lat: " << lat << " RefLat: " << refLat << '\n';
-      if (std::abs(lat - refLat) < std::numeric_limits<double>::epsilon()) {
-        streets.emplace(inEdgeId);
-      }
-    }
-    for (auto const& streetId : streets) {
-      tl.setCycle(streetId, dsf::Direction::ANY, {static_cast<dsf::Delay>(value), 0});
-    }
-    for (const auto& streetId : ingoingEdges) {
-      if (!streets.contains(streetId)) {
-        tl.setComplementaryCycle(streetId, *streets.begin());
-      }
-    }
-    ++sda[streets.size() - 1];
-    // std::cout << "Node id: " << nodeId << " has " << streets.size()
-    //           << "streets.\n";
-  }
-  std::cout << "Nodes with one street: " << static_cast<int>(sda[0]) << '\n';
-  std::cout << "Nodes with two streets: " << static_cast<int>(sda[1]) << '\n';
+  graph.initTrafficLights();
   std::cout << "Done." << std::endl;
 
   std::cout << "Creating dynamics...\n";
 
-  Dynamics dynamics{graph, true, SEED, 0.6};
-  std::size_t n{0};
+  Dynamics dynamics{graph, false, SEED, 0.6};
   {
     std::vector<dsf::Id> destinationNodes;
     for (auto const& [nodeId, pNode] : dynamics.graph().nodes()) {
       if (pNode->outgoingEdges().size() < 4) {
-        destinationNodes.push_back(pNode->id());
-        ++n;
+        destinationNodes.push_back(nodeId);
       }
     }
     dynamics.setDestinationNodes(destinationNodes);
+    std::cout << "Number of exits: " << destinationNodes.size() << '\n';
   }
   dynamics.updatePaths();
-  std::cout << "Number of exits: " << n << '\n';
 
   dynamics.setErrorProbability(ERROR_PROBABILITY);
   // dynamics.setMaxFlowPercentage(0.69);
@@ -429,6 +372,10 @@ int main(int argc, char** argv) {
 #ifdef __APPLE__
   t.join();
 #endif
-
+  std::cout << "Total elapsed time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::high_resolution_clock::now() - start)
+                   .count()
+            << " milliseconds\n";
   return 0;
 }
