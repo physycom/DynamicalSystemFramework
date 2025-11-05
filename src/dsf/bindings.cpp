@@ -270,6 +270,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
            dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::FirstOrderDynamics")
                .c_str())
       // Note: Constructors with std::function parameters are not exposed to avoid stub generation issues
+      .def("setName",
+           &dsf::mobility::FirstOrderDynamics::setName,
+           pybind11::arg("name"),
+           dsf::g_docstrings.at("dsf::Dynamics::setName").c_str())
       .def("setInitTime",
            &dsf::mobility::FirstOrderDynamics::setInitTime,
            pybind11::arg("timeEpoch"),

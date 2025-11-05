@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
 
   std::cout << "Creating dynamics...\n";
 
-  Dynamics dynamics{graph, true, SEED, 0.6};
+  Dynamics dynamics{graph, false, SEED, 0.6};
 
   {
     std::vector<dsf::Id> destinationNodes;
@@ -123,7 +123,6 @@ int main(int argc, char** argv) {
 
   std::cout << "Done." << std::endl;
   std::cout << "Running simulation...\n";
-
 #ifdef PRINT_FLOWS
   std::ofstream streetFlow(OUT_FOLDER + "flows.csv");
   streetFlow << "time";
