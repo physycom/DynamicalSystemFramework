@@ -1118,4 +1118,122 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
+  SUBCASE("Save functions with default filenames") {
+    GIVEN("A dynamics object with some streets and agents") {
+      Street s1{0, std::make_pair(0, 1), 30., 15.};
+      Street s2{1, std::make_pair(1, 2), 30., 15.};
+      RoadNetwork graph2;
+      graph2.addStreets(s1, s2);
+      FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
+      dynamics.addItinerary(2, 2);
+      dynamics.updatePaths();
+      dynamics.addAgent(2, 0);
+
+      // Evolve a few times to generate some data
+      for (int i = 0; i < 5; ++i) {
+        dynamics.evolve(false);
+      }
+
+      WHEN("We call saveStreetDensities with default filename") {
+        // Use explicit filename in test to avoid cluttering the workspace
+        const std::string testFile = "test_street_densities.csv";
+        dynamics.saveStreetDensities(testFile);
+
+        THEN("The file is created with correct header") {
+          std::ifstream file(testFile);
+          REQUIRE(file.is_open());
+
+          std::string header;
+          std::getline(file, header);
+          CHECK(header.find("datetime") != std::string::npos);
+          CHECK(header.find("time_step") != std::string::npos);
+          CHECK(header.find("0") != std::string::npos);
+          CHECK(header.find("1") != std::string::npos);
+
+          file.close();
+          std::filesystem::remove(testFile);
+        }
+      }
+
+      WHEN("We call saveTravelData with default filename") {
+        const std::string testFile = "test_travel_data.csv";
+        dynamics.saveTravelData(testFile);
+
+        THEN("The file is created with correct header") {
+          std::ifstream file(testFile);
+          REQUIRE(file.is_open());
+
+          std::string header;
+          std::getline(file, header);
+          CHECK(header.find("datetime") != std::string::npos);
+          CHECK(header.find("time_step") != std::string::npos);
+          CHECK(header.find("distances") != std::string::npos);
+          CHECK(header.find("times") != std::string::npos);
+          CHECK(header.find("speeds") != std::string::npos);
+
+          file.close();
+          std::filesystem::remove(testFile);
+        }
+      }
+
+      WHEN("We call saveMacroscopicObservables with default filename") {
+        const std::string testFile = "test_macroscopic_observables.csv";
+        dynamics.saveMacroscopicObservables(testFile);
+
+        THEN("The file is created with correct header") {
+          std::ifstream file(testFile);
+          REQUIRE(file.is_open());
+
+          std::string header;
+          std::getline(file, header);
+          CHECK(header.find("datetime") != std::string::npos);
+          CHECK(header.find("time_step") != std::string::npos);
+          CHECK(header.find("n_ghost_agents") != std::string::npos);
+          CHECK(header.find("n_agents") != std::string::npos);
+          CHECK(header.find("mean_speed_kph") != std::string::npos);
+          CHECK(header.find("mean_density_vpk") != std::string::npos);
+          CHECK(header.find("mean_flow_vph") != std::string::npos);
+          CHECK(header.find("mean_traveltime_m") != std::string::npos);
+          CHECK(header.find("mean_traveldistance_km") != std::string::npos);
+          CHECK(header.find("mean_travelspeed_kph") != std::string::npos);
+
+          file.close();
+          std::filesystem::remove(testFile);
+        }
+      }
+
+      WHEN("We call saveStreetDensities with empty string (default behavior)") {
+        // This tests the actual default filename generation
+        dynamics.saveStreetDensities();
+
+        THEN("A file with datetime and name in filename is created") {
+          // Find the generated file
+          std::string pattern = "*_street_densities.csv";
+          bool fileFound = false;
+
+          for (const auto& entry : std::filesystem::directory_iterator(".")) {
+            if (entry.path().filename().string().find("street_densities.csv") !=
+                std::string::npos) {
+              fileFound = true;
+
+              // Check the file has correct header
+              std::ifstream file(entry.path());
+              REQUIRE(file.is_open());
+
+              std::string header;
+              std::getline(file, header);
+              CHECK(header.find("datetime") != std::string::npos);
+              CHECK(header.find("time_step") != std::string::npos);
+
+              file.close();
+              std::filesystem::remove(entry.path());
+              break;
+            }
+          }
+
+          CHECK(fileFound);
+        }
+      }
+    }
+  }
 }
