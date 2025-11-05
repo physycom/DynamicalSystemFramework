@@ -102,15 +102,15 @@ ctest --test-dir build -j$(nproc)
 
 ## Benchmarking
 Some functionalities of the library have been benchmarked in order to assess their efficiency.  
-The benchmarks are performed using a small toolkit developed by @sbaldu, in order to keep them simple and
-without needing to rely on large external libraries.  
-To compile the benchmarks use the commands:
+The benchmarks are performed using [Google Benchmarks](https://github.com/google/benchmark).
+To build the benchmarks add the flag `-DDSF_BENCHMARKS=ON` :
 ```shell
-cd benchmark
-cmake -B build && make -C build
+cmake -B build -DDSF_BENCHMARKS=ON
+cmake --build build -j$(nproc)
 ```
 To run all the benchmarks together use the command:
 ```shell
+cd benchmark
 for f in ./*.out ; do ./$f ; done
 ```
 
