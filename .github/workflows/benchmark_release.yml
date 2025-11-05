@@ -1,4 +1,4 @@
-name: "Benchmark Release"
+name: "CI: Benchmark Release"
 
 on:
   push:
