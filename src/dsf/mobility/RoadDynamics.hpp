@@ -332,9 +332,9 @@ namespace dsf::mobility {
     Measurement<double> meanSpireOutputFlow(bool resetValue = true);
 
     /// @brief Save the street densities in csv format
-    /// @param filename The name of the file
+    /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_densities.csv")
     /// @param normalized If true, the densities are normalized in [0, 1]
-    void saveStreetDensities(const std::string& filename,
+    void saveStreetDensities(std::string filename = std::string(),
                              bool normalized = true,
                              char const separator = ';') const;
     /// @brief Save the street input counts in csv format
@@ -357,11 +357,11 @@ namespace dsf::mobility {
     /// - distances: the travel distances of the agents
     /// - times: the travel times of the agents
     /// - speeds: the travel speeds of the agents
-    /// @param filename The name of the file
+    /// @param filename The name of the file (default is "{datetime}_{simulation_name}_travel_data.csv")
     /// @param reset If true, the travel speeds are cleared after the computation
-    void saveTravelData(const std::string& filename, bool reset = false);
+    void saveTravelData(std::string filename = std::string(), bool reset = false);
     /// @brief Save the main macroscopic observables in csv format
-    /// @param filename The name of the file
+    /// @param filename The name of the file (default is "{datetime}_{simulation_name}_macroscopic_observables.csv")
     /// @param separator The separator character (default is ';')
     /// @details The file contains the following columns:
     /// - time: the time of the simulation
@@ -375,7 +375,7 @@ namespace dsf::mobility {
     /// - mean_travelspeed - mean_travelspeed_std (km/h): the mean travel speed of the agents
     ///
     /// NOTE: the mean density is normalized in [0, 1] and reset is true for all observables which have such parameter
-    void saveMacroscopicObservables(const std::string& filename,
+    void saveMacroscopicObservables(std::string filename = std::string(),
                                     char const separator = ';');
   };
 
@@ -2160,9 +2160,13 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveStreetDensities(const std::string& filename,
+  void RoadDynamics<delay_t>::saveStreetDensities(std::string filename,
                                                   bool normalized,
                                                   char const separator) const {
+    if (filename.empty()) {
+      filename =
+          this->m_safeDateTime() + '_' + this->m_safeName() + "_street_densities.csv";
+    }
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -2276,7 +2280,10 @@ namespace dsf::mobility {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveTravelData(const std::string& filename, bool reset) {
+  void RoadDynamics<delay_t>::saveTravelData(std::string filename, bool reset) {
+    if (filename.empty()) {
+      filename = this->m_safeDateTime() + '_' + this->m_safeName() + "_travel_data.csv";
+    }
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -2331,8 +2338,12 @@ namespace dsf::mobility {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveMacroscopicObservables(const std::string& filename,
+  void RoadDynamics<delay_t>::saveMacroscopicObservables(std::string filename,
                                                          char const separator) {
+    if (filename.empty()) {
+      filename = this->m_safeDateTime() + '_' + this->m_safeName() +
+                 "_macroscopic_observables.csv";
+    }
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -2343,10 +2354,12 @@ namespace dsf::mobility {
       throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
     }
     if (bEmptyFile) {
-      file << "datetime;time_step;n_ghost_agents;n_agents;mean_speed_kph;std_speed_kph;"
-              "mean_density_vpk;std_density_vpk;mean_flow_vph;std_flow_vph;mean_"
-              "traveltime_m;std_traveltime_m;mean_traveldistance_km;std_traveldistance_"
-              "km;mean_travelspeed_kph;std_travelspeed_kph\n";
+      constexpr auto strHeader{
+          "datetime;time_step;n_ghost_agents;n_agents;mean_speed_kph;std_speed_kph;"
+          "mean_density_vpk;std_density_vpk;mean_flow_vph;std_flow_vph;mean_"
+          "traveltime_m;std_traveltime_m;mean_traveldistance_km;std_traveldistance_"
+          "km;mean_travelspeed_kph;std_travelspeed_kph\n"};
+      file << strHeader;
     }
     double mean_speed{0.}, mean_density{0.}, mean_flow{0.}, mean_travel_distance{0.},
         mean_travel_time{0.}, mean_travel_speed{0.};
