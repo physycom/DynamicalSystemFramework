@@ -22,7 +22,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt install -y lcov gcovr build-essential cmake libtbb-dev libsimdjson-dev libhwloc-dev
+          sudo apt install -y lcov gcovr build-essential cmake libhwloc-dev
 
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
@@ -37,7 +37,6 @@ jobs:
           git clone https://github.com/microsoft/vcpkg.git vcpkg
           cd vcpkg
           .\bootstrap-vcpkg.bat
-          .\vcpkg install tbb:x64-windows simdjson:x64-windows
           echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
           echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
 
