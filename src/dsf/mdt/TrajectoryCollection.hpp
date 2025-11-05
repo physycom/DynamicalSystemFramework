@@ -14,6 +14,7 @@ namespace dsf::mdt {
   class TrajectoryCollection {
   private:
     std::unordered_map<Id, std::vector<Trajectory>> m_trajectories;
+    bool m_bClustered{false};
 
   public:
     /// @brief Construct a TrajectoryCollection from a dataframe.
@@ -23,7 +24,7 @@ namespace dsf::mdt {
     TrajectoryCollection(
         std::unordered_map<
             std::string,
-            std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>>>&&
+            std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>, std::vector<std::string>>>&&
             dataframe,
         std::array<double, 4> const& bbox = {});
     /// @brief Construct a TrajectoryCollection, optionally importing from a CSV file.

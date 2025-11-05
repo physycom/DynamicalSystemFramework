@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../geometry/Point.hpp"
+#include "../utility/Typedef.hpp"
 
 #include <optional>
 #include <vector>
@@ -17,6 +18,8 @@ namespace dsf::mdt {
     mutable std::vector<ActivityPoint> m_points;
     mutable std::optional<dsf::geometry::Point> m_centroid;
     mutable bool m_bSorted;
+    std::optional<Id> m_edgeId;
+
     /// @brief Update the centroid of the cluster based on current activity points.
     /// The centroid is computed as the median of the x and y coordinates of the points.
     /// @throws std::runtime_error if the cluster is empty.
@@ -35,6 +38,8 @@ namespace dsf::mdt {
     /// @param timestamp The timestamp of the activity point.
     /// @param point The geometric point of the activity point.
     void addPoint(std::time_t timestamp, dsf::geometry::Point const& point) noexcept;
+
+    inline void setEdgeId(Id edgeId) noexcept { m_edgeId = edgeId; }
     /// @brief Sort the activity points in the cluster by timestamp.
     void sort() const noexcept;
     /// @brief Compute and return the centroid of the cluster.
@@ -49,6 +54,8 @@ namespace dsf::mdt {
     /// @brief Get the underlying activity points.
     /// @return A const reference to the vector of activity points.
     inline std::vector<ActivityPoint> const& points() const noexcept { return m_points; }
+
+    inline std::optional<Id> const& edgeId() const noexcept { return m_edgeId; }
     /// @brief Get the timestamp of the first activity point in the cluster.
     /// @return The timestamp of the first activity point.
     /// @throws std::runtime_error if the cluster is empty.

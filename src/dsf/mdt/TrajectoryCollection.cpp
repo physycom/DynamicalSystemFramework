@@ -13,7 +13,7 @@ namespace dsf::mdt {
   TrajectoryCollection::TrajectoryCollection(
       std::unordered_map<
           std::string,
-          std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>>>&&
+          std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>, std::vector<std::string>>>&&
           dataframe,
       std::array<double, 4> const& bbox) {
     auto const& uids = std::get<std::vector<Id>>(dataframe.at("uid"));
@@ -21,6 +21,13 @@ namespace dsf::mdt {
         std::get<std::vector<std::time_t>>(dataframe.at("timestamp"));
     auto const& lats = std::get<std::vector<double>>(dataframe.at("lat"));
     auto const& lons = std::get<std::vector<double>>(dataframe.at("lon"));
+    auto const& edgeIds = dataframe.count("edge_id")
+                            ? std::get<std::vector<std::string>>(dataframe.at("edge_id"))
+                            : std::vector<std::string>{};
+    
+    if (!edgeIds.empty()) {
+      m_bClustered = true;
+    }
 
     for (std::size_t i = 0; i < uids.size(); ++i) {
       auto const point = dsf::geometry::Point(lons[i], lats[i]);
@@ -35,7 +42,14 @@ namespace dsf::mdt {
         m_trajectories[uids[i]] = std::vector<Trajectory>{};
         m_trajectories[uids[i]].emplace_back();
       }
-      m_trajectories[uids[i]][0].addPoint(timestamps[i], point);
+      if (edgeIds.empty()) {
+        m_trajectories[uids[i]][0].addPoint(timestamps[i], point);
+      } else {
+        auto cluster = PointsCluster();
+        cluster.addPoint(timestamps[i], point);
+        cluster.setEdgeId(std::stoull(edgeIds[i]));
+        m_trajectories[uids[i]][0].addCluster(std::move(cluster));
+      }
     }
   }
 
@@ -58,7 +72,7 @@ namespace dsf::mdt {
         fileName, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(sep));
 
     std::unordered_map<std::string, std::string> column_names = {
-        {"uid", "uid"}, {"timestamp", "timestamp"}, {"lat", "lat"}, {"lon", "lon"}};
+        {"uid", "uid"}, {"timestamp", "timestamp"}, {"lat", "lat"}, {"lon", "lon"}, {"edge_id", "edge_id"}};
     for (auto const& [key, value] : column_mapping) {
       if (!column_names.contains(key)) {
         spdlog::warn("Ignoring unknown column mapping key: {}", key);
@@ -69,12 +83,18 @@ namespace dsf::mdt {
 
     std::unordered_map<
         std::string,
-        std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>>>
+        std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>, std::vector<std::string>>>
         dataframe;
     dataframe["uid"] = doc.GetColumn<Id>(column_names.at("uid"));
     dataframe["timestamp"] = doc.GetColumn<std::time_t>(column_names.at("timestamp"));
     dataframe["lat"] = doc.GetColumn<double>(column_names.at("lat"));
     dataframe["lon"] = doc.GetColumn<double>(column_names.at("lon"));
+    auto const& columns = doc.GetColumnNames();
+    if (std::find(columns.cbegin(), columns.cend(), column_names.at("edge_id")) !=
+        columns.cend()) {
+      dataframe["edge_id"] =
+          doc.GetColumn<std::string>(column_names.at("edge_id"));
+    }
     *this = TrajectoryCollection(std::move(dataframe), bbox);
   }
 
@@ -82,6 +102,10 @@ namespace dsf::mdt {
                                     double const max_speed_kph,
                                     std::size_t const min_points_per_trajectory,
                                     std::optional<std::time_t> const min_duration_min) {
+    if (m_bClustered) {
+      throw std::runtime_error(
+          "Trajectories have already been clustered and filtered.");
+    }
     // Collect IDs to remove in parallel
     tbb::concurrent_set<Id> to_remove;
     tbb::concurrent_set<Id> to_split;
@@ -159,6 +183,7 @@ namespace dsf::mdt {
         trajectories.emplace_back(std::move(newTrajectory));
       }
     }
+    m_bClustered = true;
   }
   void TrajectoryCollection::to_csv(std::string const& fileName, char const sep) const {
     std::ofstream file{fileName};
