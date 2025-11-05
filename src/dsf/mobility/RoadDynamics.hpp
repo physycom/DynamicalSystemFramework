@@ -359,7 +359,7 @@ namespace dsf::mobility {
     /// - speeds: the travel speeds of the agents
     /// @param filename The name of the file (default is "{datetime}_{simulation_name}_travel_data.csv")
     /// @param reset If true, the travel speeds are cleared after the computation
-    void saveTravelData(std::string filename = std::string(), bool reset = true);
+    void saveTravelData(std::string filename = std::string(), bool reset = false);
     /// @brief Save the main macroscopic observables in csv format
     /// @param filename The name of the file (default is "{datetime}_{simulation_name}_macroscopic_observables.csv")
     /// @param separator The separator character (default is ';')
