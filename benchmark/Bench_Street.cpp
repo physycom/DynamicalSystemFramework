@@ -223,8 +223,8 @@ static void BM_StochasticStreet_FlowRate(benchmark::State& state) {
   }
 }
 
-static void BM_SpireStreet_AddAgent(benchmark::State& state) {
-  dsf::mobility::Street baseStreet(0,
+static void BM_CoilStreet_AddAgent(benchmark::State& state) {
+  dsf::mobility::Street street(0,
                                    {0, 1},
                                    100.0,
                                    13.8888888889,
@@ -233,7 +233,7 @@ static void BM_SpireStreet_AddAgent(benchmark::State& state) {
                                    {},
                                    100,
                                    1.0);
-  dsf::mobility::SpireStreet street(std::move(baseStreet));
+  street.enableCounter();
   std::time_t spawnTime = 0;
   for (auto _ : state) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
@@ -241,8 +241,8 @@ static void BM_SpireStreet_AddAgent(benchmark::State& state) {
   }
 }
 
-static void BM_SpireStreet_MeanFlow(benchmark::State& state) {
-  dsf::mobility::Street baseStreet(0,
+static void BM_CoilStreet_MeanFlow(benchmark::State& state) {
+  dsf::mobility::Street street(0,
                                    {0, 1},
                                    100.0,
                                    13.8888888889,
@@ -251,7 +251,7 @@ static void BM_SpireStreet_MeanFlow(benchmark::State& state) {
                                    {},
                                    100,
                                    1.0);
-  dsf::mobility::SpireStreet street(std::move(baseStreet));
+  street.enableCounter();
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
@@ -267,8 +267,8 @@ static void BM_SpireStreet_MeanFlow(benchmark::State& state) {
   }
 }
 
-static void BM_SpireStreet_Dequeue(benchmark::State& state) {
-  dsf::mobility::Street baseStreet(0,
+static void BM_CoilStreet_Dequeue(benchmark::State& state) {
+  dsf::mobility::Street street(0,
                                    {0, 1},
                                    100.0,
                                    13.8888888889,
@@ -277,7 +277,7 @@ static void BM_SpireStreet_Dequeue(benchmark::State& state) {
                                    {},
                                    100,
                                    1.0);
-  dsf::mobility::SpireStreet street(std::move(baseStreet));
+  street.enableCounter();
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
@@ -304,8 +304,8 @@ BENCHMARK(BM_Street_nExitingAgents);
 BENCHMARK(BM_Street_SetLaneMapping);
 BENCHMARK(BM_StochasticStreet_SetFlowRate);
 BENCHMARK(BM_StochasticStreet_FlowRate);
-BENCHMARK(BM_SpireStreet_AddAgent);
-BENCHMARK(BM_SpireStreet_MeanFlow);
-BENCHMARK(BM_SpireStreet_Dequeue);
+BENCHMARK(BM_CoilStreet_AddAgent);
+BENCHMARK(BM_CoilStreet_MeanFlow);
+BENCHMARK(BM_CoilStreet_Dequeue);
 
 BENCHMARK_MAIN();

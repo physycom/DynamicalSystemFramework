@@ -90,14 +90,7 @@ namespace dsf::mobility {
                        [](unsigned char c) { return std::tolower(c); });
         // Do not warn if the coilcode contains null or nan
         if (!strCoilCode.empty() && strCoilCode != "null" && strCoilCode != "nan") {
-          try {
-            auto const coilCode{static_cast<Id>(std::stoul(strCoilCode))};
-            makeSpireStreet(streetId);
-            auto& coil = edge<SpireStreet>(streetId);
-            coil.setCode(coilCode);
-          } catch (...) {
-            spdlog::warn("Invalid coil code for {}", *edge(streetId));
-          }
+          addCoil(streetId, strCoilCode);
         }
       }
       if (bHasCustomWeight) {
@@ -256,16 +249,9 @@ namespace dsf::mobility {
                          geometry));
         // Check if there is coilcode property
         if (!edge_properties["coilcode"].is_null() &&
-            edge_properties["coilcode"].is_uint64()) {
-          makeSpireStreet(edge_id);
-          auto& coil = edge<SpireStreet>(edge_id);
-          try {
-            coil.setCode(edge_properties["coilcode"].get_uint64());
-          } catch (...) {
-            spdlog::warn("Invalid coil code ({}) for {}",
-                         edge_properties["coilcode"].get_string().value(),
-                         *edge(edge_id));
-          }
+            edge_properties["coilcode"].is_string()) {
+          std::string strCoilCode{edge_properties["coilcode"].get_string().value()};
+          addCoil(edge_id, strCoilCode);
         }
       } else {
         addStreet(Street(edge_id * 10,
@@ -294,7 +280,7 @@ namespace dsf::mobility {
 
   Size RoadNetwork::nCoils() const {
     return std::count_if(m_edges.cbegin(), m_edges.cend(), [](auto const& pair) {
-      return pair.second->isSpire();
+      return pair.second->hasCoil();
     });
   }
 
@@ -824,14 +810,8 @@ namespace dsf::mobility {
     pStreet = std::unique_ptr<StochasticStreet>(
         new StochasticStreet(std::move(*pStreet), flowRate));
   }
-  void RoadNetwork::makeSpireStreet(Id streetId) {
-    auto& pStreet = edge(streetId);
-    if (pStreet->isStochastic()) {
-      pStreet = std::unique_ptr<StochasticSpireStreet>(new StochasticSpireStreet(
-          std::move(*pStreet), dynamic_cast<StochasticStreet&>(*pStreet).flowRate()));
-      return;
-    }
-    pStreet = std::unique_ptr<SpireStreet>(new SpireStreet(std::move(*pStreet)));
+  void RoadNetwork::addCoil(Id streetId, std::string const& name) {
+    edge(streetId)->enableCounter(name);
   }
 
   void RoadNetwork::addStreet(Street&& street) {

@@ -159,10 +159,11 @@ namespace dsf::mobility {
     Roundabout& makeRoundabout(Id nodeId);
 
     void makeStochasticStreet(Id streetId, double const flowRate);
-    /// @brief Convert an existing street into a spire street
-    /// @param streetId The id of the street to convert to a spire street
+    /// @brief Add a coil (dsf::Counter sensor) on the street with streetId
+    /// @param streetId The id of the street to add the coil to
+    /// @param name The coil name
     /// @throws std::invalid_argument if the street does not exist
-    void makeSpireStreet(Id streetId);
+    void addCoil(Id streetId, std::string const& name = std::string());
     /// @brief Convert an existing node into a station
     /// @param nodeId The id of the node to convert to a station
     /// @param managementTime The station's management time

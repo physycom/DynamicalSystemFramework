@@ -56,7 +56,7 @@ namespace dsf::mobility {
     tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
         m_queuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
-    std::time_t m_previousOptimizationTime, m_previousSpireTime;
+    std::time_t m_previousOptimizationTime;
 
   private:
     std::function<double(std::unique_ptr<Street> const&)> m_weightFunction;
@@ -320,16 +320,6 @@ namespace dsf::mobility {
     /// @param above If true, the function returns the mean flow of the streets with a density above the threshold, otherwise below
     /// @return Measurement<double> The mean flow of the streets and the standard deviation
     Measurement<double> streetMeanFlow(double threshold, bool above) const;
-    /// @brief Get the mean spire input flow of the streets in \f$s^{-1}\f$
-    /// @param resetValue If true, the spire input/output flows are cleared after the computation
-    /// @return Measurement<double> The mean spire input flow of the streets and the standard deviation
-    /// @details The spire input flow is computed as the sum of counts over the product of the number of spires and the time delta
-    Measurement<double> meanSpireInputFlow(bool resetValue = true);
-    /// @brief Get the mean spire output flow of the streets in \f$s^{-1}\f$
-    /// @param resetValue If true, the spire output/input flows are cleared after the computation
-    /// @return Measurement<double> The mean spire output flow of the streets and the standard deviation
-    /// @details The spire output flow is computed as the sum of counts over the product of the number of spires and the time delta
-    Measurement<double> meanSpireOutputFlow(bool resetValue = true);
 
     /// @brief Save the street densities in csv format
     /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_densities.csv")
@@ -340,17 +330,10 @@ namespace dsf::mobility {
     /// @brief Save the street input counts in csv format
     /// @param filename The name of the file
     /// @param reset If true, the input counts are cleared after the computation
-    /// @details NOTE: counts are printed only if the street is a spire
-    void saveInputStreetCounts(const std::string& filename,
-                               bool reset = false,
-                               char const separator = ';');
-    /// @brief Save the street output counts in csv format
-    /// @param filename The name of the file
-    /// @param reset If true, the output counts are cleared after the computation
-    /// @details NOTE: counts are printed only if the street is a spire
-    void saveOutputStreetCounts(const std::string& filename,
-                                bool reset = false,
-                                char const separator = ';');
+    /// @details NOTE: counts are saved only if the street has a coil on it
+    void saveCoilCounts(const std::string& filename,
+                        bool reset = false,
+                        char const separator = ';');
     /// @brief Save the travel data of the agents in csv format.
     /// @details The file contains the following columns:
     /// - time: the time of the simulation
@@ -389,7 +372,6 @@ namespace dsf::mobility {
       : Dynamics<RoadNetwork>(graph, seed),
         m_nAgents{0},
         m_previousOptimizationTime{0},
-        m_previousSpireTime{0},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
         m_maxTravelDistance{std::numeric_limits<double>::max()},
@@ -2122,44 +2104,6 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::meanSpireInputFlow(bool resetValue) {
-    auto deltaTime{this->time_step() - m_previousSpireTime};
-    if (deltaTime == 0) {
-      return Measurement(0., 0.);
-    }
-    m_previousSpireTime = this->time_step();
-    std::vector<double> flows;
-    flows.reserve(this->graph().nEdges());
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      if (pStreet->isSpire()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
-        flows.push_back(static_cast<double>(spire.inputCounts(resetValue)) / deltaTime);
-      }
-    }
-    return Measurement<double>(flows);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::meanSpireOutputFlow(bool resetValue) {
-    auto deltaTime{this->time_step() - m_previousSpireTime};
-    if (deltaTime == 0) {
-      return Measurement(0., 0.);
-    }
-    m_previousSpireTime = this->time_step();
-    std::vector<double> flows;
-    flows.reserve(this->graph().nEdges());
-    for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      if (pStreet->isSpire()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
-        flows.push_back(static_cast<double>(spire.outputCounts(resetValue)) / deltaTime);
-      }
-    }
-    return Measurement<double>(flows);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::saveStreetDensities(std::string filename,
                                                   bool normalized,
                                                   char const separator) const {
@@ -2194,9 +2138,9 @@ namespace dsf::mobility {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveInputStreetCounts(const std::string& filename,
-                                                    bool reset,
-                                                    char const separator) {
+  void RoadDynamics<delay_t>::saveCoilCounts(const std::string& filename,
+                                             bool reset,
+                                             char const separator) {
     bool bEmptyFile{false};
     {
       std::ifstream file(filename);
@@ -2209,13 +2153,8 @@ namespace dsf::mobility {
     if (bEmptyFile) {
       file << "datetime" << separator << "time_step";
       for (auto const& [streetId, pStreet] : this->graph().edges()) {
-        if (!pStreet->isSpire()) {
-          continue;
-        }
-        if (pStreet->isStochastic()) {
-          file << separator << dynamic_cast<StochasticSpireStreet&>(*pStreet).code();
-        } else {
-          file << separator << dynamic_cast<SpireStreet&>(*pStreet).code();
+        if (pStreet->hasCoil()) {
+          file << separator << pStreet->counterName();
         }
       }
       file << std::endl;
@@ -2223,56 +2162,8 @@ namespace dsf::mobility {
     file << this->strDateTime() << separator << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
       int value{0};
-      if (pStreet->isSpire()) {
-        if (pStreet->isStochastic()) {
-          value = dynamic_cast<StochasticSpireStreet&>(*pStreet).inputCounts(reset);
-        } else {
-          value = dynamic_cast<SpireStreet&>(*pStreet).inputCounts(reset);
-        }
-      }
-      file << separator << value;
-    }
-    file << std::endl;
-    file.close();
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveOutputStreetCounts(const std::string& filename,
-                                                     bool reset,
-                                                     char const separator) {
-    bool bEmptyFile{false};
-    {
-      std::ifstream file(filename);
-      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
-    }
-    std::ofstream file(filename, std::ios::app);
-    if (!file.is_open()) {
-      throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
-    }
-    if (bEmptyFile) {
-      file << "datetime" << separator << "time_step";
-      for (auto const& [streetId, pStreet] : this->graph().edges()) {
-        if (!pStreet->isSpire()) {
-          continue;
-        }
-        if (pStreet->isStochastic()) {
-          file << separator << dynamic_cast<StochasticSpireStreet&>(*pStreet).code();
-        } else {
-          file << separator << dynamic_cast<SpireStreet&>(*pStreet).code();
-        }
-      }
-      file << std::endl;
-    }
-    file << this->strDateTime() << separator << this->time_step();
-    for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      int value{0};
-      if (pStreet->isSpire()) {
-        if (pStreet->isStochastic()) {
-          value = dynamic_cast<StochasticSpireStreet&>(*pStreet).outputCounts(reset);
-        } else {
-          value = dynamic_cast<SpireStreet&>(*pStreet).outputCounts(reset);
-        }
-        file << separator << value;
+      if (pStreet->hasCoil()) {
+        file << separator << pStreet->counts();
       }
     }
     file << std::endl;
