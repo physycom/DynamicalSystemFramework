@@ -562,14 +562,19 @@ loadDataBtn.addEventListener('click', async function() {
     // Set up the time slider based on the density data's maximum time value
     const timeSlider = document.getElementById('timeSlider');
     const timeLabel = document.getElementById('timeLabel');
-    // Round up max to the nearest 300 for step consistency
-    timeSlider.max = (densities.length - 1) * 300;
-    timeSlider.step = 300;
+    // Dynamically determine dt from the first two density datapoints
+    let dt = 300;
+    if (densities.length > 1) {
+      dt = Math.round((densities[1].datetime - densities[0].datetime) / 1000); // in seconds
+      if (dt <= 0) dt = 300;
+    }
+    timeSlider.max = (densities.length - 1) * dt;
+    timeSlider.step = dt;
     timeLabel.textContent = `${formatTime(timeStamp)}`;
 
     // Update the visualization when the slider value changes
     timeSlider.addEventListener('input', function() {
-      const index = Math.floor(parseInt(timeSlider.value) / 300);
+      const index = Math.floor(parseInt(timeSlider.value) / dt);
       timeStamp = densities[index].datetime;
       timeLabel.textContent = `${formatTime(timeStamp)}`;
       update();
