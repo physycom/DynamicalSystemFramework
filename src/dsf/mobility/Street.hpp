@@ -48,6 +48,7 @@ namespace dsf::mobility {
                         AgentComparator>
         m_movingAgents;
     std::vector<Direction> m_laneMapping;
+    std::optional<Counter> m_counter;
 
   public:
     /// @brief Construct a new Street object
@@ -82,6 +83,12 @@ namespace dsf::mobility {
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
     static void setMeanVehicleLength(double meanVehicleLength);
+    /// @brief Enable a coil (dsf::Counter sensor) on the street
+    /// @param name The name of the counter (default is "Coil_<street_id>")
+    void enableCounter(std::string name = std::string());
+    /// @brief Reset the counter of the street
+    /// @throw std::runtime_error If the street does not have a coil
+    void resetCounter();
 
     /// @brief Get the street's queue
     /// @return dsf::queue<Size>, The street's queue
@@ -103,10 +110,22 @@ namespace dsf::mobility {
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
     inline bool isFull() const final { return this->nAgents() == this->m_capacity; }
-
-    dsf::priority_queue<std::unique_ptr<Agent>,
-                        std::vector<std::unique_ptr<Agent>>,
-                        AgentComparator>&
+    /// @brief Get the name of the counter
+    /// @return std::string The name of the counter
+    inline auto counterName() const {
+      return hasCoil() ? m_counter->name() : std::string("N/A");
+    }
+    /// @brief Get the counts of the counter
+    /// @return std::size_t The counts of the counter
+    inline auto counts() const {
+      return hasCoil() ? m_counter->value() : static_cast<std::size_t>(0);
+    }
+    /// @brief Get the street's moving agents priority queue
+    /// @return dsf::priority_queue<std::unique_ptr<Agent>, std::vector<std::unique_ptr<Agent>>,
+    /// AgentComparator>& The street's moving agents priority queue
+    inline dsf::priority_queue<std::unique_ptr<Agent>,
+                               std::vector<std::unique_ptr<Agent>>,
+                               AgentComparator>&
     movingAgents() {
       return m_movingAgents;
     }
@@ -119,9 +138,11 @@ namespace dsf::mobility {
     /// @return double The number of agents on all queues for a given direction
     double nExitingAgents(Direction direction = Direction::ANY,
                           bool normalizeOnNLanes = false) const final;
-
+    /// @brief Get the street's lane mapping
+    /// @return std::vector<Direction> The street's lane mapping
     inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
-
+    /// @brief Add an agent to the street
+    /// @param pAgent The agent to add to the street
     virtual void addAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
@@ -130,9 +151,11 @@ namespace dsf::mobility {
     /// @brief Remove an agent from the street's queue
     /// @return Id The id of the agent removed from the street's queue
     virtual std::unique_ptr<Agent> dequeue(size_t index);
-    /// @brief Check if the street is a spire
-    /// @return bool True if the street is a spire, false otherwise
-    virtual bool isSpire() const { return false; };
+    /// @brief Check if the street has a coil (dsf::Counter sensor) on it
+    /// @return bool True if the street has a coil, false otherwise
+    constexpr bool hasCoil() const { return m_counter.has_value(); };
+    /// @brief Check if the street is stochastic
+    /// @return bool True if the street is stochastic, false otherwise
     virtual bool isStochastic() const { return false; };
   };
 
@@ -158,61 +181,15 @@ namespace dsf::mobility {
                      double flowRate = 1.,
                      std::optional<int> capacity = std::nullopt,
                      double transportCapacity = 1.);
-
+    /// @brief Set the flow rate of the street, i.e. the probability that an agent can exit the street
+    /// @param flowRate The flow rate to set
     void setFlowRate(double const flowRate);
-    double flowRate() const;
-
+    /// @brief Get the flow rate of the street
+    /// @return double The flow rate of the street
+    inline auto flowRate() const { return m_flowRate; }
+    /// @brief Check if the street is stochastic
+    /// @return bool True if the street is stochastic, false otherwise
     constexpr bool isStochastic() const final { return true; };
-  };
-
-  /// @brief The SpireStreet class represents a street which is able to count agent flows in both input and output.
-  /// @tparam Id The type of the street's id
-  /// @tparam Size The type of the street's capacity
-  class SpireStreet : public Street, public Counter {
-  public:
-    using Street::Street;
-    SpireStreet(Street&& street) : Street(std::move(street)) {}
-    SpireStreet(SpireStreet&&) = default;
-    SpireStreet(SpireStreet const&) = delete;
-    ~SpireStreet() = default;
-
-    /// @brief Add an agent to the street's queue
-    /// @param agentId The id of the agent to add to the street's queue
-    /// @throw std::runtime_error If the street's queue is full
-    void addAgent(std::unique_ptr<Agent> pAgent) final;
-
-    /// @brief Get the mean flow of the street
-    /// @return int The flow of the street, i.e. the difference between input and output flows
-    /// @details Once the flow is retrieved, bothh the input and output flows are reset to 0.
-    ///     Notice that this flow is positive iff the input flow is greater than the output flow.
-    int meanFlow();
-    /// @brief Remove an agent from the street's queue
-    /// @return Id The id of the agent removed from the street's queue
-    std::unique_ptr<Agent> dequeue(size_t index) final;
-    /// @brief Check if the street is a spire
-    /// @return bool True if the street is a spire, false otherwise
-    constexpr bool isSpire() const final { return true; };
-  };
-
-  class StochasticSpireStreet : public StochasticStreet, public Counter {
-  public:
-    using StochasticStreet::StochasticStreet;
-    /// @brief Add an agent to the street's queue
-    /// @param agentId The id of the agent to add to the street's queue
-    /// @throw std::runtime_error If the street's queue is full
-    void addAgent(std::unique_ptr<Agent> pAgent) final;
-
-    /// @brief Get the mean flow of the street
-    /// @return int The flow of the street, i.e. the difference between input and output flows
-    /// @details Once the flow is retrieved, bothh the input and output flows are reset to 0.
-    ///     Notice that this flow is positive iff the input flow is greater than the output flow.
-    int meanFlow();
-    /// @brief Remove an agent from the street's queue
-    /// @return std::optional<Id> The id of the agent removed from the street's queue
-    std::unique_ptr<Agent> dequeue(size_t index) final;
-    /// @brief Check if the street is a spire
-    /// @return bool True if the street is a spire, false otherwise
-    constexpr bool isSpire() const final { return true; };
   };
 
 };  // namespace dsf::mobility

@@ -86,10 +86,10 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(dynamics.graph().node(0)->isRoundabout());
         }
       }
-      WHEN("We transform a street into a spire and create the dynamics") {
-        defaultNetwork.makeSpireStreet(8);
+      WHEN("We put a coil on the street and create the dynamics") {
+        defaultNetwork.addCoil(8);
         FirstOrderDynamics dynamics{defaultNetwork, false, 69};
-        THEN("The street is a spire") { CHECK(dynamics.graph().edge(8)->isSpire()); }
+        THEN("The street has a coil") { CHECK(dynamics.graph().edge(8)->hasCoil()); }
       }
     }
   }
@@ -1040,80 +1040,6 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
           CHECK_EQ(nodeO.agents().size(), 1);
           CHECK_EQ(nodeO.agents().begin()->second->streetId().value(), 20);
-        }
-      }
-    }
-  }
-  SUBCASE("meanSpireFlow") {
-    GIVEN("A network with a spireStreet and a normal street") {
-      RoadNetwork graph2;
-      graph2.addNode<Intersection>(0);
-      graph2.addNode<Intersection>(1);
-      graph2.addNode<Intersection>(2);
-      graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
-      graph2.addEdge<Street>(1, std::make_pair(1, 2), 10., 10.);
-      FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
-      dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(2, 2)));
-      dynamics.updatePaths();
-      dynamics.addAgent(2, 0);
-      dynamics.initTurnCounts();
-      WHEN("We evolve the dynamics") {
-        dynamics.evolve(false);
-        dynamics.evolve(false);
-        auto meanSpireFlow = dynamics.meanSpireInputFlow();
-        THEN("The mean flow of the spire street is the same as the agent flow") {
-          CHECK_EQ(meanSpireFlow.mean, 0.5);
-          CHECK_EQ(meanSpireFlow.std, 0);
-        }
-        dynamics.evolve(false);
-        dynamics.evolve(false);
-        meanSpireFlow = dynamics.meanSpireOutputFlow();
-        THEN("The mean flow of the spire street is the same as the agent flow") {
-          CHECK_EQ(meanSpireFlow.mean, 0.5);
-          CHECK_EQ(meanSpireFlow.std, 0);
-        }
-        THEN("Also the turn counts are correct") {
-          auto const normTurnCounts = dynamics.normalizedTurnCounts();
-          CHECK_EQ(normTurnCounts.at(0).at(1), 1.);
-          auto const& turnCounts = dynamics.turnCounts();
-          CHECK_EQ(turnCounts.at(0).at(1), 1);
-          dynamics.resetTurnCounts();
-          for (auto const& [k1, map] : turnCounts) {
-            for (auto const& [k2, value] : map) {
-              CHECK_EQ(value, 0);
-            }
-          }
-        }
-      }
-      spdlog::set_level(spdlog::level::info);
-    }
-  }
-  SUBCASE("meanSpireFlow") {
-    GIVEN("A network with a spireStreet and a normal street") {
-      RoadNetwork graph2;
-      graph2.addNode<Intersection>(0);
-      graph2.addNode<Intersection>(1);
-      graph2.addNode<Intersection>(2);
-      graph2.addEdge<SpireStreet>(0, std::make_pair(0, 1), 10., 5.);
-      graph2.addEdge(1, std::make_pair(1, 2), 10., 10.);
-      FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
-      dynamics.addItinerary(2, 2);
-      dynamics.updatePaths();
-      dynamics.addAgent(2, 0);
-      WHEN("We evolve the dynamics") {
-        dynamics.evolve(false);
-        dynamics.evolve(false);
-        auto meanSpireFlow = dynamics.meanSpireInputFlow();
-        THEN("The mean flow of the spire street is the same as the agent flow") {
-          CHECK_EQ(meanSpireFlow.mean, 0.5);
-          CHECK_EQ(meanSpireFlow.std, 0);
-        }
-        dynamics.evolve(false);
-        dynamics.evolve(false);
-        meanSpireFlow = dynamics.meanSpireOutputFlow();
-        THEN("The mean flow of the spire street is the same as the agent flow") {
-          CHECK_EQ(meanSpireFlow.mean, 0.5);
-          CHECK_EQ(meanSpireFlow.std, 0);
         }
       }
     }

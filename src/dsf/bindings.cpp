@@ -227,13 +227,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("cycleTime"),
           pybind11::arg("counter"),
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::makeTrafficLight").c_str())
-      .def(
-          "makeSpireStreet",
-          [](dsf::mobility::RoadNetwork& self, dsf::Id id) -> void {
-            self.makeSpireStreet(id);
-          },
-          pybind11::arg("id"),
-          dsf::g_docstrings.at("dsf::mobility::RoadNetwork::makeSpireStreet").c_str());
+      .def("addCoil",
+           &dsf::mobility::RoadNetwork::addCoil,
+           pybind11::arg("streetId"),
+           pybind11::arg("name") = std::string(),
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::addCoil").c_str());
 
   pybind11::class_<dsf::mobility::Itinerary>(mobility, "Itinerary")
       .def(pybind11::init<dsf::Id, dsf::Id>(),
@@ -470,36 +468,18 @@ PYBIND11_MODULE(dsf_cpp, m) {
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::normalizedTurnCounts")
               .c_str())
       .def(
-          "meanSpireInputFlow",
-          &dsf::mobility::FirstOrderDynamics::meanSpireInputFlow,
-          pybind11::arg("resetValue") = true,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanSpireInputFlow").c_str())
-      .def(
-          "meanSpireOutputFlow",
-          &dsf::mobility::FirstOrderDynamics::meanSpireOutputFlow,
-          pybind11::arg("resetValue") = true,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanSpireOutputFlow").c_str())
-      .def(
           "saveStreetDensities",
           &dsf::mobility::FirstOrderDynamics::saveStreetDensities,
           pybind11::arg("filename"),
           pybind11::arg("normalized") = true,
           pybind11::arg("separator") = ';',
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetDensities").c_str())
-      .def("saveInputStreetCounts",
-           &dsf::mobility::FirstOrderDynamics::saveInputStreetCounts,
+      .def("saveCoilCounts",
+           &dsf::mobility::FirstOrderDynamics::saveCoilCounts,
            pybind11::arg("filename"),
            pybind11::arg("reset") = false,
            pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveInputStreetCounts")
-               .c_str())
-      .def("saveOutputStreetCounts",
-           &dsf::mobility::FirstOrderDynamics::saveOutputStreetCounts,
-           pybind11::arg("filename"),
-           pybind11::arg("reset") = false,
-           pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveOutputStreetCounts")
-               .c_str())
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveCoilCounts").c_str())
       .def("saveTravelData",
            &dsf::mobility::FirstOrderDynamics::saveTravelData,
            pybind11::arg("filename"),

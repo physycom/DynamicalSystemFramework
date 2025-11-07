@@ -16,7 +16,6 @@ using Agent = dsf::mobility::Agent;
 using Intersection = dsf::mobility::Intersection;
 using Street = dsf::mobility::Street;
 using Road = dsf::mobility::Road;
-using SpireStreet = dsf::mobility::SpireStreet;
 
 TEST_CASE("Street") {
   Road::setMeanVehicleLength(1.);
@@ -182,86 +181,19 @@ TEST_CASE("Street") {
   }
 }
 
-TEST_CASE("SpireStreet") {
-  SUBCASE("Input flow") {
-    GIVEN("A spire street") {
-      SpireStreet street{1, std::make_pair(0, 1), 3.5};
-      WHEN("An agent is enqueued") {
+TEST_CASE("Street with a coil") {
+  SUBCASE("Counts") {
+    GIVEN("A street with a counter") {
+      Street street{1, std::make_pair(0, 1), 3.5};
+      street.enableCounter();
+      CHECK_EQ(street.counterName(), "Coil_1");
+      WHEN("An agent is added") {
         street.addAgent(std::make_unique<Agent>(0, 1));
-        THEN("The input flow is one") { CHECK_EQ(street.inputCounts(), 1); }
+        THEN("The input flow is zero") { CHECK_EQ(street.counts(), 0); }
         street.enqueue(0);
-        THEN("The density is updated") {
-          CHECK_EQ(doctest::Approx(street.density()), 0.285714);
-        }
-        THEN("Output flow is zero") { CHECK_EQ(street.outputCounts(), 0); }
-        THEN("Mean flow is one") { CHECK_EQ(street.meanFlow(), 1); }
-      }
-      WHEN("Three agents are enqueued") {
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        THEN("The density is updated") {
-          CHECK_EQ(doctest::Approx(street.density()), 0.857143);
-        }
-        THEN("Input flow is three") { CHECK_EQ(street.inputCounts(), 3); }
-        THEN("Output flow is zero") { CHECK_EQ(street.outputCounts(), 0); }
-        THEN("Mean flow is three") { CHECK_EQ(street.meanFlow(), 3); }
-      }
-      WHEN("An agent is dequeued") {
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.dequeue(0);
-        THEN("The density is updated") { CHECK_EQ(doctest::Approx(street.density()), 0); }
-        THEN("Input flow is one") { CHECK_EQ(street.inputCounts(), 1); }
-        THEN("Output flow is one") { CHECK_EQ(street.outputCounts(), 1); }
-        THEN("Mean flow is zero") { CHECK_EQ(street.meanFlow(), 0); }
-      }
-      WHEN("Three agents are dequeued") {
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.dequeue(0);
-        street.dequeue(0);
-        street.dequeue(0);
-        THEN("The density is updated") { CHECK_EQ(doctest::Approx(street.density()), 0); }
-        THEN("Input flow is three") { CHECK_EQ(street.inputCounts(), 3); }
-        THEN("Output flow is three") { CHECK_EQ(street.outputCounts(), 3); }
-        THEN("Mean flow is zero") { CHECK_EQ(street.meanFlow(), 0); }
-      }
-      WHEN("Input is greater than output") {
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.dequeue(0);
-        street.dequeue(0);
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        THEN("The density is updated") {
-          CHECK_EQ(doctest::Approx(street.density()), 0.285714);
-        }
-        THEN("Mean flow is one") { CHECK_EQ(street.meanFlow(), 1); }
-      }
-      WHEN("Output is greater than input") {
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.meanFlow();
-        street.addAgent(std::make_unique<Agent>(0, 1));
-        street.enqueue(0);
-        street.dequeue(0);
-        street.dequeue(0);
-        THEN("The density is updated") {
-          CHECK_EQ(doctest::Approx(street.density()), 0.285714);
-        }
-        THEN("Mean flow is minus one") { CHECK_EQ(street.meanFlow(), -1); }
+        THEN("The input flow is one once enqueued") { CHECK_EQ(street.counts(), 1); }
+        street.resetCounter();
+        THEN("The counts are 0 after reset") { CHECK_EQ(street.counts(), 0); }
       }
     }
   }

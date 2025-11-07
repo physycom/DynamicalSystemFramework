@@ -79,6 +79,24 @@ namespace dsf::mobility {
     assert(index < m_exitQueues.size());
     m_exitQueues[index] = std::move(queue);
   }
+  void Street::enableCounter(std::string name) {
+    if (m_counter.has_value()) {
+      throw std::runtime_error(
+          std::format("{} already has a counter named {}", *this, m_counter->name()));
+    }
+    if (name.empty()) {
+      name = std::format("Coil_{}", m_id);
+    }
+    m_counter.emplace();
+    m_counter->setName(name);
+  }
+  void Street::resetCounter() {
+    if (!hasCoil()) {
+      throw std::runtime_error(
+          std::format("Cannot reset counter for {} which does not have a coil.", *this));
+    }
+    m_counter->reset();
+  }
 
   void Street::addAgent(std::unique_ptr<Agent> pAgent) {
     assert(!isFull());
@@ -91,6 +109,9 @@ namespace dsf::mobility {
     m_exitQueues[queueId].push(
         std::move(const_cast<std::unique_ptr<Agent>&>(m_movingAgents.top())));
     m_movingAgents.pop();
+    if (m_counter.has_value()) {
+      ++(*m_counter);
+    }
   }
   std::unique_ptr<Agent> Street::dequeue(size_t index) {
     assert(!m_exitQueues[index].empty());
@@ -180,28 +201,5 @@ namespace dsf::mobility {
     }
     m_flowRate = flowRate;
   }
-  double StochasticStreet::flowRate() const { return m_flowRate; }
 
-  void SpireStreet::addAgent(std::unique_ptr<Agent> pAgent) {
-    Street::addAgent(std::move(pAgent));
-    increaseInputCounter();
-  }
-
-  int SpireStreet::meanFlow() { return inputCounts() - outputCounts(); }
-
-  std::unique_ptr<Agent> SpireStreet::dequeue(size_t index) {
-    increaseOutputCounter();
-    return Street::dequeue(index);
-  }
-  void StochasticSpireStreet::addAgent(std::unique_ptr<Agent> pAgent) {
-    Street::addAgent(std::move(pAgent));
-    increaseInputCounter();
-  }
-
-  int StochasticSpireStreet::meanFlow() { return inputCounts() - outputCounts(); }
-
-  std::unique_ptr<Agent> StochasticSpireStreet::dequeue(size_t index) {
-    increaseOutputCounter();
-    return Street::dequeue(index);
-  }
 };  // namespace dsf::mobility

@@ -2,7 +2,7 @@
 /// @brief     Defines some sensor classes.
 ///
 /// @details   This file contains the definition of some sensor classes.
-///            The Counter class contains two counters to count input and output.
+///            The Counter class is used to count events.
 
 #pragma once
 
@@ -11,24 +11,25 @@
 #include "../utility/Typedef.hpp"
 
 namespace dsf::mobility {
-  /// @brief The Counter class contains two counters to count input and output.
+  /// @brief The Counter class is used to count events.
   class Counter {
   protected:
-    Id m_code;
-    std::pair<int, int> m_counters = {0, 0};  // First = in, Second = out
-  public:
-    void setCode(Id const code);
-    /// @brief Increase the input counter by one
-    void increaseInputCounter();
-    /// @brief Increase the output counter by one
-    void increaseOutputCounter();
+    std::string m_name{"N/A"};
+    std::size_t m_counter{0};
 
-    Id code() const;
-    /// @brief Get the number of input counts registered
-    /// @param reset If true, the counter is reset to 0. Default is true
-    int inputCounts(bool reset = true);
-    /// @brief Get the number of output counts registered
-    /// @param reset If true, the counter is reset to 0. Default is true
-    int outputCounts(bool reset = true);
+  public:
+    inline void setName(std::string const& name) { m_name = name; }
+    inline Counter& operator++() {
+      ++m_counter;
+      return *this;
+    }
+    inline void reset() { m_counter = 0; }
+
+    /// @brief Get the name of the counter
+    /// @return The name of the counter
+    inline auto const& name() const noexcept { return m_name; }
+    /// @brief Get the value of the counter
+    /// @return The value of the counter
+    inline auto value() const noexcept { return m_counter; }
   };
 }  // namespace dsf::mobility

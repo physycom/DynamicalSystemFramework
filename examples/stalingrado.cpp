@@ -73,8 +73,8 @@ int main() {
 
   graph.addStreets(s01, s12, s23, s34);
   graph.adjustNodeCapacities();
-  graph.makeSpireStreet(19);
-  auto& spire = graph.edge<SpireStreet>(19);
+  graph.addCoil(19);
+  auto const& coil = graph.edge(19);
 
   // Create the dynamics
   FirstOrderDynamics dynamics{graph, false, 69, 0.6};
@@ -100,7 +100,8 @@ int main() {
         ++it;
       }
       if (progress % 300 == 0) {
-        ofs << progress << ';' << spire.outputCounts(true) << std::endl;
+        ofs << progress << ';' << coil->counts() << std::endl;
+        coil->resetCounter();
       }
       dynamics.addAgents(*it, 4, 0);
     }
