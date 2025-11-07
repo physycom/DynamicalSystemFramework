@@ -248,10 +248,18 @@ namespace dsf::mobility {
                          name,
                          geometry));
         // Check if there is coilcode property
-        if (!edge_properties["coilcode"].is_null() &&
-            edge_properties["coilcode"].is_string()) {
-          std::string strCoilCode{edge_properties["coilcode"].get_string().value()};
-          addCoil(edge_id, strCoilCode);
+        if (!edge_properties["coilcode"].is_null()) {
+          if (edge_properties["coilcode"].is_string()) {
+            std::string strCoilCode{edge_properties["coilcode"].get_string().value()};
+            addCoil(edge_id, strCoilCode);
+          } else if (edge_properties["coilcode"].is_number()) {
+            std::string strCoilCode =
+                std::to_string(edge_properties["coilcode"].get_uint64());
+            addCoil(edge_id, strCoilCode);
+          } else {
+            spdlog::warn("Invalid coilcode for edge {}, adding default", edge_id);
+            addCoil(edge_id);
+          }
         }
       } else {
         addStreet(Street(edge_id * 10,
