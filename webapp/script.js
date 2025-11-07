@@ -15,6 +15,101 @@ L.control.scale({
   imperial: false
 }).addTo(map);
 
+// Add background menu control
+L.Control.BackgroundMenu = L.Control.extend({
+  options: {
+    position: 'topright'
+  },
+
+  onAdd: function(map) {
+  const container = L.DomUtil.create('div', 'leaflet-control-settings');
+  container.style.position = 'relative';
+
+    const settingsBtn = L.DomUtil.create('button', 'leaflet-control-search-btn', container);
+    settingsBtn.innerHTML = '⚙️';
+    settingsBtn.title = 'Background Options';
+    settingsBtn.onclick = () => {
+      const settingsMenu = container.querySelector('.settings');
+      if (settingsMenu.style.display === 'block') {
+        settingsMenu.style.display = 'none';
+      } else {
+        settingsMenu.style.display = 'block';
+        // Position settings menu to the left of the button
+        settingsMenu.style.position = 'absolute';
+        settingsMenu.style.top = `${settingsBtn.offsetTop}px`;
+        settingsMenu.style.right = `${container.offsetWidth - settingsBtn.offsetLeft + settingsBtn.offsetWidth}px`;
+        settingsMenu.style.width = '100px';
+        settingsMenu.style.zIndex = '1000';
+      }
+    };
+
+    const settingsMenu = L.DomUtil.create('div', 'settings', container);
+    settingsMenu.style.display = 'none'; // hidden initially
+
+    // Create buttons in menu
+    const normalBtn = L.DomUtil.create('button', '', settingsMenu);
+    normalBtn.innerHTML = 'Normal';
+    normalBtn.onclick = () => {
+      tileLayer.getContainer().style.filter = '';
+      settingsMenu.style.display = 'none';
+    };
+
+    const grayBtn = L.DomUtil.create('button', '', settingsMenu);
+    grayBtn.innerHTML = 'Grayscale';
+    grayBtn.onclick = () => {
+      tileLayer.getContainer().style.filter = 'grayscale(100%)';
+      settingsMenu.style.display = 'none';
+    };
+
+    const invertedBtn = L.DomUtil.create('button', '', settingsMenu);
+    invertedBtn.innerHTML = 'Inverted';
+    invertedBtn.onclick = () => {
+      tileLayer.getContainer().style.filter = 'grayscale(100%) invert(100%)';
+      settingsMenu.style.display = 'none';
+    };
+
+    return container;
+  }
+});
+
+// Add search menu control
+L.Control.SearchMenu = L.Control.extend({
+  options: {
+    position: 'topright'
+  },
+
+  onAdd: function(map) {
+    const container = L.DomUtil.create('div', 'leaflet-control-search');
+    container.style.position = 'relative';
+
+    const searchBtn = L.DomUtil.create('button', 'leaflet-control-search-btn', container);
+    searchBtn.innerHTML = '🔍';
+    searchBtn.title = 'Toggle Search Menu';
+    searchBtn.onclick = () => {
+      const searchContainer = document.querySelector('.search-container');
+      if (searchContainer.style.display === 'block') {
+        searchContainer.style.display = 'none';
+      } else {
+        searchContainer.style.display = 'block';
+        // Position search menu to the left of the button
+        searchContainer.style.position = 'absolute';
+        searchContainer.style.top = `${searchBtn.offsetTop}px`;
+        searchContainer.style.right = `${container.offsetWidth - searchBtn.offsetLeft + searchBtn.offsetWidth}px`;
+        searchContainer.style.width = '200px';
+        searchContainer.style.zIndex = '1000';
+      }
+    };
+
+    return container;
+  }
+});
+
+// Add background menu control to map
+map.addControl(new L.Control.BackgroundMenu());
+
+// Add search menu control to map
+map.addControl(new L.Control.SearchMenu());
+
 // Add screenshot control
 L.Control.Screenshot = L.Control.extend({
   options: {
@@ -710,7 +805,6 @@ loadDataBtn.addEventListener('click', async function() {
       // Hide data selector and show slider and search
       document.querySelector('.data-selector').style.display = 'none';
       document.querySelector('.slider-container').style.display = 'block';
-      document.querySelector('.search-container').style.display = 'block';
     }).catch(error => {
       console.error("Error loading CSV files:", error);
       alert('Error loading data files. Please check the console for details.');
