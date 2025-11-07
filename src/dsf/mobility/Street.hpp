@@ -83,9 +83,11 @@ namespace dsf::mobility {
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
     static void setMeanVehicleLength(double meanVehicleLength);
-
+    /// @brief Enable a coil (dsf::Counter sensor) on the street
+    /// @param name The name of the counter (default is "Coil_<street_id>")
     void enableCounter(std::string name = std::string());
-
+    /// @brief Reset the counter of the street
+    /// @throw std::runtime_error If the street does not have a coil
     void resetCounter();
 
     /// @brief Get the street's queue
@@ -108,15 +110,22 @@ namespace dsf::mobility {
     /// @brief Check if the street is full
     /// @return bool, True if the street is full, false otherwise
     inline bool isFull() const final { return this->nAgents() == this->m_capacity; }
-
-    inline auto counterName() const { return m_counter->name(); }
+    /// @brief Get the name of the counter
+    /// @return std::string The name of the counter
+    inline auto counterName() const {
+      return hasCoil() ? m_counter->name() : std::string("N/A");
+    }
+    /// @brief Get the counts of the counter
+    /// @return std::size_t The counts of the counter
     inline auto counts() const {
       return hasCoil() ? m_counter->value() : static_cast<std::size_t>(0);
     }
-
-    dsf::priority_queue<std::unique_ptr<Agent>,
-                        std::vector<std::unique_ptr<Agent>>,
-                        AgentComparator>&
+    /// @brief Get the street's moving agents priority queue
+    /// @return dsf::priority_queue<std::unique_ptr<Agent>, std::vector<std::unique_ptr<Agent>>,
+    /// AgentComparator>& The street's moving agents priority queue
+    inline dsf::priority_queue<std::unique_ptr<Agent>,
+                               std::vector<std::unique_ptr<Agent>>,
+                               AgentComparator>&
     movingAgents() {
       return m_movingAgents;
     }
@@ -129,9 +138,11 @@ namespace dsf::mobility {
     /// @return double The number of agents on all queues for a given direction
     double nExitingAgents(Direction direction = Direction::ANY,
                           bool normalizeOnNLanes = false) const final;
-
+    /// @brief Get the street's lane mapping
+    /// @return std::vector<Direction> The street's lane mapping
     inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
-
+    /// @brief Add an agent to the street
+    /// @param pAgent The agent to add to the street
     virtual void addAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Add an agent to the street's queue
     /// @param agentId The id of the agent to add to the street's queue
@@ -143,6 +154,8 @@ namespace dsf::mobility {
     /// @brief Check if the street has a coil (dsf::Counter sensor) on it
     /// @return bool True if the street has a coil, false otherwise
     constexpr bool hasCoil() const { return m_counter.has_value(); };
+    /// @brief Check if the street is stochastic
+    /// @return bool True if the street is stochastic, false otherwise
     virtual bool isStochastic() const { return false; };
   };
 
@@ -168,10 +181,14 @@ namespace dsf::mobility {
                      double flowRate = 1.,
                      std::optional<int> capacity = std::nullopt,
                      double transportCapacity = 1.);
-
+    /// @brief Set the flow rate of the street, i.e. the probability that an agent can exit the street
+    /// @param flowRate The flow rate to set
     void setFlowRate(double const flowRate);
-    double flowRate() const;
-
+    /// @brief Get the flow rate of the street
+    /// @return double The flow rate of the street
+    inline auto flowRate() const { return m_flowRate; }
+    /// @brief Check if the street is stochastic
+    /// @return bool True if the street is stochastic, false otherwise
     constexpr bool isStochastic() const final { return true; };
   };
 

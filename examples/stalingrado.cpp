@@ -101,8 +101,8 @@ int main() {
       }
       if (progress % 300 == 0) {
         ofs << progress << ';' << coil->counts() << std::endl;
+        coil->resetCounter();
       }
-      coil->resetCounter();
       dynamics.addAgents(*it, 4, 0);
     }
     dynamics.evolve(false);

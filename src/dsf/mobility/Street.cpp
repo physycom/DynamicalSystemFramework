@@ -93,7 +93,7 @@ namespace dsf::mobility {
   void Street::resetCounter() {
     if (!hasCoil()) {
       throw std::runtime_error(
-          std::format("Cannot reset counter for {} which has not a coil.", *this));
+          std::format("Cannot reset counter for {} which does not have a coil.", *this));
     }
     m_counter->reset();
   }
@@ -201,6 +201,5 @@ namespace dsf::mobility {
     }
     m_flowRate = flowRate;
   }
-  double StochasticStreet::flowRate() const { return m_flowRate; }
 
 };  // namespace dsf::mobility
