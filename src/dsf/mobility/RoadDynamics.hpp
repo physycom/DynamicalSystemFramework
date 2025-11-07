@@ -2161,9 +2161,11 @@ namespace dsf::mobility {
     }
     file << this->strDateTime() << separator << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      int value{0};
       if (pStreet->hasCoil()) {
         file << separator << pStreet->counts();
+        if (reset) {
+          pStreet->resetCounter();
+        }
       }
     }
     file << std::endl;

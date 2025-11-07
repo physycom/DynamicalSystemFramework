@@ -5,15 +5,8 @@
 
 static void BM_Street_Construction(benchmark::State& state) {
   for (auto _ : state) {
-    dsf::mobility::Street street(0,
-                                 {0, 1},
-                                 100.0,
-                                 13.8888888889,
-                                 2,
-                                 "test",
-                                 {},
-                                 std::nullopt,
-                                 1.0);
+    dsf::mobility::Street street(
+        0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, std::nullopt, 1.0);
     benchmark::DoNotOptimize(street);
   }
 }
@@ -36,15 +29,7 @@ static void BM_Street_AddAgent(benchmark::State& state) {
 }
 
 static void BM_Street_Enqueue(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                               {0, 1},
-                               100.0,
-                               13.8888888889,
-                               2,
-                               "test",
-                               {},
-                               100,
-                               1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
@@ -60,15 +45,7 @@ static void BM_Street_Enqueue(benchmark::State& state) {
 }
 
 static void BM_Street_Dequeue(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                               {0, 1},
-                               100.0,
-                               13.8888888889,
-                               2,
-                               "test",
-                               {},
-                               100,
-                               1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
@@ -85,20 +62,13 @@ static void BM_Street_Dequeue(benchmark::State& state) {
 }
 
 static void BM_Street_nAgents(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                               {0, 1},
-                               100.0,
-                               13.8888888889,
-                               2,
-                               "test",
-                               {},
-                               100,
-                               1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
     street.addAgent(std::move(agent));
-    if (i % 2 == 0) street.enqueue(0);
+    if (i % 2 == 0)
+      street.enqueue(0);
   }
   for (auto _ : state) {
     int n = street.nAgents();
@@ -107,20 +77,13 @@ static void BM_Street_nAgents(benchmark::State& state) {
 }
 
 static void BM_Street_Density(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                               {0, 1},
-                               100.0,
-                               13.8888888889,
-                               2,
-                               "test",
-                               {},
-                               100,
-                               1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
     street.addAgent(std::move(agent));
-    if (i % 2 == 0) street.enqueue(0);
+    if (i % 2 == 0)
+      street.enqueue(0);
   }
   for (auto _ : state) {
     double d = street.density(false);
@@ -129,15 +92,7 @@ static void BM_Street_Density(benchmark::State& state) {
 }
 
 static void BM_Street_nMovingAgents(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                               {0, 1},
-                               100.0,
-                               13.8888888889,
-                               2,
-                               "test",
-                               {},
-                               100,
-                               1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
@@ -150,15 +105,7 @@ static void BM_Street_nMovingAgents(benchmark::State& state) {
 }
 
 static void BM_Street_nExitingAgents(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                               {0, 1},
-                               100.0,
-                               13.8888888889,
-                               2,
-                               "test",
-                               {},
-                               100,
-                               1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
     auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
@@ -172,34 +119,18 @@ static void BM_Street_nExitingAgents(benchmark::State& state) {
 }
 
 static void BM_Street_SetLaneMapping(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                               {0, 1},
-                               100.0,
-                               13.8888888889,
-                               3,
-                               "test",
-                               {},
-                               std::nullopt,
-                               1.0);
+  dsf::mobility::Street street(
+      0, {0, 1}, 100.0, 13.8888888889, 3, "test", {}, std::nullopt, 1.0);
   std::vector<dsf::Direction> laneMapping = {
-      dsf::Direction::RIGHTANDSTRAIGHT,
-      dsf::Direction::STRAIGHT,
-      dsf::Direction::LEFT};
+      dsf::Direction::RIGHTANDSTRAIGHT, dsf::Direction::STRAIGHT, dsf::Direction::LEFT};
   for (auto _ : state) {
     street.setLaneMapping(laneMapping);
   }
 }
 
 static void BM_StochasticStreet_SetFlowRate(benchmark::State& state) {
-  dsf::mobility::Street baseStreet(0,
-                                   {0, 1},
-                                   100.0,
-                                   13.8888888889,
-                                   2,
-                                   "test",
-                                   {},
-                                   std::nullopt,
-                                   1.0);
+  dsf::mobility::Street baseStreet(
+      0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, std::nullopt, 1.0);
   dsf::mobility::StochasticStreet street(std::move(baseStreet), 0.5);
   for (auto _ : state) {
     street.setFlowRate(0.8);
@@ -207,15 +138,8 @@ static void BM_StochasticStreet_SetFlowRate(benchmark::State& state) {
 }
 
 static void BM_StochasticStreet_FlowRate(benchmark::State& state) {
-  dsf::mobility::Street baseStreet(0,
-                                   {0, 1},
-                                   100.0,
-                                   13.8888888889,
-                                   2,
-                                   "test",
-                                   {},
-                                   std::nullopt,
-                                   1.0);
+  dsf::mobility::Street baseStreet(
+      0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, std::nullopt, 1.0);
   dsf::mobility::StochasticStreet street(std::move(baseStreet), 0.5);
   for (auto _ : state) {
     double fr = street.flowRate();
@@ -224,15 +148,7 @@ static void BM_StochasticStreet_FlowRate(benchmark::State& state) {
 }
 
 static void BM_CoilStreet_AddAgent(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                                   {0, 1},
-                                   100.0,
-                                   13.8888888889,
-                                   2,
-                                   "test",
-                                   {},
-                                   100,
-                                   1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   street.enableCounter();
   std::time_t spawnTime = 0;
   for (auto _ : state) {
@@ -242,15 +158,7 @@ static void BM_CoilStreet_AddAgent(benchmark::State& state) {
 }
 
 static void BM_CoilStreet_MeanFlow(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                                   {0, 1},
-                                   100.0,
-                                   13.8888888889,
-                                   2,
-                                   "test",
-                                   {},
-                                   100,
-                                   1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   street.enableCounter();
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {
@@ -262,21 +170,13 @@ static void BM_CoilStreet_MeanFlow(benchmark::State& state) {
     }
   }
   for (auto _ : state) {
-    int flow = street.meanFlow();
+    auto flow = street.counts();
     benchmark::DoNotOptimize(flow);
   }
 }
 
 static void BM_CoilStreet_Dequeue(benchmark::State& state) {
-  dsf::mobility::Street street(0,
-                                   {0, 1},
-                                   100.0,
-                                   13.8888888889,
-                                   2,
-                                   "test",
-                                   {},
-                                   100,
-                                   1.0);
+  dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   street.enableCounter();
   std::time_t spawnTime = 0;
   for (int i = 0; i < 50; ++i) {

@@ -36,26 +36,26 @@ static void BM_RoadNetwork_GeoJSONImport(benchmark::State& state) {
   }
 }
 static void BM_RoadNetwork_NodesLooping(benchmark::State& state) {
-    dsf::mobility::RoadNetwork network;
-    network.importEdges((DATA_FOLDER / "forlì_edges.csv").string());
-    network.importNodeProperties((DATA_FOLDER / "forlì_nodes.csv").string());
-    for (auto _ : state) {
-        for (auto const& [id, node] : network.nodes()) {
-        benchmark::DoNotOptimize(id);
-        benchmark::DoNotOptimize(node);
-        }
+  dsf::mobility::RoadNetwork network;
+  network.importEdges((DATA_FOLDER / "forlì_edges.csv").string());
+  network.importNodeProperties((DATA_FOLDER / "forlì_nodes.csv").string());
+  for (auto _ : state) {
+    for (auto const& [id, node] : network.nodes()) {
+      benchmark::DoNotOptimize(id);
+      benchmark::DoNotOptimize(node);
     }
+  }
 }
 static void BM_RoadNetwork_EdgesLooping(benchmark::State& state) {
-    dsf::mobility::RoadNetwork network;
-    network.importEdges((DATA_FOLDER / "forlì_edges.csv").string());
-    network.importNodeProperties((DATA_FOLDER / "forlì_nodes.csv").string());
-    for (auto _ : state) {
-        for (auto const& [id, edge] : network.edges()) {
-        benchmark::DoNotOptimize(id);
-        benchmark::DoNotOptimize(edge);
-        }
+  dsf::mobility::RoadNetwork network;
+  network.importEdges((DATA_FOLDER / "forlì_edges.csv").string());
+  network.importNodeProperties((DATA_FOLDER / "forlì_nodes.csv").string());
+  for (auto _ : state) {
+    for (auto const& [id, edge] : network.edges()) {
+      benchmark::DoNotOptimize(id);
+      benchmark::DoNotOptimize(edge);
     }
+  }
 }
 static void BM_RoadNetwork_ShortestPath(benchmark::State& state) {
   dsf::mobility::RoadNetwork network;
@@ -63,7 +63,8 @@ static void BM_RoadNetwork_ShortestPath(benchmark::State& state) {
   network.importNodeProperties((DATA_FOLDER / "forlì_nodes.csv").string());
   auto itNode = network.nodes().cbegin();
   for (auto _ : state) {
-    auto paths = network.allPathsTo(itNode->first, [](auto const& pEdge) { return pEdge->length(); });
+    auto paths = network.allPathsTo(itNode->first,
+                                    [](auto const& pEdge) { return pEdge->length(); });
     ++itNode;
   }
 }

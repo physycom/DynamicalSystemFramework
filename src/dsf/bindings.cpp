@@ -228,10 +228,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("counter"),
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::makeTrafficLight").c_str())
       .def("addCoil",
-        &dsf::mobility::RoadNetwork::addCoil,
-        pybind11::arg("streetId"),
-        pybind11::arg("name") = std::string(),
-        dsf::g_docstrings.at("dsf::mobility::RoadNetwork::addCoil").c_str());
+           &dsf::mobility::RoadNetwork::addCoil,
+           pybind11::arg("streetId"),
+           pybind11::arg("name") = std::string(),
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::addCoil").c_str());
 
   pybind11::class_<dsf::mobility::Itinerary>(mobility, "Itinerary")
       .def(pybind11::init<dsf::Id, dsf::Id>(),
@@ -479,8 +479,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("filename"),
            pybind11::arg("reset") = false,
            pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveCoilCounts")
-               .c_str())
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveCoilCounts").c_str())
       .def("saveTravelData",
            &dsf::mobility::FirstOrderDynamics::saveTravelData,
            pybind11::arg("filename"),

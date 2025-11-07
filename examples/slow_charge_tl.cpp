@@ -29,14 +29,12 @@ std::atomic<bool> bExitFlag{false};
 // uncomment these lines to print densities, flows and speeds
 #define PRINT_DENSITIES
 // #define PRINT_FLOWS
-#define PRINT_OUT_SPIRES
 // #define PRINT_SPEEDS
 // #define PRINT_TP
 
 using RoadNetwork = dsf::mobility::RoadNetwork;
 using Dynamics = dsf::mobility::FirstOrderDynamics;
 using Street = dsf::mobility::Street;
-using SpireStreet = dsf::mobility::SpireStreet;
 using TrafficLight = dsf::mobility::TrafficLight;
 
 void printLoadingBar(int const i, int const n) {
@@ -146,9 +144,9 @@ int main(int argc, char** argv) {
       graph.makeTrafficLight(nodeId, 120);
     }
   }
-  std::cout << "Making every street a spire...\n";
+  std::cout << "Add a coil on every street...\n";
   for (const auto& pair : graph.edges()) {
-    graph.makeSpireStreet(pair.first);
+    graph.addCoil(pair.first);
   }
   graph.adjustNodeCapacities();
   std::cout << "Setting traffic light parameters..." << '\n';
@@ -196,18 +194,6 @@ int main(int argc, char** argv) {
     streetSpeed << ';' << id;
   }
   streetSpeed << '\n';
-#endif
-#ifdef PRINT_OUT_SPIRES
-  std::ofstream outSpires(OUT_FOLDER + "out_spires.csv");
-  std::ofstream inSpires(OUT_FOLDER + "in_spires.csv");
-  outSpires << "time";
-  inSpires << "time";
-  for (const auto& pair : dynamics.graph().edges()) {
-    outSpires << ';' << pair.first;
-    inSpires << ';' << pair.first;
-  }
-  outSpires << '\n';
-  inSpires << '\n';
 #endif
 #ifdef PRINT_TP
   std::ofstream outTP(OUT_FOLDER + "turn_probabilities.csv");
@@ -270,17 +256,7 @@ int main(int argc, char** argv) {
     if (dynamics.time_step() % 300 == 0) {
       // printLoadingBar(dynamics.time_step(), MAX_TIME);
       // deltaAgents = std::labs(dynamics.agents().size() - previousAgents);
-#ifdef PRINT_OUT_SPIRES
-      outSpires << dynamics.time_step();
-      inSpires << dynamics.time_step();
-      for (const auto& pair : dynamics.graph().edges()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*pair.second);
-        outSpires << ';' << spire.outputCounts(false);
-        inSpires << ';' << spire.inputCounts(false);
-      }
-      outSpires << std::endl;
-      inSpires << std::endl;
-#endif
+      dynamics.saveCoilCounts(std::format("{}coil_counts.csv", OUT_FOLDER));
       dynamics.saveMacroscopicObservables(std::format("{}data.csv", OUT_FOLDER));
       // deltas.push_back(deltaAgents);
       // previousAgents = dynamics.agents().size();
@@ -352,10 +328,6 @@ int main(int argc, char** argv) {
 #endif
 #ifdef PRINT_SPEEDS
   streetSpeed.close();
-#endif
-#ifdef PRINT_OUT_SPIRES
-  outSpires.close();
-  inSpires.close();
 #endif
   // std::cout << std::endl;
   // std::map<uint8_t, std::string> turnNames{
