@@ -32,15 +32,13 @@ namespace dsf::mobility {
     inFile.close();
   }
 
-  void Itinerary::setPath(std::unordered_map<Id, std::vector<Id>> path) {
-    m_path = std::move(path);
+  void Itinerary::setPath(PathCollection pathCollection) {
+    m_path = std::move(pathCollection);
   }
 
   Id Itinerary::id() const { return m_id; }
   Id Itinerary::destination() const { return m_destination; }
-  std::unordered_map<Id, std::vector<Id>> const& Itinerary::path() const {
-    return m_path;
-  }
+  PathCollection const& Itinerary::path() const { return m_path; }
   void Itinerary::save(const std::string& fileName) const {
     // Open binary file
     std::ofstream outFile{fileName, std::ios::binary};

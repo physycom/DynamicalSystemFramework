@@ -14,6 +14,7 @@
 #include "RoadJunction.hpp"
 #include "Intersection.hpp"
 #include "TrafficLight.hpp"
+#include "PathCollection.hpp"
 #include "Roundabout.hpp"
 #include "Station.hpp"
 #include "Street.hpp"
@@ -204,10 +205,9 @@ namespace dsf::mobility {
     /// @throws std::invalid_argument if the dynamics function is not callable with a const reference
     template <typename DynamicsFunc>
       requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
-    std::unordered_map<Id, std::vector<Id>> allPathsTo(
-        Id const targetId,
-        DynamicsFunc getEdgeWeight,
-        double const threshold = 1e-9) const;
+    PathCollection allPathsTo(Id const targetId,
+                              DynamicsFunc getEdgeWeight,
+                              double const threshold = 1e-9) const;
 
     /// @brief Find the shortest path between two nodes using Dijkstra's algorithm
     /// @tparam DynamicsFunc A callable type that takes a const reference to a Street and returns a double representing the edge weight
@@ -221,11 +221,10 @@ namespace dsf::mobility {
     ///          Like allPathsTo, this method tracks all equivalent paths within the threshold, allowing for multiple next hops per node.
     template <typename DynamicsFunc>
       requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
-    std::unordered_map<Id, std::vector<Id>> shortestPath(
-        Id const sourceId,
-        Id const targetId,
-        DynamicsFunc getEdgeWeight,
-        double const threshold = 1e-9) const;
+    PathCollection shortestPath(Id const sourceId,
+                                Id const targetId,
+                                DynamicsFunc getEdgeWeight,
+                                double const threshold = 1e-9) const;
   };
 
   template <typename... TArgs>
@@ -312,8 +311,9 @@ namespace dsf::mobility {
 
   template <typename DynamicsFunc>
     requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
-  std::unordered_map<Id, std::vector<Id>> RoadNetwork::allPathsTo(
-      Id const targetId, DynamicsFunc f, double const threshold) const {
+  PathCollection RoadNetwork::allPathsTo(Id const targetId,
+                                         DynamicsFunc f,
+                                         double const threshold) const {
     // Check if source node exists
     auto const& nodes = this->nodes();
 
@@ -321,7 +321,7 @@ namespace dsf::mobility {
     std::unordered_map<Id, double> distToTarget;
     distToTarget.reserve(nNodes());
     // Next hop from each node toward the source
-    std::unordered_map<Id, std::vector<Id>> nextHopsToTarget;
+    PathCollection nextHopsToTarget;
 
     // Priority queue: pair<distance, nodeId> (min-heap)
     std::priority_queue<std::pair<double, Id>,
@@ -383,7 +383,7 @@ namespace dsf::mobility {
     }
 
     // Build result: only include reachable nodes (excluding source)
-    std::unordered_map<Id, std::vector<Id>> result;
+    PathCollection result;
     for (auto const& [nodeId, hops] : nextHopsToTarget) {
       if (nodeId != targetId &&
           distToTarget[nodeId] != std::numeric_limits<double>::infinity() &&
@@ -397,11 +397,13 @@ namespace dsf::mobility {
 
   template <typename DynamicsFunc>
     requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
-  std::unordered_map<Id, std::vector<Id>> RoadNetwork::shortestPath(
-      Id const sourceId, Id const targetId, DynamicsFunc f, double const threshold) const {
+  PathCollection RoadNetwork::shortestPath(Id const sourceId,
+                                           Id const targetId,
+                                           DynamicsFunc f,
+                                           double const threshold) const {
     // If source equals target, return empty map (no intermediate hops needed)
     if (sourceId == targetId) {
-      return std::unordered_map<Id, std::vector<Id>>{};
+      return PathCollection{};
     }
     // Check if source node exists
     if (!this->nodes().contains(sourceId)) {
@@ -419,7 +421,7 @@ namespace dsf::mobility {
     std::unordered_map<Id, double> distToTarget;
     distToTarget.reserve(nNodes());
     // Next hop from each node toward the target
-    std::unordered_map<Id, std::vector<Id>> nextHopsToTarget;
+    PathCollection nextHopsToTarget;
 
     // Priority queue: pair<distance, nodeId> (min-heap)
     std::priority_queue<std::pair<double, Id>,
@@ -487,11 +489,11 @@ namespace dsf::mobility {
 
     // Check if target is reachable from source
     if (distToTarget[sourceId] == std::numeric_limits<double>::infinity()) {
-      return std::unordered_map<Id, std::vector<Id>>{};
+      return PathCollection{};
     }
 
     // Build result: only include nodes on the path from source to target
-    std::unordered_map<Id, std::vector<Id>> result;
+    PathCollection result;
     std::unordered_set<Id> nodesOnPath;
 
     // Start from source and traverse to target using BFS to find all nodes on valid paths
