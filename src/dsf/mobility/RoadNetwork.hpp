@@ -202,7 +202,6 @@ namespace dsf::mobility {
     /// @param threshold A threshold value to consider alternative paths
     /// @return A map where each key is a node id and the value is a vector of next hop node ids toward the target
     /// @throws std::out_of_range if the target node does not exist
-    /// @throws std::invalid_argument if the dynamics function is not callable with a const reference
     template <typename DynamicsFunc>
       requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
     PathCollection allPathsTo(Id const targetId,
@@ -314,7 +313,6 @@ namespace dsf::mobility {
   PathCollection RoadNetwork::allPathsTo(Id const targetId,
                                          DynamicsFunc f,
                                          double const threshold) const {
-    // Check if source node exists
     auto const& nodes = this->nodes();
 
     // Distance from each node to the source (going backward)

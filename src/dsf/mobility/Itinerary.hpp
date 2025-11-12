@@ -44,7 +44,7 @@ namespace dsf::mobility {
 
     /// @brief Set the itinerary's path
     /// @param pathCollection A dsf::mobility::PathCollection representing all equivalent paths to the destination
-    void setPath(PathCollection path);
+    void setPath(PathCollection pathCollection);
 
     /// @brief Get the itinerary's id
     /// @return Id, The itinerary's id

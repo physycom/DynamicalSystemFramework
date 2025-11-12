@@ -662,8 +662,7 @@ TEST_CASE("ShortestPath") {
     CHECK_FALSE(pathMap.contains(3));
   }
 
-  SUBCASE("Complex Network with Coordinates - A* Heuristic") {
-    // Test with coordinates to verify A* heuristic is being used
+  SUBCASE("Complex Network with Coordinates") {
     RoadNetwork graph{};
     graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
     graph.addNode(1, dsf::geometry::Point(10.0, 0.0));
@@ -841,10 +840,8 @@ TEST_CASE("ShortestPath") {
     // Test explode function
     auto allPaths = pathMap.explode(0, 5);
 
-    // There should be 6 shortest paths of length 4 (4 hops):
-    // 0->1->2->5, 0->1->4->5, 0->3->4->5, 0->3->4->2->5 (no, this is longer)
-    // Actually: 0->1->2->5, 0->1->4->5, 0->3->4->5, 0->1->4->2->5 (no reverse edge)
-    // Let me recalculate: all shortest paths have length 40 (4 edges)
+    // All shortest paths from 0 to 5 have length 40 (4 edges).
+    // There are 3 such shortest paths: 0->1->2->5, 0->1->4->5, and 0->3->4->5.
     CHECK_GT(allPaths.size(), 0);
 
     // Verify all paths start at 0 and end at 5
