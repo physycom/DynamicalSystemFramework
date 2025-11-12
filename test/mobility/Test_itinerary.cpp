@@ -1,11 +1,11 @@
 #include <cstdint>
 
-#include "../../src/dsf/mobility/Itinerary.hpp"
+#include "dsf/mobility/Itinerary.hpp"
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
-using Itinerary = dsf::mobility::Itinerary;
+using namespace dsf::mobility;
 
 TEST_CASE("Itinerary") {
   SUBCASE("Constructors") {
@@ -18,8 +18,7 @@ TEST_CASE("Itinerary") {
 
   SUBCASE("Set and get path") {
     Itinerary itinerary{1, 42};
-    std::unordered_map<dsf::Id, std::vector<dsf::Id>> path = {
-        {1, {2, 3}}, {2, {4}}, {3, {5, 6, 7}}};
+    PathCollection path = {{1, {2, 3}}, {2, {4}}, {3, {5, 6, 7}}};
     itinerary.setPath(path);
     auto const& result = itinerary.path();
     CHECK_EQ(result.size(), path.size());
@@ -31,8 +30,7 @@ TEST_CASE("Itinerary") {
 
   SUBCASE("Save and load itinerary") {
     Itinerary itinerary{7, 99};
-    std::unordered_map<dsf::Id, std::vector<dsf::Id>> path = {
-        {7, {8, 9}}, {8, {10}}, {9, {11, 12}}};
+    PathCollection path = {{7, {8, 9}}, {8, {10}}, {9, {11, 12}}};
     itinerary.setPath(path);
     const std::string filename = "test_itinerary.bin";
     itinerary.save(filename);
@@ -69,7 +67,7 @@ TEST_CASE("Itinerary") {
 
   SUBCASE("Large path") {
     Itinerary itinerary{100, 200};
-    std::unordered_map<dsf::Id, std::vector<dsf::Id>> path;
+    PathCollection path;
     for (dsf::Id i = 0; i < 100; ++i) {
       std::vector<dsf::Id> v;
       for (dsf::Id j = 0; j < 10; ++j)

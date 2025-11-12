@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "PathCollection.hpp"
 #include "../utility/Typedef.hpp"
 
 #include <concepts>
@@ -25,7 +26,7 @@ namespace dsf::mobility {
   private:
     Id m_id;
     Id m_destination;
-    std::unordered_map<Id, std::vector<Id>> m_path;
+    PathCollection m_path;
 
   public:
     /// @brief Construct a new Itinerary object
@@ -42,8 +43,8 @@ namespace dsf::mobility {
     void load(const std::string& fileName);
 
     /// @brief Set the itinerary's path
-    /// @param path An adjacency matrix made by a SparseMatrix representing the itinerary's path
-    void setPath(std::unordered_map<Id, std::vector<Id>> path);
+    /// @param pathCollection A dsf::mobility::PathCollection representing all equivalent paths to the destination
+    void setPath(PathCollection pathCollection);
 
     /// @brief Get the itinerary's id
     /// @return Id, The itinerary's id
@@ -52,9 +53,10 @@ namespace dsf::mobility {
     /// @return Id, The itinerary's destination
     Id destination() const;
     /// @brief Get the itinerary's path
-    /// @return std::unordered_map<Id, std::vector<Id>> const&, The itinerary's path
-    std::unordered_map<Id, std::vector<Id>> const& path() const;
-
+    /// @return PathCollection const&, The itinerary's path
+    PathCollection const& path() const;
+    /// @brief Save the itinerary to a binary file
+    /// @param fileName The name of the file to save the itinerary to
     void save(const std::string& fileName) const;
   };
 };  // namespace dsf::mobility

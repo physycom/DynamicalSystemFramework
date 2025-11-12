@@ -231,7 +231,104 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::mobility::RoadNetwork::addCoil,
            pybind11::arg("streetId"),
            pybind11::arg("name") = std::string(),
-           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::addCoil").c_str());
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::addCoil").c_str())
+      .def(
+          "shortestPath",
+          [](const dsf::mobility::RoadNetwork& self,
+             dsf::Id sourceId,
+             dsf::Id targetId,
+             dsf::PathWeight weightFunction,
+             double threshold) {
+            return self.shortestPath(
+                sourceId,
+                targetId,
+                [weightFunction](const std::unique_ptr<dsf::mobility::Street>& street) {
+                  switch (weightFunction) {
+                    case dsf::PathWeight::LENGTH:
+                      return street->length();
+                    case dsf::PathWeight::TRAVELTIME:
+                      return street->length() / street->maxSpeed();
+                    case dsf::PathWeight::WEIGHT:
+                      return street->weight();
+                    default:
+                      return street->length() / street->maxSpeed();
+                  }
+                },
+                threshold);
+          },
+          pybind11::arg("sourceId"),
+          pybind11::arg("targetId"),
+          pybind11::arg("weightFunction") = dsf::PathWeight::TRAVELTIME,
+          pybind11::arg("threshold") = 1e-9,
+          "Find the shortest path between two nodes using Dijkstra's algorithm.\n\n"
+          "Args:\n"
+          "    sourceId (int): The id of the source node\n"
+          "    targetId (int): The id of the target node\n"
+          "    weightFunction (PathWeight): The weight function to use (LENGTH, "
+          "TRAVELTIME, or WEIGHT)\n"
+          "    threshold (float): A threshold value to consider alternative paths\n\n"
+          "Returns:\n"
+          "    PathCollection: A map where each key is a node id and the value is a "
+          "vector of next hop node ids toward the target");
+
+  pybind11::class_<dsf::mobility::PathCollection>(mobility, "PathCollection")
+      .def(pybind11::init<>(), "Create an empty PathCollection")
+      .def(
+          "__getitem__",
+          [](const dsf::mobility::PathCollection& self, dsf::Id key) {
+            auto it = self.find(key);
+            if (it == self.end()) {
+              throw pybind11::key_error("Key not found");
+            }
+            return it->second;
+          },
+          pybind11::arg("key"),
+          "Get the next hops for a given node id")
+      .def(
+          "__setitem__",
+          [](dsf::mobility::PathCollection& self,
+             dsf::Id key,
+             std::vector<dsf::Id> value) { self[key] = value; },
+          pybind11::arg("key"),
+          pybind11::arg("value"),
+          "Set the next hops for a given node id")
+      .def(
+          "__contains__",
+          [](const dsf::mobility::PathCollection& self, dsf::Id key) {
+            return self.find(key) != self.end();
+          },
+          pybind11::arg("key"),
+          "Check if a node id exists in the collection")
+      .def(
+          "__len__",
+          [](const dsf::mobility::PathCollection& self) { return self.size(); },
+          "Get the number of nodes in the collection")
+      .def(
+          "keys",
+          [](const dsf::mobility::PathCollection& self) {
+            std::vector<dsf::Id> keys;
+            keys.reserve(self.size());
+            for (const auto& [key, _] : self) {
+              keys.push_back(key);
+            }
+            return keys;
+          },
+          "Get all node ids in the collection")
+      .def(
+          "items",
+          [](const dsf::mobility::PathCollection& self) {
+            pybind11::dict items;
+            for (const auto& [key, value] : self) {
+              items[pybind11::int_(key)] = pybind11::cast(value);
+            }
+            return items;
+          },
+          "Get all items (node id, next hops) in the collection")
+      .def("explode",
+           &dsf::mobility::PathCollection::explode,
+           pybind11::arg("sourceId"),
+           pybind11::arg("targetId"),
+           dsf::g_docstrings.at("dsf::mobility::PathCollection::explode").c_str());
 
   pybind11::class_<dsf::mobility::Itinerary>(mobility, "Itinerary")
       .def(pybind11::init<dsf::Id, dsf::Id>(),
