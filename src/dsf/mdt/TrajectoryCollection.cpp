@@ -21,13 +21,15 @@ namespace dsf::mdt {
         std::get<std::vector<std::time_t>>(dataframe.at("timestamp"));
     auto const& lats = std::get<std::vector<double>>(dataframe.at("lat"));
     auto const& lons = std::get<std::vector<double>>(dataframe.at("lon"));
+    bool const bBbox = !(bbox[0] == 0.0 && bbox[1] == 0.0 && bbox[2] == 0.0 && bbox[3] == 0.0);
+
+    if (bBbox) {
+      m_boundingBox = bbox;
+    }
 
     for (std::size_t i = 0; i < uids.size(); ++i) {
       auto const point = dsf::geometry::Point(lons[i], lats[i]);
-      // If bbox is the default-initialized array (all zeros) we treat it as unset.
-      bool bbox_set =
-          !(bbox[0] == 0.0 && bbox[1] == 0.0 && bbox[2] == 0.0 && bbox[3] == 0.0);
-      if (bbox_set && (point.x() < bbox[0] || point.x() > bbox[2] ||
+      if (bBbox && (point.x() < bbox[0] || point.x() > bbox[2] ||
                        point.y() < bbox[1] || point.y() > bbox[3])) {
         continue;
       }
@@ -82,6 +84,14 @@ namespace dsf::mdt {
                                     double const max_speed_kph,
                                     std::size_t const min_points_per_trajectory,
                                     std::optional<std::time_t> const min_duration_min) {
+    if (m_clusterRadiusKm.has_value()) {
+      throw std::runtime_error(std::format("Trajectories have already been filtered "
+                                          "with cluster radius {:.3f} km. "
+                                          "Create a new TrajectoryCollection to "
+                                          "apply filtering with a different "
+                                          "cluster radius.",
+                                          m_clusterRadiusKm.value()));
+    }
     // Collect IDs to remove in parallel
     tbb::concurrent_set<Id> to_remove;
     tbb::concurrent_set<Id> to_split;
@@ -159,6 +169,8 @@ namespace dsf::mdt {
         trajectories.emplace_back(std::move(newTrajectory));
       }
     }
+    
+    m_clusterRadiusKm = cluster_radius_km;
   }
   void TrajectoryCollection::to_csv(std::string const& fileName, char const sep) const {
     std::ofstream file{fileName};

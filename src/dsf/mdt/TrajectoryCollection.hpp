@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trajectory.hpp"
+#include "../mobility/RoadNetwork.hpp"
 #include "../utility/Typedef.hpp"
 
 #include <array>
@@ -14,6 +15,11 @@ namespace dsf::mdt {
   class TrajectoryCollection {
   private:
     std::unordered_map<Id, std::vector<Trajectory>> m_trajectories;
+    std::array<double, 4> m_boundingBox{};
+    mobility::RoadNetwork m_roadNetwork;
+    std::optional<double> m_clusterRadiusKm = std::nullopt;
+
+    void m_clusterEdges();
 
   public:
     /// @brief Construct a TrajectoryCollection from a dataframe.
@@ -46,6 +52,12 @@ namespace dsf::mdt {
                 std::unordered_map<std::string, std::string> const& column_mapping = {},
                 char const sep = ';',
                 std::array<double, 4> const& bbox = {});
+    /// @brief Set the road network associated with the trajectories.
+    /// @param roadNetwork The road network to associate.
+    inline void setRoadNetwork(mobility::RoadNetwork&& roadNetwork) {
+      m_roadNetwork = std::move(roadNetwork);
+    }
+    
     /// @brief Export clustered trajectories to a CSV file with columns 'uid', 'trajectory_id',
     /// 'lon', 'lat', 'timestamp_in', 'timestamp_out'.
     /// @param fileName The path to the output CSV file.
