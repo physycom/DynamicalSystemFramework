@@ -208,6 +208,24 @@ namespace dsf::mobility {
         Id const targetId,
         DynamicsFunc getEdgeWeight,
         double const threshold = 1e-9) const;
+
+    /// @brief Find the shortest path between two nodes using Dijkstra's algorithm
+    /// @tparam DynamicsFunc A callable type that takes a const reference to a Street and returns a double representing the edge weight
+    /// @param sourceId The id of the source node
+    /// @param targetId The id of the target node
+    /// @param getEdgeWeight A callable that takes a const reference to a Street and returns a double representing the edge weight
+    /// @param threshold A threshold value to consider alternative paths
+    /// @return A map where each key is a node id and the value is a vector of next hop node ids toward the target. Returns an empty map if no path exists
+    /// @throws std::out_of_range if the source or target node does not exist
+    /// @details Uses Dijkstra's algorithm to find shortest paths from source to target.
+    ///          Like allPathsTo, this method tracks all equivalent paths within the threshold, allowing for multiple next hops per node.
+    template <typename DynamicsFunc>
+      requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
+    std::unordered_map<Id, std::vector<Id>> shortestPath(
+        Id const sourceId,
+        Id const targetId,
+        DynamicsFunc getEdgeWeight,
+        double const threshold = 1e-9) const;
   };
 
   template <typename... TArgs>
@@ -295,19 +313,15 @@ namespace dsf::mobility {
   template <typename DynamicsFunc>
     requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
   std::unordered_map<Id, std::vector<Id>> RoadNetwork::allPathsTo(
-      Id const sourceId, DynamicsFunc f, double const threshold) const {
+      Id const targetId, DynamicsFunc f, double const threshold) const {
     // Check if source node exists
     auto const& nodes = this->nodes();
-    if (!nodes.contains(sourceId)) {
-      throw std::out_of_range(
-          std::format("Source node with id {} does not exist.", sourceId));
-    }
 
     // Distance from each node to the source (going backward)
-    std::unordered_map<Id, double> distToSource;
-    distToSource.reserve(nNodes());
+    std::unordered_map<Id, double> distToTarget;
+    distToTarget.reserve(nNodes());
     // Next hop from each node toward the source
-    std::unordered_map<Id, std::vector<Id>> nextHopsToSource;
+    std::unordered_map<Id, std::vector<Id>> nextHopsToTarget;
 
     // Priority queue: pair<distance, nodeId> (min-heap)
     std::priority_queue<std::pair<double, Id>,
@@ -317,20 +331,20 @@ namespace dsf::mobility {
 
     // Initialize all nodes with infinite distance
     std::for_each(nodes.cbegin(), nodes.cend(), [&](auto const& pair) {
-      distToSource[pair.first] = std::numeric_limits<double>::infinity();
-      nextHopsToSource[pair.first] = std::vector<Id>();
+      distToTarget[pair.first] = std::numeric_limits<double>::infinity();
+      nextHopsToTarget[pair.first] = std::vector<Id>();
     });
 
-    // Source has distance 0 to itself
-    distToSource[sourceId] = 0.0;
-    pq.push({0.0, sourceId});
+    // Target has distance 0 to itself
+    distToTarget[targetId] = 0.0;
+    pq.push({0.0, targetId});
 
     while (!pq.empty()) {
       auto [currentDist, currentNode] = pq.top();
       pq.pop();
 
       // Skip if we've already found a better path to this node
-      if (currentDist > distToSource[currentNode]) {
+      if (currentDist > distToTarget[currentNode]) {
         continue;
       }
 
@@ -341,26 +355,26 @@ namespace dsf::mobility {
 
         // Calculate the weight of the edge from neighbor to currentNode using the dynamics function
         double edgeWeight = f(this->edge(inEdgeId));
-        double newDistToSource = distToSource[currentNode] + edgeWeight;
+        double newDistToTarget = distToTarget[currentNode] + edgeWeight;
 
         // If we found a shorter path from neighborId to source
-        if (newDistToSource < distToSource[neighborId]) {
-          distToSource[neighborId] = newDistToSource;
-          nextHopsToSource[neighborId].clear();
-          nextHopsToSource[neighborId].push_back(currentNode);
-          pq.push({newDistToSource, neighborId});
+        if (newDistToTarget < distToTarget[neighborId]) {
+          distToTarget[neighborId] = newDistToTarget;
+          nextHopsToTarget[neighborId].clear();
+          nextHopsToTarget[neighborId].push_back(currentNode);
+          pq.push({newDistToTarget, neighborId});
         }
         // If we found an equally good path, add it as alternative
-        else if (newDistToSource < (1. + threshold) * distToSource[neighborId]) {
+        else if (newDistToTarget < (1. + threshold) * distToTarget[neighborId]) {
           spdlog::debug(
               "Found alternative path to node {} with distance {:.6f} (existing: {:.6f}) "
               "for threshold {:.6f}",
               neighborId,
-              newDistToSource,
-              distToSource[neighborId],
+              newDistToTarget,
+              distToTarget[neighborId],
               threshold);
           // Check if currentNode is not already in the nextHops
-          auto& hops = nextHopsToSource[neighborId];
+          auto& hops = nextHopsToTarget[neighborId];
           if (std::find(hops.begin(), hops.end(), currentNode) == hops.end()) {
             hops.push_back(currentNode);
           }
@@ -370,11 +384,140 @@ namespace dsf::mobility {
 
     // Build result: only include reachable nodes (excluding source)
     std::unordered_map<Id, std::vector<Id>> result;
-    for (auto const& [nodeId, hops] : nextHopsToSource) {
-      if (nodeId != sourceId &&
-          distToSource[nodeId] != std::numeric_limits<double>::infinity() &&
+    for (auto const& [nodeId, hops] : nextHopsToTarget) {
+      if (nodeId != targetId &&
+          distToTarget[nodeId] != std::numeric_limits<double>::infinity() &&
           !hops.empty()) {
         result[nodeId] = hops;
+      }
+    }
+
+    return result;
+  }
+
+  template <typename DynamicsFunc>
+    requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
+  std::unordered_map<Id, std::vector<Id>> RoadNetwork::shortestPath(
+      Id const sourceId, Id const targetId, DynamicsFunc f, double const threshold) const {
+    // If source equals target, return empty map (no intermediate hops needed)
+    if (sourceId == targetId) {
+      return std::unordered_map<Id, std::vector<Id>>{};
+    }
+    // Check if source node exists
+    if (!this->nodes().contains(sourceId)) {
+      throw std::out_of_range(
+          std::format("Source node with id {} does not exist in the graph", sourceId));
+    }
+    // Check if target node exists
+    if (!this->nodes().contains(targetId)) {
+      throw std::out_of_range(
+          std::format("Target node with id {} does not exist in the graph", targetId));
+    }
+    auto const& nodes = this->nodes();
+
+    // Distance from each node to the target (going backward)
+    std::unordered_map<Id, double> distToTarget;
+    distToTarget.reserve(nNodes());
+    // Next hop from each node toward the target
+    std::unordered_map<Id, std::vector<Id>> nextHopsToTarget;
+
+    // Priority queue: pair<distance, nodeId> (min-heap)
+    std::priority_queue<std::pair<double, Id>,
+                        std::vector<std::pair<double, Id>>,
+                        std::greater<>>
+        pq;
+
+    // Initialize all nodes with infinite distance
+    std::for_each(nodes.cbegin(), nodes.cend(), [&](auto const& pair) {
+      distToTarget[pair.first] = std::numeric_limits<double>::infinity();
+      nextHopsToTarget[pair.first] = std::vector<Id>();
+    });
+
+    // Target has distance 0 to itself
+    distToTarget[targetId] = 0.0;
+    pq.push({0.0, targetId});
+
+    while (!pq.empty()) {
+      auto [currentDist, currentNode] = pq.top();
+      pq.pop();
+
+      // Skip if we've already found a better path to this node
+      if (currentDist > distToTarget[currentNode]) {
+        continue;
+      }
+
+      // If we've reached the source, we can stop early
+      if (currentNode == sourceId) {
+        break;
+      }
+
+      // Explore all incoming edges (nodes that can reach currentNode)
+      auto const& inEdges = node(currentNode)->ingoingEdges();
+      for (auto const& inEdgeId : inEdges) {
+        Id neighborId = edge(inEdgeId)->source();
+
+        // Calculate the weight of the edge from neighbor to currentNode using the dynamics function
+        double edgeWeight = f(this->edge(inEdgeId));
+        double newDistToTarget = distToTarget[currentNode] + edgeWeight;
+
+        // If we found a shorter path from neighborId to target
+        if (newDistToTarget < distToTarget[neighborId]) {
+          distToTarget[neighborId] = newDistToTarget;
+          nextHopsToTarget[neighborId].clear();
+          nextHopsToTarget[neighborId].push_back(currentNode);
+          pq.push({newDistToTarget, neighborId});
+        }
+        // If we found an equally good path, add it as alternative
+        else if (newDistToTarget < (1. + threshold) * distToTarget[neighborId]) {
+          spdlog::debug(
+              "Found alternative path to node {} with distance {:.6f} (existing: {:.6f}) "
+              "for threshold {:.6f}",
+              neighborId,
+              newDistToTarget,
+              distToTarget[neighborId],
+              threshold);
+          // Check if currentNode is not already in the nextHops
+          auto& hops = nextHopsToTarget[neighborId];
+          if (std::find(hops.begin(), hops.end(), currentNode) == hops.end()) {
+            hops.push_back(currentNode);
+          }
+        }
+      }
+    }
+
+    // Check if target is reachable from source
+    if (distToTarget[sourceId] == std::numeric_limits<double>::infinity()) {
+      return std::unordered_map<Id, std::vector<Id>>{};
+    }
+
+    // Build result: only include nodes on the path from source to target
+    std::unordered_map<Id, std::vector<Id>> result;
+    std::unordered_set<Id> nodesOnPath;
+
+    // Start from source and traverse to target using BFS to find all nodes on valid paths
+    std::queue<Id> queue;
+    queue.push(sourceId);
+    nodesOnPath.insert(sourceId);
+
+    while (!queue.empty()) {
+      Id current = queue.front();
+      queue.pop();
+
+      if (current == targetId) {
+        continue;
+      }
+
+      // Add this node's next hops to the result if they exist
+      if (nextHopsToTarget.contains(current) && !nextHopsToTarget[current].empty()) {
+        result[current] = nextHopsToTarget[current];
+
+        // Add next hops to the queue if not already visited
+        for (Id nextHop : nextHopsToTarget[current]) {
+          if (!nodesOnPath.contains(nextHop)) {
+            nodesOnPath.insert(nextHop);
+            queue.push(nextHop);
+          }
+        }
       }
     }
 

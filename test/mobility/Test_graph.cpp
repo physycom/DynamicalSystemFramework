@@ -552,3 +552,207 @@ TEST_CASE("Dijkstra") {
     CHECK_FALSE(path.contains(118));
   }
 }
+
+TEST_CASE("ShortestPath") {
+  SUBCASE("Simple Path") {
+    // Create a simple network: 0 -> 1 -> 2
+    //                          |         ^
+    //                          +-> 3 ----+
+    // Path 0->1->2 has length 200, path 0->3->2 has length 300
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+    graph.addNode(3, dsf::geometry::Point(1.0, 1.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    Street s12(1, std::make_pair(1, 2), 100.0);
+    Street s03(2, std::make_pair(0, 3), 150.0);
+    Street s32(3, std::make_pair(3, 2), 150.0);
+    graph.addStreets(s01, s12, s03, s32);
+
+    auto pathMap =
+        graph.shortestPath(0, 2, [](auto const& pEdge) { return pEdge->length(); });
+
+    // Verify the shortest path is 0 -> 1 -> 2
+    REQUIRE(pathMap.contains(0));
+    CHECK_EQ(pathMap.at(0).size(), 1);
+    CHECK_EQ(pathMap.at(0)[0], 1);
+
+    REQUIRE(pathMap.contains(1));
+    CHECK_EQ(pathMap.at(1).size(), 1);
+    CHECK_EQ(pathMap.at(1)[0], 2);
+
+    // Target node should not be in the map
+    CHECK_FALSE(pathMap.contains(2));
+
+    // Node 3 is not on the shortest path
+    CHECK_FALSE(pathMap.contains(3));
+  }
+
+  SUBCASE("Same Source and Target") {
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    graph.addStreet(std::move(s01));
+
+    auto pathMap =
+        graph.shortestPath(0, 0, [](auto const& pEdge) { return pEdge->length(); });
+
+    // When source equals target, should return empty map (no hops needed)
+    CHECK(pathMap.empty());
+  }
+
+  SUBCASE("No Path Exists") {
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    Street s23(1, std::make_pair(2, 3), 100.0);
+    graph.addStreets(s01, s23);
+
+    auto pathMap =
+        graph.shortestPath(0, 3, [](auto const& pEdge) { return pEdge->length(); });
+
+    // No path exists, should return empty map
+    CHECK(pathMap.empty());
+  }
+
+  SUBCASE("Invalid Source Node") {
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    graph.addStreet(std::move(s01));
+
+    CHECK_THROWS_AS(
+        graph.shortestPath(99, 1, [](auto const& pEdge) { return pEdge->length(); }),
+        std::out_of_range);
+  }
+
+  SUBCASE("Invalid Target Node") {
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    graph.addStreet(std::move(s01));
+
+    CHECK_THROWS_AS(
+        graph.shortestPath(0, 99, [](auto const& pEdge) { return pEdge->length(); }),
+        std::out_of_range);
+  }
+
+  SUBCASE("Multiple Paths - Choose Shortest") {
+    // Diamond-shaped network
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    Street s02(1, std::make_pair(0, 2), 100.0);
+    Street s13(2, std::make_pair(1, 3), 10.0);
+    Street s23(3, std::make_pair(2, 3), 10.0);
+    graph.addStreets(s01, s02, s13, s23);
+
+    auto pathMap =
+        graph.shortestPath(0, 3, [](auto const& pEdge) { return pEdge->length(); });
+
+    // Verify the shortest path is 0 -> 1 -> 3 (length 20)
+    REQUIRE(pathMap.contains(0));
+    CHECK_EQ(pathMap.at(0).size(), 1);
+    CHECK_EQ(pathMap.at(0)[0], 1);
+
+    REQUIRE(pathMap.contains(1));
+    CHECK_EQ(pathMap.at(1).size(), 1);
+    CHECK_EQ(pathMap.at(1)[0], 3);
+
+    // Node 2 is not on the shortest path (0->2->3 has length 110)
+    CHECK_FALSE(pathMap.contains(2));
+    CHECK_FALSE(pathMap.contains(3));
+  }
+
+  SUBCASE("Complex Network with Coordinates - A* Heuristic") {
+    // Test with coordinates to verify A* heuristic is being used
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(10.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(0.0, 10.0));
+    graph.addNode(3, dsf::geometry::Point(10.0, 10.0));
+
+    Street s01(0, std::make_pair(0, 1), 50.0);
+    Street s02(1, std::make_pair(0, 2), 50.0);
+    Street s13(2, std::make_pair(1, 3), 50.0);
+    Street s23(3, std::make_pair(2, 3), 50.0);
+    graph.addStreets(s01, s02, s13, s23);
+
+    auto pathMap =
+        graph.shortestPath(0, 3, [](auto const& pEdge) { return pEdge->length(); });
+
+    // Both paths have same length (100), so node 0 should have two next hops
+    REQUIRE(pathMap.contains(0));
+    CHECK_EQ(pathMap.at(0).size(), 2);
+    CHECK(std::find(pathMap.at(0).begin(), pathMap.at(0).end(), 1) !=
+          pathMap.at(0).end());
+    CHECK(std::find(pathMap.at(0).begin(), pathMap.at(0).end(), 2) !=
+          pathMap.at(0).end());
+
+    REQUIRE(pathMap.contains(1));
+    CHECK_EQ(pathMap.at(1).size(), 1);
+    CHECK_EQ(pathMap.at(1)[0], 3);
+
+    REQUIRE(pathMap.contains(2));
+    CHECK_EQ(pathMap.at(2).size(), 1);
+    CHECK_EQ(pathMap.at(2)[0], 3);
+  }
+
+  SUBCASE("Large Network") {
+    RoadNetwork graph{};
+    graph.importEdges((DATA_FOLDER / "manhattan_edges.csv").string());
+    graph.importNodeProperties((DATA_FOLDER / "manhattan_nodes.csv").string());
+
+    CHECK_EQ(graph.nNodes(), 120);
+    CHECK_EQ(graph.nEdges(), 436);
+
+    auto pathMap =
+        graph.shortestPath(0, 119, [](auto const& pEdge) { return pEdge->length(); });
+
+    // Verify that a path exists
+    CHECK_FALSE(pathMap.empty());
+
+    // Source should have next hops
+    REQUIRE(pathMap.contains(0));
+    CHECK_GT(pathMap.at(0).size(), 0);
+
+    // Target should not be in the map
+    CHECK_FALSE(pathMap.contains(119));
+
+    // Verify connectivity: for each node in pathMap, verify edges exist to next hops
+    for (auto const& [nodeId, nextHops] : pathMap) {
+      for (auto const& nextHop : nextHops) {
+        CHECK(graph.edge(nodeId, nextHop));
+      }
+    }
+  }
+
+  SUBCASE("Equivalent Paths with Threshold") {
+    // Create a network with two equal-length paths
+    // 0 -> 1 -> 3 (length 20)
+    // 0 -> 2 -> 3 (length 20)
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    Street s02(1, std::make_pair(0, 2), 10.0);
+    Street s13(2, std::make_pair(1, 3), 10.0);
+    Street s23(3, std::make_pair(2, 3), 10.0);
+    graph.addStreets(s01, s02, s13, s23);
+
+    auto pathMap =
+        graph.shortestPath(0, 3, [](auto const& pEdge) { return pEdge->length(); }, 0.01);
+
+    // Check that node 0 has multiple next hops (both 1 and 2)
+    REQUIRE(pathMap.contains(0));
+    CHECK_EQ(pathMap.at(0).size(), 2);
+    CHECK(std::find(pathMap.at(0).begin(), pathMap.at(0).end(), 1) !=
+          pathMap.at(0).end());
+    CHECK(std::find(pathMap.at(0).begin(), pathMap.at(0).end(), 2) !=
+          pathMap.at(0).end());
+
+    // Both intermediate nodes should lead to target
+    REQUIRE(pathMap.contains(1));
+    CHECK_EQ(pathMap.at(1).size(), 1);
+    CHECK_EQ(pathMap.at(1)[0], 3);
+
+    REQUIRE(pathMap.contains(2));
+    CHECK_EQ(pathMap.at(2).size(), 1);
+    CHECK_EQ(pathMap.at(2)[0], 3);
+  }
+}
