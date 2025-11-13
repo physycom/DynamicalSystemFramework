@@ -382,6 +382,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("datetime"),
           dsf::g_docstrings.at("dsf::Dynamics::setInitTime").c_str())
+      .def("ignoreCapacities",
+           &dsf::mobility::FirstOrderDynamics::ignoreCapacities,
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::ignoreCapacities")
+               .c_str())
       .def(
           "setForcePriorities",
           &dsf::mobility::FirstOrderDynamics::setForcePriorities,

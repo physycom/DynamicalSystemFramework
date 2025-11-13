@@ -1,10 +1,12 @@
 #pragma once
 
+#include <optional>
+
 #include "RoadDynamics.hpp"
 
 namespace dsf::mobility {
   class FirstOrderDynamics : public RoadDynamics<Delay> {
-    double m_alpha;
+    std::optional<double> m_alpha;
     double m_speedFluctuationSTD;
 
     double m_speedFactor(double const& density) const;
@@ -23,9 +25,10 @@ namespace dsf::mobility {
     FirstOrderDynamics(RoadNetwork& graph,
                        bool useCache = false,
                        std::optional<unsigned int> seed = std::nullopt,
-                       double alpha = 0.,
+                       std::optional<double> alpha = std::nullopt,
                        PathWeight const weightFunction = PathWeight::TRAVELTIME,
                        std::optional<double> weightTreshold = std::nullopt);
+    void ignoreCapacities();
     /// @brief Set the speed of an agent
     /// @param agentId The id of the agent
     /// @throw std::invalid_argument, If the agent is not found

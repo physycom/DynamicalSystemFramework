@@ -2,7 +2,7 @@
 
 namespace dsf::mobility {
   double FirstOrderDynamics::m_speedFactor(double const& density) const {
-    return (1. - m_alpha * density);
+    return (1. - m_alpha.value_or(0.) * density);
   }
   double FirstOrderDynamics::m_streetEstimatedTravelTime(
       std::unique_ptr<Street> const& pStreet) const {
@@ -12,22 +12,25 @@ namespace dsf::mobility {
   FirstOrderDynamics::FirstOrderDynamics(RoadNetwork& graph,
                                          bool useCache,
                                          std::optional<unsigned int> seed,
-                                         double alpha,
+                                         std::optional<double> alpha,
                                          PathWeight const weightFunction,
                                          std::optional<double> weightTreshold)
       : RoadDynamics<Delay>(graph, useCache, seed, weightFunction, weightTreshold),
         m_alpha{alpha},
         m_speedFluctuationSTD{0.} {
-    if (alpha < 0. || alpha > 1.) {
+    if (alpha.has_value() && (*alpha < 0. || *alpha > 1.)) {
       throw std::invalid_argument(
-          std::format("The minimum speed ratio ({}) must be in [0, 1[", alpha));
+          std::format("The minimum speed ratio ({}) must be in [0, 1[", *alpha));
     }
     double globMaxTimePenalty{0.};
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      globMaxTimePenalty =
-          std::max(globMaxTimePenalty,
-                   std::ceil(pStreet->length() / ((1. - m_alpha) * pStreet->maxSpeed())));
+    if (m_alpha.has_value()) {
+      for (const auto& [streetId, pStreet] : this->graph().edges()) {
+        globMaxTimePenalty =
+            std::max(globMaxTimePenalty,
+                    std::ceil(pStreet->length() / ((1. - *m_alpha) * pStreet->maxSpeed())));
+      }
     }
+
     if (globMaxTimePenalty > static_cast<double>(std::numeric_limits<Delay>::max())) {
       throw std::overflow_error(
           std::format("The maximum time penalty ({}) is greater than the "
@@ -37,14 +40,24 @@ namespace dsf::mobility {
     }
   }
 
+  void FirstOrderDynamics::ignoreCapacities() {
+    tbb::parallel_for_each(
+        this->graph().edges().begin(),
+        this->graph().edges().end(),
+        [](auto const& edgePair) { edgePair.second->setCapacity(std::numeric_limits<Size>::max()); });
+    tbb::parallel_for_each(
+        this->graph().nodes().begin(),
+        this->graph().nodes().end(),
+        [](auto const& nodePair) { nodePair.second->setCapacity(std::numeric_limits<Size>::max()); });
+  }
   void FirstOrderDynamics::setAgentSpeed(std::unique_ptr<Agent> const& pAgent) {
-    const auto& street{this->graph().edge(pAgent->streetId().value())};
-    double speed{street->maxSpeed() * this->m_speedFactor(street->density(true))};
+    const auto& pStreet{this->graph().edge(pAgent->streetId().value())};
+    double speed{pStreet->maxSpeed() * this->m_speedFactor(pStreet->density(true))};
     if (m_speedFluctuationSTD > 0.) {
       std::normal_distribution<double> speedDist{speed, speed * m_speedFluctuationSTD};
       speed = speedDist(this->m_generator);
     }
-    speed < 0. ? pAgent->setSpeed(street->maxSpeed() * (1. - m_alpha))
+    speed < 0. ? pAgent->setSpeed(pStreet->maxSpeed() * (1. - m_alpha.value_or(0.)))
                : pAgent->setSpeed(speed);
   }
 
@@ -66,7 +79,7 @@ namespace dsf::mobility {
     Size n{0};
     if (street->nExitingAgents() == 0) {
       n = static_cast<Size>(street->movingAgents().size());
-      double alpha{m_alpha / street->capacity()};
+      double alpha{m_alpha.value_or(0.) / street->capacity()};
       meanSpeed = street->maxSpeed() * n * (1. - 0.5 * alpha * (n - 1.));
     } else {
       for (auto const& pAgent : street->movingAgents()) {
