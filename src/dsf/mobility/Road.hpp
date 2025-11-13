@@ -14,7 +14,7 @@ namespace dsf::mobility {
     double m_length;
     double m_maxSpeed;
     int m_nLanes;
-    int m_capacity;
+    std::size_t m_capacity;
     double m_transportCapacity;
     std::string m_name;
     int m_priority;
@@ -53,8 +53,8 @@ namespace dsf::mobility {
     void setMaxSpeed(double speed);
     /// @brief Set the capacity, in number of agents
     /// @param capacity The capacity
-    /// @throws std::invalid_argument If the capacity is less or equal to 0
-    void setCapacity(int capacity);
+    /// @throws std::invalid_argument If the capacity is 0
+    void setCapacity(std::size_t capacity);
     /// @brief Set the transport capacity, in number of agents
     /// @param transportCapacity The transport capacity
     /// @throws std::invalid_argument If the transport capacity is less or equal to 0
@@ -80,7 +80,7 @@ namespace dsf::mobility {
     int nLanes() const;
     /// @brief Get the road's capacity, in number of agents
     /// @return int The road's capacity, in number of agents
-    int capacity() const;
+    inline auto capacity() const { return m_capacity; };
     /// @brief Get the road's transport capacity, in number of agents
     /// @return double The road's transport capacity, in number of agents
     double transportCapacity() const;

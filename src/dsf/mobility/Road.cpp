@@ -69,10 +69,10 @@ namespace dsf::mobility {
     }
     m_maxSpeed = speed;
   }
-  void Road::setCapacity(int capacity) {
-    if (capacity < 1) {
+  void Road::setCapacity(std::size_t capacity) {
+    if (capacity == 0) {
       throw std::invalid_argument(
-          std::format("The capacity of a road ({}) must be greater than 0.", capacity));
+          std::format("The capacity of a road ({}) must be greater than 0", capacity));
     }
     m_capacity = capacity;
   }
@@ -105,7 +105,6 @@ namespace dsf::mobility {
   double Road::length() const { return m_length; }
   double Road::maxSpeed() const { return m_maxSpeed; }
   int Road::nLanes() const { return m_nLanes; }
-  int Road::capacity() const { return m_capacity; }
   double Road::transportCapacity() const { return m_transportCapacity; }
   std::string Road::name() const { return m_name; }
   int Road::priority() const { return m_priority; }
