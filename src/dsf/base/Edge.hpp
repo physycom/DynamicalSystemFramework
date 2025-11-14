@@ -32,30 +32,34 @@ namespace dsf {
     Edge(const Edge&) = delete;
     virtual ~Edge() = default;
 
-    void resetId(Id newId);
+    /// @brief Set the edge's geometry
+    /// @param geometry dsf::geometry::PolyLine The edge's geometry, a vector of pairs of doubles representing the coordinates of the edge's geometry
     void setGeometry(geometry::PolyLine geometry);
+    /// @brief Set the edge's weight
+    /// @param weight The edge's weight
+    /// @throws std::invalid_argument if the weight is less or equal to 0
     void setWeight(double const weight);
 
     /// @brief Get the edge's id
     /// @return Id The edge's id
-    Id id() const;
+    inline auto id() const { return m_id; }
     /// @brief Get the edge's source node id
     /// @return Id The edge's source node id
-    Id source() const;
+    inline auto source() const { return m_nodePair.first; }
     /// @brief Get the edge's target node id
     /// @return Id The edge's target node id
-    Id target() const;
+    inline auto target() const { return m_nodePair.second; }
     /// @brief Get the edge's node pair
     /// @return std::pair<Id, Id> The edge's node pair, where the first element is the source node id and the second
     /// element is the target node id. The pair is (u, v) with the edge u -> v.
-    std::pair<Id, Id> const& nodePair() const;
+    inline auto const& nodePair() const { return m_nodePair; }
     /// @brief Get the edge's geometry
     /// @return dsf::geometry::PolyLine The edge's geometry, a vector of pairs of doubles representing the coordinates of the edge's geometry
-    geometry::PolyLine const& geometry() const;
+    inline auto const& geometry() const { return m_geometry; }
 
     /// @brief Get the edge's angle, in radians, between the source and target nodes
     /// @return double The edge's angle, in radians
-    double angle() const;
+    inline auto angle() const { return m_angle; }
     /// @brief Get the edge's weight
     /// @return double The edge's weight
     double weight() const;

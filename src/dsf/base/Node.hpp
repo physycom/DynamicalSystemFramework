@@ -72,7 +72,9 @@ namespace dsf {
     /// @brief Set the node's name
     /// @param name The node's name
     inline void setName(const std::string& name) noexcept { m_name = name; }
-
+    /// @brief Add an ingoing edge to the node
+    /// @param edgeId The edge's id
+    /// @throws std::invalid_argument if the edge already exists in the ingoing edges
     inline void addIngoingEdge(Id edgeId) {
       if (std::find(m_ingoingEdges.cbegin(), m_ingoingEdges.cend(), edgeId) !=
           m_ingoingEdges.cend()) {
@@ -83,7 +85,9 @@ namespace dsf {
       }
       m_ingoingEdges.push_back(edgeId);
     }
-
+    /// @brief Add an outgoing edge to the node
+    /// @param edgeId The edge's id
+    /// @throws std::invalid_argument if the edge already exists in the outgoing edges
     inline void addOutgoingEdge(Id edgeId) {
       if (std::find(m_outgoingEdges.cbegin(), m_outgoingEdges.cend(), edgeId) !=
           m_outgoingEdges.cend()) {
