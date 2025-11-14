@@ -58,7 +58,7 @@ namespace dsf::mobility {
     void setStreetId(std::optional<Id> streetId = std::nullopt);
     /// @brief Set the id of the next street
     /// @param nextStreetId The id of the next street
-    void setNextStreetId(Id nextStreetId);
+    inline auto setNextStreetId(Id nextStreetId) { m_nextStreetId = nextStreetId; }
     /// @brief Set the agent's speed
     /// @param speed, The agent's speed
     /// @throw std::invalid_argument, if speed is negative

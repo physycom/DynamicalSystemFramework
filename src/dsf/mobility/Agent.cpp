@@ -38,7 +38,6 @@ namespace dsf::mobility {
     m_streetId = streetId;
     m_nextStreetId = std::nullopt;
   }
-  void Agent::setNextStreetId(Id nextStreetId) { m_nextStreetId = nextStreetId; }
   void Agent::setSpeed(double speed) {
     if (speed < 0.) {
       throw std::invalid_argument(
