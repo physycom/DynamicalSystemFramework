@@ -1,5 +1,7 @@
 #include "Agent.hpp"
 
+#include <utility>
+
 namespace dsf::mobility {
   Agent::Agent(std::time_t const& spawnTime,
                std::optional<Id> itineraryId,
@@ -31,7 +33,7 @@ namespace dsf::mobility {
   void Agent::setStreetId(std::optional<Id> streetId) {
     if (!streetId.has_value()) {
       assert(m_nextStreetId.has_value());
-      m_streetId = std::move(m_nextStreetId);
+      m_streetId = std::exchange(m_nextStreetId, std::nullopt);
       return;
     }
     assert(m_nextStreetId.has_value() ? streetId == m_nextStreetId.value() : true);
