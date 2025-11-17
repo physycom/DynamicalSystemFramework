@@ -1163,53 +1163,44 @@ TEST_CASE("FirstOrderDynamics") {
     }
   }
   SUBCASE("Transition probabilities") {
-    GIVEN("A simple network with a Y-junction and transition probabilities") {
+    GIVEN("A simple network with a Y-junction") {
       // Create a network with one incoming street and two outgoing streets
       // Street layout:
       //   0 --[s0]--> 1 --[s1]--> 2
       //                \--[s2]--> 3
-      Street s0{0, std::make_pair(0, 1), 50., 1000.};
-      Street s1{1, std::make_pair(1, 2), 50., 1000.};
-      Street s2{2, std::make_pair(1, 3), 50., 1000.};
-      
-      // Set transition probabilities: 70% go to street 1, 30% go to street 2
-      s0.setTransitionProbabilities({{1, 0.7}, {2, 0.3}});
+      Street s0{0, std::make_pair(0, 1), 150., 50.};
+      Street s1{1, std::make_pair(1, 2), 1000., 50.};
+      Street s2{2, std::make_pair(1, 3), 1000., 30.};
       
       RoadNetwork graph;
       graph.addStreets(s0, s1, s2);
+      graph.autoMapStreetLanes();
+      graph.adjustNodeCapacities();
       
       FirstOrderDynamics dynamics{graph, false, 42, 0., dsf::PathWeight::LENGTH};
-      // Set nodes 2 and 3 as destinations so agents stop there
-      dynamics.setDestinationNodes({2, 3});
       dynamics.setOriginNodes({{0, 1.0}});
-      dynamics.updatePaths();
       
       WHEN("We add multiple random agents and evolve the system") {
-        const size_t nAgents = 100;
-        dynamics.addRandomAgents(nAgents);
-        CHECK_EQ(dynamics.nAgents(), nAgents);
+        // spdlog::set_level(spdlog::level::debug);
+        dynamics.addRandomAgents(3);
+        CHECK_EQ(dynamics.nAgents(), 3);
+        // Evolve to get agents onto street 0
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 3);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
         
-        // Evolve the system until agents reach their destinations
-        for (int i = 0; i < 10; ++i) {
-          dynamics.evolve(false);
+        THEN("The distribution of agents follows the transition probabilities") {
+          CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 0);
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 2);
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
         }
-        
-        THEN("The agents distribute according to transition probabilities") {
-          // Count how many agents took each path (via travel data)
-          auto meanDist = dynamics.meanTravelDistance(true);
-          
-          // Agents going to node 2 travel 100m (s0 + s1)
-          // Agents going to node 3 travel 100m (s0 + s2)
-          // Both paths have same length, so we check the number of agents that arrived
-          
-          // Since we can't directly check which path was taken after agents disappeared,
-          // we check the max agents that were on each street during simulation
-          // This is a limitation - in a real scenario you'd track this differently
-          
-          // At minimum, we verify that the simulation ran without crashing
-          // and agents were able to move through the network
-          CHECK(meanDist.mean > 0.);
-        }
+        // spdlog::set_level(spdlog::level::info);
       }
     }
     

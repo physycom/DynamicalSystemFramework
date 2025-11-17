@@ -618,6 +618,7 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::m_evolveStreet(const std::unique_ptr<Street>& pStreet,
                                              bool reinsert_agents) {
     auto const nLanes = pStreet->nLanes();
+    // Enqueue moving agents if their free time is up
     while (!pStreet->movingAgents().empty()) {
       auto const& pAgent{pStreet->movingAgents().top()};
       if (pAgent->freeTime() < this->time_step()) {
@@ -644,6 +645,9 @@ namespace dsf::mobility {
       auto const nextStreetId =
           this->m_nextStreetId(pAgent, pStreet->target(), pStreet->id());
       if (!nextStreetId.has_value()) {
+        spdlog::debug("No next street found for agent {} at node {}",
+                      *pAgent,
+                      pStreet->target());
         if (pAgent->isRandom()) {
           std::uniform_int_distribution<size_t> laneDist{0,
                                                          static_cast<size_t>(nLanes - 1)};
@@ -908,10 +912,14 @@ namespace dsf::mobility {
                           destinationNode->id());
           }
         } else {
-          if (pAgentTemp->distance() >= m_maxTravelDistance) {
+          if (!pAgentTemp->nextStreetId().has_value()) {
             bArrived = true;
-          }
-          if (!bArrived &&
+            spdlog::debug("Random agent {} has arrived at destination node {}",
+                          pAgentTemp->id(),
+                          destinationNode->id());
+          } else if (pAgentTemp->distance() >= m_maxTravelDistance) {
+            bArrived = true;
+          } else if (!bArrived &&
               (this->time_step() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
             bArrived = true;
           }
