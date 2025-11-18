@@ -1086,8 +1086,15 @@ namespace dsf::mobility {
       }
       if (!pAgent->nextStreetId().has_value()) {
         spdlog::debug("No next street id, generating a random one");
-        pAgent->setNextStreetId(
-            this->m_nextStreetId(pAgent, pSourceNode->id(), pAgent->streetId()).value());
+        auto const nextStreetId{
+            this->m_nextStreetId(pAgent, pSourceNode->id(), pAgent->streetId())};
+        if (!nextStreetId.has_value()) {
+          spdlog::debug(
+              "No next street found for agent {} at node {}", *pAgent, pSourceNode->id());
+          itAgent = m_agents.erase(itAgent);
+          continue;
+        }
+        pAgent->setNextStreetId(nextStreetId.value());
       }
       // spdlog::debug("Checking next street {}", pAgent->nextStreetId().value());
       auto const& nextStreet{
