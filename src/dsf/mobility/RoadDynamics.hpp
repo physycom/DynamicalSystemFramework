@@ -65,6 +65,7 @@ namespace dsf::mobility {
     double m_maxTravelDistance;
     std::time_t m_maxTravelTime;
     double m_weightTreshold;
+    std::optional<double> m_timeToleranceFactor;
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
     bool m_forcePriorities;
@@ -126,11 +127,16 @@ namespace dsf::mobility {
     /// @details The passage probability is the probability of passing through a node
     ///   It is useful in the case of random agents
     void setPassageProbability(double passageProbability);
-    /// @brief Set the weight function for the shortest path calculation
+    /// @brief Set the time tolerance factor for killing stagnant agents.
+    ///   An agent will be considered stagnant if it has not moved for timeToleranceFactor * std::ceil(street_length / street_maxSpeed) time units.
+    /// @param timeToleranceFactor The time tolerance factor
+    /// @throw std::invalid_argument If the time tolerance factor is not positive
+    void killStagnantAgents(double timeToleranceFactor = 3.);
+    /// @brief Set the weight function
     /// @param pathWeight The dsf::PathWeight function to use for the pathfinding
-    /// @param weigthThreshold The weight treshold for considering two paths different
+    /// @param weightThreshold The weight threshold for updating the paths (default is std::nullopt)
     void setWeightFunction(PathWeight const pathWeight,
-                           std::optional<double> weigthThreshold = std::nullopt);
+                           std::optional<double> weightThreshold = std::nullopt);
     /// @brief Set the force priorities flag
     /// @param forcePriorities The flag
     /// @details If true, if an agent cannot move to the next street, the whole node is skipped
@@ -389,6 +395,7 @@ namespace dsf::mobility {
         m_passageProbability{std::nullopt},
         m_maxTravelDistance{std::numeric_limits<double>::max()},
         m_maxTravelTime{std::numeric_limits<std::time_t>::max()},
+        m_timeToleranceFactor{std::nullopt},
         m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
     this->setWeightFunction(weightFunction, weightTreshold);
@@ -726,19 +733,15 @@ namespace dsf::mobility {
                         pAgentTemp->freeTime());
           continue;
         }
-        bool overtimed{false};
-        {
+
+        if (m_timeToleranceFactor.has_value()) {
           auto const timeDiff{this->time_step() - pAgentTemp->freeTime()};
-          // A minute of delay has never hurt anyone, right?
-          auto const timeTolerance{
-              std::max(static_cast<std::time_t>(60),
-                       static_cast<std::time_t>(
-                           3 * std::ceil(pStreet->length() / pStreet->maxSpeed())))};
+          auto const timeTolerance{m_timeToleranceFactor.value() *
+                                   std::ceil(pStreet->length() / pStreet->maxSpeed())};
           if (timeDiff > timeTolerance) {
-            overtimed = true;
             spdlog::warn(
-                "Time {} - {} currently on {} ({} turn - Traffic Light? {}), "
-                "has been still for more than {} seconds ({} seconds)",
+                "Time-step {} - {} currently on {} ({} turn - Traffic Light? {}), "
+                "has been still for more than {} seconds ({} seconds). Killing it.",
                 this->time_step(),
                 *pAgentTemp,
                 *pStreet,
@@ -746,17 +749,15 @@ namespace dsf::mobility {
                 this->graph().node(pStreet->target())->isTrafficLight(),
                 timeTolerance,
                 timeDiff);
+            // Kill the agent
+            auto pAgent{pStreet->dequeue(queueIndex)};
+            continue;
           }
         }
         pAgentTemp->setSpeed(0.);
         const auto& destinationNode{this->graph().node(pStreet->target())};
         if (destinationNode->isFull()) {
-          if (overtimed) {
-            spdlog::warn("Skipping due to full destination node {}", *destinationNode);
-          } else {
-            spdlog::debug("Skipping due to space at destination node {}",
-                          *destinationNode);
-          }
+          spdlog::debug("Skipping due to full destination node {}", *destinationNode);
           continue;
         }
         if (destinationNode->isTrafficLight()) {
@@ -866,17 +867,9 @@ namespace dsf::mobility {
           }
           if (!bCanPass) {
             spdlog::debug(
-                "Skipping agent emission from street {} -> {} due to right of way.",
+                "Skipping agent emission from street {} -> {} due to right of way",
                 pStreet->source(),
                 pStreet->target());
-            if (overtimed) {
-              spdlog::warn(
-                  "Skipping agent emission from street {} -> {} due to right of way "
-                  "and overtimed agent {}",
-                  pStreet->source(),
-                  pStreet->target(),
-                  pAgentTemp->id());
-            }
             continue;
           }
         }
@@ -891,14 +884,6 @@ namespace dsf::mobility {
                 "probability",
                 pStreet->source(),
                 pStreet->target());
-            if (overtimed) {
-              spdlog::warn(
-                  "Skipping agent emission from street {} -> {} due to passage "
-                  "probability and overtimed agent {}",
-                  pStreet->source(),
-                  pStreet->target(),
-                  pAgentTemp->id());
-            }
             continue;
           }
         }
@@ -943,21 +928,12 @@ namespace dsf::mobility {
         }
         auto const& nextStreet{this->graph().edge(pAgentTemp->nextStreetId().value())};
         if (nextStreet->isFull()) {
-          if (overtimed) {
-            spdlog::warn(
-                "Skipping agent emission from street {} -> {} due to full "
-                "next street: {}",
-                pStreet->source(),
-                pStreet->target(),
-                *nextStreet);
-          } else {
-            spdlog::debug(
-                "Skipping agent emission from street {} -> {} due to full "
-                "next street: {}",
-                pStreet->source(),
-                pStreet->target(),
-                *nextStreet);
-          }
+          spdlog::debug(
+              "Skipping agent emission from street {} -> {} due to full "
+              "next street: {}",
+              pStreet->source(),
+              pStreet->target(),
+              *nextStreet);
           continue;
         }
         auto pAgent{pStreet->dequeue(queueIndex)};
@@ -1137,6 +1113,15 @@ namespace dsf::mobility {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::killStagnantAgents(double timeToleranceFactor) {
+    if (timeToleranceFactor <= 0.) {
+      throw std::invalid_argument(std::format(
+          "The time tolerance factor ({}) must be positive", timeToleranceFactor));
+    }
+    m_timeToleranceFactor = timeToleranceFactor;
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setWeightFunction(PathWeight const pathWeight,
                                                 std::optional<double> weightTreshold) {
     switch (pathWeight) {
@@ -1293,6 +1278,15 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::addAgentsUniformly(Size nAgents,
                                                  std::optional<Id> optItineraryId) {
+    if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
+      auto const nStagnantAgents{m_agents.size()};
+      spdlog::warn(
+          "Removing {} stagnant agents that were not inserted since the previous call to "
+          "addAgentsUniformly().",
+          nStagnantAgents);
+      m_agents.clear();
+      m_nAgents -= nStagnantAgents;
+    }
     if (optItineraryId.has_value() && !this->itineraries().contains(*optItineraryId)) {
       throw std::invalid_argument(
           std::format("No itineraries available. Cannot add agents with itinerary id {}",
@@ -1393,9 +1387,14 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
                                                 const TContainer& src_weights,
                                                 const TContainer& dst_weights) {
-    if (m_itineraries.empty()) {
-      throw std::runtime_error(
-          "No itineraries available, did you mean to call addRandomAgents?");
+    if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
+      auto const nStagnantAgents{m_agents.size()};
+      spdlog::warn(
+          "Removing {} stagnant agents that were not inserted since the previous call to "
+          "addAgentsRandomly().",
+          nStagnantAgents);
+      m_agents.clear();
+      m_nAgents -= nStagnantAgents;
     }
     auto const& nSources{src_weights.size()};
     auto const& nDestinations{dst_weights.size()};
