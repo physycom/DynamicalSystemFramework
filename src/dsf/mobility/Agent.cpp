@@ -32,11 +32,18 @@ namespace dsf::mobility {
   void Agent::setSrcNodeId(Id srcNodeId) { m_srcNodeId = srcNodeId; }
   void Agent::setStreetId(std::optional<Id> streetId) {
     if (!streetId.has_value()) {
-      assert(m_nextStreetId.has_value());
+      if (!m_nextStreetId.has_value()) {
+        throw std::logic_error(std::format(
+            "Agent {} has no next street id to set the current street id to", m_id));
+      }
       m_streetId = std::exchange(m_nextStreetId, std::nullopt);
       return;
     }
-    assert(m_nextStreetId.has_value() ? streetId == m_nextStreetId.value() : true);
+    if (m_nextStreetId.has_value()) {
+      throw std::logic_error(std::format(
+          "Agent {} has a next street id already set, cannot set street id directly",
+          m_id));
+    }
     m_streetId = streetId;
     m_nextStreetId = std::nullopt;
   }

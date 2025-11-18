@@ -127,8 +127,6 @@ struct std::formatter<dsf::mobility::Agent> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
   auto format(const dsf::mobility::Agent& agent, FormatContext&& ctx) const {
-    auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
-                                                   : std::to_string(agent.itineraryId());
     return std::format_to(
         ctx.out(),
         "Agent(id: {}, streetId: {}, srcNodeId: {}, nextStreetId: {}, "
@@ -139,7 +137,7 @@ struct std::formatter<dsf::mobility::Agent> {
         agent.srcNodeId().has_value() ? std::to_string(agent.srcNodeId().value()) : "N/A",
         agent.nextStreetId().has_value() ? std::to_string(agent.nextStreetId().value())
                                          : "N/A",
-        strItinerary,
+        agent.isRandom() ? std::string("RANDOM") : std::to_string(agent.itineraryId()),
         agent.speed(),
         agent.distance(),
         agent.spawnTime(),
