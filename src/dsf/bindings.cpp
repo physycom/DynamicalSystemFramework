@@ -415,6 +415,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("weightFunction"),
            pybind11::arg("weightThreshold") = std::nullopt)
       .def(
+          "killStagnantAgents",
+          &dsf::mobility::FirstOrderDynamics::killStagnantAgents,
+          pybind11::arg("timeToleranceFactor") = 3.,
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::killStagnantAgents").c_str())
+      .def(
           "setDestinationNodes",
           [](dsf::mobility::FirstOrderDynamics& self,
              const std::vector<dsf::Id>& destinationNodes) {
