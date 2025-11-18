@@ -1,46 +1,41 @@
 cmake_minimum_required(VERSION 3.16.0)
 
-project(dsf_examples VERSION 3.0.0 LANGUAGES CXX)
+project(
+  dsf_examples
+  VERSION 3.0.0
+  LANGUAGES CXX)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(TBB REQUIRED CONFIG)
-find_package(fmt REQUIRED)
-find_package(spdlog REQUIRED)
-find_package(simdjson REQUIRED)
-
-# Set the C++ flags
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -O0 -g -fsanitize=address")
-elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-  string(APPEND CMAKE_CXX_FLAGS "-Ofast -march=native -flto=auto -pg")
+# Add -pg flag to enable profiling if DSF_PROFILE is ON
+if(DSF_PROFILE)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+  endif()
 endif()
 
-# Set the folder for the executable
-set(EXECUTABLE_OUTPUT_PATH ../)
-
-include(FetchContent)
-# Get csv-parser
-FetchContent_Declare(csv_parser
-  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser.git
-  GIT_TAG 2.3.0
-)
-FetchContent_GetProperties(csv_parser)
-if(NOT csv_parser_POPULATED)
-  FetchContent_MakeAvailable(csv_parser)
+# Check if being built as part of the main DSF project or standalone
+if(NOT TARGET dsf)
+  # Standalone build - need to find installed DSF
+  find_package(dsf REQUIRED)
 endif()
 
 # add as executable all cpp files into '.' folder
 file(GLOB SOURCES "*.cpp")
-file(GLOB SRC_SOURCES "../src/dsf/sources/*.cpp" "../src/dsf/utility/*.cpp")
+
+# Set the exe folder to be the one of the CMakeLists.txt
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Loop through each source file and create an executable
 foreach(SOURCE ${SOURCES})
-    get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
-	add_executable(${EXE_NAME}.out ${SOURCE} ${SRC_SOURCES})
-    target_include_directories(${EXE_NAME}.out PRIVATE ../src/dsf/headers/ ../src/dsf/utility/TypeTraits/)
-    target_link_libraries(${EXE_NAME}.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog simdjson::simdjson csv)
+  get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
+  add_executable(${EXE_NAME}.out ${SOURCE})
+  target_compile_definitions(${EXE_NAME}.out PRIVATE SPDLOG_USE_STD_FORMAT)
+  target_link_libraries(${EXE_NAME}.out PRIVATE dsf TBB::tbb simdjson::simdjson
+                                                spdlog::spdlog)
+  target_include_directories(${EXE_NAME}.out
+                             PRIVATE $<INSTALL_INTERFACE:include>)
 endforeach()

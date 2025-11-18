@@ -2,7 +2,7 @@
  * @brief Main function to simulate traffic dynamics over Via Stalingrado, in Bologna.
  */
 
-#include "../src/dsf/dsf.hpp"
+#include <dsf/dsf.hpp>
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -19,19 +19,12 @@
 #endif
 #include <atomic>
 
-#include <spdlog/spdlog.h>
-
 std::atomic<unsigned int> progress{0};
 
 using Unit = unsigned int;
 using Delay = uint8_t;
 
-using RoadNetwork = dsf::RoadNetwork;
-using Itinerary = dsf::Itinerary;
-using Dynamics = dsf::FirstOrderDynamics;
-using Street = dsf::Street;
-using SpireStreet = dsf::SpireStreet;
-using TrafficLight = dsf::TrafficLight;
+using namespace dsf::mobility;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"
@@ -56,7 +49,7 @@ int main() {
   RoadNetwork graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
-  dsf::Road::setMeanVehicleLength(8.);
+  dsf::mobility::Road::setMeanVehicleLength(8.);
   Street s01{1, std::make_pair(0, 1), 2281., 13.9, 2};
   Street s12{7, std::make_pair(1, 2), 118., 13.9, 2};
   Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};
@@ -80,14 +73,11 @@ int main() {
 
   graph.addStreets(s01, s12, s23, s34);
   graph.adjustNodeCapacities();
-  graph.makeSpireStreet(19);
-  auto& spire = graph.edge<SpireStreet>(19);
-
-  spdlog::info("Intersections: {}", graph.nNodes());
-  spdlog::info("Streets: {}", graph.nEdges());
+  graph.addCoil(19);
+  auto const& coil = graph.edge(19);
 
   // Create the dynamics
-  Dynamics dynamics{graph, false, 69, 0.6};
+  FirstOrderDynamics dynamics{graph, false, 69, 0.6};
   dynamics.setSpeedFluctuationSTD(0.2);
   dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(4, 4)));
   dynamics.updatePaths();
@@ -110,7 +100,8 @@ int main() {
         ++it;
       }
       if (progress % 300 == 0) {
-        ofs << progress << ';' << spire.outputCounts(true) << std::endl;
+        ofs << progress << ';' << coil->counts() << std::endl;
+        coil->resetCounter();
       }
       dynamics.addAgents(*it, 4, 0);
     }

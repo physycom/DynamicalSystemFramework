@@ -1,0 +1,131 @@
+name: "CI: Cmake debug testing"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build_and_test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update
+          sudo apt install -y lcov gcovr build-essential cmake libhwloc-dev
+
+      - name: Install dependencies on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install tbb simdjson
+
+      - name: Install dependencies on Windows (vcpkg)
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git vcpkg
+          cd vcpkg
+          .\bootstrap-vcpkg.bat
+          echo "VCPKG_ROOT=$env:GITHUB_WORKSPACE\vcpkg" >> $env:GITHUB_ENV
+          echo "VCPKG_INSTALLED=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
+
+      - name: Build on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Coverage -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
+          cmake --build . -j$(nproc) --config Coverage
+
+      - name: Build on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix simdjson)" \
+            -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
+          cmake --build . -j$(sysctl -n hw.ncpu) --config Debug
+
+      - name: Build on Windows
+        if: matrix.os == 'windows-latest'
+        working-directory: ${{ github.workspace }}
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          cd build
+          $vcpkg_toolchain = "$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake"
+          cmake .. -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Debug -A x64 -DCMAKE_INSTALL_PREFIX="$env:GITHUB_WORKSPACE\install"
+          cmake --build . -j $env:NUMBER_OF_PROCESSORS --config Debug
+
+      # Install the build
+      - name: Install on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}
+        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install
+
+      - name: Install on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}
+        run: cmake --install build --prefix ${GITHUB_WORKSPACE}/install
+
+      - name: Install on Windows
+        if: matrix.os == 'windows-latest'
+        working-directory: ${{ github.workspace }}
+        shell: powershell
+        run: cmake --install build --config Debug --prefix "$env:GITHUB_WORKSPACE\install"
+
+      # Make test executables runnable where needed
+      - name: Fix permissions for test executables
+        if: matrix.os != 'windows-latest'
+        run: chmod +x ${{ github.workspace }}/build/Test_* || true
+
+      # Run CTest where available
+      - name: Run tests on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure -j$(nproc)
+
+      - name: Run tests on macOS
+        if: matrix.os == 'macos-latest'
+        working-directory: ${{ github.workspace }}/build
+        run: ctest --output-on-failure -j$(sysctl -n hw.ncpu)
+
+      # - name: Run tests on Windows
+      #   if: matrix.os == 'windows-latest'
+      #   working-directory: ${{ github.workspace }}/build
+      #   shell: powershell
+      #   run: ctest --output-on-failure -C Debug -j $env:NUMBER_OF_PROCESSORS
+
+      - name: Create coverage report
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{github.workspace}}/build
+        run: |
+          lcov --capture --directory .. --output-file coverage.xml --ignore-errors source,gcov --rc geninfo_unexecuted_blocks=1
+          lcov --remove coverage.xml '*/build/_deps/*' '*/test/*' '*/usr/*' --output-file coverage_filtered.xml --ignore-errors source
+          mv coverage_filtered.xml coverage.xml
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4.5.0
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} 
+          file: ${{github.workspace}}/build/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true

@@ -2,10 +2,10 @@
 [![Latest Release](https://img.shields.io/github/v/release/physycom/DynamicalSystemFramework)](https://github.com/physycom/DynamicalSystemFramework/releases/latest)
 [![PyPI version](https://img.shields.io/pypi/v/dsf-mobility)](https://pypi.org/project/dsf-mobility/)
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
-[![TBB](https://img.shields.io/badge/TBB-2021.11.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
-[![SPDLOG](https://img.shields.io/badge/spdlog-1.12.0-blue.svg)](https://github.com/gabime/spdlog)
-[![CSV](https://img.shields.io/badge/CSVparser-2.3.0-blue.svg)](https://github.com/vincentlaucsb/csv-parser)
-[![JSON](https://img.shields.io/badge/simdjson-3.6.4-blue.svg)](https://github.com/simdjson/simdjson)
+[![TBB](https://img.shields.io/badge/TBB-2022.3.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
+[![SPDLOG](https://img.shields.io/badge/spdlog-1.16.0-blue.svg)](https://github.com/gabime/spdlog)
+[![CSV](https://img.shields.io/badge/rapidcsv-8.89-blue.svg)](https://github.com/d99kris/rapidcsv)
+[![JSON](https://img.shields.io/badge/simdjson-4.2.1-blue.svg)](https://github.com/simdjson/simdjson)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
 
 The aim of this project is to rework the original [Traffic Flow Dynamics Model](https://github.com/Grufoony/TrafficFlowDynamicsModel).
@@ -35,14 +35,14 @@ print(dsf.__version__)
 ## Installation (from source)
 
 ### Requirements
-The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, and `spdlog` (with `fmt`).
+The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, `spdlog` and `rapidcsv`.
 To install requirements on Ubuntu:
 ```shell
-sudo apt install libtbb-dev libspdlog-dev libsimdjson-dev cmake
+sudo apt install cmake libhwloc-dev
 ```
 To install requirements on macOS:
 ```shell
-brew install tbb simdjson spdlog cmake
+brew install cmake
 ```
 
 Utilities are written in python. To install their dependencies:
@@ -52,7 +52,7 @@ pip install -r ./requirements.txt
 ### Installation (C++)
 The library can be installed using CMake. To build and install the project in the default folder run:
 ```shell
-cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j$(nproc)
 sudo cmake --install build
 ```
 Otherwise, it is possible to customize the installation path:
@@ -66,7 +66,7 @@ cmake --install build
 ```
 
 ## Installation (Python)
-If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have doxygen installed to generate the docstrings:
+If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have Doxygen installed to generate the docstrings:
 ```shell
 sudo apt install doxygen
 ```
@@ -88,27 +88,29 @@ If you encounter issues, ensure that the installation path is in your `PYTHONPAT
 ## Testing
 This project uses [Doctest](https://github.com/doctest/doctest) for testing.
 
-To compile tests run:
+If the project is compiled in `Debug` or `Coverage` mode, tests are always built.
+Otherwise, you can add the `-DDSF_TESTS=ON` flag to enable test build.
 ```shell
-cd test
-cmake -B build && make -C build
+cmake -B build -DDSF_TESTS=ON
+cmake --build build -j$(nproc)
 ```
-To run all the tests together use the command:
+
+To run the tests use the command:
 ```shell
-./dsf_tests.out
+ctest --test-dir build -j$(nproc)
 ```
 
 ## Benchmarking
 Some functionalities of the library have been benchmarked in order to assess their efficiency.  
-The benchmarks are performed using a small toolkit developed by @sbaldu, in order to keep them simple and
-without needing to rely on large external libraries.  
-To compile the benchmarks use the commands:
+The benchmarks are performed using [Google Benchmarks](https://github.com/google/benchmark).
+To build the benchmarks add the flag `-DDSF_BENCHMARKS=ON` :
 ```shell
-cd benchmark
-cmake -B build && make -C build
+cmake -B build -DDSF_BENCHMARKS=ON
+cmake --build build -j$(nproc)
 ```
 To run all the benchmarks together use the command:
 ```shell
+cd benchmark
 for f in ./*.out ; do ./$f ; done
 ```
 

@@ -8,14 +8,14 @@
 
 using unit = uint32_t;
 
-using RoadNetwork = dsf::RoadNetwork;
-using Itinerary = dsf::Itinerary;
-using Dynamics = dsf::FirstOrderDynamics;
+using RoadNetwork = dsf::mobility::RoadNetwork;
+using Itinerary = dsf::mobility::Itinerary;
+using Dynamics = dsf::mobility::FirstOrderDynamics;
 
 int main() {
   RoadNetwork graph{};
-  std::cout << "Importing matrix.dat...\n";
-  graph.importMatrix("../test/data/rawMatrix.dat", false);
+  std::cout << "Importing manhattan_edges.csv...\n";
+  graph.importEdges("../test/data/manhattan_edges.csv");
   std::cout << "Number of nodes: " << graph.nNodes() << '\n'
             << "Number of streets: " << graph.nEdges() << '\n';
   for (auto const& pair : graph.edges()) {

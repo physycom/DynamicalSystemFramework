@@ -15,6 +15,101 @@ L.control.scale({
   imperial: false
 }).addTo(map);
 
+// Add background menu control
+L.Control.BackgroundMenu = L.Control.extend({
+  options: {
+    position: 'topright'
+  },
+
+  onAdd: function(map) {
+  const container = L.DomUtil.create('div', 'leaflet-control-settings');
+  container.style.position = 'relative';
+
+    const settingsBtn = L.DomUtil.create('button', 'leaflet-control-search-btn', container);
+    settingsBtn.innerHTML = '⚙️';
+    settingsBtn.title = 'Background Options';
+    settingsBtn.onclick = () => {
+      const settingsMenu = container.querySelector('.settings');
+      if (settingsMenu.style.display === 'block') {
+        settingsMenu.style.display = 'none';
+      } else {
+        settingsMenu.style.display = 'block';
+        // Position settings menu to the left of the button
+        settingsMenu.style.position = 'absolute';
+        settingsMenu.style.top = `${settingsBtn.offsetTop}px`;
+        settingsMenu.style.right = `${container.offsetWidth - settingsBtn.offsetLeft + settingsBtn.offsetWidth}px`;
+        settingsMenu.style.width = '100px';
+        settingsMenu.style.zIndex = '1000';
+      }
+    };
+
+    const settingsMenu = L.DomUtil.create('div', 'settings', container);
+    settingsMenu.style.display = 'none'; // hidden initially
+
+    // Create buttons in menu
+    const normalBtn = L.DomUtil.create('button', '', settingsMenu);
+    normalBtn.innerHTML = 'Normal';
+    normalBtn.onclick = () => {
+      tileLayer.getContainer().style.filter = '';
+      settingsMenu.style.display = 'none';
+    };
+
+    const grayBtn = L.DomUtil.create('button', '', settingsMenu);
+    grayBtn.innerHTML = 'Grayscale';
+    grayBtn.onclick = () => {
+      tileLayer.getContainer().style.filter = 'grayscale(100%)';
+      settingsMenu.style.display = 'none';
+    };
+
+    const invertedBtn = L.DomUtil.create('button', '', settingsMenu);
+    invertedBtn.innerHTML = 'Inverted';
+    invertedBtn.onclick = () => {
+      tileLayer.getContainer().style.filter = 'grayscale(100%) invert(100%)';
+      settingsMenu.style.display = 'none';
+    };
+
+    return container;
+  }
+});
+
+// Add search menu control
+L.Control.SearchMenu = L.Control.extend({
+  options: {
+    position: 'topright'
+  },
+
+  onAdd: function(map) {
+    const container = L.DomUtil.create('div', 'leaflet-control-search');
+    container.style.position = 'relative';
+
+    const searchBtn = L.DomUtil.create('button', 'leaflet-control-search-btn', container);
+    searchBtn.innerHTML = '🔍';
+    searchBtn.title = 'Toggle Search Menu';
+    searchBtn.onclick = () => {
+      const searchContainer = document.querySelector('.search-container');
+      if (searchContainer.style.display === 'block') {
+        searchContainer.style.display = 'none';
+      } else {
+        searchContainer.style.display = 'block';
+        // Position search menu to the left of the button
+        searchContainer.style.position = 'absolute';
+        searchContainer.style.top = `${searchBtn.offsetTop}px`;
+        searchContainer.style.right = `${container.offsetWidth - searchBtn.offsetLeft + searchBtn.offsetWidth}px`;
+        searchContainer.style.width = '200px';
+        searchContainer.style.zIndex = '1000';
+      }
+    };
+
+    return container;
+  }
+});
+
+// Add background menu control to map
+map.addControl(new L.Control.BackgroundMenu());
+
+// Add search menu control to map
+map.addControl(new L.Control.SearchMenu());
+
 // Add screenshot control
 L.Control.Screenshot = L.Control.extend({
   options: {
@@ -96,7 +191,7 @@ L.Control.Screenshot = L.Control.extend({
       pdf.addImage(imgData, 'PNG', 0, 0, cropWidth, cropHeight);
 
       // Add simulation timestamp at top right with semi-transparent background and border
-      const timestamp = `Time: ${formatTime(timeStep)}`;
+      const timestamp = `Time: ${formatTime(timeStamp)}`;
       const fontSize = Math.max(12, cropHeight / 30);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(fontSize);
@@ -402,14 +497,17 @@ const overlay = d3.select(map.getPanes().overlayPane).select("svg");
 const g = overlay.append("g").attr("class", "leaflet-zoom-hide");
 
 let edges, densities;
-let timeStep = 0;
+let timeStamp = new Date();
 let highlightedEdge = null;
 let highlightedNode = null;
 
-function formatTime(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+function formatTime(date) {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 // Create a color scale for density values using three color stops
@@ -436,7 +534,7 @@ function updateNodeHighlight() {
 // Update edge info display with current density
 function updateEdgeInfo(edge) {
   const edgeIndex = edges.indexOf(edge);
-  const currentDensityRow = densities.find(d => d.time === timeStep);
+  const currentDensityRow = densities.find(d => d.datetime.getTime() === timeStamp.getTime());
   let density = 'N/A';
   if (currentDensityRow) {
     density = currentDensityRow.densities[edgeIndex];
@@ -447,6 +545,7 @@ function updateEdgeInfo(edge) {
     <strong>Edge ID:</strong> ${edge.id}<br>
     <strong>Source:</strong> ${edge.source}<br>
     <strong>Target:</strong> ${edge.target}<br>
+    <strong>Max Speed:</strong> ${edge.maxspeed || 'N/A'}<br>
     <strong>Name:</strong> ${edge.name}<br>
     <strong>Number of Lanes:</strong> ${edge.nlanes || 'N/A'}<br>
     <strong>Density:</strong> ${density}<br>
@@ -498,6 +597,8 @@ loadDataBtn.addEventListener('click', async function() {
         return;
       }
 
+      timeStamp = densities[0].datetime;
+
     // Calculate median center from edge geometries
     let allLats = [];
     let allLons = [];
@@ -535,9 +636,9 @@ loadDataBtn.addEventListener('click', async function() {
 
     // Update edge colors based on the current time step density data
     function updateDensityVisualization() {
-      const currentDensityRow = densities.find(d => d.time === timeStep);
+      const currentDensityRow = densities.find(d => d.datetime.getTime() === timeStamp.getTime());
       if (!currentDensityRow) {
-        console.error("No density data for time step:", timeStep);
+        console.error("No density data for time step:", timeStamp);
         return;
       }
       const currentDensities = currentDensityRow.densities;
@@ -555,18 +656,23 @@ loadDataBtn.addEventListener('click', async function() {
     }
 
     // Set up the time slider based on the density data's maximum time value
-    const maxTimeStep = d3.max(densities, d => d.time);
     const timeSlider = document.getElementById('timeSlider');
     const timeLabel = document.getElementById('timeLabel');
-    // Round up max to the nearest 300 for step consistency
-    timeSlider.max = Math.ceil(maxTimeStep / 300) * 300;
-    timeSlider.step = 300;
-    timeLabel.textContent = `Time Step: ${formatTime(timeStep)}`;
+    // Dynamically determine dt from the first two density datapoints
+    let dt = 300;
+    if (densities.length > 1) {
+      dt = Math.round((densities[1].datetime - densities[0].datetime) / 1000); // in seconds
+      if (dt <= 0) dt = 300;
+    }
+    timeSlider.max = (densities.length - 1) * dt;
+    timeSlider.step = dt;
+    timeLabel.textContent = `${formatTime(timeStamp)}`;
 
     // Update the visualization when the slider value changes
     timeSlider.addEventListener('input', function() {
-      timeStep = parseInt(timeSlider.value);
-      timeLabel.textContent = `Time Step: ${formatTime(timeStep)}`;
+      const index = Math.floor(parseInt(timeSlider.value) / dt);
+      timeStamp = densities[index].datetime;
+      timeLabel.textContent = `${formatTime(timeStamp)}`;
       update();
       // Update edge info if an edge is selected
       if (highlightedEdge) {
@@ -700,7 +806,6 @@ loadDataBtn.addEventListener('click', async function() {
       // Hide data selector and show slider and search
       document.querySelector('.data-selector').style.display = 'none';
       document.querySelector('.slider-container').style.display = 'block';
-      document.querySelector('.search-container').style.display = 'block';
     }).catch(error => {
       console.error("Error loading CSV files:", error);
       alert('Error loading data files. Please check the console for details.');
@@ -732,6 +837,7 @@ function parseEdges(d) {
         source: d.source,
         target: d.target,
         name: d.name,
+        maxspeed: +d.maxspeed,
         nlanes: +d.nlanes,
         geometry: geometry,
         coilcode: d.coilcode
@@ -740,12 +846,12 @@ function parseEdges(d) {
 
 // Parsing function for density CSV
 function parseDensity(d) {
-      const time = +d.time;
+      const datetime = new Date(d.datetime);
       const densities = Object.keys(d)
-        .filter(key => key !== 'time')
+        .filter(key => !key.includes('time'))
         .map(key => {
           const val = d[key] ? d[key].trim() : "";
           return val === "" ? 0 : +val;
         });
-      return { time, densities };
+      return { datetime, densities };
 }

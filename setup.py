@@ -15,7 +15,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_namespace_packages
 from setuptools.command.build_ext import build_ext
 
 
@@ -119,7 +119,8 @@ class CMakeBuild(build_ext):
 
         subprocess.check_call(["cmake", ext.sourcedir] + cmake_args, cwd=build_temp)
         subprocess.check_call(
-            ["cmake", "--build", ".", "--config", cfg] + build_args, cwd=build_temp
+            ["cmake", "--build", ".", "--config", cfg, "--verbose"] + build_args,
+            cwd=build_temp,
         )
 
     def pre_build(self):
@@ -394,17 +395,44 @@ class CMakeBuild(build_ext):
             print("Stub generation completed successfully")
             print(f"stdout: {result.stdout}")
 
-            # Check if stub file was created
+            # Check if stub file or package directory was created
             stub_file = Path(stub_output_dir) / "dsf_cpp.pyi"
+            package_stub_dir = Path(stub_output_dir) / "dsf_cpp"
+
+            source_pkg_dir = Path(__file__).parent / "src" / "dsf"
+            source_stub = source_pkg_dir / "__init__.pyi"
+
             if stub_file.exists():
                 print(f"Stub file successfully created at {stub_file}")
                 # For editable installs, also copy to source directory for development
-                source_stub = Path(__file__).parent / "src" / "dsf" / "__init__.pyi"
                 if source_stub != stub_file:
                     print(f"Copying stub file to package: {source_stub}")
                     shutil.copy2(stub_file, source_stub)
+            elif package_stub_dir.exists():
+                # pybind11-stubgen may emit a package directory with multiple .pyi files
+                init_stub = package_stub_dir / "__init__.pyi"
+                if init_stub.exists():
+                    print(
+                        f"Stub package directory found at {package_stub_dir}, copying __init__.pyi to {source_stub}"
+                    )
+                    source_pkg_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(init_stub, source_stub)
+                else:
+                    print(
+                        f"Stub package directory found at {package_stub_dir} but no __init__.pyi present"
+                    )
+
+                # Also copy any other .pyi files (module-level stubs) into the package source dir
+                for pyi in package_stub_dir.glob("*.pyi"):
+                    dest = source_pkg_dir / pyi.name
+                    if pyi.name == "__init__.pyi":
+                        continue
+                    print(f"Copying {pyi} -> {dest}")
+                    shutil.copy2(pyi, dest)
             else:
-                print(f"Warning: Stub file not found at {stub_file}")
+                print(
+                    f"Warning: Stub file not found at {stub_file} and no package dir at {package_stub_dir}"
+                )
 
         except subprocess.CalledProcessError as e:
             print(f"Warning: Stub generation failed: {e}")
@@ -442,7 +470,6 @@ setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
-        "License :: Free For Educational Use",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: C++",
@@ -465,8 +492,12 @@ setup(
         "optimization",
     ],
     ext_modules=[CMakeExtension("dsf_cpp")],
-    packages=["dsf"],
-    package_dir={"dsf": "src/dsf"},
+    # Use namespace-aware discovery under the `src/` directory so any subpackages
+    # (including implicit/namespace packages) such as `dsf.mobility` are picked up
+    # automatically for distribution.
+    # packages=find_packages(where="src", include=["dsf", "dsf.mobility"]),
+    packages=find_namespace_packages(where="src"),
+    package_dir={"": "src"},
     cmdclass={"build_ext": CMakeBuild},
     package_data={
         "dsf": ["*.pyi"],
@@ -475,5 +506,12 @@ setup(
     include_package_data=True,
     zip_safe=False,
     python_requires=">=3.10",
-    install_requires=["pybind11-stubgen", "osmnx>=2.0.6", "networkx>=3"],
+    install_requires=[
+        "pybind11-stubgen",
+        "osmnx>=2.0.6",
+        "networkx>=3",
+        "numpy",
+        "geopandas",
+        "shapely",
+    ],
 )

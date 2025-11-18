@@ -63,6 +63,22 @@ body, html {
     color: #666;
     font-size: 14px;
   }
+
+  .leaflet-control-search-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    background: white;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-radius: 4px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    font-size: 18px;
+    margin-bottom: 5px;
+    cursor: pointer;
+  }
   
   /* Search container */
   .search-container {
@@ -133,5 +149,38 @@ body, html {
   
   .leaflet-control-screenshot-button:hover {
     background: #f4f4f4;
+  }
+
+  /* Settings control styling */
+  .leaflet-control-settings {
+    position: relative;
+  }
+  
+  .settings {
+    position: absolute;
+    top: 30px;
+    left: -140px;
+    background: white;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+  }
+  
+  .settings button {
+    margin: 2px;
+    padding: 5px 10px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: #f8f8f8;
+    font-size: 12px;
+  }
+  
+  .settings button:hover {
+    background: #e8e8e8;
   }
   

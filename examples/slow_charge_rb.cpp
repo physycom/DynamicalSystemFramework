@@ -1,4 +1,4 @@
-#include "../src/dsf/dsf.hpp"
+#include <dsf/dsf.hpp>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -28,17 +28,12 @@ std::atomic<bool> bExitFlag{false};
 // uncomment these lines to print densities, flows and speeds
 #define PRINT_DENSITIES
 // #define PRINT_FLOWS
-#define PRINT_OUT_SPIRES
 // #define PRINT_SPEEDS
 
-using Unit = unsigned int;
-using Delay = uint8_t;
-
-using RoadNetwork = dsf::RoadNetwork;
-using Dynamics = dsf::FirstOrderDynamics;
-using Street = dsf::Street;
-using SpireStreet = dsf::SpireStreet;
-using Roundabout = dsf::Roundabout;
+using RoadNetwork = dsf::mobility::RoadNetwork;
+using Dynamics = dsf::mobility::FirstOrderDynamics;
+using Street = dsf::mobility::Street;
+using Roundabout = dsf::mobility::Roundabout;
 
 void printLoadingBar(int const i, int const n) {
   std::cout << "Loading: " << std::setprecision(2) << std::fixed << (i * 100. / n) << "%"
@@ -67,8 +62,6 @@ int main(int argc, char** argv) {
   std::cout << "Initial number of agents: " << nAgents << '\n';
   std::cout << "-------------------------------------------------\n";
 
-  const std::string IN_MATRIX{"./data/matrix.dat"};       // input matrix file
-  const std::string IN_COORDS{"./data/coordinates.dsf"};  // input coords file
   const std::string OUT_FOLDER{std::format("{}output_scrb_{}_{}/",
                                            BASE_OUT_FOLDER,
                                            ERROR_PROBABILITY,
@@ -86,31 +79,31 @@ int main(int argc, char** argv) {
   // Starting
   std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};
-  std::cout << "Importing matrix.dat...\n";
-  graph.importMatrix(IN_MATRIX, false);
-  graph.importCoordinates(IN_COORDS);
+  std::cout << "Importing Manhattan-like network...\n";
+  graph.importEdges("../test/data/manhattan_edges.csv");
+  graph.importNodeProperties("../test/data/manhattan_nodes.csv");
   std::cout << "Setting street parameters..." << '\n';
 
   std::cout << "Number of nodes: " << graph.nNodes() << '\n';
   std::cout << "Number of streets: " << graph.nEdges() << '\n';
 
   std::cout << "Rounding the simulation...\n";
-  for (Unit i{0}; i < graph.nNodes(); ++i) {
+  for (std::size_t i{0}; i < graph.nNodes(); ++i) {
     graph.makeRoundabout(i);
   }
-  std::cout << "Making every street a spire...\n";
+  std::cout << "Add a coil on every street...\n";
   for (const auto& [streetId, pStreet] : graph.edges()) {
-    graph.makeSpireStreet(streetId);
+    graph.addCoil(streetId);
   }
   graph.adjustNodeCapacities();
   std::cout << "Done." << std::endl;
 
   std::cout << "Creating dynamics...\n";
 
-  Dynamics dynamics{graph, true, SEED, 0.6};
+  Dynamics dynamics{graph, false, SEED, 0.6};
 
   {
-    std::vector<Unit> destinationNodes;
+    std::vector<dsf::Id> destinationNodes;
     for (auto const& [nodeId, pNode] : dynamics.graph().nodes()) {
       if (pNode->outgoingEdges().size() < 4) {
         destinationNodes.push_back(nodeId);
@@ -128,7 +121,6 @@ int main(int argc, char** argv) {
 
   std::cout << "Done." << std::endl;
   std::cout << "Running simulation...\n";
-
 #ifdef PRINT_FLOWS
   std::ofstream streetFlow(OUT_FOLDER + "flows.csv");
   streetFlow << "time";
@@ -145,18 +137,6 @@ int main(int argc, char** argv) {
   }
   streetSpeed << '\n';
 #endif
-#ifdef PRINT_OUT_SPIRES
-  std::ofstream outSpires(OUT_FOLDER + "out_spires.csv");
-  std::ofstream inSpires(OUT_FOLDER + "in_spires.csv");
-  outSpires << "time";
-  inSpires << "time";
-  for (const auto& [streetId, pStreet] : dynamics.graph().edges()) {
-    outSpires << ';' << streetId;
-    inSpires << ';' << streetId;
-  }
-  outSpires << '\n';
-  inSpires << '\n';
-#endif
 
   int deltaAgents{std::numeric_limits<int>::max()};
   int previousAgents{0};
@@ -170,8 +150,8 @@ int main(int argc, char** argv) {
     }
   });
   // dynamics.addAgentsUniformly(20000);
-  while (dynamics.time() < MAX_TIME) {
-    if (dynamics.time() < MAX_TIME && dynamics.time() % 60 == 0) {
+  while (dynamics.time_step() < MAX_TIME) {
+    if (dynamics.time_step() < MAX_TIME && dynamics.time_step() % 60 == 0) {
       try {
         dynamics.addAgentsUniformly(nAgents);
       } catch (const std::overflow_error& e) {
@@ -183,39 +163,29 @@ int main(int argc, char** argv) {
     }
     dynamics.evolve(false);
 
-    if (dynamics.time() % 2400 == 0) {
+    if (dynamics.time_step() % 2400 == 0) {
       auto const totalDynamicsAgents{dynamics.nAgents()};
       deltaAgents = totalDynamicsAgents - previousAgents;
       if (deltaAgents < 0) {
         ++nAgents;
         std::cout << "- Now I'm adding " << nAgents << " agents.\n";
         std::cout << "Delta agents: " << deltaAgents << '\n';
-        std::cout << "At time: " << dynamics.time() << '\n';
+        std::cout << "At time: " << dynamics.time_step() << '\n';
       }
       previousAgents = totalDynamicsAgents;
     }
 
-    if (dynamics.time() % 300 == 0) {
-#ifdef PRINT_OUT_SPIRES
-      outSpires << dynamics.time();
-      inSpires << dynamics.time();
-      for (const auto& [streetId, pStreet] : dynamics.graph().edges()) {
-        auto& spire = dynamic_cast<SpireStreet&>(*pStreet);
-        outSpires << ';' << spire.outputCounts(false);
-        inSpires << ';' << spire.inputCounts(false);
-      }
-      outSpires << std::endl;
-      inSpires << std::endl;
-#endif
-      printLoadingBar(dynamics.time(), MAX_TIME);
+    if (dynamics.time_step() % 300 == 0) {
+      dynamics.saveCoilCounts(std::format("{}coil_counts.csv", OUT_FOLDER));
+      printLoadingBar(dynamics.time_step(), MAX_TIME);
       dynamics.saveMacroscopicObservables(std::format("{}data.csv", OUT_FOLDER));
     }
-    if (dynamics.time() % 10 == 0) {
+    if (dynamics.time_step() % 10 == 0) {
 #ifdef PRINT_DENSITIES
       dynamics.saveStreetDensities(OUT_FOLDER + "densities.csv", true);
 #endif
 #ifdef PRINT_FLOWS
-      streetFlow << dynamics.time();
+      streetFlow << dynamics.time_step();
       for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& meanSpeed = dynamics.streetMeanSpeed(id);
         if (meanSpeed.has_value()) {
@@ -227,7 +197,7 @@ int main(int argc, char** argv) {
       streetFlow << std::endl;
 #endif
 #ifdef PRINT_SPEEDS
-      streetSpeed << dynamics.time();
+      streetSpeed << dynamics.time_step();
       for (const auto& [id, street] : dynamics.graph().edges()) {
         const auto& meanSpeed = dynamics.streetMeanSpeed(id);
         if (meanSpeed.has_value()) {
@@ -246,9 +216,6 @@ int main(int argc, char** argv) {
 #endif
 #ifdef PRINT_SPEEDS
   streetSpeed.close();
-#endif
-#ifdef PRINT_OUT_SPIRES
-  outSpires.close();
 #endif
   // std::cout << std::endl;
   // std::map<uint8_t, std::string> turnNames{
