@@ -9,8 +9,7 @@ namespace dsf::mobility {
 
     double m_speedFactor(double const& density) const final;
 
-    double m_streetEstimatedTravelTime(
-        std::unique_ptr<Street> const& pStreet) const final;
+    double m_streetEstimatedTravelTime(std::unique_ptr<Street> const& pStreet) const final;
 
   public:
     /// @brief Construct a new First Order Dynamics object

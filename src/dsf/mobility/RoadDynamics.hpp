@@ -80,8 +80,8 @@ namespace dsf::mobility {
     /// @param streetId The id of the incoming street
     /// @return Id The id of the randomly selected next street
     std::optional<Id> m_nextStreetId(std::unique_ptr<Agent> const& pAgent,
-                              Id NodeId,
-                              std::optional<Id> streetId = std::nullopt);
+                                     Id NodeId,
+                                     std::optional<Id> streetId = std::nullopt);
     /// @brief Evolve a street
     /// @param pStreet A std::unique_ptr to the street
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
@@ -98,7 +98,7 @@ namespace dsf::mobility {
 
     void m_trafficlightSingleTailOptimizer(double const& beta,
                                            std::optional<std::ofstream>& logStream);
-    
+
     virtual double m_speedFactor(double const& density) const = 0;
     virtual double m_streetEstimatedTravelTime(
         std::unique_ptr<Street> const& pStreet) const = 0;
@@ -472,9 +472,8 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  std::optional<Id> RoadDynamics<delay_t>::m_nextStreetId(std::unique_ptr<Agent> const& pAgent,
-                                           Id nodeId,
-                                           std::optional<Id> streetId) {
+  std::optional<Id> RoadDynamics<delay_t>::m_nextStreetId(
+      std::unique_ptr<Agent> const& pAgent, Id nodeId, std::optional<Id> streetId) {
     // Get outgoing edges directly - avoid storing targets separately
     const auto& outgoingEdges = this->graph().node(nodeId)->outgoingEdges();
     for (auto id : outgoingEdges) {
@@ -482,19 +481,20 @@ namespace dsf::mobility {
     }
     if (pAgent->isRandom()) {  // Try to use street transition probabilities
       if (outgoingEdges.size() == 1) {
-          return outgoingEdges[0];
-        }
+        return outgoingEdges[0];
+      }
       if (streetId.has_value()) {
-        spdlog::debug("Using street transition probabilities for random agent {}", *pAgent);
+        spdlog::debug("Using street transition probabilities for random agent {}",
+                      *pAgent);
         auto const& pStreetCurrent{this->graph().edge(streetId.value())};
-        auto const speedCurrent{pStreetCurrent->maxSpeed() * this->m_speedFactor(
-            pStreetCurrent->density())};
+        auto const speedCurrent{pStreetCurrent->maxSpeed() *
+                                this->m_speedFactor(pStreetCurrent->density())};
         double cumulativeProbability = 0.0;
         std::unordered_map<Id, double> transitionProbabilities;
         for (const auto outEdgeId : outgoingEdges) {
           auto const& pStreetOut{this->graph().edge(outEdgeId)};
-          auto const speed{pStreetOut->maxSpeed() * this->m_speedFactor(
-              pStreetOut->density())};
+          auto const speed{pStreetOut->maxSpeed() *
+                           this->m_speedFactor(pStreetOut->density())};
           transitionProbabilities[pStreetOut->id()] = speed / speedCurrent;
           if (pStreetOut->target() == pStreetCurrent->source()) {
             transitionProbabilities[pStreetOut->id()] *= 0.1;  // Discourage U-TURNS
@@ -645,9 +645,8 @@ namespace dsf::mobility {
       auto const nextStreetId =
           this->m_nextStreetId(pAgent, pStreet->target(), pStreet->id());
       if (!nextStreetId.has_value()) {
-        spdlog::debug("No next street found for agent {} at node {}",
-                      *pAgent,
-                      pStreet->target());
+        spdlog::debug(
+            "No next street found for agent {} at node {}", *pAgent, pStreet->target());
         if (pAgent->isRandom()) {
           std::uniform_int_distribution<size_t> laneDist{0,
                                                          static_cast<size_t>(nLanes - 1)};
@@ -920,10 +919,10 @@ namespace dsf::mobility {
           } else if (pAgentTemp->distance() >= m_maxTravelDistance) {
             bArrived = true;
           } else if (!bArrived &&
-              (this->time_step() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
+                     (this->time_step() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
             bArrived = true;
           }
-        } 
+        }
         if (bArrived) {
           auto pAgent{pStreet->dequeue(queueIndex)};
           spdlog::debug(
