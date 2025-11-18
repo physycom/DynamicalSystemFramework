@@ -97,7 +97,7 @@ cmake --build build -j$(nproc)
 
 To run the tests use the command:
 ```shell
-ctest --test-dir build -j$(nproc)
+ctest --test-dir build -j$(nproc) --output-on-failure
 ```
 
 ## Benchmarking
