@@ -483,16 +483,12 @@ namespace dsf::mobility {
       std::unique_ptr<Agent> const& pAgent, Id nodeId, std::optional<Id> streetId) {
     // Get outgoing edges directly - avoid storing targets separately
     const auto& outgoingEdges = this->graph().node(nodeId)->outgoingEdges();
-    for (auto id : outgoingEdges) {
-      spdlog::debug("Outgoing edge from node {}: {}", nodeId, id);
+    if (outgoingEdges.size() == 1) {
+      return outgoingEdges[0];
     }
     if (pAgent->isRandom()) {  // Try to use street transition probabilities
-      if (outgoingEdges.size() == 1) {
-        return outgoingEdges[0];
-      }
+      spdlog::trace("Computing m_nextStreetId for {}", *pAgent);
       if (streetId.has_value()) {
-        spdlog::debug("Using street transition probabilities for random agent {}",
-                      *pAgent);
         auto const& pStreetCurrent{this->graph().edge(streetId.value())};
         auto const speedCurrent{pStreetCurrent->maxSpeed() *
                                 this->m_speedFactor(pStreetCurrent->density())};
