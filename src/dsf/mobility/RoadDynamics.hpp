@@ -448,10 +448,11 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  std::unique_ptr<Agent> RoadDynamics<delay_t>::m_killAgent(std::unique_ptr<Agent> pAgent) {
+  std::unique_ptr<Agent> RoadDynamics<delay_t>::m_killAgent(
+      std::unique_ptr<Agent> pAgent) {
     spdlog::trace("Killing agent {}", *pAgent);
-    m_travelDTs.push_back(
-        {pAgent->distance(), static_cast<double>(this->time_step() - pAgent->spawnTime())});
+    m_travelDTs.push_back({pAgent->distance(),
+                           static_cast<double>(this->time_step() - pAgent->spawnTime())});
     --m_nAgents;
     return std::move(pAgent);
   }
@@ -516,9 +517,9 @@ namespace dsf::mobility {
           double probability = speed * speedCurrent;
           if (pStreetOut->target() == pStreetCurrent->source()) {
             if (pNode->isRoundabout()) {
-              probability *= U_TURN_PENALTY_FACTOR; // Discourage U-TURNS
+              probability *= U_TURN_PENALTY_FACTOR;  // Discourage U-TURNS
             } else {
-              continue; // No U-TURNS
+              continue;  // No U-TURNS
             }
           }
           transitionProbabilities[pStreetOut->id()] = probability;
