@@ -499,7 +499,7 @@ namespace dsf::mobility {
           auto const& pStreetOut{this->graph().edge(outEdgeId)};
           auto const speed{pStreetOut->maxSpeed() *
                            this->m_speedFactor(pStreetOut->density())};
-          transitionProbabilities[pStreetOut->id()] = speed / speedCurrent;
+          transitionProbabilities[pStreetOut->id()] = speed * speedCurrent;
           if (pStreetOut->target() == pStreetCurrent->source()) {
             transitionProbabilities[pStreetOut->id()] *=
                 U_TURN_PENALTY_FACTOR;  // Discourage U-TURNS
@@ -1343,13 +1343,12 @@ namespace dsf::mobility {
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     auto const bUniformSpawn{spawnWeights.empty()};
     auto const bSingleSource{spawnWeights.size() == 1};
-    while (--nAgents) {
+    while (nAgents--) {
       if (bUniformSpawn) {
         this->addAgent();
       } else if (bSingleSource) {
         this->addAgent(std::nullopt, spawnWeights.begin()->first);
       } else {
-        std::uniform_real_distribution<double> uniformDist{0., 1.};
         auto const randValue{uniformDist(this->m_generator)};
         double cumulativeWeight{0.};
         for (auto const& [spawnNodeId, weight] : spawnWeights) {
@@ -1359,15 +1358,6 @@ namespace dsf::mobility {
             break;
           }
         }
-      }
-    }
-    auto const randValue{uniformDist(this->m_generator)};
-    double cumulativeWeight{0.};
-    for (auto const& [spawnNodeId, weight] : spawnWeights) {
-      cumulativeWeight += weight;
-      if (randValue <= cumulativeWeight) {
-        this->addAgent(std::nullopt, spawnNodeId);
-        break;
       }
     }
   }

@@ -48,7 +48,7 @@ namespace dsf::mobility {
                         AgentComparator>
         m_movingAgents;
     std::vector<Direction> m_laneMapping;
-    std::unordered_map<Id, double> m_transitionProbabilities;
+    // std::unordered_map<Id, double> m_transitionProbabilities;
     std::optional<Counter> m_counter;
 
   public:
@@ -84,12 +84,12 @@ namespace dsf::mobility {
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
     static void setMeanVehicleLength(double meanVehicleLength);
-    /// @brief Set the street's transition probabilities
-    /// @param transitionProbabilities The street's transition probabilities
-    inline void setTransitionProbabilities(
-        std::unordered_map<Id, double> const& transitionProbabilities) {
-      m_transitionProbabilities = transitionProbabilities;
-    };
+    // /// @brief Set the street's transition probabilities
+    // /// @param transitionProbabilities The street's transition probabilities
+    // inline void setTransitionProbabilities(
+    //     std::unordered_map<Id, double> const& transitionProbabilities) {
+    //   m_transitionProbabilities = transitionProbabilities;
+    // };
     /// @brief Enable a coil (dsf::Counter sensor) on the street
     /// @param name The name of the counter (default is "Coil_<street_id>")
     void enableCounter(std::string name = std::string());
@@ -118,9 +118,9 @@ namespace dsf::mobility {
     /// @return bool, True if the street is full, false otherwise
     inline bool isFull() const final { return this->nAgents() == this->m_capacity; }
 
-    inline auto const& transitionProbabilities() const {
-      return m_transitionProbabilities;
-    }
+    // inline auto const& transitionProbabilities() const {
+    //   return m_transitionProbabilities;
+    // }
     /// @brief Get the name of the counter
     /// @return std::string The name of the counter
     inline auto counterName() const {

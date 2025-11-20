@@ -1168,7 +1168,7 @@ TEST_CASE("FirstOrderDynamics") {
       // Street layout:
       //   0 --[s0]--> 1 --[s1]--> 2
       //                \--[s2]--> 3
-      Street s0{0, std::make_pair(0, 1), 150., 50.};
+      Street s0{0, std::make_pair(0, 1), 300., 50.};
       Street s1{1, std::make_pair(1, 2), 1000., 50.};
       Street s2{2, std::make_pair(1, 3), 1000., 30.};
 
@@ -1182,14 +1182,20 @@ TEST_CASE("FirstOrderDynamics") {
 
       WHEN("We add multiple random agents and evolve the system") {
         // spdlog::set_level(spdlog::level::debug);
-        dynamics.addRandomAgents(3);
-        CHECK_EQ(dynamics.nAgents(), 3);
+        dynamics.addRandomAgents(6);
+        CHECK_EQ(dynamics.nAgents(), 6);
         // Evolve to get agents onto street 0
         dynamics.evolve(false);
         dynamics.evolve(false);
         dynamics.evolve(false);
         dynamics.evolve(false);
-        CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 3);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 6);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
         dynamics.evolve(false);
         dynamics.evolve(false);
         dynamics.evolve(false);
@@ -1197,8 +1203,8 @@ TEST_CASE("FirstOrderDynamics") {
 
         THEN("The distribution of agents follows the transition probabilities") {
           CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 0);
-          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 2);
-          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 4);
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 2);
         }
         // spdlog::set_level(spdlog::level::info);
       }
@@ -1244,8 +1250,8 @@ TEST_CASE("FirstOrderDynamics") {
 
         THEN("The distribution of agents follows the transition probabilities") {
           CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 0);
-          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 3);
-          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 2);
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 2);
           CHECK_EQ(dynamics.graph().edge(3)->nAgents(), 2);
         }
       }
