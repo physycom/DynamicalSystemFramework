@@ -449,6 +449,7 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   std::unique_ptr<Agent> RoadDynamics<delay_t>::m_killAgent(std::unique_ptr<Agent> pAgent) {
+    spdlog::trace("Killing agent {}", *pAgent);
     m_travelDTs.push_back(
         {pAgent->distance(), static_cast<double>(this->time_step() - pAgent->spawnTime())});
     --m_nAgents;
