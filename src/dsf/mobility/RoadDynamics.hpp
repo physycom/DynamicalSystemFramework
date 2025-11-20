@@ -72,6 +72,9 @@ namespace dsf::mobility {
     bool m_forcePriorities;
 
   private:
+    /// @brief Kill an agent
+    /// @param pAgent A std::unique_ptr to the agent to kill
+    std::unique_ptr<Agent> m_killAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Update the path of a single itinerary using Dijsktra's algorithm
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(std::unique_ptr<Itinerary> const& pItinerary);
@@ -445,6 +448,15 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
+  std::unique_ptr<Agent> RoadDynamics<delay_t>::m_killAgent(std::unique_ptr<Agent> pAgent) {
+    m_travelDTs.push_back(
+        {pAgent->distance(), static_cast<double>(this->time_step() - pAgent->spawnTime())});
+    --m_nAgents;
+    return std::move(pAgent);
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_updatePath(std::unique_ptr<Itinerary> const& pItinerary) {
     if (m_bCacheEnabled) {
       auto const& file = std::format("{}{}.ity", CACHE_FOLDER, pItinerary->id());
@@ -483,7 +495,8 @@ namespace dsf::mobility {
   std::optional<Id> RoadDynamics<delay_t>::m_nextStreetId(
       std::unique_ptr<Agent> const& pAgent, Id nodeId, std::optional<Id> streetId) {
     // Get outgoing edges directly - avoid storing targets separately
-    const auto& outgoingEdges = this->graph().node(nodeId)->outgoingEdges();
+    auto const& pNode{this->graph().node(nodeId)};
+    auto const& outgoingEdges = pNode->outgoingEdges();
     if (outgoingEdges.size() == 1) {
       return outgoingEdges[0];
     }
@@ -491,20 +504,24 @@ namespace dsf::mobility {
       spdlog::trace("Computing m_nextStreetId for {}", *pAgent);
       if (streetId.has_value()) {
         auto const& pStreetCurrent{this->graph().edge(streetId.value())};
-        auto const speedCurrent{pStreetCurrent->maxSpeed() *
-                                this->m_speedFactor(pStreetCurrent->density())};
+        auto const speedCurrent{pStreetCurrent->maxSpeed() /**
+                                this->m_speedFactor(pStreetCurrent->density())*/};
         double cumulativeProbability = 0.0;
         std::unordered_map<Id, double> transitionProbabilities;
         for (const auto outEdgeId : outgoingEdges) {
           auto const& pStreetOut{this->graph().edge(outEdgeId)};
-          auto const speed{pStreetOut->maxSpeed() *
-                           this->m_speedFactor(pStreetOut->density())};
-          transitionProbabilities[pStreetOut->id()] = speed * speedCurrent;
+          auto const speed{pStreetOut->maxSpeed() /**
+                           this->m_speedFactor(pStreetOut->density())*/};
+          double probability = speed * speedCurrent;
           if (pStreetOut->target() == pStreetCurrent->source()) {
-            transitionProbabilities[pStreetOut->id()] *=
-                U_TURN_PENALTY_FACTOR;  // Discourage U-TURNS
+            if (pNode->isRoundabout()) {
+              probability *= U_TURN_PENALTY_FACTOR; // Discourage U-TURNS
+            } else {
+              continue; // No U-TURNS
+            }
           }
-          cumulativeProbability += transitionProbabilities.at(pStreetOut->id());
+          transitionProbabilities[pStreetOut->id()] = probability;
+          cumulativeProbability += probability;
         }
         std::uniform_real_distribution<double> uniformDist{0., cumulativeProbability};
         auto const randValue = uniformDist(this->m_generator);
@@ -748,7 +765,7 @@ namespace dsf::mobility {
                 timeTolerance,
                 timeDiff);
             // Kill the agent
-            auto pAgent{pStreet->dequeue(queueIndex)};
+            this->m_killAgent(std::move(pStreet->dequeue(queueIndex)));
             continue;
           }
         }
@@ -907,13 +924,7 @@ namespace dsf::mobility {
           }
         }
         if (bArrived) {
-          auto pAgent{pStreet->dequeue(queueIndex)};
-          spdlog::debug(
-              "{} has arrived at destination node {}", *pAgent, destinationNode->id());
-          m_travelDTs.push_back(
-              {pAgent->distance(),
-               static_cast<double>(this->time_step() - pAgent->spawnTime())});
-          --m_nAgents;
+          auto pAgent = this->m_killAgent(std::move(pStreet->dequeue(queueIndex)));
           if (reinsert_agents) {
             // reset Agent's values
             pAgent->reset(this->time_step());
