@@ -170,7 +170,7 @@ namespace dsf::mobility {
       }
     }
   }
-  void RoadNetwork::m_jsonEdgesImporter(std::ifstream& file, const bool bCreateInverse) {
+  void RoadNetwork::m_jsonEdgesImporter(std::ifstream& file) {
     // Read the file into a string
     std::string json_str((std::istreambuf_iterator<char>(file)),
                          std::istreambuf_iterator<char>());
@@ -239,44 +239,40 @@ namespace dsf::mobility {
         name = std::string(edge_properties["name"].get_string().value());
       }
 
-      if (!bCreateInverse) {
-        addStreet(Street(edge_id,
-                         std::make_pair(src_node_id, dst_node_id),
-                         edge_length,
-                         edge_maxspeed,
-                         edge_lanes,
-                         name,
-                         geometry));
-        // Check if there is coilcode property
-        if (!edge_properties["coilcode"].is_null()) {
-          if (edge_properties["coilcode"].is_string()) {
-            std::string strCoilCode{edge_properties["coilcode"].get_string().value()};
-            addCoil(edge_id, strCoilCode);
-          } else if (edge_properties["coilcode"].is_number()) {
-            std::string strCoilCode =
-                std::to_string(edge_properties["coilcode"].get_uint64());
-            addCoil(edge_id, strCoilCode);
-          } else {
-            spdlog::warn("Invalid coilcode for edge {}, adding default", edge_id);
-            addCoil(edge_id);
-          }
+      addStreet(Street(edge_id,
+                       std::make_pair(src_node_id, dst_node_id),
+                       edge_length,
+                       edge_maxspeed,
+                       edge_lanes,
+                       name,
+                       geometry));
+      // Check if there is coilcode property
+      if (!edge_properties.at_key("coilcode").error() &&
+          edge_properties["coilcode"].has_value()) {
+        if (edge_properties["coilcode"].is_string()) {
+          std::string strCoilCode{edge_properties["coilcode"].get_string().value()};
+          addCoil(edge_id, strCoilCode);
+        } else if (edge_properties["coilcode"].is_number()) {
+          std::string strCoilCode =
+              std::to_string(edge_properties["coilcode"].get_uint64());
+          addCoil(edge_id, strCoilCode);
+        } else {
+          spdlog::warn("Invalid coilcode for edge {}, adding default", edge_id);
+          addCoil(edge_id);
         }
-      } else {
-        addStreet(Street(edge_id * 10,
-                         std::make_pair(src_node_id, dst_node_id),
-                         edge_length,
-                         edge_maxspeed,
-                         edge_lanes,
-                         name,
-                         geometry));
-        addStreet(Street(edge_id * 10 + 1,
-                         std::make_pair(dst_node_id, src_node_id),
-                         edge_length,
-                         edge_maxspeed,
-                         edge_lanes,
-                         name,
-                         geometry::PolyLine(geometry.rbegin(), geometry.rend())));
       }
+      // Check for transition probabilities
+      // if (!edge_properties.at_key("transition_probabilities").error() &&
+      //     edge_properties["transition_probabilities"].has_value()) {
+      //   auto const& tp = edge_properties["transition_probabilities"];
+      //   std::unordered_map<Id, double> transitionProbabilities;
+      //   for (auto const& [key, value] : tp.get_object()) {
+      //     auto const targetStreetId = static_cast<Id>(std::stoull(std::string(key)));
+      //     auto const probability = static_cast<double>(value.get_double());
+      //     transitionProbabilities.emplace(targetStreetId, probability);
+      //   }
+      //   edge(edge_id)->setTransitionProbabilities(transitionProbabilities);
+      // }
     }
     this->m_nodes.rehash(0);
     this->m_edges.rehash(0);

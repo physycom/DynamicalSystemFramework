@@ -1162,4 +1162,99 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
+  SUBCASE("Transition probabilities") {
+    GIVEN("A simple network with a Y-junction") {
+      // Create a network with one incoming street and two outgoing streets
+      // Street layout:
+      //   0 --[s0]--> 1 --[s1]--> 2
+      //                \--[s2]--> 3
+      Street s0{0, std::make_pair(0, 1), 300., 50.};
+      Street s1{1, std::make_pair(1, 2), 1000., 50.};
+      Street s2{2, std::make_pair(1, 3), 1000., 30.};
+
+      RoadNetwork graph;
+      graph.addStreets(s0, s1, s2);
+      graph.autoMapStreetLanes();
+      graph.adjustNodeCapacities();
+
+      FirstOrderDynamics dynamics{graph, false, 42, 0., dsf::PathWeight::LENGTH};
+      dynamics.setOriginNodes({{0, 1.0}});
+
+      WHEN("We add multiple random agents and evolve the system") {
+        // spdlog::set_level(spdlog::level::debug);
+        dynamics.addRandomAgents(6);
+        CHECK_EQ(dynamics.nAgents(), 6);
+        // Evolve to get agents onto street 0
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 6);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+
+        THEN("The distribution of agents follows the transition probabilities") {
+          CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 0);
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 4);
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 2);
+        }
+        // spdlog::set_level(spdlog::level::info);
+      }
+    }
+
+    GIVEN("A network with three possible exits from a node") {
+      // Create a network with one incoming street and three outgoing streets
+      // Street layout:
+      //   0 --[s0]--> 1 --[s1]--> 2
+      //                |--[s2]--> 3
+      //                \--[s3]--> 4
+      Street s0{0, std::make_pair(0, 1), 300., 50.};
+      Street s1{1, std::make_pair(1, 2), 1000., 50.};
+      Street s2{2, std::make_pair(1, 3), 1000., 40.};
+      Street s3{3, std::make_pair(1, 4), 1000., 30.};
+
+      RoadNetwork graph;
+      graph.addStreets(s0, s1, s2, s3);
+      graph.autoMapStreetLanes();
+      graph.adjustNodeCapacities();
+
+      FirstOrderDynamics dynamics{graph, false, 123, 0., dsf::PathWeight::LENGTH};
+      dynamics.setOriginNodes({{0, 1.0}});
+
+      WHEN("We add multiple random agents and evolve the system") {
+        dynamics.addRandomAgents(6);
+        CHECK_EQ(dynamics.nAgents(), 6);
+        // Evolve to get agents onto street 0
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 6);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+
+        THEN("The distribution of agents follows the transition probabilities") {
+          CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 0);
+          CHECK_EQ(dynamics.graph().edge(1)->nAgents(), 2);
+          CHECK_EQ(dynamics.graph().edge(2)->nAgents(), 2);
+          CHECK_EQ(dynamics.graph().edge(3)->nAgents(), 2);
+        }
+      }
+    }
+  }
 }

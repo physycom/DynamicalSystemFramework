@@ -58,7 +58,7 @@ namespace dsf::mobility {
     void setStreetId(std::optional<Id> streetId = std::nullopt);
     /// @brief Set the id of the next street
     /// @param nextStreetId The id of the next street
-    void setNextStreetId(Id nextStreetId);
+    inline auto setNextStreetId(Id nextStreetId) { m_nextStreetId = nextStreetId; }
     /// @brief Set the agent's speed
     /// @param speed, The agent's speed
     /// @throw std::invalid_argument, if speed is negative
@@ -127,8 +127,6 @@ struct std::formatter<dsf::mobility::Agent> {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
   template <typename FormatContext>
   auto format(const dsf::mobility::Agent& agent, FormatContext&& ctx) const {
-    auto const strItinerary = agent.trip().empty() ? std::string("RANDOM")
-                                                   : std::to_string(agent.itineraryId());
     return std::format_to(
         ctx.out(),
         "Agent(id: {}, streetId: {}, srcNodeId: {}, nextStreetId: {}, "
@@ -139,7 +137,7 @@ struct std::formatter<dsf::mobility::Agent> {
         agent.srcNodeId().has_value() ? std::to_string(agent.srcNodeId().value()) : "N/A",
         agent.nextStreetId().has_value() ? std::to_string(agent.nextStreetId().value())
                                          : "N/A",
-        strItinerary,
+        agent.isRandom() ? std::string("RANDOM") : std::to_string(agent.itineraryId()),
         agent.speed(),
         agent.distance(),
         agent.spawnTime(),

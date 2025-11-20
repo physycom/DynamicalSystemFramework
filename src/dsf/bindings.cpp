@@ -483,6 +483,23 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("itineraryId") = std::nullopt,
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgentsUniformly").c_str())
       .def(
+          "addRandomAgents",
+          [](dsf::mobility::FirstOrderDynamics& self, std::size_t nAgents) {
+            self.addRandomAgents(nAgents);
+          },
+          pybind11::arg("nAgents"),
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addRandomAgents").c_str())
+      .def(
+          "addRandomAgents",
+          [](dsf::mobility::FirstOrderDynamics& self,
+             std::size_t nAgents,
+             const std::unordered_map<dsf::Id, double>& src_weights) {
+            self.addRandomAgents(nAgents, src_weights);
+          },
+          pybind11::arg("nAgents"),
+          pybind11::arg("src_weights"),
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addRandomAgents").c_str())
+      .def(
           "addAgentsRandomly",
           [](dsf::mobility::FirstOrderDynamics& self, dsf::Size nAgents) {
             self.addAgentsRandomly(nAgents);

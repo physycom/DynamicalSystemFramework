@@ -58,7 +58,7 @@ namespace dsf::mobility {
     void m_csvEdgesImporter(std::ifstream& file, const char separator = ';');
     void m_csvNodePropertiesImporter(std::ifstream& file, const char separator = ';');
 
-    void m_jsonEdgesImporter(std::ifstream& file, const bool bCreateInverse = false);
+    void m_jsonEdgesImporter(std::ifstream& file);
 
   public:
     RoadNetwork();
@@ -245,7 +245,7 @@ namespace dsf::mobility {
       case FileExt::GEOJSON:
       case FileExt::JSON:
         spdlog::debug("Importing nodes from JSON file: {}", fileName);
-        this->m_jsonEdgesImporter(file, std::forward<TArgs>(args)...);
+        this->m_jsonEdgesImporter(file);
         break;
       default:
         throw std::invalid_argument(

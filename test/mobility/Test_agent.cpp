@@ -65,14 +65,15 @@ TEST_CASE("Agent methods") {
   }
   SUBCASE("setStreetId with value") {
     agent.setNextStreetId(55);
-    agent.setStreetId(55);
-    CHECK(agent.streetId().has_value());
+    CHECK_THROWS_AS(agent.setStreetId(55), std::logic_error);
+    CHECK_FALSE(agent.streetId().has_value());
+    agent.setStreetId();
     CHECK_EQ(agent.streetId().value(), 55);
     CHECK_FALSE(agent.nextStreetId().has_value());
   }
   SUBCASE("setStreetId with nullopt uses nextStreetId") {
     agent.setNextStreetId(77);
-    agent.setStreetId(std::nullopt);
+    agent.setStreetId();
     CHECK(agent.streetId().has_value());
     CHECK_EQ(agent.streetId().value(), 77);
   }
@@ -104,7 +105,6 @@ TEST_CASE("Agent methods") {
     agent.setSpeed(10.);
     agent.incrementDistance(5.);
     agent.setFreeTime(99);
-    agent.setNextStreetId(88);
     agent.setStreetId(88);
     agent.updateItinerary();
     agent.reset(555);
