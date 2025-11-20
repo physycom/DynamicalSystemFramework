@@ -35,7 +35,8 @@
 #include "RoadNetwork.hpp"
 #include "../utility/Typedef.hpp"
 
-static auto constexpr g_cacheFolder = "./.dsfcache/";
+static constexpr auto CACHE_FOLDER = "./.dsfcache/";
+static constexpr auto U_TURN_PENALTY_FACTOR = 0.1;
 
 namespace dsf::mobility {
   /// @brief The RoadDynamics class represents the dynamics of the network.
@@ -400,10 +401,10 @@ namespace dsf::mobility {
         m_forcePriorities{false} {
     this->setWeightFunction(weightFunction, weightTreshold);
     if (m_bCacheEnabled) {
-      if (!std::filesystem::exists(g_cacheFolder)) {
-        std::filesystem::create_directory(g_cacheFolder);
+      if (!std::filesystem::exists(CACHE_FOLDER)) {
+        std::filesystem::create_directory(CACHE_FOLDER);
       }
-      spdlog::info("Cache enabled (default folder is {})", g_cacheFolder);
+      spdlog::info("Cache enabled (default folder is {})", CACHE_FOLDER);
     }
     for (auto const& [nodeId, pNode] : this->graph().nodes()) {
       m_nodeIndices.push_back(nodeId);
@@ -446,7 +447,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_updatePath(std::unique_ptr<Itinerary> const& pItinerary) {
     if (m_bCacheEnabled) {
-      auto const& file = std::format("{}{}.ity", g_cacheFolder, pItinerary->id());
+      auto const& file = std::format("{}{}.ity", CACHE_FOLDER, pItinerary->id());
       if (std::filesystem::exists(file)) {
         pItinerary->load(file);
         spdlog::debug("Loaded cached path for itinerary {}", pItinerary->id());
@@ -472,7 +473,7 @@ namespace dsf::mobility {
                    newSize);
     }
     if (m_bCacheEnabled) {
-      pItinerary->save(std::format("{}{}.ity", g_cacheFolder, pItinerary->id()));
+      pItinerary->save(std::format("{}{}.ity", CACHE_FOLDER, pItinerary->id()));
       spdlog::debug("Saved path in cache for itinerary {}", pItinerary->id());
     }
   }
@@ -500,7 +501,8 @@ namespace dsf::mobility {
                            this->m_speedFactor(pStreetOut->density())};
           transitionProbabilities[pStreetOut->id()] = speed / speedCurrent;
           if (pStreetOut->target() == pStreetCurrent->source()) {
-            transitionProbabilities[pStreetOut->id()] *= 0.1;  // Discourage U-TURNS
+            transitionProbabilities[pStreetOut->id()] *=
+                U_TURN_PENALTY_FACTOR;  // Discourage U-TURNS
           }
           cumulativeProbability += transitionProbabilities.at(pStreetOut->id());
         }
