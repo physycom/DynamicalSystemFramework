@@ -71,6 +71,9 @@ namespace dsf::mobility {
     bool m_forcePriorities;
 
   private:
+    /// @brief Kill an agent
+    /// @param pAgent A std::unique_ptr to the agent to kill
+    std::unique_ptr<Agent> m_killAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Update the path of a single itinerary using Dijsktra's algorithm
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(std::unique_ptr<Itinerary> const& pItinerary);
@@ -429,6 +432,16 @@ namespace dsf::mobility {
             }
           }
         });
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  std::unique_ptr<Agent> RoadDynamics<delay_t>::m_killAgent(std::unique_ptr<Agent> pAgent) {
+    spdlog::trace("Killing agent {}", *pAgent);
+    m_travelDTs.push_back(
+        {pAgent->distance(), static_cast<double>(this->time_step() - pAgent->spawnTime())});
+    --m_nAgents;
+    return std::move(pAgent);
   }
 
   template <typename delay_t>
@@ -833,13 +846,7 @@ namespace dsf::mobility {
           }
         }
         if (bArrived) {
-          auto pAgent{pStreet->dequeue(queueIndex)};
-          spdlog::debug(
-              "{} has arrived at destination node {}", *pAgent, destinationNode->id());
-          m_travelDTs.push_back(
-              {pAgent->distance(),
-               static_cast<double>(this->time_step() - pAgent->spawnTime())});
-          --m_nAgents;
+          auto pAgent = this->m_killAgent(pStreet->dequeue(queueIndex));
           if (reinsert_agents) {
             // reset Agent's values
             pAgent->reset(this->time_step());
