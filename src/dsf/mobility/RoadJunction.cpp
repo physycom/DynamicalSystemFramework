@@ -19,8 +19,4 @@ namespace dsf::mobility {
   double RoadJunction::transportCapacity() const { return m_transportCapacity; }
   double RoadJunction::density() const { return 0.; }
   bool RoadJunction::isFull() const { return true; }
-
-  bool RoadJunction::isIntersection() const noexcept { return false; }
-  bool RoadJunction::isTrafficLight() const noexcept { return false; }
-  bool RoadJunction::isRoundabout() const noexcept { return false; }
 }  // namespace dsf::mobility

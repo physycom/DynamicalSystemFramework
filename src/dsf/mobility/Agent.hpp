@@ -117,7 +117,7 @@ namespace dsf::mobility {
     inline double distance() const noexcept { return m_distance; };
     /// @brief Return true if the agent is a random agent
     /// @return True if the agent is a random agent, false otherwise
-    inline bool isRandom() const noexcept { return m_trip.empty(); };
+    constexpr bool isRandom() const noexcept { return m_trip.empty(); };
   };
 };  // namespace dsf::mobility
 

@@ -42,9 +42,9 @@ namespace dsf::mobility {
     virtual double density() const;
     virtual bool isFull() const;
 
-    virtual bool isIntersection() const noexcept;
-    virtual bool isTrafficLight() const noexcept;
-    virtual bool isRoundabout() const noexcept;
+    virtual constexpr bool isIntersection() const noexcept { return false; }
+    virtual constexpr bool isTrafficLight() const noexcept { return false; }
+    virtual constexpr bool isRoundabout() const noexcept { return false; }
   };
 }  // namespace dsf::mobility
 

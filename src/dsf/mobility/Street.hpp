@@ -167,7 +167,7 @@ namespace dsf::mobility {
     constexpr bool hasCoil() const { return m_counter.has_value(); };
     /// @brief Check if the street is stochastic
     /// @return bool True if the street is stochastic, false otherwise
-    virtual bool isStochastic() const { return false; };
+    virtual constexpr bool isStochastic() const noexcept { return false; };
   };
 
   /// @brief A stochastic street is a street with a flow rate parameter
@@ -200,7 +200,7 @@ namespace dsf::mobility {
     inline auto flowRate() const { return m_flowRate; }
     /// @brief Check if the street is stochastic
     /// @return bool True if the street is stochastic, false otherwise
-    constexpr bool isStochastic() const final { return true; };
+    constexpr bool isStochastic() const noexcept final { return true; };
   };
 
 };  // namespace dsf::mobility

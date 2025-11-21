@@ -101,13 +101,4 @@ namespace dsf::mobility {
     }
     return Direction::LEFT;
   }
-
-  double Road::length() const { return m_length; }
-  double Road::maxSpeed() const { return m_maxSpeed; }
-  int Road::nLanes() const { return m_nLanes; }
-  int Road::capacity() const { return m_capacity; }
-  double Road::transportCapacity() const { return m_transportCapacity; }
-  std::string Road::name() const { return m_name; }
-  int Road::priority() const { return m_priority; }
-  std::set<Id> const& Road::forbiddenTurns() const { return m_forbiddenTurns; }
 };  // namespace dsf::mobility
