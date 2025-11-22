@@ -71,30 +71,30 @@ namespace dsf::mobility {
 
     /// @brief Get the length, in meters
     /// @return double The length, in meters
-    double length() const;
+    inline auto length() const noexcept { return m_length; }
     /// @brief Get the maximum speed, in meters per second
     /// @return double The maximum speed, in meters per second
-    double maxSpeed() const;
+    inline auto maxSpeed() const noexcept { return m_maxSpeed; }
     /// @brief Get the number of lanes
     /// @return int The number of lanes
-    int nLanes() const;
+    inline auto nLanes() const noexcept { return m_nLanes; }
     /// @brief Get the road's capacity, in number of agents
     /// @return int The road's capacity, in number of agents
-    int capacity() const;
+    inline auto capacity() const noexcept { return m_capacity; }
     /// @brief Get the road's transport capacity, in number of agents
     /// @return double The road's transport capacity, in number of agents
-    double transportCapacity() const;
+    inline auto transportCapacity() const noexcept { return m_transportCapacity; }
     /// @brief Get the name
     /// @return std::string The name
-    std::string name() const;
+    inline auto const& name() const noexcept { return m_name; }
     /// @brief Get the priority
     /// @return int The priority
-    int priority() const;
+    inline auto priority() const noexcept { return m_priority; }
     /// @brief Get the road's forbidden turns
     /// @return std::set<Id> The road's forbidden turns
     /// @details The forbidden turns are the road ids that are not allowed to be used by the agents
     ///          when they are on the road.
-    std::set<Id> const& forbiddenTurns() const;
+    inline auto const& forbiddenTurns() const noexcept { return m_forbiddenTurns; }
     /// @brief Get the road's turn direction given the previous road angle
     /// @param previousStreetAngle The angle of the previous road
     /// @return Direction The turn direction

@@ -80,13 +80,11 @@ namespace dsf::mobility {
     void m_updatePath(std::unique_ptr<Itinerary> const& pItinerary);
 
     /// @brief Get the next street id
-    /// @param agentId The id of the agent
-    /// @param NodeId The id of the node
-    /// @param streetId The id of the incoming street
+    /// @param pAgent A std::unique_ptr to the agent
+    /// @param pNode A std::unique_ptr to the current node
     /// @return Id The id of the randomly selected next street
-    std::optional<Id> m_nextStreetId(std::unique_ptr<Agent> const& pAgent,
-                                     Id NodeId,
-                                     std::optional<Id> streetId = std::nullopt);
+    std::optional<Id> m_nextStreetId(const std::unique_ptr<Agent>& pAgent,
+                                     const std::unique_ptr<RoadJunction>& pNode);
     /// @brief Evolve a street
     /// @param pStreet A std::unique_ptr to the street
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
@@ -454,7 +452,7 @@ namespace dsf::mobility {
     m_travelDTs.push_back({pAgent->distance(),
                            static_cast<double>(this->time_step() - pAgent->spawnTime())});
     --m_nAgents;
-    return std::move(pAgent);
+    return pAgent;
   }
 
   template <typename delay_t>
@@ -495,146 +493,108 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   std::optional<Id> RoadDynamics<delay_t>::m_nextStreetId(
-      std::unique_ptr<Agent> const& pAgent, Id nodeId, std::optional<Id> streetId) {
-    // Get outgoing edges directly - avoid storing targets separately
-    auto const& pNode{this->graph().node(nodeId)};
+      const std::unique_ptr<Agent>& pAgent, const std::unique_ptr<RoadJunction>& pNode) {
+    spdlog::trace("Computing m_nextStreetId for {}", *pAgent);
     auto const& outgoingEdges = pNode->outgoingEdges();
-    if (outgoingEdges.size() == 1) {
-      return outgoingEdges[0];
-    }
-    if (pAgent->isRandom()) {  // Try to use street transition probabilities
-      spdlog::trace("Computing m_nextStreetId for {}", *pAgent);
-      if (streetId.has_value()) {
-        auto const& pStreetCurrent{this->graph().edge(streetId.value())};
-        auto const speedCurrent{pStreetCurrent->maxSpeed() /**
-                                this->m_speedFactor(pStreetCurrent->density())*/};
-        double cumulativeProbability = 0.0;
-        std::unordered_map<Id, double> transitionProbabilities;
-        for (const auto outEdgeId : outgoingEdges) {
-          auto const& pStreetOut{this->graph().edge(outEdgeId)};
-          auto const speed{pStreetOut->maxSpeed() /**
-                           this->m_speedFactor(pStreetOut->density())*/};
-          double probability = speed * speedCurrent;
-          if (pStreetOut->target() == pStreetCurrent->source()) {
-            if (pNode->isRoundabout()) {
-              probability *= U_TURN_PENALTY_FACTOR;  // Discourage U-TURNS
-            } else {
-              continue;  // No U-TURNS
-            }
-          }
-          transitionProbabilities[pStreetOut->id()] = probability;
-          cumulativeProbability += probability;
-        }
-        std::uniform_real_distribution<double> uniformDist{0., cumulativeProbability};
-        auto const randValue = uniformDist(this->m_generator);
-        cumulativeProbability = 0.0;
-        for (const auto& [targetStreetId, probability] : transitionProbabilities) {
-          cumulativeProbability += probability;
-          if (randValue <= cumulativeProbability) {
-            return targetStreetId;
-          }
-        }
-        // auto const& transitionProbabilities = pStreetCurrent->transitionProbabilities();
-        // if (!transitionProbabilities.empty()) {
-        //   std::uniform_real_distribution<double> uniformDist{0., 1.};
-        //   auto const randValue = uniformDist(this->m_generator);
-        //   double cumulativeProbability = 0.0;
-        //   for (const auto& [targetStreetId, probability] : transitionProbabilities) {
-        //     cumulativeProbability += probability;
-        //     if (randValue <= cumulativeProbability) {
-        //       return targetStreetId;
-        //     }
-        //   }
-        // }
-      }
-    }
-    std::vector<Id> possibleEdgeIds;
-    possibleEdgeIds.reserve(outgoingEdges.size());  // Pre-allocate to avoid reallocations
 
-    // Build forbidden target nodes set efficiently
-    std::unordered_set<Id> forbiddenTargetNodes;
-    if (streetId.has_value()) {
-      auto const& pStreet{this->graph().edge(*streetId)};
-      const auto& forbiddenTurns = pStreet->forbiddenTurns();
-      forbiddenTargetNodes.insert(forbiddenTurns.begin(), forbiddenTurns.end());
+    // Get current street information
+    std::optional<Id> previousNodeId = std::nullopt;
+    std::set<Id> forbiddenTurns;
+    double speedCurrent = 1.0;
+    if (pAgent->streetId().has_value()) {
+      auto const& pStreetCurrent{this->graph().edge(pAgent->streetId().value())};
+      previousNodeId = pStreetCurrent->source();
+      forbiddenTurns = pStreetCurrent->forbiddenTurns();
+      speedCurrent = pStreetCurrent->maxSpeed();
+    }
 
-      // Avoid U-TURNS, if possible
-      if (!(this->graph().node(nodeId)->isRoundabout()) &&
-          (outgoingEdges.size() > forbiddenTurns.size() + 1)) {
-        auto const& pOppositeStreet{
-            this->graph().street(pStreet->target(), pStreet->source())};
-        if (pOppositeStreet) {
-          forbiddenTargetNodes.insert(pOppositeStreet->get()->id());
+    // Get path targets for non-random agents
+    std::vector<Id> pathTargets;
+    if (!pAgent->isRandom()) {
+      try {
+        pathTargets = m_itineraries.at(pAgent->itineraryId())->path().at(pNode->id());
+      } catch (const std::out_of_range&) {
+        if (!m_itineraries.contains(pAgent->itineraryId())) {
+          throw std::runtime_error(
+              std::format("No itinerary found with id {}", pAgent->itineraryId()));
         }
+        throw std::runtime_error(std::format(
+            "No path found for itinerary {} at node {}. To solve this error, consider "
+            "using ODs extracted from a fully-connected subnetwork of your whole road "
+            "network or, alternatively, set an error probability.",
+            pAgent->itineraryId(),
+            pNode->id()));
       }
     }
 
-    // Log forbidden turns if any
-    if (!forbiddenTargetNodes.empty()) {
-      spdlog::debug("Excluding {} forbidden turns", forbiddenTargetNodes.size());
-    }
+    // Calculate transition probabilities for all valid outgoing edges
+    std::unordered_map<Id, double> transitionProbabilities;
+    double cumulativeProbability = 0.0;
 
-    // For non-random agents, get allowed targets from itinerary
-    std::unordered_set<Id> allowedTargets;
-    bool hasItineraryConstraints = false;
-
-    if (!this->itineraries().empty()) {
-      std::uniform_real_distribution<double> uniformDist{0., 1.};
-      if (!(m_errorProbability.has_value() &&
-            uniformDist(this->m_generator) < m_errorProbability)) {
-        const auto& it = this->itineraries().at(pAgent->itineraryId());
-        if (it->destination() != nodeId) {
-          try {
-            const auto pathTargets = it->path().at(nodeId);
-            allowedTargets.insert(pathTargets.begin(), pathTargets.end());
-            hasItineraryConstraints = true;
-
-            // Remove forbidden nodes from allowed targets
-            for (const auto& forbiddenNodeId : forbiddenTargetNodes) {
-              allowedTargets.erase(forbiddenNodeId);
-            }
-            // Catch unordered_map::at exceptions
-          } catch (const std::out_of_range&) {
-            throw std::runtime_error(std::format(
-                "No path from node {} to destination {}", nodeId, it->destination()));
-          }
-        }
-      }
-    }
-
-    // Single pass through outgoing edges with efficient filtering
     for (const auto outEdgeId : outgoingEdges) {
-      const Id targetNode = this->graph().edge(outEdgeId)->target();
-
-      // Skip if target is forbidden
-      if (forbiddenTargetNodes.count(targetNode)) {
+      if (forbiddenTurns.contains(outEdgeId)) {
         continue;
       }
 
-      // For non-random agents with itinerary constraints
-      if (hasItineraryConstraints) {
-        if (allowedTargets.count(targetNode)) {
-          possibleEdgeIds.push_back(outEdgeId);
+      auto const& pStreetOut{this->graph().edge(outEdgeId)};
+
+      // Check if this is a valid path target for non-random agents
+      bool bIsPathTarget = true;
+      if (!pathTargets.empty()) {
+        bIsPathTarget =
+            std::find(pathTargets.cbegin(), pathTargets.cend(), pStreetOut->target()) !=
+            pathTargets.cend();
+        if (!this->m_errorProbability.has_value() && !bIsPathTarget) {
+          continue;
         }
-      } else {
-        // For random agents or when no itinerary constraints apply
-        possibleEdgeIds.push_back(outEdgeId);
+      }
+
+      // Calculate base probability
+      auto const speedNext{pStreetOut->maxSpeed()};
+      double probability = speedCurrent * speedNext;
+
+      // Apply error probability for non-random agents
+      if (this->m_errorProbability.has_value() && !pathTargets.empty()) {
+        probability *=
+            (bIsPathTarget
+                 ? (1. - this->m_errorProbability.value())
+                 : this->m_errorProbability.value() /
+                       static_cast<double>(outgoingEdges.size() - pathTargets.size()));
+      }
+
+      // Handle U-turns
+      if (previousNodeId.has_value() && pStreetOut->target() == previousNodeId.value()) {
+        if (pNode->isRoundabout()) {
+          probability *= U_TURN_PENALTY_FACTOR;
+        } else {
+          continue;  // No U-turns allowed
+        }
+      }
+
+      transitionProbabilities[pStreetOut->id()] = probability;
+      cumulativeProbability += probability;
+    }
+
+    // Select street based on weighted probabilities
+    if (transitionProbabilities.empty()) {
+      spdlog::trace("No valid transitions found for {} at {}", *pAgent, *pNode);
+      return std::nullopt;
+    }
+    if (transitionProbabilities.size() == 1) {
+      return transitionProbabilities.cbegin()->first;
+    }
+
+    std::uniform_real_distribution<double> uniformDist{0., cumulativeProbability};
+    auto const randValue = uniformDist(this->m_generator);
+    double accumulated = 0.0;
+    for (const auto& [targetStreetId, probability] : transitionProbabilities) {
+      accumulated += probability;
+      if (randValue < accumulated) {
+        return targetStreetId;
       }
     }
-
-    if (possibleEdgeIds.empty()) {
-      return std::nullopt;
-      // throw std::runtime_error(
-      //     std::format("No possible moves for agent {} at node {}.", *pAgent, nodeId));
-    }
-
-    if (possibleEdgeIds.size() == 1) {
-      return possibleEdgeIds[0];
-    }
-
-    std::uniform_int_distribution<Size> moveDist{
-        0, static_cast<Size>(possibleEdgeIds.size() - 1)};
-    return possibleEdgeIds[moveDist(this->m_generator)];
+    // Return last one as fallback
+    return std::prev(transitionProbabilities.cend())->first;
   }
 
   template <typename delay_t>
@@ -667,7 +627,7 @@ namespace dsf::mobility {
         continue;
       }
       auto const nextStreetId =
-          this->m_nextStreetId(pAgent, pStreet->target(), pStreet->id());
+          this->m_nextStreetId(pAgent, this->graph().node(pStreet->target()));
       if (!nextStreetId.has_value()) {
         spdlog::debug(
             "No next street found for agent {} at node {}", *pAgent, pStreet->target());
@@ -767,7 +727,7 @@ namespace dsf::mobility {
                 timeTolerance,
                 timeDiff);
             // Kill the agent
-            this->m_killAgent(std::move(pStreet->dequeue(queueIndex)));
+            this->m_killAgent(pStreet->dequeue(queueIndex));
             continue;
           }
         }
@@ -926,7 +886,7 @@ namespace dsf::mobility {
           }
         }
         if (bArrived) {
-          auto pAgent = this->m_killAgent(std::move(pStreet->dequeue(queueIndex)));
+          auto pAgent = this->m_killAgent(pStreet->dequeue(queueIndex));
           if (reinsert_agents) {
             // reset Agent's values
             pAgent->reset(this->time_step());
@@ -1055,6 +1015,10 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_evolveAgents() {
+    if (m_agents.empty()) {
+      spdlog::trace("No agents to process.");
+      return;
+    }
     std::uniform_int_distribution<Id> nodeDist{
         0, static_cast<Id>(this->graph().nNodes() - 1)};
     spdlog::debug("Processing {} agents", m_agents.size());
@@ -1073,8 +1037,7 @@ namespace dsf::mobility {
       }
       if (!pAgent->nextStreetId().has_value()) {
         spdlog::debug("No next street id, generating a random one");
-        auto const nextStreetId{
-            this->m_nextStreetId(pAgent, pSourceNode->id(), pAgent->streetId())};
+        auto const nextStreetId{this->m_nextStreetId(pAgent, pSourceNode)};
         if (!nextStreetId.has_value()) {
           spdlog::debug(
               "No next street found for agent {} at node {}", *pAgent, pSourceNode->id());
