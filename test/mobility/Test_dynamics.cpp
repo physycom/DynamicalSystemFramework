@@ -549,12 +549,14 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
     GIVEN("A simple network and an agent with forced itinerary") {
+      spdlog::set_level(spdlog::level::trace);
       Street s0_1{1, std::make_pair(0, 1), 30., 15.};
       Street s1_0{3, std::make_pair(1, 0), 30., 15.};
       Street s1_2{5, std::make_pair(1, 2), 30., 15.};
       Street s2_1{7, std::make_pair(2, 1), 30., 15.};
       RoadNetwork graph2;
       graph2.addStreets(s0_1, s1_0, s1_2, s2_1);
+      graph2.makeRoundabout(2);
       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.setDestinationNodes({1, 2});
       dynamics.updatePaths();
@@ -584,6 +586,7 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(dynamics.nAgents(), 0);
         }
       }
+      spdlog::set_level(spdlog::level::info);
     }
   }
   SUBCASE("TrafficLights") {

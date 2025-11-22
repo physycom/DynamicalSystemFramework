@@ -86,7 +86,7 @@ namespace dsf::mobility {
     inline auto transportCapacity() const noexcept { return m_transportCapacity; }
     /// @brief Get the name
     /// @return std::string The name
-    inline auto name() const noexcept { return m_name; }
+    inline auto const& name() const noexcept { return m_name; }
     /// @brief Get the priority
     /// @return int The priority
     inline auto priority() const noexcept { return m_priority; }
