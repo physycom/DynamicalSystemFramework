@@ -262,17 +262,17 @@ namespace dsf::mobility {
         }
       }
       // Check for transition probabilities
-      // if (!edge_properties.at_key("transition_probabilities").error() &&
-      //     edge_properties["transition_probabilities"].has_value()) {
-      //   auto const& tp = edge_properties["transition_probabilities"];
-      //   std::unordered_map<Id, double> transitionProbabilities;
-      //   for (auto const& [key, value] : tp.get_object()) {
-      //     auto const targetStreetId = static_cast<Id>(std::stoull(std::string(key)));
-      //     auto const probability = static_cast<double>(value.get_double());
-      //     transitionProbabilities.emplace(targetStreetId, probability);
-      //   }
-      //   edge(edge_id)->setTransitionProbabilities(transitionProbabilities);
-      // }
+      if (!edge_properties.at_key("transition_probabilities").error() &&
+          edge_properties["transition_probabilities"].has_value()) {
+        auto const& tp = edge_properties["transition_probabilities"];
+        std::unordered_map<Id, double> transitionProbabilities;
+        for (auto const& [key, value] : tp.get_object()) {
+          auto const targetStreetId = static_cast<Id>(std::stoull(std::string(key)));
+          auto const probability = static_cast<double>(value.get_double());
+          transitionProbabilities.emplace(targetStreetId, probability);
+        }
+        edge(edge_id)->setTransitionProbabilities(transitionProbabilities);
+      }
     }
     this->m_nodes.rehash(0);
     this->m_edges.rehash(0);

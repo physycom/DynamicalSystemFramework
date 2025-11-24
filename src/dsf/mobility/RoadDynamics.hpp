@@ -500,12 +500,14 @@ namespace dsf::mobility {
     // Get current street information
     std::optional<Id> previousNodeId = std::nullopt;
     std::set<Id> forbiddenTurns;
+    std::unordered_map<Id, double> baseTransitionProbabilities;
     double speedCurrent = 1.0;
     if (pAgent->streetId().has_value()) {
       auto const& pStreetCurrent{this->graph().edge(pAgent->streetId().value())};
       previousNodeId = pStreetCurrent->source();
       forbiddenTurns = pStreetCurrent->forbiddenTurns();
       speedCurrent = pStreetCurrent->maxSpeed();
+      baseTransitionProbabilities = pStreetCurrent->transitionProbabilities();
     }
 
     // Get path targets for non-random agents
@@ -552,6 +554,9 @@ namespace dsf::mobility {
       // Calculate base probability
       auto const speedNext{pStreetOut->maxSpeed()};
       double probability = speedCurrent * speedNext;
+      if (!baseTransitionProbabilities.empty()) {
+        probability *= baseTransitionProbabilities.at(outEdgeId);  // edge-specific prob
+      }
 
       // Apply error probability for non-random agents
       if (this->m_errorProbability.has_value() && !pathTargets.empty()) {

@@ -1,0 +1,88 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [11.8810, 44.2230],
+          [11.8820, 44.2240]
+        ]
+      },
+      "properties": {
+        "id": 1,
+        "source": 0,
+        "target": 1,
+        "length": 100.5,
+        "maxspeed": 50,
+        "nlanes": 2,
+        "name": "Test Street A",
+        "transition_probabilities": {
+          "2": 0.6,
+          "3": 0.4
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [11.8820, 44.2240],
+          [11.8830, 44.2250]
+        ]
+      },
+      "properties": {
+        "id": 2,
+        "source": 1,
+        "target": 2,
+        "length": 80.0,
+        "maxspeed": "30",
+        "nlanes": 1,
+        "name": "Test Street B"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [11.8820, 44.2240],
+          [11.8815, 44.2260]
+        ]
+      },
+      "properties": {
+        "id": 3,
+        "source": 1,
+        "target": 3,
+        "length": 120.0,
+        "maxspeed": 40,
+        "nlanes": 1,
+        "name": "Test Street C",
+        "transition_probabilities": {
+          "4": 1.0
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [11.8815, 44.2260],
+          [11.8810, 44.2270]
+        ]
+      },
+      "properties": {
+        "id": 4,
+        "source": 3,
+        "target": 4,
+        "length": 90.0,
+        "maxspeed": 50,
+        "nlanes": 2,
+        "name": "Test Street D"
+      }
+    }
+  ]
+}

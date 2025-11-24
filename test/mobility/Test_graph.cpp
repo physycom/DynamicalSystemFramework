@@ -899,4 +899,60 @@ TEST_CASE("ShortestPath") {
     CHECK_EQ(path.size(), 1);
     CHECK_EQ(path[0], 0);
   }
+
+  SUBCASE("Import GeoJSON with Transition Probabilities") {
+    GIVEN("A GeoJSON file with transition probabilities") {
+      RoadNetwork graph;
+
+      WHEN("We import the GeoJSON file") {
+        graph.importEdges((DATA_FOLDER / "test_transition_probs.geojson").string());
+
+        THEN("The graph is constructed correctly") {
+          CHECK_EQ(graph.nEdges(), 4);
+          CHECK_EQ(graph.nNodes(), 5);
+        }
+
+        THEN("Transition probabilities are correctly imported for street 1") {
+          auto const& street1 = graph.edge(1);
+          auto const& transProbs1 = street1->transitionProbabilities();
+
+          CHECK_EQ(transProbs1.size(), 2);
+          CHECK(transProbs1.contains(2));
+          CHECK(transProbs1.contains(3));
+          CHECK_EQ(transProbs1.at(2), doctest::Approx(0.6));
+          CHECK_EQ(transProbs1.at(3), doctest::Approx(0.4));
+        }
+
+        THEN("Transition probabilities are correctly imported for street 3") {
+          auto const& street3 = graph.edge(3);
+          auto const& transProbs3 = street3->transitionProbabilities();
+
+          CHECK_EQ(transProbs3.size(), 1);
+          CHECK(transProbs3.contains(4));
+          CHECK_EQ(transProbs3.at(4), doctest::Approx(1.0));
+        }
+
+        THEN("Streets without transition probabilities have empty maps") {
+          auto const& street2 = graph.edge(2);
+          auto const& transProbs2 = street2->transitionProbabilities();
+          CHECK_EQ(transProbs2.size(), 0);
+
+          auto const& street4 = graph.edge(4);
+          auto const& transProbs4 = street4->transitionProbabilities();
+          CHECK_EQ(transProbs4.size(), 0);
+        }
+
+        THEN("Other street properties are imported correctly") {
+          auto const& street1 = graph.edge(1);
+          CHECK_EQ(street1->id(), 1);
+          CHECK_EQ(street1->source(), 0);
+          CHECK_EQ(street1->target(), 1);
+          CHECK_EQ(street1->length(), doctest::Approx(100.5));
+          CHECK_EQ(street1->maxSpeed(), doctest::Approx(50.0 / 3.6));
+          CHECK_EQ(street1->nLanes(), 2);
+          CHECK_EQ(street1->name(), "Test Street A");
+        }
+      }
+    }
+  }
 }

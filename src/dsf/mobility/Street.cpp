@@ -70,10 +70,22 @@ namespace dsf::mobility {
           strLaneMapping +=
               std::format("{} - ", directionToString[static_cast<size_t>(item)]);
         });
-    spdlog::debug("New lane mapping for street {} -> {} is: {}",
-                  m_nodePair.first,
-                  m_nodePair.second,
-                  strLaneMapping);
+    spdlog::debug("New lane mapping for {} is: {}", *this, strLaneMapping);
+  }
+  void Street::setTransitionProbabilities(
+      std::unordered_map<Id, double> const& transitionProbabilities) {
+    // Ensure normalization
+    double sumProbabilities{0.};
+    for (const auto& [_, probability] : transitionProbabilities) {
+      sumProbabilities += probability;
+    }
+    if (std::abs(sumProbabilities - 1.) > 1e-6) {
+      throw std::invalid_argument(
+          std::format("Transition probabilities for {} are not normalized (sum = {}).",
+                      *this,
+                      sumProbabilities));
+    }
+    m_transitionProbabilities = transitionProbabilities;
   }
   void Street::setQueue(dsf::queue<std::unique_ptr<Agent>> queue, size_t index) {
     assert(index < m_exitQueues.size());
