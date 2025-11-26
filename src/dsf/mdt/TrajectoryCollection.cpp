@@ -86,6 +86,15 @@ namespace dsf::mdt {
                                     double const max_speed_kph,
                                     std::size_t const min_points_per_trajectory,
                                     std::optional<std::time_t> const min_duration_min) {
+    spdlog::debug(
+        "Filtering trajectories with cluster_radius_km = {}, max_speed_kph = {}, "
+        "min_points_per_trajectory = {}, min_duration_min = {}",
+        cluster_radius_km,
+        max_speed_kph,
+        min_points_per_trajectory,
+        min_duration_min.has_value()
+            ? std::to_string(min_duration_min.value())
+            : "none");
     // Collect IDs to remove in parallel
     tbb::concurrent_set<Id> to_remove;
     tbb::concurrent_set<Id> to_split;
@@ -96,10 +105,8 @@ namespace dsf::mdt {
                               double const max_speed_kph) {
       auto const distance_km = dsf::geometry::haversine_km(currentCluster.centroid(),
                                                            previousCluster.centroid());
-      auto const current_time =
-          (currentCluster.lastTimestamp() + currentCluster.firstTimestamp()) * 0.5;
-      auto const previous_time =
-          (previousCluster.lastTimestamp() + previousCluster.firstTimestamp()) * 0.5;
+      auto const& current_time = currentCluster.timestampCentroid();
+      auto const& previous_time = previousCluster.timestampCentroid();
       if (current_time <= previous_time) {
         spdlog::warn(
             "Non-increasing timestamps detected. Skipping speed check for these points.");
@@ -114,14 +121,14 @@ namespace dsf::mdt {
                                  std::time_t const min_duration_min) {
       return cluster.duration() < min_duration_min * SECONDS_IN_MINUTE;
     };
-
+    spdlog::info("Init parallel filtering of trajectories...");
     tbb::parallel_for_each(
         m_trajectories.begin(),
         m_trajectories.end(),
         [&to_remove,
          &to_split,
-         check_max_speed,
-         check_min_duration,
+         &check_max_speed,
+         &check_min_duration,
          min_points_per_trajectory,
          cluster_radius_km,
          max_speed_kph,
@@ -130,14 +137,12 @@ namespace dsf::mdt {
           auto& trajectory =
               pair.second
                   [0];  // By now, each trajectory has only one segment as they were not split yet
-          if (min_points_per_trajectory > 0 &&
-              trajectory.size() < min_points_per_trajectory) {
+          if (trajectory.size() < min_points_per_trajectory) {
             to_remove.insert(uid);
             return;
           }
           trajectory.filter(cluster_radius_km, max_speed_kph);
-          if (min_points_per_trajectory > 0 &&
-              trajectory.size() < min_points_per_trajectory) {
+          if (trajectory.size() < min_points_per_trajectory) {
             to_remove.insert(uid);
             return;
           }
@@ -149,15 +154,16 @@ namespace dsf::mdt {
               to_split.insert(uid);
               return;
             }
-            if (i > 0) {
-              auto const& previousCluster = points[i - 1];
-              if (!check_max_speed(currentCluster, previousCluster, max_speed_kph)) {
+            if (++i < points.size()) {
+              auto const& nextCluster = points[i];
+              if (!check_max_speed(nextCluster, currentCluster, max_speed_kph)) {
                 to_split.insert(uid);
                 return;
               }
             }
           }
         });
+    spdlog::info("Finished parallel filtering of trajectories.");
 
     // Remove trajectories sequentially (fast for unordered_map)
     spdlog::info(
@@ -182,15 +188,15 @@ namespace dsf::mdt {
 
       Trajectory newTrajectory;
       auto const& points{originalTrajectory.points()};
-      for (std::size_t i = 0; i < points.size(); ++i) {
+      for (std::size_t i = 0; i < points.size();) {
         auto const& currentCluster = points[i];
         newTrajectory.addCluster(currentCluster);
 
         bool bShouldSplit = false;
 
-        if (i > 0) {
-          auto const& previousCluster = points[i - 1];
-          bShouldSplit = !check_max_speed(currentCluster, previousCluster, max_speed_kph);
+        if (++i < points.size()) {
+          auto const& nextCluster = points[i];
+          bShouldSplit = !check_max_speed(nextCluster, currentCluster, max_speed_kph);
         }
         if (min_duration_min.has_value() && !bShouldSplit) {
           bShouldSplit = !check_min_duration(currentCluster, min_duration_min.value());

@@ -16,6 +16,7 @@ namespace dsf::mdt {
   private:
     mutable std::vector<ActivityPoint> m_points;
     mutable std::optional<dsf::geometry::Point> m_centroid;
+    mutable std::optional<double> m_timestampCentroid;
     mutable bool m_bSorted;
     /// @brief Update the centroid of the cluster based on current activity points.
     /// The centroid is computed as the median of the x and y coordinates of the points.
@@ -40,6 +41,9 @@ namespace dsf::mdt {
     /// @brief Compute and return the centroid of the cluster.
     /// @return The centroid point of the cluster.
     dsf::geometry::Point centroid() const;
+    /// @brief Compute and return the timestamp centroid of the cluster.
+    /// @return The timestamp centroid of the cluster.
+    double timestampCentroid() const;
     /// @brief Get the number of activity points in the cluster.
     /// @return The size of the cluster.
     inline std::size_t size() const noexcept { return m_points.size(); }
