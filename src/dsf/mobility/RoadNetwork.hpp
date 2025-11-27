@@ -139,6 +139,10 @@ namespace dsf::mobility {
     ///           and the speed limit, if such data is available in the file.
     void importTrafficLights(const std::string& fileName);
 
+    void setTransitionProbabilities(
+        std::unordered_map<Id, std::unordered_map<Id, double>> const&
+            transitionProbabilities);
+
     template <typename T1, typename... Tn>
       requires is_node_v<std::remove_reference_t<T1>> &&
                (is_node_v<std::remove_reference_t<Tn>> && ...)

@@ -208,6 +208,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
           &dsf::mobility::RoadNetwork::importTrafficLights,
           pybind11::arg("fileName"),
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::importTrafficLights").c_str())
+      .def("setTransitionProbabilities",
+           &dsf::mobility::RoadNetwork::setTransitionProbabilities,
+           pybind11::arg("transitionProbabilities"),
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::setTransitionProbabilities")
+               .c_str())
       .def(
           "makeRoundabout",
           [](dsf::mobility::RoadNetwork& self, dsf::Id id) -> void {

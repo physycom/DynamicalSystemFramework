@@ -790,6 +790,17 @@ namespace dsf::mobility {
     }
   }
 
+  void RoadNetwork::setTransitionProbabilities(
+      std::unordered_map<Id, std::unordered_map<Id, double>> const&
+          transitionProbabilities) {
+    std::for_each(transitionProbabilities.cbegin(),
+                  transitionProbabilities.cend(),
+                  [this](auto const& pair) {
+                    auto& pStreet = edge(pair.first);
+                    pStreet->setTransitionProbabilities(pair.second);
+                  });
+  }
+
   TrafficLight& RoadNetwork::makeTrafficLight(Id const nodeId,
                                               Delay const cycleTime,
                                               Delay const counter) {
