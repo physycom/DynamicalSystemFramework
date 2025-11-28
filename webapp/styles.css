@@ -220,3 +220,38 @@ body, html {
     margin-left: 5px;
     padding: 2px;
   }
+
+  /* Legend container */
+  .legend-container {
+    position: absolute;
+    bottom: 120px; /* Above the slider */
+    left: 20px;
+    z-index: 1000;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    display: none; /* Initially hidden */
+    font-family: sans-serif;
+    font-size: 12px;
+  }
+  
+  .legend-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-align: center;
+  }
+  
+  .legend-bar {
+    width: 150px;
+    height: 15px;
+    background: linear-gradient(to right, green, yellow, red);
+    border: 1px solid #ccc;
+    margin-bottom: 2px;
+  }
+  
+  .legend-labels {
+    display: flex;
+    justify-content: space-between;
+    width: 150px;
+  }

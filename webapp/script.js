@@ -237,6 +237,196 @@ L.Control.Screenshot = L.Control.extend({
 // Add screenshot control to map
 map.addControl(new L.Control.Screenshot());
 
+// Add GIF recording control
+L.Control.GIFRecorder = L.Control.extend({
+  options: {
+    position: 'topleft'
+  },
+
+  onAdd: function(map) {
+    const container = L.DomUtil.create('div', 'leaflet-control-gif');
+    const button = L.DomUtil.create('a', 'leaflet-control-gif-button', container);
+    
+    button.innerHTML = '🎥';
+    button.href = '#';
+    button.title = 'Record GIF';
+    button.style.cssText = `
+      width: 26px;
+      height: 26px;
+      line-height: 26px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      color: black;
+      background: white;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-radius: 4px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+      font-size: 14px;
+      margin-bottom: 5px;
+    `;
+
+    L.DomEvent.on(button, 'click', L.DomEvent.stopPropagation)
+              .on(button, 'click', L.DomEvent.preventDefault)
+              .on(button, 'click', this._startRecording, this);
+
+    this.button = button;
+    return container;
+  },
+
+  _startRecording: async function() {
+    if (!densities || densities.length === 0) {
+      alert('Please load data first.');
+      return;
+    }
+
+    // Pause playback if active
+    const playBtn = document.getElementById('playBtn');
+    if (playBtn && playBtn.textContent === '⏸') {
+      playBtn.click();
+    }
+
+    const fpsInput = document.getElementById('fpsInput');
+    const fps = parseFloat(fpsInput.value) || 10;
+
+    if (!confirm(`Start recording GIF from current time to end?\nFPS: ${fps}\nNote: This process may take a while.`)) {
+      return;
+    }
+
+    let isRecording = true;
+
+    // Show loading/progress indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'gif-progress';
+    loadingDiv.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 10000;
+      font-size: 16px;
+      text-align: center;
+    `;
+    loadingDiv.innerHTML = 'Initializing GIF recorder...<br>';
+
+    // Add Stop button
+    const stopBtn = document.createElement('button');
+    stopBtn.textContent = 'Stop & Save';
+    stopBtn.style.cssText = 'margin-top: 10px; padding: 5px 10px; cursor: pointer;';
+    stopBtn.onclick = () => {
+      isRecording = false;
+      stopBtn.disabled = true;
+      stopBtn.textContent = 'Stopping...';
+    };
+    loadingDiv.appendChild(stopBtn);
+
+    document.body.appendChild(loadingDiv);
+
+    // Initialize GIF
+    // Create a blob for the worker to avoid cross-origin issues
+    const workerBlob = new Blob([`importScripts('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');`], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+
+    const gif = new GIF({
+      workers: 2,
+      quality: 10,
+      width: map.getSize().x,
+      height: map.getSize().y,
+      workerScript: workerUrl
+    });
+
+    const timeSlider = document.getElementById('timeSlider');
+    const startVal = parseInt(timeSlider.value);
+    const maxVal = parseInt(timeSlider.max);
+    const step = parseInt(timeSlider.step);
+
+    let currentVal = startVal;
+
+    gif.on('finished', function(blob) {
+      if (document.getElementById('gif-progress')) {
+        document.body.removeChild(loadingDiv);
+      }
+      window.URL.revokeObjectURL(workerUrl);
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `simulation_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.gif`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    gif.on('progress', function(p) {
+      if (document.getElementById('gif-progress')) {
+        // Keep the stop button if rendering hasn't finished, but usually rendering is blocking or fast enough.
+        // Actually gif.js renders in workers.
+        // We can just update the text part.
+        loadingDiv.firstChild.textContent = `Rendering GIF: ${Math.round(p * 100)}%`;
+      }
+    });
+
+    // Capture loop
+    const captureFrame = async () => {
+      if (!isRecording || currentVal > maxVal) {
+        loadingDiv.innerHTML = 'Rendering GIF...';
+        gif.render();
+        return;
+      }
+
+      // Update slider and map
+      timeSlider.value = currentVal;
+      timeSlider.dispatchEvent(new Event('input'));
+
+      // Update progress text
+      const progress = Math.round(((currentVal - startVal) / (maxVal - startVal)) * 100);
+      
+      // Clear previous content but keep the stop button
+      loadingDiv.innerHTML = '';
+      loadingDiv.appendChild(document.createTextNode(`Capturing frames: ${progress}%`));
+      loadingDiv.appendChild(document.createElement('br'));
+      loadingDiv.appendChild(document.createTextNode(`Time: ${document.getElementById('timeLabel').textContent}`));
+      loadingDiv.appendChild(document.createElement('br'));
+      loadingDiv.appendChild(stopBtn); // Re-append button to keep it at bottom
+
+      // Wait a bit for render (though input event is sync, leaflet/canvas might need a tick)
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      try {
+        const canvas = await html2canvas(document.getElementById('map'), {
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          scale: 1 // Use 1 for GIF to keep size reasonable
+        });
+        
+        const currentFps = parseFloat(document.getElementById('fpsInput').value) || 10;
+        const currentDelay = 1000 / currentFps;
+        gif.addFrame(canvas, {delay: currentDelay});
+        
+        currentVal += step;
+        // Schedule next frame
+        setTimeout(captureFrame, 0);
+      } catch (err) {
+        console.error(err);
+        alert('Error capturing frame');
+        if (document.getElementById('gif-progress')) {
+          document.body.removeChild(loadingDiv);
+        }
+      }
+    };
+
+    captureFrame();
+  }
+});
+
+// Add GIF recorder control to map
+map.addControl(new L.Control.GIFRecorder());
+
 // Custom Canvas layer for edges
 L.CanvasEdges = L.Layer.extend({
   initialize: function(edges, options) {
@@ -578,8 +768,8 @@ loadDataBtn.addEventListener('click', async function() {
     loadDataBtn.disabled = true;
     
     // Fetch CSV files from the data subdirectory
-    const edgesUrl = `${dirName}/edges.csv`;
-    const densitiesUrl = `${dirName}/densities.csv`;
+    const edgesUrl = `../${dirName}/edges.csv`;
+    const densitiesUrl = `../${dirName}/densities.csv`;
 
     // Load CSV data
     Promise.all([
@@ -679,7 +869,7 @@ loadDataBtn.addEventListener('click', async function() {
       playBtn.textContent = isPlaying ? '⏸' : '▶';
       
       if (isPlaying) {
-        const fps = parseInt(fpsInput.value) || 10;
+        const fps = parseFloat(fpsInput.value) || 10;
         const interval = 1000 / fps;
         
         playInterval = setInterval(() => {
@@ -850,6 +1040,9 @@ loadDataBtn.addEventListener('click', async function() {
       // Hide data selector and show slider and search
       document.querySelector('.data-selector').style.display = 'none';
       document.querySelector('.slider-container').style.display = 'block';
+      
+      const legendContainer = document.querySelector('.legend-container');
+      legendContainer.style.display = 'block';
     }).catch(error => {
       console.error("Error loading CSV files:", error);
       alert('Error loading data files. Please check the console for details.');
