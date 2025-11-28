@@ -793,11 +793,17 @@ namespace dsf::mobility {
   void RoadNetwork::setTransitionProbabilities(
       std::unordered_map<Id, std::unordered_map<Id, double>> const&
           transitionProbabilities) {
-    std::for_each(transitionProbabilities.cbegin(),
-                  transitionProbabilities.cend(),
-                  [this](auto const& pair) {
-                    auto& pStreet = edge(pair.first);
-                    pStreet->setTransitionProbabilities(pair.second);
+    std::for_each(DSF_EXECUTION m_edges.cbegin(),
+                  m_edges.cend(),
+                  [&transitionProbabilities](auto const& pair) {
+                    auto const& streetId = pair.first;
+                    auto const& pStreet = pair.second;
+                    auto const it = transitionProbabilities.find(streetId);
+                    if (it != transitionProbabilities.end()) {
+                      pStreet->setTransitionProbabilities(it->second);
+                    } else {
+                      pStreet->setTransitionProbabilities({});
+                    }
                   });
   }
 

@@ -73,17 +73,23 @@ namespace dsf::mobility {
     spdlog::debug("New lane mapping for {} is: {}", *this, strLaneMapping);
   }
   void Street::setTransitionProbabilities(
-      std::unordered_map<Id, double> const& transitionProbabilities) {
+      std::unordered_map<Id, double> const& transitionProbabilities) noexcept {
     // Ensure normalization
+    if (transitionProbabilities.empty()) {
+      m_transitionProbabilities.clear();
+      return;
+    }
     double sumProbabilities{0.};
-    for (const auto& [_, probability] : transitionProbabilities) {
+    for (auto const& [_, probability] : transitionProbabilities) {
       sumProbabilities += probability;
     }
     if (std::abs(sumProbabilities - 1.) > 1e-6) {
-      throw std::invalid_argument(
-          std::format("Transition probabilities for {} are not normalized (sum = {}).",
-                      *this,
-                      sumProbabilities));
+      auto tp = transitionProbabilities;
+      for (auto& [_, probability] : tp) {
+        probability /= sumProbabilities;
+      }
+      m_transitionProbabilities = tp;
+      return;
     }
     m_transitionProbabilities = transitionProbabilities;
   }

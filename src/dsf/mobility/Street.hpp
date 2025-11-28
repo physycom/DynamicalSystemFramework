@@ -87,7 +87,7 @@ namespace dsf::mobility {
     /// @brief Set the street's transition probabilities
     /// @param transitionProbabilities The street's transition probabilities
     void setTransitionProbabilities(
-        std::unordered_map<Id, double> const& transitionProbabilities);
+        std::unordered_map<Id, double> const& transitionProbabilities) noexcept;
     /// @brief Enable a coil (dsf::Counter sensor) on the street
     /// @param name The name of the counter (default is "Coil_<street_id>")
     void enableCounter(std::string name = std::string());
