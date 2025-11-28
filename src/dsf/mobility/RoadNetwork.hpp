@@ -185,6 +185,8 @@ namespace dsf::mobility {
                (is_street_v<std::remove_reference_t<Tn>> && ...)
     void addStreets(T1&& street, Tn&&... streets);
 
+    void setStreetStationaryWeights(std::unordered_map<Id, double> const& streetWeights);
+
     /// @brief Get a street from the graph
     /// @param source The source node
     /// @param destination The destination node

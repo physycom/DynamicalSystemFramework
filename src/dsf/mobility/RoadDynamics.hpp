@@ -501,11 +501,13 @@ namespace dsf::mobility {
     std::optional<Id> previousNodeId = std::nullopt;
     std::set<Id> forbiddenTurns;
     double speedCurrent = 1.0;
+    double stationaryWeightCurrent = 1.0;
     if (pAgent->streetId().has_value()) {
       auto const& pStreetCurrent{this->graph().edge(pAgent->streetId().value())};
       previousNodeId = pStreetCurrent->source();
       forbiddenTurns = pStreetCurrent->forbiddenTurns();
       speedCurrent = pStreetCurrent->maxSpeed();
+      stationaryWeightCurrent = pStreetCurrent->stationaryWeight();
     }
 
     // Get path targets for non-random agents
@@ -551,7 +553,9 @@ namespace dsf::mobility {
 
       // Calculate base probability
       auto const speedNext{pStreetOut->maxSpeed()};
-      double probability = speedCurrent * speedNext;
+      double const stationaryWeightNext = pStreetOut->stationaryWeight();
+      auto const weightRatio{stationaryWeightNext / stationaryWeightCurrent}; // SQRT (p_i / p_j)
+      double probability = speedCurrent * speedNext * std::sqrt(weightRatio);
 
       // Apply error probability for non-random agents
       if (this->m_errorProbability.has_value() && !pathTargets.empty()) {

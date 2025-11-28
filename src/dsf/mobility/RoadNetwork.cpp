@@ -841,6 +841,21 @@ namespace dsf::mobility {
     addEdge<Street>(std::move(street));
   }
 
+  void RoadNetwork::setStreetStationaryWeights(std::unordered_map<Id, double> const& weights) {
+    std::for_each(DSF_EXECUTION m_edges.cbegin(),
+                  m_edges.cend(),
+                  [this](auto const& pair) {
+                    auto const streetId = pair.first;
+                    auto& pStreet = edge(pair.second);
+                    auto it = weights.find(streetId);
+                    if (it != weights.end()) {
+                      pStreet->setStationaryWeight(it->second);
+                    } else {
+                      pStreet->setStationaryWeight(1.0);
+                    }
+                  });
+  }
+
   const std::unique_ptr<Street>* RoadNetwork::street(Id source, Id destination) const {
     // Get the iterator at id m_cantorPairingHashing(source, destination)
     try {
