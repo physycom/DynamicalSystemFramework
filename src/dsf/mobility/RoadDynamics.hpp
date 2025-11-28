@@ -532,18 +532,21 @@ namespace dsf::mobility {
     double cumulativeProbability = 0.0;
 
     for (const auto outEdgeId : outgoingEdges) {
-      if (forbiddenTurns.contains(outEdgeId)) {
-        continue;
-      }
-
       auto const& pStreetOut{this->graph().edge(outEdgeId)};
 
       // Check if this is a valid path target for non-random agents
-      bool bIsPathTarget = true;
+      bool bIsPathTarget = false;
       if (!pathTargets.empty()) {
         bIsPathTarget =
             std::find(pathTargets.cbegin(), pathTargets.cend(), pStreetOut->target()) !=
             pathTargets.cend();
+      }
+
+      if (forbiddenTurns.contains(outEdgeId) && !bIsPathTarget) {
+        continue;
+      }
+
+      if (!pathTargets.empty()) {
         if (!this->m_errorProbability.has_value() && !bIsPathTarget) {
           continue;
         }
@@ -566,7 +569,7 @@ namespace dsf::mobility {
       if (previousNodeId.has_value() && pStreetOut->target() == previousNodeId.value()) {
         if (pNode->isRoundabout()) {
           probability *= U_TURN_PENALTY_FACTOR;
-        } else {
+        } else if (!bIsPathTarget) {
           continue;  // No U-turns allowed
         }
       }
@@ -577,11 +580,16 @@ namespace dsf::mobility {
 
     // Select street based on weighted probabilities
     if (transitionProbabilities.empty()) {
-      spdlog::trace("No valid transitions found for {} at {}", *pAgent, *pNode);
+      spdlog::debug("No valid transitions found for {} at {}", *pAgent, *pNode);
       return std::nullopt;
     }
     if (transitionProbabilities.size() == 1) {
-      return transitionProbabilities.cbegin()->first;
+      auto const& onlyStreetId = transitionProbabilities.cbegin()->first;
+      spdlog::debug("Only one valid transition for {} at {}: street {}",
+                    *pAgent,
+                    *pNode,
+                    onlyStreetId);
+      return onlyStreetId;
     }
 
     std::uniform_real_distribution<double> uniformDist{0., cumulativeProbability};
@@ -594,7 +602,10 @@ namespace dsf::mobility {
       }
     }
     // Return last one as fallback
-    return std::prev(transitionProbabilities.cend())->first;
+    auto const fallbackStreetId = std::prev(transitionProbabilities.cend())->first;
+    spdlog::debug(
+        "Fallback selection for {} at {}: street {}", *pAgent, *pNode, fallbackStreetId);
+    return fallbackStreetId;
   }
 
   template <typename delay_t>
@@ -685,7 +696,7 @@ namespace dsf::mobility {
       if (pStreet->isStochastic() &&
           uniformDist(this->m_generator) >
               dynamic_cast<StochasticStreet&>(*pStreet).flowRate()) {
-        spdlog::debug("Skipping due to flow rate {:.2f} < random value",
+        spdlog::trace("Skipping due to flow rate {:.2f} < random value",
                       dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
         continue;
       }
@@ -693,7 +704,7 @@ namespace dsf::mobility {
         double integral;
         double fractional = std::modf(transportCapacity, &integral);
         if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
-          spdlog::debug("Skipping due to fractional capacity {:.2f} < random value",
+          spdlog::trace("Skipping due to fractional capacity {:.2f} < random value",
                         fractional);
           continue;
         }
@@ -705,7 +716,7 @@ namespace dsf::mobility {
         // Logger::debug("Taking temp agent");
         auto const& pAgentTemp{pStreet->queue(queueIndex).front()};
         if (pAgentTemp->freeTime() > this->time_step()) {
-          spdlog::debug("Skipping due to time {} < free time {}",
+          spdlog::trace("Skipping due to time {} < free time {}",
                         this->time_step(),
                         pAgentTemp->freeTime());
           continue;
@@ -734,14 +745,14 @@ namespace dsf::mobility {
         pAgentTemp->setSpeed(0.);
         const auto& destinationNode{this->graph().node(pStreet->target())};
         if (destinationNode->isFull()) {
-          spdlog::debug("Skipping due to full destination node {}", *destinationNode);
+          spdlog::trace("Skipping due to full destination node {}", *destinationNode);
           continue;
         }
         if (destinationNode->isTrafficLight()) {
           auto& tl = dynamic_cast<TrafficLight&>(*destinationNode);
           auto const direction{pStreet->laneMapping().at(queueIndex)};
           if (!tl.isGreen(pStreet->id(), direction)) {
-            spdlog::debug("Skipping due to red light on street {} and direction {}",
+            spdlog::trace("Skipping due to red light on street {} and direction {}",
                           pStreet->id(),
                           directionToString.at(direction));
             continue;
