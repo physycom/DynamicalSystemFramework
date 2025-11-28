@@ -184,3 +184,39 @@ body, html {
     background: #e8e8e8;
   }
   
+  .slider-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  #playBtn {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 8px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #playBtn:hover {
+    background: #f0f0f0;
+  }
+
+  .fps-control {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .fps-control input {
+    width: 40px;
+    margin-left: 5px;
+    padding: 2px;
+  }

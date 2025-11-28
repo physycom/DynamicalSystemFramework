@@ -658,6 +658,12 @@ loadDataBtn.addEventListener('click', async function() {
     // Set up the time slider based on the density data's maximum time value
     const timeSlider = document.getElementById('timeSlider');
     const timeLabel = document.getElementById('timeLabel');
+    const playBtn = document.getElementById('playBtn');
+    const fpsInput = document.getElementById('fpsInput');
+    
+    let isPlaying = false;
+    let playInterval = null;
+
     // Dynamically determine dt from the first two density datapoints
     let dt = 300;
     if (densities.length > 1) {
@@ -667,6 +673,44 @@ loadDataBtn.addEventListener('click', async function() {
     timeSlider.max = (densities.length - 1) * dt;
     timeSlider.step = dt;
     timeLabel.textContent = `${formatTime(timeStamp)}`;
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      
+      if (isPlaying) {
+        const fps = parseInt(fpsInput.value) || 10;
+        const interval = 1000 / fps;
+        
+        playInterval = setInterval(() => {
+          let currentValue = parseInt(timeSlider.value);
+          let maxValue = parseInt(timeSlider.max);
+          
+          if (currentValue >= maxValue) {
+            currentValue = 0; // Loop back to start
+          } else {
+            currentValue += dt;
+          }
+          
+          timeSlider.value = currentValue;
+          // Trigger input event manually
+          timeSlider.dispatchEvent(new Event('input'));
+        }, interval);
+      } else {
+        clearInterval(playInterval);
+        playInterval = null;
+      }
+    }
+
+    playBtn.addEventListener('click', togglePlay);
+
+    fpsInput.addEventListener('change', () => {
+      if (isPlaying) {
+        // Restart with new FPS
+        togglePlay(); // Stop
+        togglePlay(); // Start
+      }
+    });
 
     // Update the visualization when the slider value changes
     timeSlider.addEventListener('input', function() {
