@@ -110,6 +110,37 @@ map.addControl(new L.Control.BackgroundMenu());
 // Add search menu control to map
 map.addControl(new L.Control.SearchMenu());
 
+// Add chart toggle control
+L.Control.ChartToggle = L.Control.extend({
+  options: {
+    position: 'topright'
+  },
+
+  onAdd: function(map) {
+    const container = L.DomUtil.create('div', 'leaflet-control-chart-toggle');
+    const button = L.DomUtil.create('button', 'leaflet-control-search-btn', container);
+    
+    button.innerHTML = '📈';
+    button.title = 'Toggle Chart';
+    button.onclick = () => {
+      const chartContainer = document.querySelector('.chart-container');
+      if (chartContainer.style.display === 'none' || chartContainer.style.display === '') {
+        chartContainer.style.display = 'block';
+        if (typeof chart !== 'undefined' && chart) {
+          chart.resize();
+        }
+      } else {
+        chartContainer.style.display = 'none';
+      }
+    };
+
+    return container;
+  }
+});
+
+// Add chart toggle control to map
+map.addControl(new L.Control.ChartToggle());
+
 // Add screenshot control
 L.Control.Screenshot = L.Control.extend({
   options: {
@@ -165,12 +196,17 @@ L.Control.Screenshot = L.Control.extend({
     document.body.appendChild(loadingDiv);
 
     // Capture the map
-    html2canvas(document.getElementById('map'), {
+    html2canvas(document.getElementById('app-container'), {
       useCORS: true,
       allowTaint: false,
       scale: 2, // Higher resolution
       width: window.innerWidth,
-      height: window.innerHeight
+      height: window.innerHeight,
+      ignoreElements: (element) => {
+        // Ignore the loading indicator if it's inside app-container (it shouldn't be, but just in case)
+        // Also ignore data selector if it's hidden (html2canvas usually handles hidden, but let's be safe)
+        return element.classList.contains('data-selector') && element.style.display === 'none';
+      }
     }).then(canvas => {
       // Remove loading indicator
       document.body.removeChild(loadingDiv);
@@ -334,6 +370,7 @@ L.Control.GIFRecorder = L.Control.extend({
     const gif = new GIF({
       workers: 2,
       quality: 10,
+      dither: "FloydSteinberg",
       width: map.getSize().x,
       height: map.getSize().y,
       workerScript: workerUrl
@@ -397,11 +434,16 @@ L.Control.GIFRecorder = L.Control.extend({
       await new Promise(resolve => setTimeout(resolve, 200));
 
       try {
-        const canvas = await html2canvas(document.getElementById('map'), {
+        const canvas = await html2canvas(document.getElementById('app-container'), {
           useCORS: true,
           allowTaint: false,
           logging: false,
-          scale: 1 // Use 1 for GIF to keep size reasonable
+          scale: 1, // Use 1 for GIF to keep size reasonable
+          ignoreElements: (element) => {
+             // Ignore loading div if it somehow gets in there (it's in body, so fine)
+             // Ignore hidden elements
+             return element.style.display === 'none';
+          }
         });
         
         const currentFps = parseFloat(document.getElementById('fpsInput').value) || 10;
@@ -686,10 +728,11 @@ L.svg().addTo(map);
 const overlay = d3.select(map.getPanes().overlayPane).select("svg");
 const g = overlay.append("g").attr("class", "leaflet-zoom-hide");
 
-let edges, densities;
+let edges, densities, globalData;
 let timeStamp = new Date();
 let highlightedEdge = null;
 let highlightedNode = null;
+let chart;
 
 function formatTime(date) {
   const year = date.getFullYear();
@@ -770,14 +813,17 @@ loadDataBtn.addEventListener('click', async function() {
     // Fetch CSV files from the data subdirectory
     const edgesUrl = `../${dirName}/edges.csv`;
     const densitiesUrl = `../${dirName}/densities.csv`;
+    const dataUrl = `../${dirName}/data.csv`;
 
     // Load CSV data
     Promise.all([
       d3.dsv(";", edgesUrl, parseEdges),
-      d3.dsv(";", densitiesUrl, parseDensity)
-    ]).then(([edgesData, densityData]) => {
+      d3.dsv(";", densitiesUrl, parseDensity),
+      d3.dsv(";", dataUrl, parseData).catch(e => { console.warn('data.csv not found or invalid', e); return []; })
+    ]).then(([edgesData, densityData, additionalData]) => {
       edges = edgesData;
       densities = densityData;
+      globalData = additionalData;
 
       // console.log("Edges:", edges);
       // console.log("Densities:", densities);
@@ -785,9 +831,7 @@ loadDataBtn.addEventListener('click', async function() {
       if (!edges.length || !densities.length) {
         console.error("Missing CSV data.");
         return;
-      }
-
-      timeStamp = densities[0].datetime;
+      }      timeStamp = densities[0].datetime;
 
     // Calculate median center from edge geometries
     let allLats = [];
@@ -812,6 +856,116 @@ loadDataBtn.addEventListener('click', async function() {
     const canvasEdges = new L.CanvasEdges(edges);
     canvasEdges.addTo(map);
 
+    let currentChartColumn = 'mean_density_vpk';
+
+    // Initialize Chart
+    if (globalData && globalData.length > 0) {
+      const columns = Object.keys(globalData[0]).filter(k => k !== 'datetime');
+      const selector = document.getElementById('chartColumnSelector');
+      selector.innerHTML = '';
+      columns.forEach(col => {
+          const option = document.createElement('option');
+          option.value = col;
+          option.text = col;
+          selector.appendChild(option);
+      });
+      
+      if (columns.includes('mean_density_vpk')) {
+          selector.value = 'mean_density_vpk';
+      } else if (columns.length > 0) {
+          selector.value = columns[0];
+      }
+      currentChartColumn = selector.value;
+
+      selector.onchange = () => {
+          currentChartColumn = selector.value;
+          initChart();
+          updateChart();
+      };
+
+      initChart();
+      // document.querySelector('.chart-container').style.display = 'block';
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('densityChart').getContext('2d');
+      if (chart) chart.destroy();
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: globalData.map(d => formatTime(d.datetime)),
+          datasets: [{
+            label: currentChartColumn,
+            data: globalData.map(d => d[currentChartColumn]),
+            borderColor: 'blue',
+            borderWidth: 1,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.1
+          }, {
+            label: 'Current Time',
+            data: [], // Will be populated dynamically
+            borderColor: 'red',
+            backgroundColor: 'red',
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            showLine: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+              duration: 0
+          },
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'time'
+              },
+              ticks: {
+                  display: false
+              }
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: currentChartColumn
+              }
+            }
+          },
+          plugins: {
+              legend: {
+                  display: true,
+                  labels: {
+                      boxWidth: 10
+                  }
+              }
+          }
+        }
+      });
+    }
+
+    function updateChart() {
+        if (!chart || !globalData) return;
+        
+        // Find current data point index based on timeStamp
+        const currentIndex = densities.findIndex(d => d.datetime.getTime() === timeStamp.getTime());
+        
+        if (currentIndex !== -1) {
+            const pointData = new Array(globalData.length).fill(null);
+            if (globalData[currentIndex]) {
+                pointData[currentIndex] = globalData[currentIndex][currentChartColumn];
+            }
+            chart.data.datasets[1].data = pointData;
+            chart.update('none');
+        }
+    }
+
     // Function to update edge positions, and color edges based on density
     function update() {
       // Update edge stroke width based on zoom level (handled in Canvas layer)
@@ -819,6 +973,7 @@ loadDataBtn.addEventListener('click', async function() {
 
       updateDensityVisualization();
       updateNodeHighlight();
+      updateChart();
     }
 
     map.on("zoomend", update);
@@ -1091,4 +1246,15 @@ function parseDensity(d) {
           return val === "" ? 0 : +val;
         });
       return { datetime, densities };
+}
+
+// Parsing function for data CSV
+function parseData(d) {
+  const result = { datetime: new Date(d.datetime) };
+  for (const key in d) {
+    if (key !== 'datetime') {
+      result[key] = +d[key];
+    }
+  }
+  return result;
 }
