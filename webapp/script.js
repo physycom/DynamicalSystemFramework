@@ -273,19 +273,19 @@ L.Control.Screenshot = L.Control.extend({
 // Add screenshot control to map
 map.addControl(new L.Control.Screenshot());
 
-// Add GIF recording control
-L.Control.GIFRecorder = L.Control.extend({
+// Add MP4 recording control
+L.Control.MP4Recorder = L.Control.extend({
   options: {
     position: 'topleft'
   },
 
   onAdd: function(map) {
-    const container = L.DomUtil.create('div', 'leaflet-control-gif');
-    const button = L.DomUtil.create('a', 'leaflet-control-gif-button', container);
+    const container = L.DomUtil.create('div', 'leaflet-control-mp4');
+    const button = L.DomUtil.create('a', 'leaflet-control-mp4-button', container);
     
     button.innerHTML = '🎥';
     button.href = '#';
-    button.title = 'Record GIF';
+    button.title = 'Record MP4';
     button.style.cssText = `
       width: 26px;
       height: 26px;
@@ -325,7 +325,7 @@ L.Control.GIFRecorder = L.Control.extend({
     const fpsInput = document.getElementById('fpsInput');
     const fps = parseFloat(fpsInput.value) || 10;
 
-    if (!confirm(`Start recording GIF from current time to end?\nFPS: ${fps}\nNote: This process may take a while.`)) {
+    if (!confirm(`Start recording MP4 from current time to end?\nFPS: ${fps}\nNote: This process may take a while.`)) {
       return;
     }
 
@@ -333,7 +333,7 @@ L.Control.GIFRecorder = L.Control.extend({
 
     // Show loading/progress indicator
     const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'gif-progress';
+    loadingDiv.id = 'mp4-progress';
     loadingDiv.style.cssText = `
       position: fixed;
       top: 50%;
@@ -347,7 +347,7 @@ L.Control.GIFRecorder = L.Control.extend({
       font-size: 16px;
       text-align: center;
     `;
-    loadingDiv.innerHTML = 'Initializing GIF recorder...<br>';
+    loadingDiv.innerHTML = 'Initializing MP4 recorder...<br>';
 
     // Add Stop button
     const stopBtn = document.createElement('button');
@@ -362,112 +362,142 @@ L.Control.GIFRecorder = L.Control.extend({
 
     document.body.appendChild(loadingDiv);
 
-    // Initialize GIF
-    // Create a blob for the worker to avoid cross-origin issues
-    const workerBlob = new Blob([`importScripts('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');`], { type: 'application/javascript' });
-    const workerUrl = URL.createObjectURL(workerBlob);
+    try {
+      // Load mp4-muxer dynamically
+      const { Muxer, ArrayBufferTarget } = await import('https://unpkg.com/mp4-muxer@5.1.4/build/mp4-muxer.mjs');
 
-    const gif = new GIF({
-      workers: 2,
-      quality: 10,
-      dither: "FloydSteinberg",
-      width: map.getSize().x,
-      height: map.getSize().y,
-      workerScript: workerUrl
-    });
+      const width = map.getSize().x;
+      const height = map.getSize().y;
+      // Ensure even dimensions for H.264
+      const w = width % 2 === 0 ? width : width - 1;
+      const h = height % 2 === 0 ? height : height - 1;
 
-    const timeSlider = document.getElementById('timeSlider');
-    const startVal = parseInt(timeSlider.value);
-    const maxVal = parseInt(timeSlider.max);
-    const step = parseInt(timeSlider.step);
+      const muxer = new Muxer({
+        target: new ArrayBufferTarget(),
+        video: {
+          codec: 'avc',
+          width: w,
+          height: h
+        },
+        fastStart: 'in-memory'
+      });
 
-    let currentVal = startVal;
+      const videoEncoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: e => {
+          console.error(e);
+          alert("Video encoding error: " + e.message);
+          isRecording = false;
+        }
+      });
 
-    gif.on('finished', function(blob) {
-      if (document.getElementById('gif-progress')) {
+      videoEncoder.configure({
+        codec: 'avc1.4d002a', // Main Profile, Level 4.2 (supports up to 1080p)
+        width: w,
+        height: h,
+        bitrate: 5_000_000 // 5 Mbps for better quality
+      });
+
+      const timeSlider = document.getElementById('timeSlider');
+      const startVal = parseInt(timeSlider.value);
+      const maxVal = parseInt(timeSlider.max);
+      const step = parseInt(timeSlider.step);
+
+      let currentVal = startVal;
+      let frameIndex = 0;
+
+      // Capture loop
+      const captureFrame = async () => {
+        if (!isRecording || currentVal > maxVal) {
+          loadingDiv.innerHTML = 'Finalizing MP4...';
+          await videoEncoder.flush();
+          muxer.finalize();
+          
+          const buffer = muxer.target.buffer;
+          const blob = new Blob([buffer], { type: 'video/mp4' });
+          const url = URL.createObjectURL(blob);
+          
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `simulation_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          
+          if (document.getElementById('mp4-progress')) {
+            document.body.removeChild(loadingDiv);
+          }
+          return;
+        }
+
+        // Update slider and map
+        timeSlider.value = currentVal;
+        timeSlider.dispatchEvent(new Event('input'));
+
+        // Update progress text
+        const progress = Math.round(((currentVal - startVal) / (maxVal - startVal)) * 100);
+        
+        // Clear previous content but keep the stop button
+        loadingDiv.innerHTML = '';
+        loadingDiv.appendChild(document.createTextNode(`Capturing frames: ${progress}%`));
+        loadingDiv.appendChild(document.createElement('br'));
+        loadingDiv.appendChild(document.createTextNode(`Time: ${document.getElementById('timeLabel').textContent}`));
+        loadingDiv.appendChild(document.createElement('br'));
+        loadingDiv.appendChild(stopBtn);
+
+        // Wait a bit for render
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        try {
+          const canvas = await html2canvas(document.getElementById('app-container'), {
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+            scale: 1,
+            width: w,
+            height: h,
+            ignoreElements: (element) => {
+               return element.style.display === 'none';
+            }
+          });
+          
+          // Create a VideoFrame from the canvas
+          const frame = new VideoFrame(canvas, {
+            timestamp: frameIndex * 1000000 / fps,
+            duration: 1000000 / fps
+          });
+
+          videoEncoder.encode(frame, { keyFrame: frameIndex % 30 === 0 });
+          frame.close();
+          
+          currentVal += step;
+          frameIndex++;
+          // Schedule next frame
+          setTimeout(captureFrame, 0);
+        } catch (err) {
+          console.error(err);
+          alert('Error capturing frame: ' + err.message);
+          if (document.getElementById('mp4-progress')) {
+            document.body.removeChild(loadingDiv);
+          }
+        }
+      };
+
+      captureFrame();
+
+    } catch (err) {
+      console.error(err);
+      alert('Error initializing MP4 recorder: ' + err.message);
+      if (document.getElementById('mp4-progress')) {
         document.body.removeChild(loadingDiv);
       }
-      window.URL.revokeObjectURL(workerUrl);
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `simulation_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.gif`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    });
-
-    gif.on('progress', function(p) {
-      if (document.getElementById('gif-progress')) {
-        // Keep the stop button if rendering hasn't finished, but usually rendering is blocking or fast enough.
-        // Actually gif.js renders in workers.
-        // We can just update the text part.
-        loadingDiv.firstChild.textContent = `Rendering GIF: ${Math.round(p * 100)}%`;
-      }
-    });
-
-    // Capture loop
-    const captureFrame = async () => {
-      if (!isRecording || currentVal > maxVal) {
-        loadingDiv.innerHTML = 'Rendering GIF...';
-        gif.render();
-        return;
-      }
-
-      // Update slider and map
-      timeSlider.value = currentVal;
-      timeSlider.dispatchEvent(new Event('input'));
-
-      // Update progress text
-      const progress = Math.round(((currentVal - startVal) / (maxVal - startVal)) * 100);
-      
-      // Clear previous content but keep the stop button
-      loadingDiv.innerHTML = '';
-      loadingDiv.appendChild(document.createTextNode(`Capturing frames: ${progress}%`));
-      loadingDiv.appendChild(document.createElement('br'));
-      loadingDiv.appendChild(document.createTextNode(`Time: ${document.getElementById('timeLabel').textContent}`));
-      loadingDiv.appendChild(document.createElement('br'));
-      loadingDiv.appendChild(stopBtn); // Re-append button to keep it at bottom
-
-      // Wait a bit for render (though input event is sync, leaflet/canvas might need a tick)
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      try {
-        const canvas = await html2canvas(document.getElementById('app-container'), {
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          scale: 1, // Use 1 for GIF to keep size reasonable
-          ignoreElements: (element) => {
-             // Ignore loading div if it somehow gets in there (it's in body, so fine)
-             // Ignore hidden elements
-             return element.style.display === 'none';
-          }
-        });
-        
-        const currentFps = parseFloat(document.getElementById('fpsInput').value) || 10;
-        const currentDelay = 1000 / currentFps;
-        gif.addFrame(canvas, {delay: currentDelay});
-        
-        currentVal += step;
-        // Schedule next frame
-        setTimeout(captureFrame, 0);
-      } catch (err) {
-        console.error(err);
-        alert('Error capturing frame');
-        if (document.getElementById('gif-progress')) {
-          document.body.removeChild(loadingDiv);
-        }
-      }
-    };
-
-    captureFrame();
+    }
   }
 });
 
-// Add GIF recorder control to map
-map.addControl(new L.Control.GIFRecorder());
+// Add MP4 recorder control to map
+map.addControl(new L.Control.MP4Recorder());
 
 // Custom Canvas layer for edges
 L.CanvasEdges = L.Layer.extend({
