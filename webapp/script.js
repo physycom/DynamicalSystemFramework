@@ -918,7 +918,8 @@ loadDataBtn.addEventListener('click', async function() {
     }
 
     function initChart() {
-      const ctx = document.getElementById('densityChart').getContext('2d');
+      const canvas = document.getElementById('densityChart');
+      const ctx = canvas.getContext('2d');
       if (chart) chart.destroy();
       
       chart = new Chart(ctx, {
@@ -978,6 +979,48 @@ loadDataBtn.addEventListener('click', async function() {
           }
         }
       });
+
+      // Add drag behavior
+      let isDragging = false;
+
+      const updateTimeFromEvent = (e) => {
+        const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+        
+        if (points.length) {
+          const firstPoint = points[0];
+          const index = firstPoint.index;
+          
+          // Update slider
+          const timeSlider = document.getElementById('timeSlider');
+          let currentDt = 300;
+          if (densities.length > 1) {
+            currentDt = Math.round((densities[1].datetime - densities[0].datetime) / 1000);
+            if (currentDt <= 0) currentDt = 300;
+          }
+          
+          timeSlider.value = index * currentDt;
+          timeSlider.dispatchEvent(new Event('input'));
+        }
+      };
+
+      canvas.onmousedown = (e) => {
+        isDragging = true;
+        updateTimeFromEvent(e);
+      };
+
+      canvas.onmousemove = (e) => {
+        if (isDragging) {
+          updateTimeFromEvent(e);
+        }
+      };
+
+      canvas.onmouseup = () => {
+        isDragging = false;
+      };
+
+      canvas.onmouseleave = () => {
+        isDragging = false;
+      };
     }
 
     function updateChart() {
