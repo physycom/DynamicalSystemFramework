@@ -36,9 +36,6 @@ namespace dsf::mobility {
     m_path = std::move(pathCollection);
   }
 
-  Id Itinerary::id() const { return m_id; }
-  Id Itinerary::destination() const { return m_destination; }
-  PathCollection const& Itinerary::path() const { return m_path; }
   void Itinerary::save(const std::string& fileName) const {
     // Open binary file
     std::ofstream outFile{fileName, std::ios::binary};

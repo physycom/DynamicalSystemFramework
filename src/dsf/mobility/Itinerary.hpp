@@ -48,13 +48,16 @@ namespace dsf::mobility {
 
     /// @brief Get the itinerary's id
     /// @return Id, The itinerary's id
-    Id id() const;
+    inline auto id() const noexcept { return m_id; };
     /// @brief Get the itinerary's destination
     /// @return Id, The itinerary's destination
-    Id destination() const;
+    inline auto destination() const noexcept { return m_destination; };
     /// @brief Get the itinerary's path
     /// @return PathCollection const&, The itinerary's path
-    PathCollection const& path() const;
+    inline auto const& path() const noexcept { return m_path; };
+    /// @brief Check if the itinerary's path is empty
+    /// @return true if the itinerary's path is empty, false otherwise
+    inline auto empty() const noexcept { return m_path.empty(); };
     /// @brief Save the itinerary to a binary file
     /// @param fileName The name of the file to save the itinerary to
     void save(const std::string& fileName) const;
