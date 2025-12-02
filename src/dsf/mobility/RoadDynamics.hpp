@@ -191,7 +191,7 @@ namespace dsf::mobility {
     void resetTurnCounts();
 
     /// @brief Update the paths of the itineraries based on the given weight function
-    void updatePaths();
+    void updatePaths(bool const throw_on_empty = true);
     /// @brief Add agents uniformly on the road network
     /// @param nAgents The number of agents to add
     /// @param itineraryId The id of the itinerary to use (default is std::nullopt)
@@ -413,7 +413,6 @@ namespace dsf::mobility {
     for (auto const& [nodeId, weight] : this->m_destinationNodes) {
       m_itineraries.emplace(nodeId, std::make_unique<Itinerary>(nodeId, nodeId));
     }
-    // updatePaths();
     std::for_each(
         this->graph().edges().cbegin(),
         this->graph().edges().cend(),
@@ -470,12 +469,6 @@ namespace dsf::mobility {
 
     auto const& path{this->graph().allPathsTo(
         pItinerary->destination(), m_weightFunction, m_weightTreshold)};
-    if (path.empty()) {
-      throw std::runtime_error(
-          std::format("No path found for itinerary {} with destination node {}",
-                      pItinerary->id(),
-                      pItinerary->destination()));
-    }
     pItinerary->setPath(path);
     auto const newSize{pItinerary->path().size()};
     if (oldSize > 0 && newSize != oldSize) {
@@ -1250,12 +1243,39 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::updatePaths() {
+  void RoadDynamics<delay_t>::updatePaths(bool const throw_on_empty) {
     spdlog::debug("Init updating paths...");
+    tbb::concurrent_vector<Id> emptyItineraries;
     tbb::parallel_for_each(
         this->itineraries().cbegin(),
         this->itineraries().cend(),
-        [this](auto const& pair) -> void { this->m_updatePath(pair.second); });
+        [this, throw_on_empty, &emptyItineraries](auto const& pair) -> void {
+          auto const& pItinerary{pair.second};
+          this->m_updatePath(pItinerary);
+          if (pItinerary->empty()) {
+            if (!throw_on_empty) {
+              spdlog::warn("No path found for itinerary {} with destination node {}",
+                           pItinerary->id(),
+                           pItinerary->destination());
+              emptyItineraries.push_back(pItinerary->id());
+              return;
+            }
+            throw std::runtime_error(
+                std::format("No path found for itinerary {} with destination node {}",
+                            pItinerary->id(),
+                            pItinerary->destination()));
+          }
+        });
+    if (!emptyItineraries.empty()) {
+      spdlog::warn("Removing {} itineraries with no valid path from the dynamics.",
+                   emptyItineraries.size());
+      for (auto const& id : emptyItineraries) {
+        auto const destination = m_itineraries.at(id)->destination();
+        m_destinationNodes.erase(destination);
+        m_originNodes.erase(destination);
+        m_itineraries.erase(id);
+      }
+    }
     spdlog::debug("End updating paths.");
   }
 
