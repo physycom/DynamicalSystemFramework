@@ -4,7 +4,8 @@ const map = L.map('map').setView([0, 0], 1);
 
 // Add OpenStreetMap tile layer with inverted grayscale effect
 const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+  crossOrigin: true
 }).addTo(map);
 tileLayer.getContainer().style.filter = 'grayscale(100%) invert(100%)';
 
@@ -459,6 +460,35 @@ L.Control.MP4Recorder = L.Control.extend({
             height: h,
             ignoreElements: (element) => {
                return element.style.display === 'none';
+            },
+            onclone: (clonedDoc) => {
+              const currentFilter = tileLayer.getContainer().style.filter;
+              if (currentFilter && currentFilter !== 'none') {
+                const originalImages = document.querySelectorAll('.leaflet-tile-pane img');
+                const clonedImages = clonedDoc.querySelectorAll('.leaflet-tile-pane img');
+                
+                clonedImages.forEach((img, index) => {
+                  const original = originalImages[index];
+                  if (original && original.complete) {
+                    try {
+                      const canvas = document.createElement('canvas');
+                      canvas.width = original.naturalWidth;
+                      canvas.height = original.naturalHeight;
+                      const ctx = canvas.getContext('2d');
+                      ctx.filter = currentFilter;
+                      ctx.drawImage(original, 0, 0);
+                      img.src = canvas.toDataURL();
+                      img.style.filter = 'none';
+                    } catch (e) {
+                      // console.warn('Failed to apply filter to tile', e);
+                    }
+                  }
+                });
+                const layers = clonedDoc.querySelectorAll('.leaflet-tile-pane .leaflet-layer');
+                layers.forEach(layer => {
+                  layer.style.filter = 'none';
+                });
+              }
             }
           });
           
@@ -505,6 +535,7 @@ L.CanvasEdges = L.Layer.extend({
     L.setOptions(this, options);
     this.edges = edges;
     this.colors = [];
+    this.densities = [];
   },
 
   onAdd: function(map) {
@@ -603,6 +634,11 @@ L.CanvasEdges = L.Layer.extend({
     this._redraw();
   },
 
+  setDensities: function(densities) {
+    this.densities = densities;
+    this._redraw();
+  },
+
   setHighlightedEdge: function(highlightedEdge) {
     this.highlightedEdge = highlightedEdge;
     this._redraw();
@@ -617,7 +653,7 @@ L.CanvasEdges = L.Layer.extend({
     const ctx = this._ctx;
     ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
     const zoom = this._map.getZoom();
-    const strokeWidth = 3 + (zoom - baseZoom);
+    const baseStrokeWidth = 3 + (zoom - baseZoom);
 
     this.edges.forEach((edge, index) => {
       if (!edge.geometry || edge.geometry.length === 0) return;
@@ -631,13 +667,21 @@ L.CanvasEdges = L.Layer.extend({
         ctx.lineTo(point.x, point.y);
       }
 
-      ctx.lineWidth = strokeWidth;
+      // Calculate width based on density
+      let density = this.densities[index] || 0;
+      // Scale width: base width + density factor
+      // Assuming density is roughly 0-1, but can be higher.
+      // Let's cap the max width increase to avoid huge lines.
+      const densityFactor = Math.min(density, 2.0); 
+      ctx.lineWidth = Math.max(1, baseStrokeWidth * (0.5 + densityFactor));
+      
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
       let color = this.colors[index] || 'rgba(0, 128, 0, 0.69)';
       if (this.highlightedEdge && edge.id === this.highlightedEdge) {
         color = 'white';
+        ctx.lineWidth = ctx.lineWidth * 1.5; // Make highlighted edge thicker
       }
 
       ctx.strokeStyle = color;
@@ -1071,6 +1115,7 @@ loadDataBtn.addEventListener('click', async function() {
       });
 
       canvasEdges.setColors(colors);
+      canvasEdges.setDensities(currentDensities);
     }
 
     // Set up the time slider based on the density data's maximum time value
