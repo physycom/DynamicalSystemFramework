@@ -191,6 +191,9 @@ namespace dsf::mobility {
     void resetTurnCounts();
 
     /// @brief Update the paths of the itineraries based on the given weight function
+    /// @param throw_on_empty If true, throws an exception if an itinerary has an empty path (default is true)
+    /// If false, removes the itinerary with empty paths and the associated node from the origin/destination nodes
+    /// @throws std::runtime_error if throw_on_empty is true and an itinerary has an empty path
     void updatePaths(bool const throw_on_empty = true);
     /// @brief Add agents uniformly on the road network
     /// @param nAgents The number of agents to add
