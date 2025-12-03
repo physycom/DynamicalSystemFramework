@@ -425,6 +425,27 @@ TEST_CASE("FirstOrderDynamics") {
         }
       }
     }
+    GIVEN("A disconnected graph") {
+      Street s1{0, std::make_pair(0, 1), 10.};
+      RoadNetwork graph;
+      graph.addStreets(s1);
+      FirstOrderDynamics dynamics{graph, false, 69, 0., dsf::PathWeight::LENGTH};
+
+      WHEN(
+          "We add an impossible itinerary (to source node) and update paths with "
+          "throw_on_empty=true") {
+        dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 0)));
+        THEN("It throws an exception") { CHECK_THROWS(dynamics.updatePaths(true)); }
+      }
+
+      WHEN(
+          "We add an impossible itinerary (to source node) and update paths with "
+          "throw_on_empty=false") {
+        dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(0, 0)));
+        dynamics.updatePaths(false);
+        THEN("The itinerary is removed") { CHECK(dynamics.itineraries().empty()); }
+      }
+    }
   }
   SUBCASE("Evolve") {
     GIVEN("A dynamics object and an itinerary") {
@@ -549,7 +570,7 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
     GIVEN("A simple network and an agent with forced itinerary") {
-      spdlog::set_level(spdlog::level::trace);
+      // spdlog::set_level(spdlog::level::trace);
       Street s0_1{1, std::make_pair(0, 1), 30., 15.};
       Street s1_0{3, std::make_pair(1, 0), 30., 15.};
       Street s1_2{5, std::make_pair(1, 2), 30., 15.};
@@ -586,7 +607,7 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK_EQ(dynamics.nAgents(), 0);
         }
       }
-      spdlog::set_level(spdlog::level::info);
+      // spdlog::set_level(spdlog::level::info);
     }
   }
   SUBCASE("TrafficLights") {

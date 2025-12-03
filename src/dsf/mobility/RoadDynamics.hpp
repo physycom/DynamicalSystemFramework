@@ -191,7 +191,10 @@ namespace dsf::mobility {
     void resetTurnCounts();
 
     /// @brief Update the paths of the itineraries based on the given weight function
-    void updatePaths();
+    /// @param throw_on_empty If true, throws an exception if an itinerary has an empty path (default is true)
+    /// If false, removes the itinerary with empty paths and the associated node from the origin/destination nodes
+    /// @throws std::runtime_error if throw_on_empty is true and an itinerary has an empty path
+    void updatePaths(bool const throw_on_empty = true);
     /// @brief Add agents uniformly on the road network
     /// @param nAgents The number of agents to add
     /// @param itineraryId The id of the itinerary to use (default is std::nullopt)
@@ -413,7 +416,6 @@ namespace dsf::mobility {
     for (auto const& [nodeId, weight] : this->m_destinationNodes) {
       m_itineraries.emplace(nodeId, std::make_unique<Itinerary>(nodeId, nodeId));
     }
-    // updatePaths();
     std::for_each(
         this->graph().edges().cbegin(),
         this->graph().edges().cend(),
@@ -470,12 +472,6 @@ namespace dsf::mobility {
 
     auto const& path{this->graph().allPathsTo(
         pItinerary->destination(), m_weightFunction, m_weightTreshold)};
-    if (path.empty()) {
-      throw std::runtime_error(
-          std::format("No path found for itinerary {} with destination node {}",
-                      pItinerary->id(),
-                      pItinerary->destination()));
-    }
     pItinerary->setPath(path);
     auto const newSize{pItinerary->path().size()};
     if (oldSize > 0 && newSize != oldSize) {
@@ -534,18 +530,21 @@ namespace dsf::mobility {
     double cumulativeProbability = 0.0;
 
     for (const auto outEdgeId : outgoingEdges) {
-      if (forbiddenTurns.contains(outEdgeId)) {
-        continue;
-      }
-
       auto const& pStreetOut{this->graph().edge(outEdgeId)};
 
       // Check if this is a valid path target for non-random agents
-      bool bIsPathTarget = true;
+      bool bIsPathTarget = false;
       if (!pathTargets.empty()) {
         bIsPathTarget =
             std::find(pathTargets.cbegin(), pathTargets.cend(), pStreetOut->target()) !=
             pathTargets.cend();
+      }
+
+      if (forbiddenTurns.contains(outEdgeId) && !bIsPathTarget) {
+        continue;
+      }
+
+      if (!pathTargets.empty()) {
         if (!this->m_errorProbability.has_value() && !bIsPathTarget) {
           continue;
         }
@@ -571,7 +570,7 @@ namespace dsf::mobility {
       if (previousNodeId.has_value() && pStreetOut->target() == previousNodeId.value()) {
         if (pNode->isRoundabout()) {
           probability *= U_TURN_PENALTY_FACTOR;
-        } else {
+        } else if (!bIsPathTarget) {
           continue;  // No U-turns allowed
         }
       }
@@ -582,11 +581,16 @@ namespace dsf::mobility {
 
     // Select street based on weighted probabilities
     if (transitionProbabilities.empty()) {
-      spdlog::trace("No valid transitions found for {} at {}", *pAgent, *pNode);
+      spdlog::debug("No valid transitions found for {} at {}", *pAgent, *pNode);
       return std::nullopt;
     }
     if (transitionProbabilities.size() == 1) {
-      return transitionProbabilities.cbegin()->first;
+      auto const& onlyStreetId = transitionProbabilities.cbegin()->first;
+      spdlog::debug("Only one valid transition for {} at {}: street {}",
+                    *pAgent,
+                    *pNode,
+                    onlyStreetId);
+      return onlyStreetId;
     }
 
     std::uniform_real_distribution<double> uniformDist{0., cumulativeProbability};
@@ -599,7 +603,10 @@ namespace dsf::mobility {
       }
     }
     // Return last one as fallback
-    return std::prev(transitionProbabilities.cend())->first;
+    auto const fallbackStreetId = std::prev(transitionProbabilities.cend())->first;
+    spdlog::debug(
+        "Fallback selection for {} at {}: street {}", *pAgent, *pNode, fallbackStreetId);
+    return fallbackStreetId;
   }
 
   template <typename delay_t>
@@ -690,7 +697,7 @@ namespace dsf::mobility {
       if (pStreet->isStochastic() &&
           uniformDist(this->m_generator) >
               dynamic_cast<StochasticStreet&>(*pStreet).flowRate()) {
-        spdlog::debug("Skipping due to flow rate {:.2f} < random value",
+        spdlog::trace("Skipping due to flow rate {:.2f} < random value",
                       dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
         continue;
       }
@@ -698,7 +705,7 @@ namespace dsf::mobility {
         double integral;
         double fractional = std::modf(transportCapacity, &integral);
         if (fractional != 0. && uniformDist(this->m_generator) > fractional) {
-          spdlog::debug("Skipping due to fractional capacity {:.2f} < random value",
+          spdlog::trace("Skipping due to fractional capacity {:.2f} < random value",
                         fractional);
           continue;
         }
@@ -710,7 +717,7 @@ namespace dsf::mobility {
         // Logger::debug("Taking temp agent");
         auto const& pAgentTemp{pStreet->queue(queueIndex).front()};
         if (pAgentTemp->freeTime() > this->time_step()) {
-          spdlog::debug("Skipping due to time {} < free time {}",
+          spdlog::trace("Skipping due to time {} < free time {}",
                         this->time_step(),
                         pAgentTemp->freeTime());
           continue;
@@ -739,14 +746,14 @@ namespace dsf::mobility {
         pAgentTemp->setSpeed(0.);
         const auto& destinationNode{this->graph().node(pStreet->target())};
         if (destinationNode->isFull()) {
-          spdlog::debug("Skipping due to full destination node {}", *destinationNode);
+          spdlog::trace("Skipping due to full destination node {}", *destinationNode);
           continue;
         }
         if (destinationNode->isTrafficLight()) {
           auto& tl = dynamic_cast<TrafficLight&>(*destinationNode);
           auto const direction{pStreet->laneMapping().at(queueIndex)};
           if (!tl.isGreen(pStreet->id(), direction)) {
-            spdlog::debug("Skipping due to red light on street {} and direction {}",
+            spdlog::trace("Skipping due to red light on street {} and direction {}",
                           pStreet->id(),
                           directionToString.at(direction));
             continue;
@@ -1244,12 +1251,39 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::updatePaths() {
+  void RoadDynamics<delay_t>::updatePaths(bool const throw_on_empty) {
     spdlog::debug("Init updating paths...");
+    tbb::concurrent_vector<Id> emptyItineraries;
     tbb::parallel_for_each(
         this->itineraries().cbegin(),
         this->itineraries().cend(),
-        [this](auto const& pair) -> void { this->m_updatePath(pair.second); });
+        [this, throw_on_empty, &emptyItineraries](auto const& pair) -> void {
+          auto const& pItinerary{pair.second};
+          this->m_updatePath(pItinerary);
+          if (pItinerary->empty()) {
+            if (!throw_on_empty) {
+              spdlog::warn("No path found for itinerary {} with destination node {}",
+                           pItinerary->id(),
+                           pItinerary->destination());
+              emptyItineraries.push_back(pItinerary->id());
+              return;
+            }
+            throw std::runtime_error(
+                std::format("No path found for itinerary {} with destination node {}",
+                            pItinerary->id(),
+                            pItinerary->destination()));
+          }
+        });
+    if (!emptyItineraries.empty()) {
+      spdlog::warn("Removing {} itineraries with no valid path from the dynamics.",
+                   emptyItineraries.size());
+      for (auto const& id : emptyItineraries) {
+        auto const destination = m_itineraries.at(id)->destination();
+        m_destinationNodes.erase(destination);
+        m_originNodes.erase(destination);
+        m_itineraries.erase(id);
+      }
+    }
     spdlog::debug("End updating paths.");
   }
 

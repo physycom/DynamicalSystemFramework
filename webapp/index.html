@@ -18,45 +18,76 @@
   <!-- jsPDF for PDF generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div id="app-container">
+    <!-- Map container -->
+    <div id="map"></div>
 
-  <!-- Map container -->
-  <div id="map"></div>
-
-  <!-- Data directory selector -->
-  <div class="data-selector">
-    <label for="dataDir">Data Directory Name:</label>
-    <input type="text" id="dataDir" placeholder="Enter directory name (e.g., 'output')" />
-    <button id="loadDataBtn">Load Data</button>
-    <div class="data-info">
-      <small>Place your edges and densities CSV files in: webapp/{directory_name}/</small>
+    <!-- Data directory selector -->
+    <div class="data-selector">
+      <label for="dataDir">Data Directory Name:</label>
+      <input type="text" id="dataDir" placeholder="Enter directory name (e.g., 'output')" />
+      <button id="loadDataBtn">Load Data</button>
+      <div class="data-info">
+        <small>Place your edges and densities CSV files under the main directory: {directory_name}</small>
+      </div>
     </div>
-  </div>
 
-  <!-- Search container -->
-  <div class="search-container">
-    <div>
-      <label for="edgeSearch">Edge ID:</label>
-      <input type="text" id="edgeSearch" />
-      <button id="edgeSearchBtn">Search</button>
+    <!-- Search container -->
+    <div class="search-container">
+      <div>
+        <label for="edgeSearch">Edge ID:</label>
+        <input type="text" id="edgeSearch" />
+        <button id="edgeSearchBtn">Search</button>
+      </div>
+      <div>
+        <label for="nodeSearch">Node ID:</label>
+        <input type="text" id="nodeSearch" />
+        <button id="nodeSearchBtn">Search</button>
+      </div>
+      <button id="inverseBtn" disabled>Inverse Edge</button>
+      <button id="clearBtn">Clear Selections</button>
+      <div id="searchResults"></div>
     </div>
-    <div>
-      <label for="nodeSearch">Node ID:</label>
-      <input type="text" id="nodeSearch" />
-      <button id="nodeSearchBtn">Search</button>
-    </div>
-    <button id="inverseBtn" disabled>Inverse Edge</button>
-    <button id="clearBtn">Clear Selections</button>
-    <div id="searchResults"></div>
-  </div>
 
-  <!-- Slider for time step -->
-  <div class="slider-container">
-    <!-- <label for="timeSlider">TimeStamp</label> -->
-    <input type="range" id="timeSlider" min="0" step="300" value="0" />
-    <span id="timeLabel">N/A</span>
+    <!-- Slider for time step -->
+    <div class="slider-container">
+      <div class="slider-controls">
+        <button id="playBtn" title="Play/Pause">▶</button>
+        <div class="fps-control">
+          <label for="fpsInput">FPS:</label>
+          <input type="number" id="fpsInput" value="10" min="1" max="60" />
+        </div>
+      </div>
+      <input type="range" id="timeSlider" min="0" step="300" value="0" />
+      <span id="timeLabel">N/A</span>
+    </div>
+
+    <!-- Legend container -->
+    <div class="legend-container">
+      <div class="legend-title">Density</div>
+      <div class="legend-bar"></div>
+      <div class="legend-labels">
+        <span>0%</span>
+        <span>50%</span>
+        <span>100%</span>
+      </div>
+    </div>
+
+    <!-- Chart container -->
+    <div class="chart-container">
+      <div style="margin-bottom: 5px; height: 30px;">
+        <select id="chartColumnSelector" style="width: 100%; padding: 5px;"></select>
+      </div>
+      <div style="position: relative; height: calc(100% - 40px); width: 100%;">
+        <canvas id="densityChart"></canvas>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>
