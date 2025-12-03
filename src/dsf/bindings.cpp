@@ -475,6 +475,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::initTurnCounts").c_str())
       .def("updatePaths",
            &dsf::mobility::FirstOrderDynamics::updatePaths,
+           pybind11::arg("throw_on_empty") = true,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::updatePaths").c_str())
       .def(
           "addAgentsUniformly",

@@ -247,14 +247,16 @@ namespace dsf::mobility {
                        name,
                        geometry));
       // Check if there is coilcode property
-      if (!edge_properties.at_key("coilcode").error() &&
-          edge_properties["coilcode"].has_value()) {
-        if (edge_properties["coilcode"].is_string()) {
-          std::string strCoilCode{edge_properties["coilcode"].get_string().value()};
+      if (!edge_properties.at_key("coilcode").error()) {
+        auto const& epCoilCode = edge_properties["coilcode"];
+        if (epCoilCode.is_string()) {
+          std::string strCoilCode{epCoilCode.get_string().value()};
           addCoil(edge_id, strCoilCode);
-        } else if (edge_properties["coilcode"].is_number()) {
-          std::string strCoilCode =
-              std::to_string(edge_properties["coilcode"].get_uint64());
+        } else if (epCoilCode.is_uint64()) {
+          std::string strCoilCode = std::to_string(epCoilCode.get_uint64());
+          addCoil(edge_id, strCoilCode);
+        } else if (epCoilCode.is_int64()) {
+          std::string strCoilCode = std::to_string(epCoilCode.get_int64());
           addCoil(edge_id, strCoilCode);
         } else {
           spdlog::warn("Invalid coilcode for edge {}, adding default", edge_id);

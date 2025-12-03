@@ -4,7 +4,8 @@ const map = L.map('map').setView([0, 0], 1);
 
 // Add OpenStreetMap tile layer with inverted grayscale effect
 const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+  crossOrigin: true
 }).addTo(map);
 tileLayer.getContainer().style.filter = 'grayscale(100%) invert(100%)';
 
@@ -110,6 +111,37 @@ map.addControl(new L.Control.BackgroundMenu());
 // Add search menu control to map
 map.addControl(new L.Control.SearchMenu());
 
+// Add chart toggle control
+L.Control.ChartToggle = L.Control.extend({
+  options: {
+    position: 'topright'
+  },
+
+  onAdd: function(map) {
+    const container = L.DomUtil.create('div', 'leaflet-control-chart-toggle');
+    const button = L.DomUtil.create('button', 'leaflet-control-search-btn', container);
+    
+    button.innerHTML = '📈';
+    button.title = 'Toggle Chart';
+    button.onclick = () => {
+      const chartContainer = document.querySelector('.chart-container');
+      if (chartContainer.style.display === 'none' || chartContainer.style.display === '') {
+        chartContainer.style.display = 'block';
+        if (typeof chart !== 'undefined' && chart) {
+          chart.resize();
+        }
+      } else {
+        chartContainer.style.display = 'none';
+      }
+    };
+
+    return container;
+  }
+});
+
+// Add chart toggle control to map
+map.addControl(new L.Control.ChartToggle());
+
 // Add screenshot control
 L.Control.Screenshot = L.Control.extend({
   options: {
@@ -165,12 +197,17 @@ L.Control.Screenshot = L.Control.extend({
     document.body.appendChild(loadingDiv);
 
     // Capture the map
-    html2canvas(document.getElementById('map'), {
+    html2canvas(document.getElementById('app-container'), {
       useCORS: true,
       allowTaint: false,
       scale: 2, // Higher resolution
       width: window.innerWidth,
-      height: window.innerHeight
+      height: window.innerHeight,
+      ignoreElements: (element) => {
+        // Ignore the loading indicator if it's inside app-container (it shouldn't be, but just in case)
+        // Also ignore data selector if it's hidden (html2canvas usually handles hidden, but let's be safe)
+        return element.classList.contains('data-selector') && element.style.display === 'none';
+      }
     }).then(canvas => {
       // Remove loading indicator
       document.body.removeChild(loadingDiv);
@@ -237,12 +274,268 @@ L.Control.Screenshot = L.Control.extend({
 // Add screenshot control to map
 map.addControl(new L.Control.Screenshot());
 
+// Add MP4 recording control
+L.Control.MP4Recorder = L.Control.extend({
+  options: {
+    position: 'topleft'
+  },
+
+  onAdd: function(map) {
+    const container = L.DomUtil.create('div', 'leaflet-control-mp4');
+    const button = L.DomUtil.create('a', 'leaflet-control-mp4-button', container);
+    
+    button.innerHTML = '🎥';
+    button.href = '#';
+    button.title = 'Record MP4';
+    button.style.cssText = `
+      width: 26px;
+      height: 26px;
+      line-height: 26px;
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      color: black;
+      background: white;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-radius: 4px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+      font-size: 14px;
+      margin-bottom: 5px;
+    `;
+
+    L.DomEvent.on(button, 'click', L.DomEvent.stopPropagation)
+              .on(button, 'click', L.DomEvent.preventDefault)
+              .on(button, 'click', this._startRecording, this);
+
+    this.button = button;
+    return container;
+  },
+
+  _startRecording: async function() {
+    if (!densities || densities.length === 0) {
+      alert('Please load data first.');
+      return;
+    }
+
+    // Pause playback if active
+    const playBtn = document.getElementById('playBtn');
+    if (playBtn && playBtn.textContent === '⏸') {
+      playBtn.click();
+    }
+
+    const fpsInput = document.getElementById('fpsInput');
+    const fps = parseFloat(fpsInput.value) || 10;
+
+    if (!confirm(`Start recording MP4 from current time to end?\nFPS: ${fps}\nNote: This process may take a while.`)) {
+      return;
+    }
+
+    let isRecording = true;
+
+    // Show loading/progress indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'mp4-progress';
+    loadingDiv.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 10000;
+      font-size: 16px;
+      text-align: center;
+    `;
+    loadingDiv.innerHTML = 'Initializing MP4 recorder...<br>';
+
+    // Add Stop button
+    const stopBtn = document.createElement('button');
+    stopBtn.textContent = 'Stop & Save';
+    stopBtn.style.cssText = 'margin-top: 10px; padding: 5px 10px; cursor: pointer;';
+    stopBtn.onclick = () => {
+      isRecording = false;
+      stopBtn.disabled = true;
+      stopBtn.textContent = 'Stopping...';
+    };
+    loadingDiv.appendChild(stopBtn);
+
+    document.body.appendChild(loadingDiv);
+
+    try {
+      // Load mp4-muxer dynamically
+      const { Muxer, ArrayBufferTarget } = await import('https://unpkg.com/mp4-muxer@5.1.4/build/mp4-muxer.mjs');
+
+      const width = map.getSize().x;
+      const height = map.getSize().y;
+      // Ensure even dimensions for H.264
+      const w = width % 2 === 0 ? width : width - 1;
+      const h = height % 2 === 0 ? height : height - 1;
+
+      const muxer = new Muxer({
+        target: new ArrayBufferTarget(),
+        video: {
+          codec: 'avc',
+          width: w,
+          height: h
+        },
+        fastStart: 'in-memory'
+      });
+
+      const videoEncoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: e => {
+          console.error(e);
+          alert("Video encoding error: " + e.message);
+          isRecording = false;
+        }
+      });
+
+      videoEncoder.configure({
+        codec: 'avc1.4d002a', // Main Profile, Level 4.2 (supports up to 1080p)
+        width: w,
+        height: h,
+        bitrate: 5_000_000 // 5 Mbps for better quality
+      });
+
+      const timeSlider = document.getElementById('timeSlider');
+      const startVal = parseInt(timeSlider.value);
+      const maxVal = parseInt(timeSlider.max);
+      const step = parseInt(timeSlider.step);
+
+      let currentVal = startVal;
+      let frameIndex = 0;
+
+      // Capture loop
+      const captureFrame = async () => {
+        if (!isRecording || currentVal > maxVal) {
+          loadingDiv.innerHTML = 'Finalizing MP4...';
+          await videoEncoder.flush();
+          muxer.finalize();
+          
+          const buffer = muxer.target.buffer;
+          const blob = new Blob([buffer], { type: 'video/mp4' });
+          const url = URL.createObjectURL(blob);
+          
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `simulation_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          
+          if (document.getElementById('mp4-progress')) {
+            document.body.removeChild(loadingDiv);
+          }
+          return;
+        }
+
+        // Update slider and map
+        timeSlider.value = currentVal;
+        timeSlider.dispatchEvent(new Event('input'));
+
+        // Update progress text
+        const progress = Math.round(((currentVal - startVal) / (maxVal - startVal)) * 100);
+        
+        // Clear previous content but keep the stop button
+        loadingDiv.innerHTML = '';
+        loadingDiv.appendChild(document.createTextNode(`Capturing frames: ${progress}%`));
+        loadingDiv.appendChild(document.createElement('br'));
+        loadingDiv.appendChild(document.createTextNode(`Time: ${document.getElementById('timeLabel').textContent}`));
+        loadingDiv.appendChild(document.createElement('br'));
+        loadingDiv.appendChild(stopBtn);
+
+        // Wait a bit for render
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        try {
+          const canvas = await html2canvas(document.getElementById('app-container'), {
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+            scale: 1,
+            width: w,
+            height: h,
+            ignoreElements: (element) => {
+               return element.style.display === 'none';
+            },
+            onclone: (clonedDoc) => {
+              const currentFilter = tileLayer.getContainer().style.filter;
+              if (currentFilter && currentFilter !== 'none') {
+                const originalImages = document.querySelectorAll('.leaflet-tile-pane img');
+                const clonedImages = clonedDoc.querySelectorAll('.leaflet-tile-pane img');
+                
+                clonedImages.forEach((img, index) => {
+                  const original = originalImages[index];
+                  if (original && original.complete) {
+                    try {
+                      const canvas = document.createElement('canvas');
+                      canvas.width = original.naturalWidth;
+                      canvas.height = original.naturalHeight;
+                      const ctx = canvas.getContext('2d');
+                      ctx.filter = currentFilter;
+                      ctx.drawImage(original, 0, 0);
+                      img.src = canvas.toDataURL();
+                      img.style.filter = 'none';
+                    } catch (e) {
+                      // console.warn('Failed to apply filter to tile', e);
+                    }
+                  }
+                });
+                const layers = clonedDoc.querySelectorAll('.leaflet-tile-pane .leaflet-layer');
+                layers.forEach(layer => {
+                  layer.style.filter = 'none';
+                });
+              }
+            }
+          });
+          
+          // Create a VideoFrame from the canvas
+          const frame = new VideoFrame(canvas, {
+            timestamp: frameIndex * 1000000 / fps,
+            duration: 1000000 / fps
+          });
+
+          videoEncoder.encode(frame, { keyFrame: frameIndex % 30 === 0 });
+          frame.close();
+          
+          currentVal += step;
+          frameIndex++;
+          // Schedule next frame
+          setTimeout(captureFrame, 0);
+        } catch (err) {
+          console.error(err);
+          alert('Error capturing frame: ' + err.message);
+          if (document.getElementById('mp4-progress')) {
+            document.body.removeChild(loadingDiv);
+          }
+        }
+      };
+
+      captureFrame();
+
+    } catch (err) {
+      console.error(err);
+      alert('Error initializing MP4 recorder: ' + err.message);
+      if (document.getElementById('mp4-progress')) {
+        document.body.removeChild(loadingDiv);
+      }
+    }
+  }
+});
+
+// Add MP4 recorder control to map
+map.addControl(new L.Control.MP4Recorder());
+
 // Custom Canvas layer for edges
 L.CanvasEdges = L.Layer.extend({
   initialize: function(edges, options) {
     L.setOptions(this, options);
     this.edges = edges;
     this.colors = [];
+    this.densities = [];
   },
 
   onAdd: function(map) {
@@ -341,6 +634,11 @@ L.CanvasEdges = L.Layer.extend({
     this._redraw();
   },
 
+  setDensities: function(densities) {
+    this.densities = densities;
+    this._redraw();
+  },
+
   setHighlightedEdge: function(highlightedEdge) {
     this.highlightedEdge = highlightedEdge;
     this._redraw();
@@ -355,7 +653,7 @@ L.CanvasEdges = L.Layer.extend({
     const ctx = this._ctx;
     ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
     const zoom = this._map.getZoom();
-    const strokeWidth = 3 + (zoom - baseZoom);
+    const baseStrokeWidth = 3 + (zoom - baseZoom);
 
     this.edges.forEach((edge, index) => {
       if (!edge.geometry || edge.geometry.length === 0) return;
@@ -369,13 +667,21 @@ L.CanvasEdges = L.Layer.extend({
         ctx.lineTo(point.x, point.y);
       }
 
-      ctx.lineWidth = strokeWidth;
+      // Calculate width based on density
+      let density = this.densities[index] || 0;
+      // Scale width: base width + density factor
+      // Assuming density is roughly 0-1, but can be higher.
+      // Let's cap the max width increase to avoid huge lines.
+      const densityFactor = Math.min(density, 2.0); 
+      ctx.lineWidth = Math.max(1, baseStrokeWidth * (0.5 + densityFactor));
+      
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
       let color = this.colors[index] || 'rgba(0, 128, 0, 0.69)';
       if (this.highlightedEdge && edge.id === this.highlightedEdge) {
         color = 'white';
+        ctx.lineWidth = ctx.lineWidth * 1.5; // Make highlighted edge thicker
       }
 
       ctx.strokeStyle = color;
@@ -496,10 +802,11 @@ L.svg().addTo(map);
 const overlay = d3.select(map.getPanes().overlayPane).select("svg");
 const g = overlay.append("g").attr("class", "leaflet-zoom-hide");
 
-let edges, densities;
+let edges, densities, globalData;
 let timeStamp = new Date();
 let highlightedEdge = null;
 let highlightedNode = null;
+let chart;
 
 function formatTime(date) {
   const year = date.getFullYear();
@@ -578,16 +885,19 @@ loadDataBtn.addEventListener('click', async function() {
     loadDataBtn.disabled = true;
     
     // Fetch CSV files from the data subdirectory
-    const edgesUrl = `${dirName}/edges.csv`;
-    const densitiesUrl = `${dirName}/densities.csv`;
+    const edgesUrl = `../${dirName}/edges.csv`;
+    const densitiesUrl = `../${dirName}/densities.csv`;
+    const dataUrl = `../${dirName}/data.csv`;
 
     // Load CSV data
     Promise.all([
       d3.dsv(";", edgesUrl, parseEdges),
-      d3.dsv(";", densitiesUrl, parseDensity)
-    ]).then(([edgesData, densityData]) => {
+      d3.dsv(";", densitiesUrl, parseDensity),
+      d3.dsv(";", dataUrl, parseData).catch(e => { console.warn('data.csv not found or invalid', e); return []; })
+    ]).then(([edgesData, densityData, additionalData]) => {
       edges = edgesData;
       densities = densityData;
+      globalData = additionalData;
 
       // console.log("Edges:", edges);
       // console.log("Densities:", densities);
@@ -595,9 +905,7 @@ loadDataBtn.addEventListener('click', async function() {
       if (!edges.length || !densities.length) {
         console.error("Missing CSV data.");
         return;
-      }
-
-      timeStamp = densities[0].datetime;
+      }      timeStamp = densities[0].datetime;
 
     // Calculate median center from edge geometries
     let allLats = [];
@@ -622,6 +930,159 @@ loadDataBtn.addEventListener('click', async function() {
     const canvasEdges = new L.CanvasEdges(edges);
     canvasEdges.addTo(map);
 
+    let currentChartColumn = 'mean_density_vpk';
+
+    // Initialize Chart
+    if (globalData && globalData.length > 0) {
+      const columns = Object.keys(globalData[0]).filter(k => k !== 'datetime');
+      const selector = document.getElementById('chartColumnSelector');
+      selector.innerHTML = '';
+      columns.forEach(col => {
+          const option = document.createElement('option');
+          option.value = col;
+          option.text = col;
+          selector.appendChild(option);
+      });
+      
+      if (columns.includes('mean_density_vpk')) {
+          selector.value = 'mean_density_vpk';
+      } else if (columns.length > 0) {
+          selector.value = columns[0];
+      }
+      currentChartColumn = selector.value;
+
+      selector.onchange = () => {
+          currentChartColumn = selector.value;
+          initChart();
+          updateChart();
+      };
+
+      initChart();
+      // document.querySelector('.chart-container').style.display = 'block';
+    }
+
+    function initChart() {
+      const canvas = document.getElementById('densityChart');
+      const ctx = canvas.getContext('2d');
+      if (chart) chart.destroy();
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: globalData.map(d => formatTime(d.datetime)),
+          datasets: [{
+            label: currentChartColumn,
+            data: globalData.map(d => d[currentChartColumn]),
+            borderColor: 'blue',
+            borderWidth: 1,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.1
+          }, {
+            label: 'Current Time',
+            data: [], // Will be populated dynamically
+            borderColor: 'red',
+            backgroundColor: 'red',
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            showLine: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+              duration: 0
+          },
+          scales: {
+            x: {
+              display: true,
+              title: {
+                display: true,
+                text: 'time'
+              },
+              ticks: {
+                  display: false
+              }
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: currentChartColumn
+              }
+            }
+          },
+          plugins: {
+              legend: {
+                  display: true,
+                  labels: {
+                      boxWidth: 10
+                  }
+              }
+          }
+        }
+      });
+
+      // Add drag behavior
+      let isDragging = false;
+
+      const updateTimeFromEvent = (e) => {
+        const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+        
+        if (points.length) {
+          const firstPoint = points[0];
+          const index = firstPoint.index;
+          
+          // Update slider
+          const timeSlider = document.getElementById('timeSlider');
+          let currentDt = 300;
+          if (densities.length > 1) {
+            currentDt = Math.round((densities[1].datetime - densities[0].datetime) / 1000);
+            if (currentDt <= 0) currentDt = 300;
+          }
+          
+          timeSlider.value = index * currentDt;
+          timeSlider.dispatchEvent(new Event('input'));
+        }
+      };
+
+      canvas.onmousedown = (e) => {
+        isDragging = true;
+        updateTimeFromEvent(e);
+      };
+
+      canvas.onmousemove = (e) => {
+        if (isDragging) {
+          updateTimeFromEvent(e);
+        }
+      };
+
+      canvas.onmouseup = () => {
+        isDragging = false;
+      };
+
+      canvas.onmouseleave = () => {
+        isDragging = false;
+      };
+    }
+
+    function updateChart() {
+        if (!chart || !globalData) return;
+        
+        // Find current data point index based on timeStamp
+        const currentIndex = densities.findIndex(d => d.datetime.getTime() === timeStamp.getTime());
+        
+        if (currentIndex !== -1) {
+            const pointData = new Array(globalData.length).fill(null);
+            if (globalData[currentIndex]) {
+                pointData[currentIndex] = globalData[currentIndex][currentChartColumn];
+            }
+            chart.data.datasets[1].data = pointData;
+            chart.update('none');
+        }
+    }
+
     // Function to update edge positions, and color edges based on density
     function update() {
       // Update edge stroke width based on zoom level (handled in Canvas layer)
@@ -629,6 +1090,7 @@ loadDataBtn.addEventListener('click', async function() {
 
       updateDensityVisualization();
       updateNodeHighlight();
+      updateChart();
     }
 
     map.on("zoomend", update);
@@ -653,11 +1115,18 @@ loadDataBtn.addEventListener('click', async function() {
       });
 
       canvasEdges.setColors(colors);
+      canvasEdges.setDensities(currentDensities);
     }
 
     // Set up the time slider based on the density data's maximum time value
     const timeSlider = document.getElementById('timeSlider');
     const timeLabel = document.getElementById('timeLabel');
+    const playBtn = document.getElementById('playBtn');
+    const fpsInput = document.getElementById('fpsInput');
+    
+    let isPlaying = false;
+    let playInterval = null;
+
     // Dynamically determine dt from the first two density datapoints
     let dt = 300;
     if (densities.length > 1) {
@@ -667,6 +1136,44 @@ loadDataBtn.addEventListener('click', async function() {
     timeSlider.max = (densities.length - 1) * dt;
     timeSlider.step = dt;
     timeLabel.textContent = `${formatTime(timeStamp)}`;
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      
+      if (isPlaying) {
+        const fps = parseFloat(fpsInput.value) || 10;
+        const interval = 1000 / fps;
+        
+        playInterval = setInterval(() => {
+          let currentValue = parseInt(timeSlider.value);
+          let maxValue = parseInt(timeSlider.max);
+          
+          if (currentValue >= maxValue) {
+            currentValue = 0; // Loop back to start
+          } else {
+            currentValue += dt;
+          }
+          
+          timeSlider.value = currentValue;
+          // Trigger input event manually
+          timeSlider.dispatchEvent(new Event('input'));
+        }, interval);
+      } else {
+        clearInterval(playInterval);
+        playInterval = null;
+      }
+    }
+
+    playBtn.addEventListener('click', togglePlay);
+
+    fpsInput.addEventListener('change', () => {
+      if (isPlaying) {
+        // Restart with new FPS
+        togglePlay(); // Stop
+        togglePlay(); // Start
+      }
+    });
 
     // Update the visualization when the slider value changes
     timeSlider.addEventListener('input', function() {
@@ -806,6 +1313,9 @@ loadDataBtn.addEventListener('click', async function() {
       // Hide data selector and show slider and search
       document.querySelector('.data-selector').style.display = 'none';
       document.querySelector('.slider-container').style.display = 'block';
+      
+      const legendContainer = document.querySelector('.legend-container');
+      legendContainer.style.display = 'block';
     }).catch(error => {
       console.error("Error loading CSV files:", error);
       alert('Error loading data files. Please check the console for details.');
@@ -854,4 +1364,15 @@ function parseDensity(d) {
           return val === "" ? 0 : +val;
         });
       return { datetime, densities };
+}
+
+// Parsing function for data CSV
+function parseData(d) {
+  const result = { datetime: new Date(d.datetime) };
+  for (const key in d) {
+    if (key !== 'datetime') {
+      result[key] = +d[key];
+    }
+  }
+  return result;
 }
