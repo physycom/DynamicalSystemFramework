@@ -63,7 +63,7 @@ namespace dsf::mobility {
     std::function<double(std::unique_ptr<Street> const&)> m_weightFunction;
     std::optional<double> m_errorProbability;
     std::optional<double> m_passageProbability;
-    double m_maxTravelDistance;
+    std::optional<double> m_meanTravelDistance;
     std::time_t m_maxTravelTime;
     double m_weightTreshold;
     std::optional<double> m_timeToleranceFactor;
@@ -151,15 +151,14 @@ namespace dsf::mobility {
     inline void setDataUpdatePeriod(delay_t dataUpdatePeriod) noexcept {
       m_dataUpdatePeriod = dataUpdatePeriod;
     }
-    /// @brief Set the maximum distance which a random agent can travel
-    /// @param maxDistance The maximum distance
-    /// @throw std::invalid_argument If the maximum distance is negative
-    inline void setMaxDistance(double const maxDistance) {
-      if (maxDistance < 0.) {
-        throw std::invalid_argument(std::format(
-            "Maximum travel distance ({}) must be non-negative", maxDistance));
-      }
-      m_maxTravelDistance = maxDistance;
+    /// @brief Set the mean distance travelled by a random agent
+    /// @param meanTravelDistance The mean distance
+    /// @throw std::invalid_argument If the mean distance is negative
+    inline void setMeanTravelDistance(double const meanTravelDistance) {
+      meanTravelDistance > 0. ? m_meanTravelDistance = meanTravelDistance
+                              : throw std::invalid_argument(
+                                    "RoadDynamics::setMeanTravelDistance: "
+                                    "meanTravelDistance must be positive");
     };
     /// @brief Set the maximum travel time which a random agent can travel
     /// @param maxTravelTime The maximum travel time
@@ -398,7 +397,7 @@ namespace dsf::mobility {
         m_previousOptimizationTime{0},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
-        m_maxTravelDistance{std::numeric_limits<double>::max()},
+        m_meanTravelDistance{std::nullopt},
         m_maxTravelTime{std::numeric_limits<std::time_t>::max()},
         m_timeToleranceFactor{std::nullopt},
         m_bCacheEnabled{useCache},
@@ -890,7 +889,7 @@ namespace dsf::mobility {
             spdlog::debug("Random agent {} has arrived at destination node {}",
                           pAgentTemp->id(),
                           destinationNode->id());
-          } else if (pAgentTemp->distance() >= m_maxTravelDistance) {
+          } else if (m_meanTravelDistance.has_value() && pAgentTemp->hasArrived()) {
             bArrived = true;
           } else if (!bArrived &&
                      (this->time_step() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
@@ -1356,6 +1355,8 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::addRandomAgents(std::size_t nAgents,
                                               TContainer const& spawnWeights) {
     std::uniform_real_distribution<double> uniformDist{0., 1.};
+    std::exponential_distribution<double> distDist{1. /
+                                                   m_meanTravelDistance.value_or(1.)};
     auto const bUniformSpawn{spawnWeights.empty()};
     auto const bSingleSource{spawnWeights.size() == 1};
     while (nAgents--) {
@@ -1373,6 +1374,10 @@ namespace dsf::mobility {
             break;
           }
         }
+      }
+      if (m_meanTravelDistance.has_value()) {
+        auto const& pAgent{this->m_agents.back()};
+        pAgent->setMaxDistance(distDist(this->m_generator));
       }
     }
   }
@@ -2456,4 +2461,4 @@ namespace dsf::mobility {
 
     file.close();
   }
-};  // namespace dsf::mobility
+}  // namespace dsf::mobility
