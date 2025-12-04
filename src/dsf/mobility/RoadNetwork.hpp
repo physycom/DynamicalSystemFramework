@@ -190,7 +190,8 @@ namespace dsf::mobility {
       requires is_street_v<std::remove_reference_t<T1>> &&
                (is_street_v<std::remove_reference_t<Tn>> && ...)
     void addStreets(T1&& street, Tn&&... streets);
-
+    /// @brief Set the streets' stationary weights
+    /// @param streetWeights A map where the key is the street id and the value is the street stationary weight. If a street id is not present in the map, its stationary weight is set to 1.0.
     void setStreetStationaryWeights(std::unordered_map<Id, double> const& streetWeights);
 
     /// @brief Get a street from the graph

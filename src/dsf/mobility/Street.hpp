@@ -86,7 +86,10 @@ namespace dsf::mobility {
     static void setMeanVehicleLength(double meanVehicleLength);
     /// @brief Set the street's stationary weight
     /// @param weight The street's stationary weight
-    inline void setStationaryWeight(double const weight) { m_stationaryWeight = weight; }
+    inline void setStationaryWeight(double const weight) {
+      weight > 0. ? m_stationaryWeight = weight
+                  : throw std::invalid_argument("Stationary weight must be positive");
+    }
     /// @brief Enable a coil (dsf::Counter sensor) on the street
     /// @param name The name of the counter (default is "Coil_<street_id>")
     void enableCounter(std::string name = std::string());
