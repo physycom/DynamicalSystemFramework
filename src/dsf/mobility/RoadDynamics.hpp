@@ -553,7 +553,8 @@ namespace dsf::mobility {
       // Calculate base probability
       auto const speedNext{pStreetOut->maxSpeed()};
       double const stationaryWeightNext = pStreetOut->stationaryWeight();
-      auto const weightRatio{stationaryWeightNext / stationaryWeightCurrent}; // SQRT (p_i / p_j)
+      auto const weightRatio{stationaryWeightNext /
+                             stationaryWeightCurrent};  // SQRT (p_i / p_j)
       double probability = speedCurrent * speedNext * std::sqrt(weightRatio);
 
       // Apply error probability for non-random agents

@@ -65,6 +65,12 @@ namespace dsf::mobility {
     /// @brief Construct a new RoadNetwork object
     /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
     RoadNetwork(AdjacencyMatrix const& adj);
+    // Disable copy constructor and copy assignment operator
+    RoadNetwork(const RoadNetwork&) = delete;
+    RoadNetwork& operator=(const RoadNetwork&) = delete;
+    // Enable move constructor and move assignment operator
+    RoadNetwork(RoadNetwork&&) = default;
+    RoadNetwork& operator=(RoadNetwork&&) = default;
 
     /// @brief Get the graph's number of coil streets
     /// @return The number of coil streets

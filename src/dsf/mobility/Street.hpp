@@ -48,7 +48,6 @@ namespace dsf::mobility {
                         AgentComparator>
         m_movingAgents;
     std::vector<Direction> m_laneMapping;
-    // std::unordered_map<Id, double> m_transitionProbabilities;
     std::optional<Counter> m_counter;
     double m_stationaryWeight{1.0};
 
@@ -85,17 +84,9 @@ namespace dsf::mobility {
     /// @param meanVehicleLength The mean vehicle length
     /// @throw std::invalid_argument If the mean vehicle length is negative
     static void setMeanVehicleLength(double meanVehicleLength);
-    // /// @brief Set the street's transition probabilities
-    // /// @param transitionProbabilities The street's transition probabilities
-    // inline void setTransitionProbabilities(
-    //     std::unordered_map<Id, double> const& transitionProbabilities) {
-    //   m_transitionProbabilities = transitionProbabilities;
-    // };
     /// @brief Set the street's stationary weight
     /// @param weight The street's stationary weight
-    inline void setStationaryWeight(double const weight) {
-      m_stationaryWeight = weight;
-    }
+    inline void setStationaryWeight(double const weight) { m_stationaryWeight = weight; }
     /// @brief Enable a coil (dsf::Counter sensor) on the street
     /// @param name The name of the counter (default is "Coil_<street_id>")
     void enableCounter(std::string name = std::string());
@@ -126,9 +117,6 @@ namespace dsf::mobility {
     /// @brief Get the street's stationary weight
     /// @return double The street's stationary weight
     inline auto stationaryWeight() const noexcept { return m_stationaryWeight; }
-    // inline auto const& transitionProbabilities() const {
-    //   return m_transitionProbabilities;
-    // }
     /// @brief Get the name of the counter
     /// @return std::string The name of the counter
     inline auto counterName() const {
