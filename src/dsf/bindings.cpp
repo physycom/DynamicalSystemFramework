@@ -172,6 +172,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def("autoMapStreetLanes",
            &dsf::mobility::RoadNetwork::autoMapStreetLanes,
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::autoMapStreetLanes").c_str())
+      .def("setStreetStationaryWeights",
+           &dsf::mobility::RoadNetwork::setStreetStationaryWeights,
+           pybind11::arg("weights"),
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::setStreetStationaryWeights")
+               .c_str())
       .def(
           "importEdges",
           [](dsf::mobility::RoadNetwork& self, const std::string& fileName) {
@@ -531,6 +536,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("ratio") = 1.3,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::optimizeTrafficLights")
                .c_str())
+      .def("graph",
+           &dsf::mobility::FirstOrderDynamics::graph,
+           pybind11::return_value_policy::reference_internal,
+           dsf::g_docstrings.at("dsf::Dynamics::graph").c_str())
       .def("nAgents",
            &dsf::mobility::FirstOrderDynamics::nAgents,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::nAgents").c_str())

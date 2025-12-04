@@ -263,18 +263,6 @@ namespace dsf::mobility {
           addCoil(edge_id);
         }
       }
-      // Check for transition probabilities
-      // if (!edge_properties.at_key("transition_probabilities").error() &&
-      //     edge_properties["transition_probabilities"].has_value()) {
-      //   auto const& tp = edge_properties["transition_probabilities"];
-      //   std::unordered_map<Id, double> transitionProbabilities;
-      //   for (auto const& [key, value] : tp.get_object()) {
-      //     auto const targetStreetId = static_cast<Id>(std::stoull(std::string(key)));
-      //     auto const probability = static_cast<double>(value.get_double());
-      //     transitionProbabilities.emplace(targetStreetId, probability);
-      //   }
-      //   edge(edge_id)->setTransitionProbabilities(transitionProbabilities);
-      // }
     }
     this->m_nodes.rehash(0);
     this->m_edges.rehash(0);
@@ -841,6 +829,22 @@ namespace dsf::mobility {
       }
     }
     addEdge<Street>(std::move(street));
+  }
+
+  void RoadNetwork::setStreetStationaryWeights(
+      std::unordered_map<Id, double> const& weights) {
+    std::for_each(DSF_EXECUTION m_edges.cbegin(),
+                  m_edges.cend(),
+                  [this, &weights](auto const& pair) {
+                    auto const streetId = pair.first;
+                    auto const& pStreet = pair.second;
+                    auto it = weights.find(streetId);
+                    if (it != weights.end()) {
+                      pStreet->setStationaryWeight(it->second);
+                    } else {
+                      pStreet->setStationaryWeight(1.0);
+                    }
+                  });
   }
 
   const std::unique_ptr<Street>* RoadNetwork::street(Id source, Id destination) const {
