@@ -130,17 +130,16 @@ if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
 endif()
 # Get TBB
-set(TBB_TEST
-    OFF
-    CACHE BOOL "Disable TBB tests" FORCE)
+set(TBB_TEST OFF CACHE BOOL "Disable TBB tests" FORCE)
+set(TBB_EXAMPLES OFF CACHE BOOL "Disable TBB examples" FORCE)
+set(TBB_STRICT OFF CACHE BOOL "Disable TBB strict mode" FORCE)
+
 FetchContent_Declare(
   tbb
-  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB
-  GIT_TAG v2022.3.0)
-FetchContent_GetProperties(tbb)
-if(NOT tbb_POPULATED)
-  FetchContent_MakeAvailable(tbb)
-endif()
+  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB.git
+  GIT_TAG v2022.3.0
+)
+FetchContent_MakeAvailable(tbb)
 
 add_library(dsf STATIC ${SOURCES})
 target_compile_definitions(dsf PRIVATE SPDLOG_USE_STD_FORMAT)
@@ -176,6 +175,12 @@ install(
 # Optional Python bindings - only build if requested
 if(BUILD_PYTHON_BINDINGS)
   include(FetchContent)
+
+  # Check if Doxygen is available for documentation generation
+  find_package(Doxygen REQUIRED)
+  if(NOT DOXYGEN_FOUND)
+    message(FATAL_ERROR "Doxygen is required to build the docstrings.")
+  endif()
 
   # Get pybind11
   FetchContent_Declare(
