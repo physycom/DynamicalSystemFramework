@@ -3,6 +3,7 @@
 #include "dsf/mobility/Itinerary.hpp"
 #include "dsf/mobility/Street.hpp"
 #include "dsf/mobility/Intersection.hpp"
+#include "dsf/mobility/Agent.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -1380,4 +1381,56 @@ TEST_CASE("Stationary Weights Impact on Random Navigation") {
 
   // Check total agents preserved (some might be in transit or node if something went wrong)
   CHECK_EQ(countStreet1 + countStreet2, numAgents);
+}
+
+TEST_CASE("RoadDynamics Configuration") {
+  auto defaultNetwork = RoadNetwork{};
+  // We need at least some nodes to add agents
+  // Assuming the data files exist where Test_dynamics.cpp expects them
+  defaultNetwork.importEdges((DATA_FOLDER / "manhattan_edges.csv").string());
+  defaultNetwork.importNodeProperties((DATA_FOLDER / "manhattan_nodes.csv").string());
+
+  FirstOrderDynamics dynamics{defaultNetwork, false, 42};
+
+  SUBCASE("setMeanTravelDistance") {
+    CHECK_THROWS_AS(dynamics.setMeanTravelDistance(-1.0), std::invalid_argument);
+    CHECK_THROWS_AS(dynamics.setMeanTravelDistance(0.0), std::invalid_argument);
+
+    dynamics.setMeanTravelDistance(1000.0);
+
+    // Set origin nodes
+    std::unordered_map<Id, double> origins;
+    for (const auto& [id, node] : defaultNetwork.nodes()) {
+      origins[id] = 1.0;
+    }
+    dynamics.setOriginNodes(origins);
+
+    dynamics.addRandomAgents(10);
+
+    const auto& agents = dynamics.agents();
+    CHECK(agents.size() == 10);
+    for (const auto& agent : agents) {
+      CHECK_NOTHROW(agent->maxDistance());
+      CHECK(agent->maxDistance() >= 0.0);
+    }
+  }
+
+  SUBCASE("setMeanTravelTime") {
+    dynamics.setMeanTravelTime(3600);
+
+    std::unordered_map<Id, double> origins;
+    for (const auto& [id, node] : defaultNetwork.nodes()) {
+      origins[id] = 1.0;
+    }
+    dynamics.setOriginNodes(origins);
+
+    dynamics.addRandomAgents(10);
+
+    const auto& agents = dynamics.agents();
+    CHECK(agents.size() == 10);
+    for (const auto& agent : agents) {
+      CHECK_NOTHROW(agent->maxTime());
+      CHECK(agent->maxTime() >= 0);
+    }
+  }
 }

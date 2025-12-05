@@ -34,7 +34,9 @@ namespace dsf::mobility {
     std::optional<Id> m_nextStreetId;
     size_t m_itineraryIdx;
     double m_speed;
-    double m_distance;  // Travelled distance
+    double m_distance;                     // Travelled distance
+    std::optional<double> m_maxDistance;   // Maximum distance for stochastic agents
+    std::optional<std::time_t> m_maxTime;  // Maximum time for stochastic agents
 
   public:
     /// @brief Construct a new Agent object
@@ -73,6 +75,15 @@ namespace dsf::mobility {
     /// @brief Update the agent's itinerary
     /// @details If possible, the agent's itinerary is updated by removing the first element
     /// from the itinerary's vector.
+    inline void setMaxDistance(double const maxDistance) {
+      maxDistance > 0. ? m_maxDistance = maxDistance
+                       : throw std::invalid_argument(
+                             "Agent::setMaxDistance: maxDistance must be positive");
+    };
+    /// @brief Set the agent's maximum time
+    /// @param maxTime The agent's maximum time
+    inline void setMaxTime(std::time_t const maxTime) { m_maxTime = maxTime; }
+
     void updateItinerary();
     /// @brief Reset the agent
     /// @details Reset the following values:
@@ -97,6 +108,20 @@ namespace dsf::mobility {
     /// @return The agent's itinerary
     /// @throw std::logic_error if the agent is a random agent
     Id itineraryId() const;
+    /// @brief Get the agent's maximum distance
+    /// @return The agent's maximum distance, or throw std::logic_error if not set
+    inline auto maxDistance() const {
+      return m_maxDistance.has_value()
+                 ? m_maxDistance.value()
+                 : throw std::logic_error("Agent::maxDistance: maxDistance is not set");
+    };
+    /// @brief Get the agent's maximum time
+    /// @return The agent's maximum time, or throw std::logic_error if not set
+    inline auto maxTime() const {
+      return m_maxTime.has_value()
+                 ? m_maxTime.value()
+                 : throw std::logic_error("Agent::maxTime: maxTime is not set");
+    };
     /// @brief Get the agent's trip
     /// @return The agent's trip
     inline std::vector<Id> const& trip() const noexcept { return m_trip; };
@@ -118,8 +143,23 @@ namespace dsf::mobility {
     /// @brief Return true if the agent is a random agent
     /// @return True if the agent is a random agent, false otherwise
     inline bool isRandom() const noexcept { return m_trip.empty(); };
+    /// @brief Check if a random agent has arrived at its destination
+    /// @param currentTime The current simulation time
+    /// @return True if the agent has arrived (exceeded max distance or time), false otherwise
+    inline bool hasArrived(std::optional<std::time_t> const& currentTime) const noexcept {
+      if (!isRandom()) {
+        return false;
+      }
+      if (currentTime.has_value() && m_maxTime.has_value()) {
+        return (currentTime.value() - m_spawnTime) >= m_maxTime.value();
+      }
+      if (m_maxDistance.has_value()) {
+        return m_distance >= m_maxDistance.value();
+      }
+      return false;
+    };
   };
-};  // namespace dsf::mobility
+}  // namespace dsf::mobility
 
 // Specialization of std::formatter for dsf::mobility::Agent
 template <>
