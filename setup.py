@@ -123,6 +123,32 @@ class CMakeBuild(build_ext):
             cwd=build_temp,
         )
 
+        # Copy TBB shared library if it exists (Linux only)
+        if platform.system() == "Linux":
+            print(f"Searching for TBB shared libraries in {build_temp}...")
+            # Look for libtbb.so* recursively
+            tbb_libs = list(build_temp.glob("**/libtbb.so*"))
+            # Also look for libtbb_debug.so* if we are in debug mode or if that's what was built
+            tbb_libs.extend(list(build_temp.glob("**/libtbb_debug.so*")))
+            
+            if tbb_libs:
+                print(f"Found TBB libraries: {tbb_libs}")
+                for lib in tbb_libs:
+                    # We only want the real shared object, not symlinks if possible, 
+                    # but copying everything matching the pattern is safer to ensure we get the versioned one.
+                    # However, we need to be careful not to overwrite if multiple matches found.
+                    # Usually we want the one that the linker linked against.
+                    # Since we set RPATH to $ORIGIN, we need the library in the same dir as the extension.
+                    
+                    # Avoid copying if it's a symlink pointing to something we already copied?
+                    # simpler: just copy all of them.
+                    dest = extdir / lib.name
+                    if not dest.exists():
+                        shutil.copy2(lib, dest)
+                        print(f"Copied {lib} to {dest}")
+            else:
+                print("Warning: No TBB shared libraries found to copy.")
+
     def pre_build(self):
         """Extracts doxygen documentation from XML files and creates a C++ unordered_map"""
 

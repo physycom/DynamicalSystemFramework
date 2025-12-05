@@ -39,6 +39,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 if(BUILD_PYTHON_BINDINGS)
   set(DSF_BUILD_PIC ON)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
 # Set the C++ standard
@@ -133,6 +134,8 @@ endif()
 set(TBB_TEST OFF CACHE BOOL "Disable TBB tests" FORCE)
 set(TBB_EXAMPLES OFF CACHE BOOL "Disable TBB examples" FORCE)
 set(TBB_STRICT OFF CACHE BOOL "Disable TBB strict mode" FORCE)
+# set(TBB_BUILD_SHARED ON CACHE BOOL "Build TBB as shared library" FORCE)
+# set(TBB_BUILD_TBBMALLOC OFF CACHE BOOL "Disable TBB malloc" FORCE)
 
 FetchContent_Declare(
   tbb
@@ -225,6 +228,11 @@ if(BUILD_PYTHON_BINDINGS)
       PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
                  INSTALL_RPATH "${HOMEBREW_LIB}"
                  INSTALL_RPATH_USE_LINK_PATH TRUE)
+  elseif(UNIX)
+    set_target_properties(
+      dsf_python_module
+      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                 INSTALL_RPATH "$ORIGIN")
   endif()
 endif()
 

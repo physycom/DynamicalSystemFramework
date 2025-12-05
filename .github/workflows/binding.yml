@@ -32,7 +32,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
+        sudo apt install -y cmake build-essential doxygen
 
     - name: Install system dependencies (macOS)
       if: matrix.os == 'macos-latest'
@@ -189,7 +189,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
+        sudo apt install -y cmake build-essential doxygen
 
     - name: Install development dependencies
       run: |
