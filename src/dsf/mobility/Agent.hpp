@@ -34,9 +34,9 @@ namespace dsf::mobility {
     std::optional<Id> m_nextStreetId;
     size_t m_itineraryIdx;
     double m_speed;
-    double m_distance;                    // Travelled distance
-    std::optional<double> m_maxDistance;  // Maximum distance for stochastic agents
-    // std::optional<std::time_t> m_maxTime;  // Maximum time for stochastic agents
+    double m_distance;                     // Travelled distance
+    std::optional<double> m_maxDistance;   // Maximum distance for stochastic agents
+    std::optional<std::time_t> m_maxTime;  // Maximum time for stochastic agents
 
   public:
     /// @brief Construct a new Agent object
@@ -80,6 +80,10 @@ namespace dsf::mobility {
                        : throw std::invalid_argument(
                              "Agent::setMaxDistance: maxDistance must be positive");
     };
+    /// @brief Set the agent's maximum time
+    /// @param maxTime The agent's maximum time
+    inline void setMaxTime(std::time_t const maxTime) { m_maxTime = maxTime; }
+
     void updateItinerary();
     /// @brief Reset the agent
     /// @details Reset the following values:
@@ -133,16 +137,16 @@ namespace dsf::mobility {
     /// @return True if the agent is a random agent, false otherwise
     inline bool isRandom() const noexcept { return m_trip.empty(); };
 
-    inline bool hasArrived() const noexcept {
+    inline bool hasArrived(std::optional<std::time_t> const& currentTime) const noexcept {
       if (!isRandom()) {
         return false;
+      }
+      if (currentTime.has_value() && m_maxTime.has_value()) {
+        return (currentTime.value() + m_maxTime.value()) >= m_freeTime;
       }
       if (m_maxDistance.has_value()) {
         return m_distance >= m_maxDistance.value();
       }
-      // if (m_maxTime.has_value()) {
-      //   return (std::time_t{} + m_maxTime.value()) <= m_freeTime;
-      // }
       return false;
     };
   };

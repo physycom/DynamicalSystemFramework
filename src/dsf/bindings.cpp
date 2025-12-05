@@ -399,17 +399,18 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("dataUpdatePeriod"),
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setDataUpdatePeriod").c_str())
-      .def("setMaxDistance",
-           &dsf::mobility::FirstOrderDynamics::setMaxDistance,
-           pybind11::arg("maxDistance"),
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setMaxDistance").c_str())
+      .def("setMeanTravelDistance",
+           &dsf::mobility::FirstOrderDynamics::setMeanTravelDistance,
+           pybind11::arg("meanDistance"),
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setMeanTravelDistance")
+               .c_str())
       .def(
-          "setMaxTravelTime",
+          "setMeanTravelTime",
           [](dsf::mobility::FirstOrderDynamics& self, uint64_t maxTravelTime) {
-            self.setMaxTravelTime(static_cast<std::time_t>(maxTravelTime));
+            self.setMeanTravelTime(static_cast<std::time_t>(maxTravelTime));
           },
           pybind11::arg("maxTravelTime"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setMaxTravelTime").c_str())
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setMeanTravelTime").c_str())
       .def(
           "setErrorProbability",
           &dsf::mobility::FirstOrderDynamics::setErrorProbability,

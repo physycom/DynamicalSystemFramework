@@ -64,7 +64,7 @@ namespace dsf::mobility {
     std::optional<double> m_errorProbability;
     std::optional<double> m_passageProbability;
     std::optional<double> m_meanTravelDistance;
-    std::time_t m_maxTravelTime;
+    std::optional<std::time_t> m_meanTravelTime;
     double m_weightTreshold;
     std::optional<double> m_timeToleranceFactor;
     std::optional<delay_t> m_dataUpdatePeriod;
@@ -162,8 +162,8 @@ namespace dsf::mobility {
     };
     /// @brief Set the maximum travel time which a random agent can travel
     /// @param maxTravelTime The maximum travel time
-    inline void setMaxTravelTime(std::time_t const maxTravelTime) noexcept {
-      m_maxTravelTime = maxTravelTime;
+    inline void setMeanTravelTime(std::time_t const meanTravelTime) noexcept {
+      m_meanTravelTime = meanTravelTime;
     };
     /// @brief Set the origin nodes
     /// @param originNodes The origin nodes
@@ -398,7 +398,7 @@ namespace dsf::mobility {
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
         m_meanTravelDistance{std::nullopt},
-        m_maxTravelTime{std::numeric_limits<std::time_t>::max()},
+        m_meanTravelTime{std::nullopt},
         m_timeToleranceFactor{std::nullopt},
         m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
@@ -889,10 +889,7 @@ namespace dsf::mobility {
             spdlog::debug("Random agent {} has arrived at destination node {}",
                           pAgentTemp->id(),
                           destinationNode->id());
-          } else if (m_meanTravelDistance.has_value() && pAgentTemp->hasArrived()) {
-            bArrived = true;
-          } else if (!bArrived &&
-                     (this->time_step() - pAgentTemp->spawnTime() >= m_maxTravelTime)) {
+          } else if (pAgentTemp->hasArrived(this->time_step())) {
             bArrived = true;
           }
         }
@@ -1357,6 +1354,7 @@ namespace dsf::mobility {
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     std::exponential_distribution<double> distDist{1. /
                                                    m_meanTravelDistance.value_or(1.)};
+    std::exponential_distribution<double> timeDist{1. / m_meanTravelTime.value_or(1.)};
     auto const bUniformSpawn{spawnWeights.empty()};
     auto const bSingleSource{spawnWeights.size() == 1};
     while (nAgents--) {
@@ -1378,6 +1376,10 @@ namespace dsf::mobility {
       if (m_meanTravelDistance.has_value()) {
         auto const& pAgent{this->m_agents.back()};
         pAgent->setMaxDistance(distDist(this->m_generator));
+      }
+      if (m_meanTravelTime.has_value()) {
+        auto const& pAgent{this->m_agents.back()};
+        pAgent->setMaxTime(timeDist(this->m_generator));
       }
     }
   }
