@@ -143,13 +143,15 @@ namespace dsf::mobility {
     /// @brief Return true if the agent is a random agent
     /// @return True if the agent is a random agent, false otherwise
     inline bool isRandom() const noexcept { return m_trip.empty(); };
-
+    /// @brief Check if a random agent has arrived at its destination
+    /// @param currentTime The current simulation time
+    /// @return True if the agent has arrived (exceeded max distance or time), false otherwise
     inline bool hasArrived(std::optional<std::time_t> const& currentTime) const noexcept {
       if (!isRandom()) {
         return false;
       }
       if (currentTime.has_value() && m_maxTime.has_value()) {
-        return (currentTime.value() + m_maxTime.value()) >= m_freeTime;
+        return (currentTime.value() - m_spawnTime) >= m_maxTime.value();
       }
       if (m_maxDistance.has_value()) {
         return m_distance >= m_maxDistance.value();

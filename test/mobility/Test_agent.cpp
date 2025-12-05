@@ -164,4 +164,30 @@ TEST_CASE("Agent formatting") {
     CHECK(formatted.find("nextStreetId: N/A") != std::string::npos);
     CHECK(formatted.find("itineraryId: 99") != std::string::npos);
   }
+  SUBCASE("hasArrived") {
+    Agent agent{10};  // spawnTime = 10
+    CHECK(agent.isRandom());
+
+    // Test Max Distance
+    agent.setMaxDistance(100.0);
+    CHECK_FALSE(agent.hasArrived(std::nullopt));
+
+    agent.incrementDistance(99.0);
+    CHECK_FALSE(agent.hasArrived(std::nullopt));
+
+    agent.incrementDistance(1.0);
+    CHECK(agent.hasArrived(std::nullopt));
+
+    // Test Max Time
+    // Reset agent
+    agent = Agent{10};
+    agent.setMaxTime(50);  // Max duration 50. Should expire at 10+50=60.
+
+    // Before expiration
+    CHECK_FALSE(agent.hasArrived(59));
+    // At expiration
+    CHECK(agent.hasArrived(60));
+    // After expiration
+    CHECK(agent.hasArrived(61));
+  }
 }

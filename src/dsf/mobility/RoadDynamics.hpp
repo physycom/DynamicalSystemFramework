@@ -151,7 +151,7 @@ namespace dsf::mobility {
     inline void setDataUpdatePeriod(delay_t dataUpdatePeriod) noexcept {
       m_dataUpdatePeriod = dataUpdatePeriod;
     }
-    /// @brief Set the mean distance travelled by a random agent
+    /// @brief Set the mean distance travelled by a random agent. The distance will be sampled from an exponential distribution with this mean.
     /// @param meanTravelDistance The mean distance
     /// @throw std::invalid_argument If the mean distance is negative
     inline void setMeanTravelDistance(double const meanTravelDistance) {
@@ -160,8 +160,8 @@ namespace dsf::mobility {
                                     "RoadDynamics::setMeanTravelDistance: "
                                     "meanTravelDistance must be positive");
     };
-    /// @brief Set the maximum travel time which a random agent can travel
-    /// @param maxTravelTime The maximum travel time
+    /// @brief Set the mean travel time for random agents. The travel time will be sampled from an exponential distribution with this mean.
+    /// @param meanTravelTime The mean travel time
     inline void setMeanTravelTime(std::time_t const meanTravelTime) noexcept {
       m_meanTravelTime = meanTravelTime;
     };

@@ -406,10 +406,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
                .c_str())
       .def(
           "setMeanTravelTime",
-          [](dsf::mobility::FirstOrderDynamics& self, uint64_t maxTravelTime) {
-            self.setMeanTravelTime(static_cast<std::time_t>(maxTravelTime));
+          [](dsf::mobility::FirstOrderDynamics& self, uint64_t meanTravelTime) {
+            self.setMeanTravelTime(static_cast<std::time_t>(meanTravelTime));
           },
-          pybind11::arg("maxTravelTime"),
+          pybind11::arg("meanTravelTime"),
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setMeanTravelTime").c_str())
       .def(
           "setErrorProbability",
