@@ -115,6 +115,13 @@ namespace dsf::mobility {
                  ? m_maxDistance.value()
                  : throw std::logic_error("Agent::maxDistance: maxDistance is not set");
     };
+    /// @brief Get the agent's maximum time
+    /// @return The agent's maximum time, or throw std::logic_error if not set
+    inline auto maxTime() const {
+      return m_maxTime.has_value()
+                 ? m_maxTime.value()
+                 : throw std::logic_error("Agent::maxTime: maxTime is not set");
+    };
     /// @brief Get the agent's trip
     /// @return The agent's trip
     inline std::vector<Id> const& trip() const noexcept { return m_trip; };
