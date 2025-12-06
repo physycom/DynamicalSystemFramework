@@ -195,15 +195,14 @@ if(BUILD_PYTHON_BINDINGS)
   endif()
 
   # Add the Python binding module
-  add_library(dsf_python_module MODULE src/dsf/bindings.cpp)
+  pybind11_add_module(dsf_python_module src/dsf/bindings.cpp)
 
   # Ensure the Python module name has no 'lib' prefix on Unix systems
-  set_target_properties(dsf_python_module PROPERTIES PREFIX "" OUTPUT_NAME
-                                                               "dsf_cpp")
+  set_target_properties(dsf_python_module PROPERTIES OUTPUT_NAME "dsf_cpp")
 
   # Link the pybind11 module with your static library and pybind11
   target_link_libraries(
-    dsf_python_module PRIVATE dsf pybind11::module pybind11::headers TBB::tbb
+    dsf_python_module PRIVATE dsf pybind11::headers TBB::tbb
                               spdlog::spdlog)
   target_compile_definitions(dsf_python_module PRIVATE SPDLOG_USE_STD_FORMAT)
 

@@ -78,6 +78,11 @@ class CMakeBuild(build_ext):
             "-DBUILD_PYTHON_BINDINGS=ON",
         ]
 
+        if platform.system() == "Windows":
+            cmake_args += [
+                f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"
+            ]
+
         # Add macOS-specific CMake prefix paths for Homebrew dependencies
         if platform.system() == "Darwin":  # macOS
             try:
@@ -154,6 +159,33 @@ class CMakeBuild(build_ext):
                         print(f"Copied {lib} to {dest}")
             else:
                 print("Warning: No TBB shared libraries found to copy.")
+
+        elif platform.system() == "Windows":
+            print(f"Searching for TBB DLLs in {build_temp}...")
+            # Look for tbb*.dll recursively
+            tbb_dlls = list(build_temp.glob("**/tbb*.dll"))
+            
+            if tbb_dlls:
+                print(f"Found TBB DLLs: {tbb_dlls}")
+                # We want to copy them to the 'dsf' package directory so we can load them in __init__.py
+                # extdir is where dsf_cpp.pyd is (site-packages root usually)
+                # We want site-packages/dsf/
+                
+                # self.build_lib is usually the root of the build (e.g. build/lib.win...)
+                # So we can construct the path to dsf package
+                dsf_pkg_dir = Path(self.build_lib) / "dsf"
+                dsf_pkg_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Also copy to source directory for editable installs
+                source_dsf_dir = Path(__file__).parent / "src" / "dsf"
+                
+                for dll in tbb_dlls:
+                    print(f"Copying {dll} to {dsf_pkg_dir}")
+                    shutil.copy2(dll, dsf_pkg_dir)
+                    print(f"Copying {dll} to {source_dsf_dir}")
+                    shutil.copy2(dll, source_dsf_dir)
+            else:
+                print("Warning: No TBB DLLs found. This might cause import errors.")
 
     def pre_build(self):
         """Extracts doxygen documentation from XML files and creates a C++ unordered_map"""
