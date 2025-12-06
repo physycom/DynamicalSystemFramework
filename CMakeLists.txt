@@ -39,7 +39,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 if(BUILD_PYTHON_BINDINGS)
   set(DSF_BUILD_PIC ON)
-  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
 # Set the C++ standard
