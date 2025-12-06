@@ -79,7 +79,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential doxygen libtbb-dev libfmt-dev libspdlog-dev libsimdjson-dev
+        sudo apt install -y cmake build-essential doxygen
 
     - name: Install build dependencies
       run: |
@@ -174,7 +174,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
+        sudo apt install -y cmake build-essential doxygen
 
     - name: Install build dependencies
       run: |

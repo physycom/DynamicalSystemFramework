@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential libtbb-dev libspdlog-dev libsimdjson-dev doxygen
+        sudo apt install -y cmake build-essential doxygen
         python -m pip install --upgrade pip
         pip install pytest pytest-cov
     
