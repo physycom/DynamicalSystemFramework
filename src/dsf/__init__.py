@@ -5,6 +5,7 @@ import os
 if sys.platform == "win32":
     import glob
     import ctypes
+
     # Look for tbb dlls in the same directory as this __init__.py
     _dll_dir = os.path.dirname(__file__)
     for _dll in glob.glob(os.path.join(_dll_dir, "tbb*.dll")):
