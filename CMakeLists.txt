@@ -227,11 +227,11 @@ if(BUILD_PYTHON_BINDINGS)
       PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
                  INSTALL_RPATH "${HOMEBREW_LIB}"
                  INSTALL_RPATH_USE_LINK_PATH TRUE)
-  # elseif(UNIX)
-  #   set_target_properties(
-  #     dsf_python_module
-  #     PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-  #                INSTALL_RPATH "$ORIGIN")
+  elseif(UNIX)
+    set_target_properties(
+      dsf_python_module
+      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                 INSTALL_RPATH "$ORIGIN")
   endif()
 endif()
 
