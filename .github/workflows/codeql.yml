@@ -23,17 +23,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install TBB (MacOS & Ubuntu)
-      run: |
-        if [[ "$RUNNER_OS" == "macOS" ]]; then
-          brew install tbb spdlog simdjson
-          echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include:$(brew --prefix fmt)/include:$(brew --prefix spdlog)/include:$(brew --prefix simdjson)/include" >> $GITHUB_ENV
-          echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib:$(brew --prefix simdjson)/lib" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib:$(brew --prefix simdjson)/lib" >> $GITHUB_ENV
-        elif [[ "$RUNNER_OS" == "Linux" ]]; then
-          sudo apt update && sudo apt install -y libtbb-dev libspdlog-dev libsimdjson-dev
-        fi
-
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
@@ -42,11 +31,7 @@ jobs:
     - name: Build C++
       run: |
         mkdir -p build && cd build
-        if [[ "$RUNNER_OS" == "macOS" ]]; then
-          cmake .. -DCMAKE_PREFIX_PATH="$(brew --prefix tbb);$(brew --prefix fmt);$(brew --prefix spdlog)"
-        else
-          cmake ..
-        fi
+        cmake ..
         cmake --build .
         sudo make install
 
