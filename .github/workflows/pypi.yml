@@ -127,7 +127,7 @@ jobs:
 
     - name: Install system dependencies
       run: |
-        brew install cmake tbb spdlog simdjson doxygen
+        brew install cmake doxygen
 
     - name: Install build dependencies
       run: |
@@ -136,9 +136,6 @@ jobs:
 
     - name: Set macOS environment variables
       run: |
-        echo "CPLUS_INCLUDE_PATH=$(brew --prefix tbb)/include:$(brew --prefix fmt)/include:$(brew --prefix spdlog)/include:$(brew --prefix simdjson)/include" >> $GITHUB_ENV
-        echo "LIBRARY_PATH=$(brew --prefix tbb)/lib:$(brew --prefix fmt)/lib:$(brew --prefix spdlog)/lib:$(brew --prefix simdjson)/lib" >> $GITHUB_ENV
-        echo "CMAKE_PREFIX_PATH=$(brew --prefix tbb);$(brew --prefix fmt);$(brew --prefix spdlog);$(brew --prefix simdjson)" >> $GITHUB_ENV
         echo "ARCHFLAGS=-arch $(uname -m)" >> $GITHUB_ENV
         echo "_PYTHON_HOST_PLATFORM=macosx-$(sw_vers -productVersion | cut -d. -f1)-$(uname -m)" >> $GITHUB_ENV
 
