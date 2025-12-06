@@ -24,12 +24,6 @@ jobs:
           sudo apt update
           sudo apt install -y lcov gcovr build-essential cmake libhwloc-dev
 
-      - name: Install dependencies on macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install tbb simdjson
-
       - name: Install dependencies on Windows (vcpkg)
         if: matrix.os == 'windows-latest'
         shell: powershell
@@ -56,7 +50,6 @@ jobs:
           mkdir -p build
           cd build
           cmake .. \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix tbb):$(brew --prefix simdjson)" \
             -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install
           cmake --build . -j$(sysctl -n hw.ncpu) --config Debug
 

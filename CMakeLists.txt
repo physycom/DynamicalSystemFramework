@@ -130,17 +130,18 @@ if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
 endif()
 # Get TBB
-set(TBB_TEST
-    OFF
-    CACHE BOOL "Disable TBB tests" FORCE)
+set(TBB_TEST OFF CACHE BOOL "Disable TBB tests" FORCE)
+set(TBB_EXAMPLES OFF CACHE BOOL "Disable TBB examples" FORCE)
+set(TBB_STRICT OFF CACHE BOOL "Disable TBB strict mode" FORCE)
+# set(TBB_BUILD_SHARED ON CACHE BOOL "Build TBB as shared library" FORCE)
+# set(TBB_BUILD_TBBMALLOC OFF CACHE BOOL "Disable TBB malloc" FORCE)
+
 FetchContent_Declare(
   tbb
-  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB
-  GIT_TAG v2022.3.0)
-FetchContent_GetProperties(tbb)
-if(NOT tbb_POPULATED)
-  FetchContent_MakeAvailable(tbb)
-endif()
+  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB.git
+  GIT_TAG v2022.3.0
+)
+FetchContent_MakeAvailable(tbb)
 
 add_library(dsf STATIC ${SOURCES})
 target_compile_definitions(dsf PRIVATE SPDLOG_USE_STD_FORMAT)
@@ -177,6 +178,12 @@ install(
 if(BUILD_PYTHON_BINDINGS)
   include(FetchContent)
 
+  # Check if Doxygen is available for documentation generation
+  find_package(Doxygen REQUIRED)
+  if(NOT DOXYGEN_FOUND)
+    message(FATAL_ERROR "Doxygen is required to build the docstrings.")
+  endif()
+
   # Get pybind11
   FetchContent_Declare(
     pybind11
@@ -188,15 +195,14 @@ if(BUILD_PYTHON_BINDINGS)
   endif()
 
   # Add the Python binding module
-  add_library(dsf_python_module MODULE src/dsf/bindings.cpp)
+  pybind11_add_module(dsf_python_module src/dsf/bindings.cpp)
 
   # Ensure the Python module name has no 'lib' prefix on Unix systems
-  set_target_properties(dsf_python_module PROPERTIES PREFIX "" OUTPUT_NAME
-                                                               "dsf_cpp")
+  set_target_properties(dsf_python_module PROPERTIES OUTPUT_NAME "dsf_cpp")
 
   # Link the pybind11 module with your static library and pybind11
   target_link_libraries(
-    dsf_python_module PRIVATE dsf pybind11::module pybind11::headers TBB::tbb
+    dsf_python_module PRIVATE dsf pybind11::headers TBB::tbb
                               spdlog::spdlog)
   target_compile_definitions(dsf_python_module PRIVATE SPDLOG_USE_STD_FORMAT)
 
@@ -218,8 +224,13 @@ if(BUILD_PYTHON_BINDINGS)
     set_target_properties(
       dsf_python_module
       PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                 INSTALL_RPATH "${HOMEBREW_LIB}"
+                 INSTALL_RPATH "${HOMEBREW_LIB};@loader_path"
                  INSTALL_RPATH_USE_LINK_PATH TRUE)
+  elseif(UNIX)
+    set_target_properties(
+      dsf_python_module
+      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                 INSTALL_RPATH "$ORIGIN")
   endif()
 endif()
 

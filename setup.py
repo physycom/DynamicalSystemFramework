@@ -78,6 +78,9 @@ class CMakeBuild(build_ext):
             "-DBUILD_PYTHON_BINDINGS=ON",
         ]
 
+        if platform.system() == "Windows":
+            cmake_args += [f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"]
+
         # Add macOS-specific CMake prefix paths for Homebrew dependencies
         if platform.system() == "Darwin":  # macOS
             try:
@@ -122,6 +125,65 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", ".", "--config", cfg, "--verbose"] + build_args,
             cwd=build_temp,
         )
+
+        # Copy TBB shared library if it exists (Linux and macOS)
+        if platform.system() == "Linux" or platform.system() == "Darwin":
+            print(f"Searching for TBB shared libraries in {build_temp}...")
+
+            tbb_libs = []
+            if platform.system() == "Linux":
+                # Look for libtbb.so* recursively
+                tbb_libs = list(build_temp.glob("**/libtbb.so*"))
+                # Also look for libtbb_debug.so* if we are in debug mode or if that's what was built
+                tbb_libs.extend(list(build_temp.glob("**/libtbb_debug.so*")))
+            else:  # macOS
+                # Look for libtbb.dylib* recursively
+                tbb_libs = list(build_temp.glob("**/libtbb*.dylib"))
+
+            if tbb_libs:
+                print(f"Found TBB libraries: {tbb_libs}")
+                for lib in tbb_libs:
+                    # We only want the real shared object, not symlinks if possible,
+                    # but copying everything matching the pattern is safer to ensure we get the versioned one.
+                    # However, we need to be careful not to overwrite if multiple matches found.
+                    # Usually we want the one that the linker linked against.
+                    # Since we set RPATH to $ORIGIN (Linux) or @loader_path (macOS), we need the library in the same dir as the extension.
+
+                    # Avoid copying if it's a symlink pointing to something we already copied?
+                    # simpler: just copy all of them.
+                    dest = extdir / lib.name
+                    if not dest.exists():
+                        shutil.copy2(lib, dest)
+                        print(f"Copied {lib} to {dest}")
+            else:
+                print("Warning: No TBB shared libraries found to copy.")
+
+        elif platform.system() == "Windows":
+            print(f"Searching for TBB DLLs in {build_temp}...")
+            # Look for tbb*.dll recursively
+            tbb_dlls = list(build_temp.glob("**/tbb*.dll"))
+
+            if tbb_dlls:
+                print(f"Found TBB DLLs: {tbb_dlls}")
+                # We want to copy them to the 'dsf' package directory so we can load them in __init__.py
+                # extdir is where dsf_cpp.pyd is (site-packages root usually)
+                # We want site-packages/dsf/
+
+                # self.build_lib is usually the root of the build (e.g. build/lib.win...)
+                # So we can construct the path to dsf package
+                dsf_pkg_dir = Path(self.build_lib) / "dsf"
+                dsf_pkg_dir.mkdir(parents=True, exist_ok=True)
+
+                # Also copy to source directory for editable installs
+                source_dsf_dir = Path(__file__).parent / "src" / "dsf"
+
+                for dll in tbb_dlls:
+                    print(f"Copying {dll} to {dsf_pkg_dir}")
+                    shutil.copy2(dll, dsf_pkg_dir)
+                    print(f"Copying {dll} to {source_dsf_dir}")
+                    shutil.copy2(dll, source_dsf_dir)
+            else:
+                print("Warning: No TBB DLLs found. This might cause import errors.")
 
     def pre_build(self):
         """Extracts doxygen documentation from XML files and creates a C++ unordered_map"""

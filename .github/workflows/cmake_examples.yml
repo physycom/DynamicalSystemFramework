@@ -23,9 +23,7 @@ jobs:
       run: |
         if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
           sudo apt update
-          sudo apt install libtbb-dev libsimdjson-dev binutils
-        elif [ ${{ matrix.os }} == 'macos-latest' ]; then
-          brew install tbb simdjson
+          sudo apt install binutils
         fi
 
     - uses: actions/checkout@v4
