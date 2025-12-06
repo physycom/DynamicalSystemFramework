@@ -123,13 +123,19 @@ class CMakeBuild(build_ext):
             cwd=build_temp,
         )
 
-        # Copy TBB shared library if it exists (Linux only)
-        if platform.system() == "Linux":
+        # Copy TBB shared library if it exists (Linux and macOS)
+        if platform.system() == "Linux" or platform.system() == "Darwin":
             print(f"Searching for TBB shared libraries in {build_temp}...")
-            # Look for libtbb.so* recursively
-            tbb_libs = list(build_temp.glob("**/libtbb.so*"))
-            # Also look for libtbb_debug.so* if we are in debug mode or if that's what was built
-            tbb_libs.extend(list(build_temp.glob("**/libtbb_debug.so*")))
+
+            tbb_libs = []
+            if platform.system() == "Linux":
+                # Look for libtbb.so* recursively
+                tbb_libs = list(build_temp.glob("**/libtbb.so*"))
+                # Also look for libtbb_debug.so* if we are in debug mode or if that's what was built
+                tbb_libs.extend(list(build_temp.glob("**/libtbb_debug.so*")))
+            else:  # macOS
+                # Look for libtbb.dylib* recursively
+                tbb_libs = list(build_temp.glob("**/libtbb*.dylib"))
 
             if tbb_libs:
                 print(f"Found TBB libraries: {tbb_libs}")
@@ -138,7 +144,7 @@ class CMakeBuild(build_ext):
                     # but copying everything matching the pattern is safer to ensure we get the versioned one.
                     # However, we need to be careful not to overwrite if multiple matches found.
                     # Usually we want the one that the linker linked against.
-                    # Since we set RPATH to $ORIGIN, we need the library in the same dir as the extension.
+                    # Since we set RPATH to $ORIGIN (Linux) or @loader_path (macOS), we need the library in the same dir as the extension.
 
                     # Avoid copying if it's a symlink pointing to something we already copied?
                     # simpler: just copy all of them.
