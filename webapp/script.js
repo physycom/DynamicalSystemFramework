@@ -196,6 +196,9 @@ L.Control.Screenshot = L.Control.extend({
     `;
     document.body.appendChild(loadingDiv);
 
+    // Get current filter
+    const currentFilter = tileLayer.getContainer().style.filter;
+
     // Capture the map
     html2canvas(document.getElementById('app-container'), {
       useCORS: true,
@@ -207,6 +210,34 @@ L.Control.Screenshot = L.Control.extend({
         // Ignore the loading indicator if it's inside app-container (it shouldn't be, but just in case)
         // Also ignore data selector if it's hidden (html2canvas usually handles hidden, but let's be safe)
         return element.classList.contains('data-selector') && element.style.display === 'none';
+      },
+      onclone: (clonedDoc) => {
+        // Apply filter to tiles manually since html2canvas doesn't support CSS filters
+        if (currentFilter && currentFilter !== 'none' && currentFilter !== '') {
+          const clonedTileImages = clonedDoc.querySelectorAll('.leaflet-tile-pane img');
+          const originalTileImages = document.querySelectorAll('.leaflet-tile-pane img');
+          
+          clonedTileImages.forEach((img, index) => {
+            const originalImg = originalTileImages[index];
+            if (originalImg && originalImg.complete) {
+              const canvas = clonedDoc.createElement('canvas');
+              canvas.width = originalImg.naturalWidth || originalImg.width;
+              canvas.height = originalImg.naturalHeight || originalImg.height;
+              
+              // Copy styles
+              canvas.style.cssText = img.style.cssText;
+              canvas.className = img.className;
+              
+              const ctx = canvas.getContext('2d');
+              ctx.filter = currentFilter;
+              ctx.drawImage(originalImg, 0, 0, canvas.width, canvas.height);
+              
+              if (img.parentNode) {
+                img.parentNode.replaceChild(canvas, img);
+              }
+            }
+          });
+        }
       }
     }).then(canvas => {
       // Remove loading indicator
@@ -226,30 +257,6 @@ L.Control.Screenshot = L.Control.extend({
       // Use the full canvas directly
       const imgData = canvas.toDataURL('image/png');
       pdf.addImage(imgData, 'PNG', 0, 0, cropWidth, cropHeight);
-
-      // Add simulation timestamp at top right with semi-transparent background and border
-      const timestamp = `Time: ${formatTime(timeStamp)}`;
-      const fontSize = Math.max(12, cropHeight / 30);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(fontSize);
-      
-      // Calculate text dimensions for background
-      const textWidth = pdf.getTextWidth(timestamp);
-      const textHeight = fontSize * 0.7; // Approximate line height
-      
-      // Position at top right with margin
-      const margin = 10;
-      const rectX = cropWidth - textWidth - margin * 2;
-      const rectY = margin;
-      
-      // Add semi-transparent white background with black border
-      pdf.setFillColor(255, 255, 255, 0.9); // Semi-transparent white background
-      pdf.setDrawColor(0, 0, 0); // Black border
-      pdf.rect(rectX, rectY, textWidth + margin * 2, textHeight + margin * 2, 'FD'); // Fill and stroke
-      
-      // Add black text on top
-      pdf.setTextColor(255, 255, 255); // White text
-      pdf.text(timestamp, rectX + margin, rectY + textHeight + margin);
 
       // Save the PDF
       const filename = `road_network_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`;
