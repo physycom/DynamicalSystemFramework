@@ -165,9 +165,10 @@ namespace dsf::mobility {
     inline void setMeanTravelTime(std::time_t const meanTravelTime) noexcept {
       m_meanTravelTime = meanTravelTime;
     };
-    /// @brief Set the origin nodes
+    /// @brief Set the origin nodes. If the provided map is empty, the origin nodes are set using the streets' stationary weights.
+    /// NOTE: the default stationary weights are 1.0 so, if not set, this is equivalent to setting uniform weights.
     /// @param originNodes The origin nodes
-    void setOriginNodes(std::unordered_map<Id, double> const& originNodes);
+    void setOriginNodes(std::unordered_map<Id, double> const& originNodes = {});
     /// @brief Set the destination nodes
     /// @param destinationNodes The destination nodes
     void setDestinationNodes(std::unordered_map<Id, double> const& destinationNodes);
@@ -1140,6 +1141,19 @@ namespace dsf::mobility {
       std::unordered_map<Id, double> const& originNodes) {
     m_originNodes.clear();
     m_originNodes.reserve(originNodes.size());
+    if (originNodes.empty()) {
+      // If no origin nodes are provided, try to set origin nodes basing on streets' stationary weights
+      double totalStationaryWeight = 0.0;
+      for (auto const& [edgeId, pEdge] : this->graph().edges()) {
+        auto const& weight = pEdge->stationaryWeight();
+        m_originNodes[pEdge->source()] += weight;
+        totalStationaryWeight += weight;
+      }
+      for (auto& [nodeId, weight] : m_originNodes) {
+        weight /= totalStationaryWeight;
+      }
+      return;
+    }
     auto const sumWeights = std::accumulate(
         originNodes.begin(), originNodes.end(), 0., [](double sum, auto const& pair) {
           return sum + pair.second;
