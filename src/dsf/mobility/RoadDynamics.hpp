@@ -165,7 +165,8 @@ namespace dsf::mobility {
     inline void setMeanTravelTime(std::time_t const meanTravelTime) noexcept {
       m_meanTravelTime = meanTravelTime;
     };
-    /// @brief Set the origin nodes
+    /// @brief Set the origin nodes. If the provided map is empty, the origin nodes are set using the streets' stationary weights.
+    /// NOTE: the default stationary weights are 1.0 so, if not set, this is equivalent to setting uniform weights.
     /// @param originNodes The origin nodes
     void setOriginNodes(std::unordered_map<Id, double> const& originNodes = {});
     /// @brief Set the destination nodes
