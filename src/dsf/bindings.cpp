@@ -367,6 +367,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("alpha") = 0.,
            pybind11::arg("weightFunction") = dsf::PathWeight::TRAVELTIME,
            pybind11::arg("weightThreshold") = std::nullopt,
+           pybind11::keep_alive<1, 2>(),
            dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::FirstOrderDynamics")
                .c_str())
       // Note: Constructors with std::function parameters are not exposed to avoid stub generation issues

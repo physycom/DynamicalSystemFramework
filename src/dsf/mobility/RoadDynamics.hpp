@@ -1145,7 +1145,7 @@ namespace dsf::mobility {
       double totalStationaryWeight = 0.0;
       for (auto const& [edgeId, pEdge] : this->graph().edges()) {
         auto const& weight = pEdge->stationaryWeight();
-        m_originNodes[pEdge->source()] = weight;
+        m_originNodes[pEdge->source()] += weight;
         totalStationaryWeight += weight;
       }
       for (auto& [nodeId, weight] : m_originNodes) {
