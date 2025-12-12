@@ -439,7 +439,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
              const std::unordered_map<dsf::Id, double>& originNodes) {
             self.setOriginNodes(originNodes);
           },
-          pybind11::arg("originNodes"),
+          pybind11::arg("originNodes") = std::unordered_map<dsf::Id, double>(),
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setOriginNodes").c_str())
       .def(
           "setOriginNodes",
