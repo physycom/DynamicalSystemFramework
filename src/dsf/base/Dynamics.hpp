@@ -17,6 +17,7 @@
 #include <chrono>
 #include <concepts>
 #include <vector>
+#include <memory>
 #include <random>
 #include <span>
 #include <numeric>
@@ -35,6 +36,7 @@
 #endif
 
 #include <tbb/tbb.h>
+#include <SQLiteCpp/SQLiteCpp.h>
 
 namespace dsf {
   /// @brief The Dynamics class represents the dynamics of the network.
@@ -46,6 +48,7 @@ namespace dsf {
     std::string m_name = "unnamed simulation";
     std::time_t m_timeInit = 0;
     std::time_t m_timeStep = 0;
+    std::unique_ptr<SQLite::Database> m_database;
 
   protected:
     tbb::task_arena m_taskArena;
@@ -90,12 +93,20 @@ namespace dsf {
     /// @param timeEpoch The initial time as epoch time
     inline void setInitTime(std::time_t timeEpoch) { m_timeInit = timeEpoch; };
 
+    inline void connectDataBase(std::string const& dbPath) {
+      m_database = std::make_unique<SQLite::Database>(
+          dbPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    }
+
     /// @brief Get the graph
     /// @return const network_t&, The graph
-    inline const auto& graph() const { return m_graph; };
+    inline auto const& graph() const { return m_graph; };
     /// @brief Get the name of the simulation
     /// @return const std::string&, The name of the simulation
-    inline const auto& name() const { return m_name; };
+    inline auto const& name() const { return m_name; };
+    /// @brief Get the database connection
+    /// @return const SQLite::Database&, The database connection
+    inline auto const& database() const { return m_database; }
     /// @brief Get the current simulation time as epoch time
     /// @return std::time_t, The current simulation time as epoch time
     inline auto time() const { return m_timeInit + m_timeStep; }
