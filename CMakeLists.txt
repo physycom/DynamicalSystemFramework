@@ -129,6 +129,15 @@ FetchContent_GetProperties(simdjson)
 if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
 endif()
+# Get SQLiteCpp
+FetchContent_Declare(
+  SQLiteCpp
+  GIT_REPOSITORY https://github.com/SRombauts/SQLiteCpp
+  GIT_TAG 3.3.3)
+FetchContent_GetProperties(SQLiteCpp)
+if(NOT SQLiteCpp_POPULATED)
+  FetchContent_MakeAvailable(SQLiteCpp)
+endif()
 # Get TBB
 set(TBB_TEST OFF CACHE BOOL "Disable TBB tests" FORCE)
 set(TBB_EXAMPLES OFF CACHE BOOL "Disable TBB examples" FORCE)
@@ -155,7 +164,7 @@ target_include_directories(
 target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src)
 
 # Link other libraries - no csv dependency needed now
-target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson spdlog::spdlog)
+target_link_libraries(dsf PUBLIC TBB::tbb SQLiteCpp PRIVATE simdjson::simdjson spdlog::spdlog)
 
 # Install dsf library
 install(
