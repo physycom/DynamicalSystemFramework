@@ -300,10 +300,19 @@ namespace dsf::mobility {
         continue;
       }
       auto& tl = static_cast<TrafficLight&>(*pNode);
-      if (!tl.streetPriorities().empty() || !tl.cycles().empty()) {
+      auto const& inNeighbours = pNode->ingoingEdges();
+      bool isFullyConfigured = !tl.cycles().empty();
+      if (isFullyConfigured) {
+        for (auto const& edgeId : inNeighbours) {
+          if (!tl.cycles().contains(this->edge(edgeId)->id())) {
+            isFullyConfigured = false;
+            break;
+          }
+        }
+      }
+      if (isFullyConfigured) {
         continue;
       }
-      auto const& inNeighbours = pNode->ingoingEdges();
       std::map<Id, int, std::greater<int>> capacities;
       std::unordered_map<Id, double> streetAngles;
       std::unordered_map<Id, double> maxSpeeds;
@@ -469,25 +478,24 @@ namespace dsf::mobility {
         greenTimes.first = tl.cycleTime() - minGreenTime;
       }
       std::for_each(inNeighbours.begin(), inNeighbours.end(), [&](auto const& edgeId) {
-        auto const streetId{this->edge(edgeId)->id()};
-        auto const nLane{nLanes.at(streetId)};
+        auto const nLane{nLanes.at(edgeId)};
         Delay greenTime{greenTimes.first};
         Delay phase{0};
-        if (!tl.streetPriorities().contains(streetId)) {
+        if (!tl.streetPriorities().contains(edgeId)) {
           phase = greenTime;
           greenTime = greenTimes.second;
         }
         spdlog::debug("Setting cycle for street {} with green time {} and phase {}",
-                      streetId,
+                      edgeId,
                       greenTime,
                       phase);
         switch (nLane) {
           case 3:
-            tl.setCycle(streetId,
+            tl.setCycle(edgeId,
                         dsf::Direction::RIGHTANDSTRAIGHT,
                         TrafficLightCycle{static_cast<Delay>(greenTime * 2. / 3), phase});
             tl.setCycle(
-                streetId,
+                edgeId,
                 dsf::Direction::LEFT,
                 TrafficLightCycle{
                     static_cast<Delay>(greenTime / 3.),
@@ -495,7 +503,7 @@ namespace dsf::mobility {
             break;
           default:
             tl.setCycle(
-                streetId, dsf::Direction::ANY, TrafficLightCycle{greenTime, phase});
+                edgeId, dsf::Direction::ANY, TrafficLightCycle{greenTime, phase});
             break;
         }
       });
