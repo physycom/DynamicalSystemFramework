@@ -130,7 +130,7 @@ if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
 endif()
 # Check if the user has TBB installed
-find_package(TBB REQUIRED)
+find_package(TBB REQUIRED CONFIG)
 
 add_library(dsf STATIC ${SOURCES})
 target_compile_definitions(dsf PRIVATE SPDLOG_USE_STD_FORMAT)
@@ -198,29 +198,6 @@ if(BUILD_PYTHON_BINDINGS)
   target_include_directories(dsf_python_module
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-  # if(APPLE)
-  #   # Try to detect Homebrew prefix dynamically
-  #   execute_process(
-  #     COMMAND brew --prefix
-  #     OUTPUT_VARIABLE HOMEBREW_PREFIX
-  #     OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-  #   if(HOMEBREW_PREFIX)
-  #     set(HOMEBREW_LIB "${HOMEBREW_PREFIX}/lib")
-  #   else()
-  #     # Fallback to default Homebrew locations
-  #     set(HOMEBREW_LIB "/opt/homebrew/lib;/usr/local/lib")
-  #   endif()
-  #   set_target_properties(
-  #     dsf_python_module
-  #     PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-  #                INSTALL_RPATH "${HOMEBREW_LIB};@loader_path"
-  #                INSTALL_RPATH_USE_LINK_PATH TRUE)
-  # elseif(UNIX)
-  #   set_target_properties(
-  #     dsf_python_module
-  #     PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-  #                INSTALL_RPATH "$ORIGIN")
-  # endif()
 endif()
 
 # Tests
