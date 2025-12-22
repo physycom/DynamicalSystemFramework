@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential doxygen
+        sudo apt install -y cmake build-essential doxygen libtbb-dev
         python -m pip install --upgrade pip
         pip install pytest pytest-cov
     

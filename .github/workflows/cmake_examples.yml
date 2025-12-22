@@ -23,7 +23,9 @@ jobs:
       run: |
         if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
           sudo apt update
-          sudo apt install binutils
+          sudo apt install binutils libtbb-dev
+        elif [ ${{ matrix.os }} == 'macos-latest' ]; then
+          brew install tbb
         fi
 
     - uses: actions/checkout@v4

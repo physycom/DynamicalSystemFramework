@@ -32,18 +32,24 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential doxygen
+        sudo apt install -y cmake build-essential doxygen libtbb-dev
 
     - name: Install system dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        brew install cmake doxygen
+        brew install cmake doxygen tbb
 
     - name: Install system dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
         choco install doxygen.install
+        git clone https://github.com/microsoft/vcpkg.git vcpkg
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
+        .\vcpkg install tbb:x64-windows
+        echo "CMAKE_TOOLCHAIN_FILE=$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+        echo "VCPKG_TARGET_TRIPLET=x64-windows" >> $env:GITHUB_ENV
 
     - name: Upgrade pip and install build dependencies
       run: |
@@ -180,7 +186,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential doxygen
+        sudo apt install -y cmake build-essential doxygen libtbb-dev
 
     - name: Install development dependencies
       run: |
