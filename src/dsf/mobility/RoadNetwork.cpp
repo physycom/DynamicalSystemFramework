@@ -609,8 +609,8 @@ namespace dsf::mobility {
                   }
                   // Actually going straight means remain on the same road, thus...
                   auto const inEstFlow{pInStreet->maxSpeed() * pInStreet->nLanes()};
-                  auto const outEstFlow{outOppositeStreet->maxSpeed() *
-                                        outOppositeStreet->nLanes()};
+                  auto const outEstFlow{outOppositeStreet->get()->maxSpeed() *
+                                        outOppositeStreet->get()->nLanes()};
                   if (((inEstFlow == maxEstimatedFlow) ==
                        (outEstFlow == maxEstimatedFlow)) &&
                       !allowedTurns.contains(Direction::STRAIGHT)) {

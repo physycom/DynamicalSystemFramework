@@ -387,8 +387,8 @@ TEST_CASE("Road") {
 
     SUBCASE("setPriority") {
       WHEN("Priority is set") {
-        road.setPriority(150);
-        THEN("Priority is updated") { CHECK_EQ(road.priority(), 150); }
+        road.setPriority();
+        THEN("Priority is updated") { CHECK(road.hasPriority()); }
       }
     }
   }
