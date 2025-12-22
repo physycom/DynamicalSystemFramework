@@ -38,11 +38,11 @@ print(dsf.__version__)
 The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, `spdlog` and `rapidcsv`.
 To install requirements on Ubuntu:
 ```shell
-sudo apt install cmake libhwloc-dev
+sudo apt install cmake libtbb-dev
 ```
 To install requirements on macOS:
 ```shell
-brew install cmake
+brew install cmake tbb
 ```
 
 Utilities are written in python. To install their dependencies:
@@ -68,7 +68,7 @@ cmake --install build
 ## Installation (Python)
 If you want to use the library from Python, you can build the Python bindings using [pybind11](https://github.com/pybind/pybind11). Make sure you have Doxygen installed to generate the docstrings:
 ```shell
-sudo apt install doxygen
+sudo apt install doxygen libtbb-dev
 ```
 
 Then, the installation is automatic via `pip`:
