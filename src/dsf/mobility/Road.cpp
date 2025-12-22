@@ -22,8 +22,7 @@ namespace dsf::mobility {
         m_length{length},
         m_maxSpeed{maxSpeed},
         m_nLanes{nLanes},
-        m_name{std::move(name)},
-        m_priority{nLanes * 100} {
+        m_name{std::move(name)} {
     if (!(length > 0.)) {
       throw std::invalid_argument(
           std::format("The length of a road ({}) must be greater than 0.", length));
@@ -83,10 +82,6 @@ namespace dsf::mobility {
                       transportCapacity));
     }
     m_transportCapacity = transportCapacity;
-  }
-  void Road::setPriority(int priority) {
-    assert(priority >= 0);
-    m_priority = priority;
   }
   Direction Road::turnDirection(double const& previousStreetAngle) const {
     auto const deltaAngle{this->deltaAngle(previousStreetAngle)};
