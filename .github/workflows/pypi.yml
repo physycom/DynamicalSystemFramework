@@ -79,7 +79,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential doxygen
+        sudo apt install -y cmake build-essential doxygen libtbb-dev
 
     - name: Install build dependencies
       run: |
@@ -127,7 +127,7 @@ jobs:
 
     - name: Install system dependencies
       run: |
-        brew install cmake doxygen
+        brew install cmake doxygen tbb
 
     - name: Install build dependencies
       run: |
@@ -175,6 +175,7 @@ jobs:
       run: |
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
         choco install doxygen.install
+        choco install tbb
 
     - name: Install build dependencies
       run: |
@@ -208,7 +209,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential doxygen
+        sudo apt install -y cmake build-essential doxygen libtbb-dev
 
     - name: Install build dependencies
       run: |

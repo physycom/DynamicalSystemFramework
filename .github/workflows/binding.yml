@@ -32,18 +32,19 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt update
-        sudo apt install -y cmake build-essential doxygen
+        sudo apt install -y cmake build-essential doxygen libtbb-dev
 
     - name: Install system dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        brew install cmake doxygen
+        brew install cmake doxygen tbb
 
     - name: Install system dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
         choco install doxygen.install
+        choco install tbb
 
     - name: Upgrade pip and install build dependencies
       run: |

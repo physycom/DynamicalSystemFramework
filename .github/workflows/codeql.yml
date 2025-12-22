@@ -28,6 +28,11 @@ jobs:
       with:
         languages: ${{ matrix.language }}
 
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y libtbb-dev
+
     - name: Build C++
       run: |
         mkdir -p build && cd build

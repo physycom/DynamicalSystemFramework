@@ -129,19 +129,8 @@ FetchContent_GetProperties(simdjson)
 if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
 endif()
-# Get TBB
-set(TBB_TEST OFF CACHE BOOL "Disable TBB tests" FORCE)
-set(TBB_EXAMPLES OFF CACHE BOOL "Disable TBB examples" FORCE)
-set(TBB_STRICT OFF CACHE BOOL "Disable TBB strict mode" FORCE)
-# set(TBB_BUILD_SHARED ON CACHE BOOL "Build TBB as shared library" FORCE)
-# set(TBB_BUILD_TBBMALLOC OFF CACHE BOOL "Disable TBB malloc" FORCE)
-
-FetchContent_Declare(
-  tbb
-  GIT_REPOSITORY https://github.com/uxlfoundation/oneTBB.git
-  GIT_TAG v2022.3.0
-)
-FetchContent_MakeAvailable(tbb)
+# Check if the user has TBB installed
+find_package(TBB REQUIRED)
 
 add_library(dsf STATIC ${SOURCES})
 target_compile_definitions(dsf PRIVATE SPDLOG_USE_STD_FORMAT)
@@ -209,29 +198,29 @@ if(BUILD_PYTHON_BINDINGS)
   target_include_directories(dsf_python_module
                              PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-  if(APPLE)
-    # Try to detect Homebrew prefix dynamically
-    execute_process(
-      COMMAND brew --prefix
-      OUTPUT_VARIABLE HOMEBREW_PREFIX
-      OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-    if(HOMEBREW_PREFIX)
-      set(HOMEBREW_LIB "${HOMEBREW_PREFIX}/lib")
-    else()
-      # Fallback to default Homebrew locations
-      set(HOMEBREW_LIB "/opt/homebrew/lib;/usr/local/lib")
-    endif()
-    set_target_properties(
-      dsf_python_module
-      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                 INSTALL_RPATH "${HOMEBREW_LIB};@loader_path"
-                 INSTALL_RPATH_USE_LINK_PATH TRUE)
-  elseif(UNIX)
-    set_target_properties(
-      dsf_python_module
-      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                 INSTALL_RPATH "$ORIGIN")
-  endif()
+  # if(APPLE)
+  #   # Try to detect Homebrew prefix dynamically
+  #   execute_process(
+  #     COMMAND brew --prefix
+  #     OUTPUT_VARIABLE HOMEBREW_PREFIX
+  #     OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  #   if(HOMEBREW_PREFIX)
+  #     set(HOMEBREW_LIB "${HOMEBREW_PREFIX}/lib")
+  #   else()
+  #     # Fallback to default Homebrew locations
+  #     set(HOMEBREW_LIB "/opt/homebrew/lib;/usr/local/lib")
+  #   endif()
+  #   set_target_properties(
+  #     dsf_python_module
+  #     PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+  #                INSTALL_RPATH "${HOMEBREW_LIB};@loader_path"
+  #                INSTALL_RPATH_USE_LINK_PATH TRUE)
+  # elseif(UNIX)
+  #   set_target_properties(
+  #     dsf_python_module
+  #     PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+  #                INSTALL_RPATH "$ORIGIN")
+  # endif()
 endif()
 
 # Tests
