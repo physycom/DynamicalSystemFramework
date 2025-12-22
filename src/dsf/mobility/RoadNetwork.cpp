@@ -567,23 +567,10 @@ namespace dsf::mobility {
       auto const& pNode{pair.second};
       auto const& inNeighbours{pNode->ingoingEdges()};
       auto const& outNeighbours{pNode->outgoingEdges()};
-      int maxPriority{0};
-      std::for_each(inNeighbours.cbegin(),
-                    inNeighbours.cend(),
-                    [this, &maxPriority](auto const& edgeId) {
-                      auto const& pStreet{this->edge(edgeId)};
-                      maxPriority = std::max(maxPriority, pStreet->priority());
-                    });
-      std::for_each(outNeighbours.cbegin(),
-                    outNeighbours.cend(),
-                    [this, &maxPriority](auto const& edgeId) {
-                      auto const& pStreet{this->edge(edgeId)};
-                      maxPriority = std::max(maxPriority, pStreet->priority());
-                    });
       std::for_each(
           inNeighbours.cbegin(),
           inNeighbours.cend(),
-          [this, &pNode, &outNeighbours, &maxPriority](auto const& edgeId) {
+          [this, &pNode, &outNeighbours](auto const& edgeId) {
             auto const& pInStreet{this->edge(edgeId)};
             auto const nLanes{pInStreet->nLanes()};
             if (nLanes == 1) {
@@ -593,7 +580,7 @@ namespace dsf::mobility {
             std::for_each(
                 outNeighbours.cbegin(),
                 outNeighbours.cend(),
-                [this, &pInStreet, &allowedTurns, &maxPriority](auto const& edgeId) {
+                [this, &pInStreet, &allowedTurns](auto const& edgeId) {
                   auto const& pOutStreet{this->edge(edgeId)};
                   if (pOutStreet->target() == pInStreet->source() ||
                       pInStreet->forbiddenTurns().contains(pOutStreet->id())) {
@@ -606,8 +593,7 @@ namespace dsf::mobility {
                     return;
                   }
                   // Actually going straight means remain on the same road, thus...
-                  if (((pInStreet->priority() == maxPriority) ==
-                       (outOppositeStreet->get()->priority() == maxPriority)) &&
+                  if ((pInStreet->priority() == outOppositeStreet->get()->priority()) &&
                       !allowedTurns.contains(Direction::STRAIGHT)) {
                     spdlog::debug("Street {} prioritized STRAIGHT", pInStreet->id());
                     if (allowedTurns.contains(Direction::STRAIGHT) &&

@@ -26,7 +26,7 @@ namespace dsf::mobility {
     int m_capacity;
     double m_transportCapacity;
     std::string m_name;
-    int m_priority;
+    bool m_hasPriority = false;
     std::set<Id> m_forbiddenTurns;  // Stores the forbidden turns (road ids)
     std::optional<RoadType> m_roadType{std::nullopt};
 
@@ -70,9 +70,8 @@ namespace dsf::mobility {
     /// @param transportCapacity The transport capacity
     /// @throws std::invalid_argument If the transport capacity is less or equal to 0
     void setTransportCapacity(double transportCapacity);
-    /// @brief Set the road's priority
-    /// @param priority The road's priority
-    void setPriority(int priority);
+    /// @brief Set the road's priority to true
+    inline void setPriority() { m_hasPriority = true; }
     /// @brief Add a road id to the forbidden turns
     /// @param roadId The road id to add
     void addForbiddenTurn(Id roadId);
@@ -103,7 +102,7 @@ namespace dsf::mobility {
     inline auto const& name() const noexcept { return m_name; }
     /// @brief Get the priority
     /// @return int The priority
-    inline auto priority() const noexcept { return m_priority; }
+    inline auto hasPriority() const noexcept { return m_hasPriority; }
     /// @brief Get the road's forbidden turns
     /// @return std::set<Id> The road's forbidden turns
     /// @details The forbidden turns are the road ids that are not allowed to be used by the agents
