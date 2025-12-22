@@ -81,9 +81,13 @@ class CMakeBuild(build_ext):
         if platform.system() == "Windows":
             cmake_args += [f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"]
             if "CMAKE_TOOLCHAIN_FILE" in os.environ:
-                cmake_args.append(f"-DCMAKE_TOOLCHAIN_FILE={os.environ['CMAKE_TOOLCHAIN_FILE']}")
+                cmake_args.append(
+                    f"-DCMAKE_TOOLCHAIN_FILE={os.environ['CMAKE_TOOLCHAIN_FILE']}"
+                )
             if "VCPKG_TARGET_TRIPLET" in os.environ:
-                cmake_args.append(f"-DVCPKG_TARGET_TRIPLET={os.environ['VCPKG_TARGET_TRIPLET']}")
+                cmake_args.append(
+                    f"-DVCPKG_TARGET_TRIPLET={os.environ['VCPKG_TARGET_TRIPLET']}"
+                )
 
         # Add macOS-specific CMake prefix paths for Homebrew dependencies
         if platform.system() == "Darwin":  # macOS
