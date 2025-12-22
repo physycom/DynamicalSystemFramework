@@ -44,7 +44,12 @@ jobs:
       run: |
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
         choco install doxygen.install
-        choco install tbb
+        git clone https://github.com/microsoft/vcpkg.git vcpkg
+        cd vcpkg
+        .\bootstrap-vcpkg.bat
+        .\vcpkg install tbb:x64-windows
+        echo "CMAKE_TOOLCHAIN_FILE=$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+        echo "VCPKG_TARGET_TRIPLET=x64-windows" >> $env:GITHUB_ENV
 
     - name: Upgrade pip and install build dependencies
       run: |
