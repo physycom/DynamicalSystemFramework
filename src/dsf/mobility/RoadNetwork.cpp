@@ -507,23 +507,25 @@ namespace dsf::mobility {
       auto const& pNode{pair.second};
       auto const& inNeighbours{pNode->ingoingEdges()};
       auto const& outNeighbours{pNode->outgoingEdges()};
-      int maxPriority{0};
+      double maxEstimatedFlow{0.0};
       std::for_each(inNeighbours.cbegin(),
                     inNeighbours.cend(),
-                    [this, &maxPriority](auto const& edgeId) {
+                    [this, &maxEstimatedFlow](auto const& edgeId) {
                       auto const& pStreet{this->edge(edgeId)};
-                      maxPriority = std::max(maxPriority, pStreet->priority());
+                      auto const estFlow{pStreet->maxSpeed() * pStreet->nLanes()};
+                      maxEstimatedFlow = std::max(maxEstimatedFlow, estFlow);
                     });
       std::for_each(outNeighbours.cbegin(),
                     outNeighbours.cend(),
-                    [this, &maxPriority](auto const& edgeId) {
+                    [this, &maxEstimatedFlow](auto const& edgeId) {
                       auto const& pStreet{this->edge(edgeId)};
-                      maxPriority = std::max(maxPriority, pStreet->priority());
+                      auto const estFlow{pStreet->maxSpeed() * pStreet->nLanes()};
+                      maxEstimatedFlow = std::max(maxEstimatedFlow, estFlow);
                     });
       std::for_each(
           inNeighbours.cbegin(),
           inNeighbours.cend(),
-          [this, &pNode, &outNeighbours, &maxPriority](auto const& edgeId) {
+          [this, &pNode, &outNeighbours, &maxEstimatedFlow](auto const& edgeId) {
             auto const& pInStreet{this->edge(edgeId)};
             auto const nLanes{pInStreet->nLanes()};
             if (nLanes == 1) {
@@ -533,7 +535,7 @@ namespace dsf::mobility {
             std::for_each(
                 outNeighbours.cbegin(),
                 outNeighbours.cend(),
-                [this, &pInStreet, &allowedTurns, &maxPriority](auto const& edgeId) {
+                [this, &pInStreet, &allowedTurns, &maxEstimatedFlow](auto const& edgeId) {
                   auto const& pOutStreet{this->edge(edgeId)};
                   if (pOutStreet->target() == pInStreet->source() ||
                       pInStreet->forbiddenTurns().contains(pOutStreet->id())) {
@@ -546,8 +548,11 @@ namespace dsf::mobility {
                     return;
                   }
                   // Actually going straight means remain on the same road, thus...
-                  if (((pInStreet->priority() == maxPriority) ==
-                       (outOppositeStreet->get()->priority() == maxPriority)) &&
+                  auto const inEstFlow{pInStreet->maxSpeed() * pInStreet->nLanes()};
+                  auto const outEstFlow{outOppositeStreet->get()->maxSpeed() *
+                                        outOppositeStreet->get()->nLanes()};
+                  if (((inEstFlow == maxEstimatedFlow) ==
+                       (outEstFlow == maxEstimatedFlow)) &&
                       !allowedTurns.contains(Direction::STRAIGHT)) {
                     spdlog::debug("Street {} prioritized STRAIGHT", pInStreet->id());
                     if (allowedTurns.contains(Direction::STRAIGHT) &&
