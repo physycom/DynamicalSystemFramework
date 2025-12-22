@@ -42,7 +42,6 @@ namespace dsf {
     /// @brief Add a node to the network
     /// @tparam TNode The type of the node (default is node_t)
     /// @tparam TArgs The types of the arguments
-    /// @param nodeId The node's id
     /// @param args The arguments to pass to the node's constructor
     template <typename TNode = node_t, typename... TArgs>
       requires(std::is_base_of_v<node_t, TNode> &&
@@ -56,7 +55,6 @@ namespace dsf {
     /// @brief Add an edge to the network
     /// @tparam TEdge The type of the edge (default is edge_t)
     /// @tparam TArgs The types of the arguments
-    /// @param edgeId The edge's id
     /// @param args The arguments to pass to the edge's constructor
     template <typename TEdge = edge_t, typename... TArgs>
       requires(std::is_base_of_v<edge_t, TEdge> &&

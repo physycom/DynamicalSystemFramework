@@ -30,6 +30,7 @@ namespace dsf::mobility {
 
   public:
     /// @brief Construct a new Itinerary object
+    /// @param id The itinerary's id
     /// @param destination The itinerary's destination
     Itinerary(Id id, Id destination);
 

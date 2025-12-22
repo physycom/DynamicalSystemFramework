@@ -348,12 +348,14 @@ namespace dsf::mobility {
     /// @brief Save the street densities in csv format
     /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_densities.csv")
     /// @param normalized If true, the densities are normalized in [0, 1]
+    /// @param separator The separator character (default is ';')
     void saveStreetDensities(std::string filename = std::string(),
                              bool normalized = true,
                              char const separator = ';') const;
     /// @brief Save the street input counts in csv format
     /// @param filename The name of the file
     /// @param reset If true, the input counts are cleared after the computation
+    /// @param separator The separator character (default is ';')
     /// @details NOTE: counts are saved only if the street has a coil on it
     void saveCoilCounts(const std::string& filename,
                         bool reset = false,

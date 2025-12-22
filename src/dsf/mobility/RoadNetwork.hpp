@@ -119,10 +119,12 @@ namespace dsf::mobility {
     /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
     /// - coilcode: An integer code to identify the coil located on the street
     /// - customWeight: will be stored in the `weight` parameter of the Edge class. You can use it for the shortest path via dsf::weight_functions::customWeight.
+    /// @param args Additional arguments
     template <typename... TArgs>
     void importEdges(const std::string& fileName, TArgs&&... args);
     /// @brief Import the graph's nodes properties from a file
     /// @param fileName The name of the file to import the nodes properties from.
+    /// @param args Additional arguments
     /// @details Supports csv file format. Please specify the separator as second parameter.
     /// Supported fields:
     /// - id: The id of the node

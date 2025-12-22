@@ -59,6 +59,7 @@ namespace dsf::mobility {
     /// @param nLanes The street's number of lanes (default is 1)
     /// @param maxSpeed The street's speed limit, in m/s (default is 50 km/h)
     /// @param name The street's name (default is an empty string)
+    /// @param geometry The street's geometry
     /// @param capacity The street's capacity (default is the maximum number of vehicles that can fit in the street)
     /// @param transportCapacity The street's transport capacity (default is 1)
     Street(Id id,
@@ -79,6 +80,7 @@ namespace dsf::mobility {
     void setLaneMapping(std::vector<Direction> const& laneMapping);
     /// @brief Set the street's queue
     /// @param queue The street's queue
+    /// @param index The index of the queue
     void setQueue(dsf::queue<std::unique_ptr<Agent>> queue, size_t index);
     /// @brief Set the mean vehicle length
     /// @param meanVehicleLength The mean vehicle length
@@ -155,7 +157,7 @@ namespace dsf::mobility {
     /// @param pAgent The agent to add to the street
     virtual void addAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Add an agent to the street's queue
-    /// @param agentId The id of the agent to add to the street's queue
+    /// @param queueId The id of the queue
     /// @throw std::runtime_error If the street's queue is full
     void enqueue(size_t const& queueId);
     /// @brief Remove an agent from the street's queue
