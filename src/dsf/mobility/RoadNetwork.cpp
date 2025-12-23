@@ -155,8 +155,7 @@ namespace dsf::mobility {
         } else {
           auto const& [oldLon, oldLat] = pNode->geometry().value();
           auto const& [newLon, newLat] = point;
-          if (std::abs(oldLat - newLat) > std::numeric_limits<double>::epsilon() ||
-              std::abs(oldLon - newLon) > std::numeric_limits<double>::epsilon()) {
+          if (std::abs(oldLat - newLat) > 1e-4 || std::abs(oldLon - newLon) > 1e-4) {
             spdlog::error(
                 "Node {} geometry from properties file ({}, {}) do not match existing "
                 "geometry ({}, {}). Keeping existing geometry.",
