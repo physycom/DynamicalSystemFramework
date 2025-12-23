@@ -87,6 +87,8 @@ jobs:
         python -m pip install build wheel setuptools pybind11-stubgen auditwheel
 
     - name: Build wheel
+      env:
+        CMAKE_ARGS: "-DDSF_OPTIMIZE_ARCH=OFF"
       run: |
         rm -rf dist wheelhouse
         python -m build --wheel
@@ -140,6 +142,8 @@ jobs:
         echo "_PYTHON_HOST_PLATFORM=macosx-$(sw_vers -productVersion | cut -d. -f1)-$(uname -m)" >> $GITHUB_ENV
 
     - name: Build wheel
+      env:
+        CMAKE_ARGS: "-DDSF_OPTIMIZE_ARCH=OFF"
       run: python -m build --wheel
 
     - name: Repair wheel (bundle libraries)
@@ -188,6 +192,8 @@ jobs:
         python -m pip install build wheel setuptools pybind11-stubgen
 
     - name: Build wheel
+      env:
+        CMAKE_ARGS: "-DDSF_OPTIMIZE_ARCH=OFF"
       run: python -m build --wheel
 
     - name: Upload wheels as artifacts
