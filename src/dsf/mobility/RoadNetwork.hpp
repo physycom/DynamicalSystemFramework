@@ -31,6 +31,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <queue>
+#include <map>
+#include <set>
 #include <type_traits>
 #include <utility>
 #include <string>
@@ -235,6 +237,20 @@ namespace dsf::mobility {
                                 Id const targetId,
                                 DynamicsFunc getEdgeWeight,
                                 double const threshold = 1e-9) const;
+
+    /// @brief Find the K shortest paths using Yen's algorithm
+    /// @tparam DynamicsFunc A callable type that takes a const reference to a Street and returns a double representing the edge weight
+    /// @param sourceId The id of the source node
+    /// @param targetId The id of the target node
+    /// @param k The number of shortest paths to find (K)
+    /// @param f A callable that takes a const reference to a Street and returns a double representing the edge weight
+    /// @return A multimap where key is path length and value is the path (vector of street IDs).
+    template <typename DynamicsFunc>
+      requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
+    std::multimap<double, std::vector<Id>> allKPathsTo(Id const sourceId,
+                                           Id const targetId,
+                                           size_t const k,
+                                           DynamicsFunc f) const;
   };
 
   template <typename... TArgs>
@@ -533,5 +549,140 @@ namespace dsf::mobility {
     }
 
     return result;
+                                           }
+
+  template <typename DynamicsFunc>
+    requires(std::is_invocable_r_v<double, DynamicsFunc, std::unique_ptr<Street> const&>)
+  std::multimap<double, std::vector<Id>> RoadNetwork::allKPathsTo(Id const sourceId,
+                                          Id const targetId,
+                                          size_t const k,
+                                          DynamicsFunc f) const {
+    std::multimap<double, std::vector<Id>> A_map;
+    if (sourceId == targetId) return A_map;
+
+    using Path = std::vector<Id>;
+    using PathInfo = std::pair<double, Path>;
+    std::vector<PathInfo> A;
+
+    // Helper function to get nodes from a path (list of edges)
+    // Assumes path is valid and contiguous.
+    auto getNodesFromPath = [&](Path const& path) -> std::vector<Id> {
+      if (path.empty()) return {sourceId};
+      std::vector<Id> nodes;
+      nodes.reserve(path.size() + 1);
+      nodes.push_back(edge(path.front())->source());
+      for (auto const& eid : path) {
+         nodes.push_back(edge(eid)->target());
+      }
+      return nodes;
+    };
+
+    // Helper Dijkstra
+    auto dijkstra = [&](Id startNode, Id endNode,
+                        std::unordered_set<Id> const& forbiddenEdges,
+                        std::unordered_set<Id> const& forbiddenNodes)
+        -> std::optional<PathInfo> {
+        
+        if (forbiddenNodes.contains(startNode) || forbiddenNodes.contains(endNode)) return std::nullopt;
+
+        std::priority_queue<std::pair<double, Id>, std::vector<std::pair<double, Id>>, std::greater<>> pq;
+        std::unordered_map<Id, double> dist;
+        std::unordered_map<Id, std::pair<Id, Id>> parent; // node -> {prevNode, edgeToNode}
+        
+        pq.push({0.0, startNode});
+        dist[startNode] = 0.0;
+        
+        while(!pq.empty()){
+           auto [d, u] = pq.top(); pq.pop();
+           if (d > dist[u]) continue;
+           if (u == endNode) break;
+
+           for(auto eid : node(u)->outgoingEdges()){
+               if(forbiddenEdges.contains(eid)) continue;
+               auto const& e = edge(eid);
+               Id v = e->target();
+               if(forbiddenNodes.contains(v)) continue;
+               
+               double w = f(this->edge(eid));
+               double newDist = d + w;
+               
+               if(!dist.contains(v) || newDist < dist[v]){
+                   dist[v] = newDist;
+                   parent[v] = {u, eid};
+                   pq.push({newDist, v});
+               }
+           }
+        }
+
+        if(!dist.contains(endNode)) return std::nullopt;
+
+        // Reconstruct
+        Path p;
+        Id curr = endNode;
+        while(curr != startNode){
+           auto [prev, eid] = parent[curr];
+           p.push_back(eid);
+           curr = prev;
+        }
+        std::reverse(p.begin(), p.end());
+        return PathInfo{dist[endNode], p};
+    };
+
+    // 1. First path
+    auto first = dijkstra(sourceId, targetId, {}, {});
+    if (!first) return A_map;
+
+    A.push_back(*first);
+    A_map.insert(*first);
+
+    std::set<std::pair<double, Path>> B;
+
+    for (size_t k_current = 1; k_current < k; ++k_current) {
+        if (k_current > A.size()) break; 
+        auto& prevPathInfo = A[k_current - 1];
+        auto& prevPath = prevPathInfo.second;
+        auto prevNodes = getNodesFromPath(prevPath); 
+
+        for (size_t i = 0; i < prevPath.size(); ++i) { // i is spur node index
+            Id spurNode = prevNodes[i];
+            Path rootPath(prevPath.begin(), prevPath.begin() + i);
+            double rootPathCost = 0.0;
+            for(auto eid : rootPath) rootPathCost += f(this->edge(eid));
+
+            std::unordered_set<Id> forbiddenEdges;
+            std::unordered_set<Id> forbiddenNodes;
+
+            // Remove edges from A that share rootPath
+            for (auto const& [aCost, aPath] : A) {
+                if (aPath.size() > i &&
+                    std::equal(aPath.begin(), aPath.begin() + i, rootPath.begin())) {
+                    // Yen's logic: for each path p in A: if p.root == rootPath, remove p.edge(i)
+                    // Here we iterate all paths in A. If they match rootPath (edges 0..i-1), then block edge i.
+                    forbiddenEdges.insert(aPath[i]);
+                }
+            }
+
+            // Remove nodes in rootPath (except spurNode)
+            for (size_t nIdx = 0; nIdx < i; ++nIdx) {
+                 forbiddenNodes.insert(prevNodes[nIdx]);
+            }
+
+            auto spurPathInfo = dijkstra(spurNode, targetId, forbiddenEdges, forbiddenNodes);
+            if (spurPathInfo) {
+                Path totalPath = rootPath;
+                totalPath.insert(totalPath.end(), spurPathInfo->second.begin(), spurPathInfo->second.end());
+                double totalCost = rootPathCost + spurPathInfo->first;
+                B.insert({totalCost, totalPath});
+            }
+        }
+
+        if (B.empty()) break;
+        
+        auto bestOpt = *B.begin();
+        B.erase(B.begin());
+        A.push_back(bestOpt);
+        A_map.insert(bestOpt);
+    }
+    return A_map;
   }
 };  // namespace dsf::mobility

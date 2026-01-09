@@ -900,3 +900,65 @@ TEST_CASE("ShortestPath") {
     CHECK_EQ(path[0], 0);
   }
 }
+
+TEST_CASE("K-Shortest Paths") {
+  SUBCASE("Simple Graph") {
+    // 0 -> 1 (5.0) - id 0
+    // 1 -> 2 (2.0) - id 1
+    // 0 -> 3 (3.0) - id 2
+    // 3 -> 2 (5.0) - id 3
+    // 0 -> 2 (10.0) - id 4
+    
+    Street s1(0, std::make_pair(0, 1), 5.);
+    Street s2(1, std::make_pair(1, 2), 2.);
+    Street s3(2, std::make_pair(0, 3), 3.);
+    Street s4(3, std::make_pair(3, 2), 5.);
+    Street s5(4, std::make_pair(0, 2), 10.);
+
+    RoadNetwork graph{};
+    // Nodes are created automatically or need to be added? 
+    // addStreets calls addStreet which likely ensures nodes exist or throws? 
+    // Network::addEdge usually requires nodes. 
+    // Wait, in previous tests: graph.addStreets(...) is used directly. 
+    // Does it add nodes? 
+    // Let's check Test_graph.cpp again.
+    
+    // In Test_graph.cpp:
+    // Street s1{0, std::make_pair(0, 1), 3.};
+    // RoadNetwork graph{};
+    // graph.addStreets(s1, ...);
+    // It seems addStreets is enough.
+    
+    graph.addStreets(s1, s2, s3, s4, s5);
+
+    auto kPaths = graph.allKPathsTo(0, 2, 3, [](auto const& pEdge) { return pEdge->length(); });
+    
+    CHECK(kPaths.size() == 3);
+    
+    auto it = kPaths.begin();
+    CHECK(it->first == doctest::Approx(7.0)); 
+    CHECK_EQ(it->second.size(), 2);
+    CHECK_EQ(it->second[0], 0);
+    CHECK_EQ(it->second[1], 1);
+    
+    it++;
+    CHECK(it->first == doctest::Approx(8.0));
+    CHECK_EQ(it->second.size(), 2);
+    CHECK_EQ(it->second[0], 2);
+    CHECK_EQ(it->second[1], 3);
+    
+    it++;
+    CHECK(it->first == doctest::Approx(10.0));
+    CHECK_EQ(it->second.size(), 1);
+    CHECK_EQ(it->second[0], 4);
+  }
+
+  SUBCASE("Request more paths than exist") {
+     Street s1(0, std::make_pair(0, 1), 1.);
+     RoadNetwork graph{};
+     graph.addStreets(s1);
+     
+     auto kPaths = graph.allKPathsTo(0, 1, 5, [](auto const& pEdge) { return pEdge->length(); });
+     CHECK(kPaths.size() == 1);
+  }
+}
