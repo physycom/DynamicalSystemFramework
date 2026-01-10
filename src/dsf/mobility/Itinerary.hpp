@@ -16,51 +16,34 @@
 #include <string>
 #include <format>
 #include <memory>
-#include <unordered_map>
+#include <map>
 #include <vector>
 
 namespace dsf::mobility {
   /// @brief The Itinerary class represents an itinerary in the network.
-  /// @tparam Id The type of the itinerary's id. It must be an unsigned integral type.
   class Itinerary {
   private:
-    Id m_id;
-    Id m_destination;
-    PathCollection m_path;
+    Id m_source, m_destination;
+    std::multimap<double, std::shared_ptr<std::vector<Id>>> m_paths; // key: path cost, value: path (vector of street IDs)
 
   public:
     /// @brief Construct a new Itinerary object
-    /// @param id The itinerary's id
+    /// @param source The itinerary's source
     /// @param destination The itinerary's destination
-    Itinerary(Id id, Id destination);
+    Itinerary(Id const& source, Id const& destination);
 
-    // Allow move constructor and move assignment operator
-    Itinerary(Itinerary&&) = default;
-    Itinerary& operator=(Itinerary&&) = default;
-    // Delete copy constructor and copy assignment operator
-    Itinerary(const Itinerary&) = delete;
-    Itinerary& operator=(const Itinerary&) = delete;
+    /// @brief Set the itinerary's paths
+    /// @param paths The itinerary's paths
+    void setPaths(std::multimap<double, std::vector<Id>> const& paths);
 
-    void load(const std::string& fileName);
-
-    /// @brief Set the itinerary's path
-    /// @param pathCollection A dsf::mobility::PathCollection representing all equivalent paths to the destination
-    void setPath(PathCollection pathCollection);
-
-    /// @brief Get the itinerary's id
-    /// @return Id, The itinerary's id
-    inline auto id() const noexcept { return m_id; };
+    /// @brief Get the itinerary's source
+    /// @return Id, The itinerary's source
+    inline auto source() const noexcept { return m_source; };
     /// @brief Get the itinerary's destination
     /// @return Id, The itinerary's destination
     inline auto destination() const noexcept { return m_destination; };
     /// @brief Get the itinerary's path
     /// @return PathCollection const&, The itinerary's path
-    inline auto const& path() const noexcept { return m_path; };
-    /// @brief Check if the itinerary's path is empty
-    /// @return true if the itinerary's path is empty, false otherwise
-    inline auto empty() const noexcept { return m_path.empty(); };
-    /// @brief Save the itinerary to a binary file
-    /// @param fileName The name of the file to save the itinerary to
-    void save(const std::string& fileName) const;
+    inline auto const& paths() const noexcept { return m_paths; };
   };
 };  // namespace dsf::mobility

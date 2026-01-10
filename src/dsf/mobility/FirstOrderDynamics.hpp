@@ -14,13 +14,11 @@ namespace dsf::mobility {
   public:
     /// @brief Construct a new First Order Dynamics object
     /// @param graph The graph representing the network
-    /// @param useCache If true, the cache is used (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
     /// @param alpha The minimum speed rate (default is 0)
     /// @param weightFunction The dsf::PathWeight function to use for the pathfinding (default is dsf::PathWeight::TRAVELTIME)
     /// @param weightTreshold The weight threshold for the pathfinding (default is std::nullopt)
     FirstOrderDynamics(RoadNetwork& graph,
-                       bool useCache = false,
                        std::optional<unsigned int> seed = std::nullopt,
                        double alpha = 0.,
                        PathWeight const weightFunction = PathWeight::TRAVELTIME,

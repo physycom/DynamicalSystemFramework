@@ -10,12 +10,11 @@ namespace dsf::mobility {
            (pStreet->maxSpeed() * m_speedFactor(pStreet->density(true)));
   }
   FirstOrderDynamics::FirstOrderDynamics(RoadNetwork& graph,
-                                         bool useCache,
                                          std::optional<unsigned int> seed,
                                          double alpha,
                                          PathWeight const weightFunction,
                                          std::optional<double> weightTreshold)
-      : RoadDynamics<Delay>(graph, useCache, seed, weightFunction, weightTreshold),
+      : RoadDynamics<Delay>(graph, seed, weightFunction, weightTreshold),
         m_alpha{alpha},
         m_speedFluctuationSTD{0.} {
     if (alpha < 0. || alpha > 1.) {

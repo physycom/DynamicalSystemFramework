@@ -17,6 +17,7 @@
 #include <concepts>
 #include <format>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -27,12 +28,9 @@ namespace dsf::mobility {
   class Agent {
   private:
     std::time_t m_spawnTime, m_freeTime;
-    Id m_id;
-    std::vector<Id> m_trip;
-    std::optional<Id> m_streetId;
-    std::optional<Id> m_srcNodeId;
-    std::optional<Id> m_nextStreetId;
-    size_t m_itineraryIdx;
+    std::shared_ptr<std::vector<Id>> m_path;
+    std::optional<std::pair<Id, Id>> m_odPair;
+    std::size_t m_pathIdx;
     double m_speed;
     double m_distance;                     // Travelled distance
     std::optional<double> m_maxDistance;   // Maximum distance for stochastic agents
@@ -41,37 +39,25 @@ namespace dsf::mobility {
   public:
     /// @brief Construct a new Agent object
     /// @param spawnTime The agent's spawn time
-    /// @param itineraryId Optional, The agent's destination node. If not provided, the agent is a random agent
-    /// @param srcNodeId Optional, The id of the source node of the agent
-    Agent(std::time_t const& spawnTime,
-          std::optional<Id> itineraryId = std::nullopt,
-          std::optional<Id> srcNodeId = std::nullopt);
+    Agent(std::time_t const& spawnTime);
+
     /// @brief Construct a new Agent object
     /// @param spawnTime The agent's spawn time
-    /// @param itineraryIds The agent's itinerary
-    /// @param srcNodeId Optional, The id of the source node of the agent
-    Agent(std::time_t const& spawnTime,
-          std::vector<Id> const& trip,
-          std::optional<Id> srcNodeId = std::nullopt);
+    /// @param sourceId The source street id
+    /// @param destinationId The destination street id
+    Agent(std::time_t const& spawnTime, Id const& sourceId, Id const& destinationId);
 
-    void setSrcNodeId(Id srcNodeId);
-    /// @brief Set the street occupied by the agent
-    /// @param streetId The id of the street currently occupied by the agent
-    void setStreetId(std::optional<Id> streetId = std::nullopt);
-    /// @brief Set the id of the next street
-    /// @param nextStreetId The id of the next street
-    inline auto setNextStreetId(Id nextStreetId) { m_nextStreetId = nextStreetId; }
     /// @brief Set the agent's speed
     /// @param speed, The agent's speed
     /// @throw std::invalid_argument, if speed is negative
-    void setSpeed(double speed);
+    void setSpeed(double const& speed);
     /// @brief Set the agent's free time
     /// @param freeTime The agent's free time
     void setFreeTime(std::time_t const& freeTime);
     /// @brief Increment the agent's distance by a given value
     /// @param distance The value to increment the agent's distance byù
     /// @throw std::invalid_argument, if distance is negative
-    void incrementDistance(double distance);
+    void incrementDistance(double const& distance);
     /// @brief Update the agent's itinerary
     /// @details If possible, the agent's itinerary is updated by removing the first element
     /// from the itinerary's vector.
@@ -84,7 +70,6 @@ namespace dsf::mobility {
     /// @param maxTime The agent's maximum time
     inline void setMaxTime(std::time_t const maxTime) { m_maxTime = maxTime; }
 
-    void updateItinerary();
     /// @brief Reset the agent
     /// @details Reset the following values:
     /// - street id = std::nullopt
@@ -101,13 +86,6 @@ namespace dsf::mobility {
     /// @brief Get the agent's free time
     /// @return The agent's free time
     inline std::time_t const& freeTime() const noexcept { return m_freeTime; };
-    /// @brief Get the agent's id
-    /// @return The agent's id
-    inline Id id() const noexcept { return m_id; };
-    /// @brief Get the agent's itinerary
-    /// @return The agent's itinerary
-    /// @throw std::logic_error if the agent is a random agent
-    Id itineraryId() const;
     /// @brief Get the agent's maximum distance
     /// @return The agent's maximum distance, or throw std::logic_error if not set
     inline auto maxDistance() const {
@@ -124,16 +102,17 @@ namespace dsf::mobility {
     };
     /// @brief Get the agent's trip
     /// @return The agent's trip
-    inline std::vector<Id> const& trip() const noexcept { return m_trip; };
-    /// @brief Get the id of the street currently occupied by the agent
-    /// @return The id of the street currently occupied by the agent
-    inline std::optional<Id> streetId() const noexcept { return m_streetId; };
-    /// @brief Get the id of the source node of the agent
-    /// @return The id of the source node of the agent
-    inline std::optional<Id> srcNodeId() const noexcept { return m_srcNodeId; };
+    inline auto const& path() const noexcept { return m_path; };
+    /// @brief Get the id of the source street of the agent
+    /// @return The id of the source street of the agent
+    inline auto const& odPair() const noexcept { return m_odPair; };
+
+    inline auto const& streetId() const noexcept { return m_path->at(m_pathIdx); };
     /// @brief Get the id of the next street
     /// @return The id of the next street
-    inline std::optional<Id> nextStreetId() const noexcept { return m_nextStreetId; };
+    inline auto const& nextStreetId() const noexcept { return m_path->at(m_pathIdx + 1); };
+
+    inline void advancePath() noexcept { ++m_pathIdx; };
     /// @brief Get the agent's speed
     /// @return The agent's speed
     inline double speed() const noexcept { return m_speed; };
@@ -142,7 +121,14 @@ namespace dsf::mobility {
     inline double distance() const noexcept { return m_distance; };
     /// @brief Return true if the agent is a random agent
     /// @return True if the agent is a random agent, false otherwise
-    inline bool isRandom() const noexcept { return m_trip.empty(); };
+    inline bool isRandom() const noexcept { return m_odPair.has_value(); };
+
+    inline bool hasArrived() const noexcept {
+      if (m_pathIdx >= m_path->size()) {
+        return true;
+      }
+      return false;
+    };
     /// @brief Check if a random agent has arrived at its destination
     /// @param currentTime The current simulation time
     /// @return True if the agent has arrived (exceeded max distance or time), false otherwise
@@ -169,15 +155,8 @@ struct std::formatter<dsf::mobility::Agent> {
   auto format(const dsf::mobility::Agent& agent, FormatContext&& ctx) const {
     return std::format_to(
         ctx.out(),
-        "Agent(id: {}, streetId: {}, srcNodeId: {}, nextStreetId: {}, "
-        "itineraryId: {}, speed: {:.2f} m/s, distance: {:.2f} m, "
-        "spawnTime: {}, freeTime: {})",
-        agent.id(),
-        agent.streetId().has_value() ? std::to_string(agent.streetId().value()) : "N/A",
-        agent.srcNodeId().has_value() ? std::to_string(agent.srcNodeId().value()) : "N/A",
-        agent.nextStreetId().has_value() ? std::to_string(agent.nextStreetId().value())
-                                         : "N/A",
-        agent.isRandom() ? std::string("RANDOM") : std::to_string(agent.itineraryId()),
+        "Agent(OD ({}), speed: {:.2f} m/s, distance: {:.2f} m, spawnTime: {}, freeTime: {})",
+        agent.odPair().has_value() ? std::format("{} -> {}", agent.odPair()->first, agent.odPair()->second) : "RANDOM",
         agent.speed(),
         agent.distance(),
         agent.spawnTime(),

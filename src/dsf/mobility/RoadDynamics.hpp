@@ -35,8 +35,13 @@
 #include "RoadNetwork.hpp"
 #include "../utility/Typedef.hpp"
 
-static constexpr auto CACHE_FOLDER = "./.dsfcache/";
+// static constexpr auto CACHE_FOLDER = "./.dsfcache/";
 static constexpr auto U_TURN_PENALTY_FACTOR = 0.1;
+
+template <typename T>
+static constexpr auto CANTOR_HASH(T const& x, T const& y) noexcept {
+  return ((x + y) * (x + y + 1)) / 2 + y;
+}
 
 namespace dsf::mobility {
   /// @brief The RoadDynamics class represents the dynamics of the network.
@@ -68,7 +73,6 @@ namespace dsf::mobility {
     double m_weightTreshold;
     std::optional<double> m_timeToleranceFactor;
     std::optional<delay_t> m_dataUpdatePeriod;
-    bool m_bCacheEnabled;
     bool m_forcePriorities;
 
   private:
@@ -109,12 +113,10 @@ namespace dsf::mobility {
   public:
     /// @brief Construct a new RoadDynamics object
     /// @param graph The graph representing the network
-    /// @param useCache If true, the cache is used (default is false)
     /// @param seed The seed for the random number generator (default is std::nullopt)
     /// @param weightFunction The dsf::PathWeight function to use for the pathfinding (default is dsf::PathWeight::TRAVELTIME)
     /// @param weightTreshold The weight treshold for updating the paths (default is std::nullopt)
     RoadDynamics(RoadNetwork& graph,
-                 bool useCache = false,
                  std::optional<unsigned int> seed = std::nullopt,
                  PathWeight const weightFunction = PathWeight::TRAVELTIME,
                  std::optional<double> weightTreshold =
@@ -391,7 +393,6 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   RoadDynamics<delay_t>::RoadDynamics(RoadNetwork& graph,
-                                      bool useCache,
                                       std::optional<unsigned int> seed,
                                       PathWeight const weightFunction,
                                       std::optional<double> weightTreshold)
@@ -403,20 +404,17 @@ namespace dsf::mobility {
         m_meanTravelDistance{std::nullopt},
         m_meanTravelTime{std::nullopt},
         m_timeToleranceFactor{std::nullopt},
-        m_bCacheEnabled{useCache},
         m_forcePriorities{false} {
     this->setWeightFunction(weightFunction, weightTreshold);
-    if (m_bCacheEnabled) {
-      if (!std::filesystem::exists(CACHE_FOLDER)) {
-        std::filesystem::create_directory(CACHE_FOLDER);
-      }
-      spdlog::info("Cache enabled (default folder is {})", CACHE_FOLDER);
-    }
     for (auto const& [nodeId, pNode] : this->graph().nodes()) {
       m_nodeIndices.push_back(nodeId);
     }
-    for (auto const& [nodeId, weight] : this->m_destinationNodes) {
-      m_itineraries.emplace(nodeId, std::make_unique<Itinerary>(nodeId, nodeId));
+    for (auto const& [sourceId, _] : this->m_originNodes) {
+      for (auto const& [targetId, _] : this->m_destinationNodes) {
+        m_itineraries.emplace(
+            CANTOR_HASH(sourceId, targetId),
+            std::make_unique<Itinerary>(sourceId, targetId));
+      }
     }
     std::for_each(
         this->graph().edges().cbegin(),
@@ -462,30 +460,10 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::m_updatePath(std::unique_ptr<Itinerary> const& pItinerary) {
-    if (m_bCacheEnabled) {
-      auto const& file = std::format("{}{}.ity", CACHE_FOLDER, pItinerary->id());
-      if (std::filesystem::exists(file)) {
-        pItinerary->load(file);
-        spdlog::debug("Loaded cached path for itinerary {}", pItinerary->id());
-        return;
-      }
-    }
-    auto const oldSize{pItinerary->path().size()};
 
-    auto const& path{this->graph().allPathsTo(
-        pItinerary->destination(), m_weightFunction, m_weightTreshold)};
-    pItinerary->setPath(path);
-    auto const newSize{pItinerary->path().size()};
-    if (oldSize > 0 && newSize != oldSize) {
-      spdlog::warn("Path for itinerary {} changed size from {} to {}",
-                   pItinerary->id(),
-                   oldSize,
-                   newSize);
-    }
-    if (m_bCacheEnabled) {
-      pItinerary->save(std::format("{}{}.ity", CACHE_FOLDER, pItinerary->id()));
-      spdlog::debug("Saved path in cache for itinerary {}", pItinerary->id());
-    }
+    auto const& paths{this->graph().allKPathsTo(pItinerary->source(),
+        pItinerary->destination(), 1, m_weightFunction)};
+    pItinerary->setPaths(paths);
   }
 
   template <typename delay_t>
@@ -493,6 +471,10 @@ namespace dsf::mobility {
   std::optional<Id> RoadDynamics<delay_t>::m_nextStreetId(
       const std::unique_ptr<Agent>& pAgent, const std::unique_ptr<RoadJunction>& pNode) {
     spdlog::trace("Computing m_nextStreetId for {}", *pAgent);
+    if (!pAgent->isRandom()) {
+      spdlog::trace("Non-random agent detected");
+      return pAgent->nextStreetId();
+    }
     auto const& outgoingEdges = pNode->outgoingEdges();
 
     // Get current street information
@@ -623,18 +605,7 @@ namespace dsf::mobility {
         break;
       }
       pAgent->setSpeed(0.);
-      bool bArrived{false};
-      if (!pAgent->isRandom()) {
-        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-            pStreet->target()) {
-          pAgent->updateItinerary();
-        }
-        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-            pStreet->target()) {
-          bArrived = true;
-        }
-      }
-      if (bArrived) {
+      if (!pAgent->isRandom() && pAgent->hasArrived()) {
         std::uniform_int_distribution<size_t> laneDist{0,
                                                        static_cast<size_t>(nLanes - 1)};
         pStreet->enqueue(laneDist(this->m_generator));
@@ -655,7 +626,6 @@ namespace dsf::mobility {
             "No next street found for agent {} at node {}", *pAgent, pStreet->target()));
       }
       auto const& pNextStreet{this->graph().edge(nextStreetId.value())};
-      pAgent->setNextStreetId(pNextStreet->id());
       if (nLanes == 1) {
         pStreet->enqueue(0);
         continue;
@@ -764,7 +734,7 @@ namespace dsf::mobility {
                         pStreet->id(),
                         directionToString.at(direction));
         } else if (destinationNode->isIntersection() &&
-                   pAgentTemp->nextStreetId().has_value()) {
+                   pAgentTemp->nextStreetId().has_value()) [[likely]] {
           auto& intersection = static_cast<Intersection&>(*destinationNode);
           bool bCanPass{true};
           if (!intersection.streetPriorities().empty()) {
@@ -956,7 +926,7 @@ namespace dsf::mobility {
           return;
         }
       }
-      if (pNode->isIntersection()) {
+      if (pNode->isIntersection()) [[likely]] {
         auto& intersection = dynamic_cast<Intersection&>(*pNode);
         if (intersection.agents().empty()) {
           return;
@@ -1035,41 +1005,27 @@ namespace dsf::mobility {
     spdlog::debug("Processing {} agents", m_agents.size());
     for (auto itAgent{m_agents.begin()}; itAgent != m_agents.end();) {
       auto& pAgent{*itAgent};
-      if (!pAgent->srcNodeId().has_value()) {
+      Id sourceNodeId;
+      if (pAgent->isRandom()) {
         auto nodeIt{this->graph().nodes().begin()};
         std::advance(nodeIt, nodeDist(this->m_generator));
-        pAgent->setSrcNodeId(nodeIt->second->id());
+        sourceNodeId = nodeIt->second->id();
+      } else {
+        auto const& nextStreetId{pAgent->streetId()};
+        sourceNodeId =
+            this->graph().edge(nextStreetId.value())->source();
       }
-      auto const& pSourceNode{this->graph().node(*(pAgent->srcNodeId()))};
+      auto const& pSourceNode{this->graph().node(this->graph().edge(nextStreetId)->source())};
       if (pSourceNode->isFull()) {
-        spdlog::debug("Skipping {} due to full source {}", *pAgent, *pSourceNode);
-        ++itAgent;
-        continue;
-      }
-      if (!pAgent->nextStreetId().has_value()) {
-        spdlog::debug("No next street id, generating a random one");
-        auto const nextStreetId{this->m_nextStreetId(pAgent, pSourceNode)};
-        if (!nextStreetId.has_value()) {
-          spdlog::debug(
-              "No next street found for agent {} at node {}", *pAgent, pSourceNode->id());
-          itAgent = m_agents.erase(itAgent);
+          spdlog::debug("Skipping {} due to full source {}", *pAgent, *pSourceNode);
+          ++itAgent;
           continue;
         }
-        pAgent->setNextStreetId(nextStreetId.value());
-      }
-      // spdlog::debug("Checking next street {}", pAgent->nextStreetId().value());
-      auto const& nextStreet{
-          this->graph().edge(pAgent->nextStreetId().value())};  // next street
-      if (nextStreet->isFull()) {
-        ++itAgent;
-        spdlog::debug("Skipping {} due to full input {}", *pAgent, *nextStreet);
-        continue;
-      }
       // spdlog::debug("Adding agent on the source node");
-      if (pSourceNode->isIntersection()) {
+      if (pSourceNode->isIntersection()) [[likely]] {
         auto& intersection = dynamic_cast<Intersection&>(*pSourceNode);
         intersection.addAgent(0., std::move(pAgent));
-      } else if (pSourceNode->isRoundabout()) {
+      } else if (pSourceNode->isRoundabout()) [[unlikely]] {
         auto& roundabout = dynamic_cast<Roundabout&>(*pSourceNode);
         roundabout.enqueue(std::move(pAgent));
       }
@@ -1580,7 +1536,7 @@ namespace dsf::mobility {
       throw std::invalid_argument(
           std::format("Itinerary with id {} already exists.", itinerary->id()));
     }
-    m_itineraries.emplace(itinerary->id(), std::move(itinerary));
+    m_itineraries.emplace(CANTOR_HASH(itinerary->source(), itinerary->destination()), std::move(itinerary));
   }
 
   template <typename delay_t>
