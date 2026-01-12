@@ -174,6 +174,99 @@ def get_cartography(
         G[u][v]["source"] = u
         G[u][v]["target"] = v
 
+    # Compute priority based on road type hierarchy
+    TYPE_HIERARCHY = {
+        "motorway": 1,
+        "motorway_link": 1,
+        "trunk": 2,
+        "trunk_link": 2,
+        "primary": 3,
+        "secondary": 4,
+        "tertiary": 5,
+        "unclassified": 10,
+        "residential": 10,
+        "living_street": 10,
+        "service": 10,
+    }
+
+    def get_rank(road_type):
+        # Handle list types if present
+        if isinstance(road_type, list):
+            best_r = float("inf")
+            for t in road_type:
+                r = get_rank(t)
+                if r < best_r:
+                    best_r = r
+            return best_r
+
+        base_type = str(road_type)
+        return TYPE_HIERARCHY.get(base_type, 10)
+
+    for node in G.nodes():
+        in_edges = list(G.in_edges(node, data=True))
+        edge_data_list = []
+        is_roundabout = False
+        for u, v, data in in_edges:
+            edge_type = data.get("type", "")
+            if "roundabout" in str(edge_type).lower():
+                is_roundabout = True
+                continue  # Skip roundabouts for priority calculation
+            edge_rank = get_rank(edge_type)
+            edge_data_list.append((edge_rank, u, v))
+        if is_roundabout:
+            continue
+
+        # Determine priority edges
+        prio_edges = set()
+        n_roads = len(edge_data_list)
+        ranks_only = [r for r, _, _ in edge_data_list]
+        unique_ranks = sorted(list(set(ranks_only)))
+        counts = {r: ranks_only.count(r) for r in unique_ranks}
+
+        if n_roads == 2:
+            if len(unique_ranks) == 1:
+                # Rule: two roads one rank = priority for both
+                prio_edges = set((u, v) for _, u, v in edge_data_list)
+            else:
+                # Fallback: Best rank
+                best_rank = unique_ranks[0]
+                prio_edges = set((u, v) for r, u, v in edge_data_list if r == best_rank)
+
+        elif n_roads == 3:
+            if len(unique_ranks) == 2:
+                # Rule: three roads two ranks = priority to the roads with equal
+                target_rank = [r for r, c in counts.items() if c == 2][0]
+                prio_edges = set(
+                    (u, v) for r, u, v in edge_data_list if r == target_rank
+                )
+            # else: no priority (Rule: three roads one/three ranks)
+
+        elif n_roads == 4:
+            if len(unique_ranks) == 2:
+                # Rule: four roads two ranks = priority to the best rank iff only two roads have it
+                best_rank = unique_ranks[0]
+                if counts[best_rank] == 2:
+                    prio_edges = set(
+                        (u, v) for r, u, v in edge_data_list if r == best_rank
+                    )
+            else:
+                # Fallback: Best rank
+                if unique_ranks:
+                    best_rank = unique_ranks[0]
+                    prio_edges = set(
+                        (u, v) for r, u, v in edge_data_list if r == best_rank
+                    )
+
+        else:
+            # Default fallback
+            if unique_ranks:
+                best_rank = unique_ranks[0]
+                prio_edges = set((u, v) for r, u, v in edge_data_list if r == best_rank)
+
+        # Apply priority
+        for _, u, v in edge_data_list:
+            G[u][v]["priority"] = (u, v) in prio_edges
+
     # Standardize node attributes in the graph
     nodes_to_update = []
     for node, data in G.nodes(data=True):
@@ -406,6 +499,7 @@ def create_manhattan_cartography(
             maxspeed=maxspeed,
             nlanes=1,
             type="primary",
+            priority=True,
             name=f"grid_street_{edge_id}",
             length=length_m,
             geometry=line_geom,
@@ -420,6 +514,7 @@ def create_manhattan_cartography(
             maxspeed=maxspeed,
             nlanes=1,
             type="primary",
+            priority=True,
             name=f"grid_street_{edge_id}",
             length=length_m,
             geometry=line_geom,
@@ -438,6 +533,7 @@ def create_manhattan_cartography(
                 "maxspeed": data["maxspeed"],
                 "nlanes": data["nlanes"],
                 "type": data["type"],
+                "priority": data["priority"],
                 "name": data["name"],
                 "length": data["length"],
                 "geometry": data["geometry"],

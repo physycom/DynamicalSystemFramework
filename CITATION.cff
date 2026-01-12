@@ -9,5 +9,7 @@ authors:
   orcid: "https://orcid.org/0009-0001-0186-755X"
 title: "DynamicalSystemFramework"
 version: 4.3.1
-date-released: 2024-02-18
+date-released: 2025-12-23
 url: "https://github.com/physycom/DynamicalSystemFramework"
+license: MIT
+repository-code: "https://github.com/physycom/DynamicalSystemFramework"
