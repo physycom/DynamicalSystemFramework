@@ -174,6 +174,17 @@ def get_cartography(
         G[u][v]["source"] = u
         G[u][v]["target"] = v
 
+    # Log unique road types
+    unique_road_types = set()
+    for _, _, data in G.edges(data=True):
+        road_type = data.get("type", "")
+        if isinstance(road_type, list):
+            for t in road_type:
+                unique_road_types.add(str(t))
+        else:
+            unique_road_types.add(str(road_type))
+    print(f"Unique road types in the graph: {unique_road_types}")
+
     # Compute priority based on road type hierarchy
     TYPE_HIERARCHY = {
         "motorway": 1,
@@ -181,8 +192,11 @@ def get_cartography(
         "trunk": 2,
         "trunk_link": 2,
         "primary": 3,
+        "primary_link": 3,
         "secondary": 4,
+        "secondary_link": 4,
         "tertiary": 5,
+        "tertiary_link": 5,
         "unclassified": 10,
         "residential": 10,
         "living_street": 10,
@@ -202,8 +216,12 @@ def get_cartography(
         base_type = str(road_type)
         return TYPE_HIERARCHY.get(base_type, 10)
 
-    for node in G.nodes():
+    for node, data in G.nodes(data=True):
+        if "roundabout" in str(data.get("highway", "")).lower():
+            continue
         in_edges = list(G.in_edges(node, data=True))
+        if len(in_edges) < 3:
+            continue  # No priority to compute
         edge_data_list = []
         is_roundabout = False
         for u, v, data in in_edges:
@@ -223,16 +241,7 @@ def get_cartography(
         unique_ranks = sorted(list(set(ranks_only)))
         counts = {r: ranks_only.count(r) for r in unique_ranks}
 
-        if n_roads == 2:
-            if len(unique_ranks) == 1:
-                # Rule: two roads one rank = priority for both
-                prio_edges = set((u, v) for _, u, v in edge_data_list)
-            else:
-                # Fallback: Best rank
-                best_rank = unique_ranks[0]
-                prio_edges = set((u, v) for r, u, v in edge_data_list if r == best_rank)
-
-        elif n_roads == 3:
+        if n_roads == 3:
             if len(unique_ranks) == 2:
                 # Rule: three roads two ranks = priority to the roads with equal
                 target_rank = [r for r, c in counts.items() if c == 2][0]
@@ -250,18 +259,10 @@ def get_cartography(
                         (u, v) for r, u, v in edge_data_list if r == best_rank
                     )
             else:
-                # Fallback: Best rank
-                if unique_ranks:
-                    best_rank = unique_ranks[0]
-                    prio_edges = set(
-                        (u, v) for r, u, v in edge_data_list if r == best_rank
-                    )
+                continue
 
         else:
-            # Default fallback
-            if unique_ranks:
-                best_rank = unique_ranks[0]
-                prio_edges = set((u, v) for r, u, v in edge_data_list if r == best_rank)
+            continue
 
         # Apply priority
         for _, u, v in edge_data_list:
