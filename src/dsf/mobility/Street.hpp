@@ -143,7 +143,7 @@ namespace dsf::mobility {
     }
     /// @brief Get the number of of moving agents, i.e. agents not yet enqueued
     /// @return int The number of moving agents
-    int nMovingAgents() const override;
+    int nMovingAgents() const final;
     /// @brief Get the number of agents on all queues for a given direction
     /// @param direction The direction of the agents (default is ANY)
     /// @param normalizeOnNLanes If true, the number of agents is normalized by the number of lanes
@@ -152,17 +152,18 @@ namespace dsf::mobility {
                           bool normalizeOnNLanes = false) const final;
     /// @brief Get the street's lane mapping
     /// @return std::vector<Direction> The street's lane mapping
-    inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
+    inline auto const& laneMapping() const { return m_laneMapping; }
     /// @brief Add an agent to the street
     /// @param pAgent The agent to add to the street
-    virtual void addAgent(std::unique_ptr<Agent> pAgent);
+    void addAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Add an agent to the street's queue
     /// @param queueId The id of the queue
     /// @throw std::runtime_error If the street's queue is full
-    void enqueue(size_t const& queueId);
+    void enqueue(std::size_t const& queueId);
     /// @brief Remove an agent from the street's queue
+    /// @param index The index of the queue
     /// @return Id The id of the agent removed from the street's queue
-    virtual std::unique_ptr<Agent> dequeue(size_t index);
+    std::unique_ptr<Agent> dequeue(std::size_t const& index);
     /// @brief Check if the street has a coil (dsf::Counter sensor) on it
     /// @return bool True if the street has a coil, false otherwise
     constexpr bool hasCoil() const { return m_counter.has_value(); };

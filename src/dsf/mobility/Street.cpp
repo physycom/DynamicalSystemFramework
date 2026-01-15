@@ -103,7 +103,7 @@ namespace dsf::mobility {
     spdlog::debug("Adding {} on {}", *pAgent, *this);
     m_movingAgents.push(std::move(pAgent));
   }
-  void Street::enqueue(size_t const& queueId) {
+  void Street::enqueue(std::size_t const& queueId) {
     assert(!m_movingAgents.empty());
     m_movingAgents.top()->incrementDistance(m_length);
     m_exitQueues[queueId].push(
@@ -113,7 +113,7 @@ namespace dsf::mobility {
       ++(*m_counter);
     }
   }
-  std::unique_ptr<Agent> Street::dequeue(size_t index) {
+  std::unique_ptr<Agent> Street::dequeue(std::size_t const& index) {
     assert(!m_exitQueues[index].empty());
     auto pAgent{std::move(m_exitQueues[index].front())};
     m_exitQueues[index].pop();
