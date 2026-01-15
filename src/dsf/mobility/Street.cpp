@@ -79,7 +79,7 @@ namespace dsf::mobility {
     assert(index < m_exitQueues.size());
     m_exitQueues[index] = std::move(queue);
   }
-  void Street::enableCounter(std::string name) {
+  void Street::enableCounter(std::string name, CounterPosition position) {
     if (m_counter.has_value()) {
       throw std::runtime_error(
           std::format("{} already has a counter named {}", *this, m_counter->name()));
@@ -89,6 +89,7 @@ namespace dsf::mobility {
     }
     m_counter.emplace();
     m_counter->setName(name);
+    m_counterPosition = position;
   }
   void Street::resetCounter() {
     if (!hasCoil()) {
@@ -102,6 +103,9 @@ namespace dsf::mobility {
     assert(!isFull());
     spdlog::debug("Adding {} on {}", *pAgent, *this);
     m_movingAgents.push(std::move(pAgent));
+    if (m_counter.has_value() && m_counterPosition == CounterPosition::ENTRY) {
+      ++(*m_counter);
+    }
   }
   void Street::enqueue(std::size_t const& queueId) {
     assert(!m_movingAgents.empty());
@@ -109,7 +113,7 @@ namespace dsf::mobility {
     m_exitQueues[queueId].push(
         std::move(const_cast<std::unique_ptr<Agent>&>(m_movingAgents.top())));
     m_movingAgents.pop();
-    if (m_counter.has_value()) {
+    if (m_counter.has_value() && m_counterPosition == CounterPosition::MIDDLE) {
       ++(*m_counter);
     }
   }
@@ -117,6 +121,9 @@ namespace dsf::mobility {
     assert(!m_exitQueues[index].empty());
     auto pAgent{std::move(m_exitQueues[index].front())};
     m_exitQueues[index].pop();
+    if (m_counter.has_value() && m_counterPosition == CounterPosition::EXIT) {
+      ++(*m_counter);
+    }
     return pAgent;
   }
 
