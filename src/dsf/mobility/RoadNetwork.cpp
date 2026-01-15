@@ -798,11 +798,6 @@ namespace dsf::mobility {
     pNode = std::make_unique<Station>(*pNode, managementTime);
     return node<Station>(nodeId);
   }
-  void RoadNetwork::makeStochasticStreet(Id streetId, double const flowRate) {
-    auto& pStreet = edge(streetId);
-    pStreet = std::unique_ptr<StochasticStreet>(
-        new StochasticStreet(std::move(*pStreet), flowRate));
-  }
   void RoadNetwork::addCoil(Id streetId, std::string const& name) {
     edge(streetId)->enableCounter(name);
   }

@@ -103,7 +103,7 @@ namespace dsf::mobility {
     spdlog::debug("Adding {} on {}", *pAgent, *this);
     m_movingAgents.push(std::move(pAgent));
   }
-  void Street::enqueue(size_t const& queueId) {
+  void Street::enqueue(std::size_t const& queueId) {
     assert(!m_movingAgents.empty());
     m_movingAgents.top()->incrementDistance(m_length);
     m_exitQueues[queueId].push(
@@ -113,7 +113,7 @@ namespace dsf::mobility {
       ++(*m_counter);
     }
   }
-  std::unique_ptr<Agent> Street::dequeue(size_t index) {
+  std::unique_ptr<Agent> Street::dequeue(std::size_t const& index) {
     assert(!m_exitQueues[index].empty());
     auto pAgent{std::move(m_exitQueues[index].front())};
     m_exitQueues[index].pop();
@@ -167,39 +167,6 @@ namespace dsf::mobility {
       n > 1 ? nAgents /= n : nAgents;
     }
     return nAgents;
-  }
-
-  StochasticStreet::StochasticStreet(Street&& street, double flowRate)
-      : Street(std::move(street)) {
-    setFlowRate(flowRate);
-  }
-  StochasticStreet::StochasticStreet(Id id,
-                                     std::pair<Id, Id> nodePair,
-                                     double length,
-                                     double maxSpeed,
-                                     int nLanes,
-                                     std::string name,
-                                     geometry::PolyLine geometry,
-                                     double flowRate,
-                                     std::optional<int> capacity,
-                                     double transportCapacity)
-      : Street(id,
-               std::move(nodePair),
-               length,
-               maxSpeed,
-               nLanes,
-               std::move(name),
-               std::move(geometry),
-               capacity,
-               transportCapacity) {
-    setFlowRate(flowRate);
-  }
-  void StochasticStreet::setFlowRate(double const flowRate) {
-    if (flowRate < 0. || flowRate > 1.) {
-      throw std::invalid_argument(
-          std::format("Flow rate ({}) must be in [0, 1]", flowRate));
-    }
-    m_flowRate = flowRate;
   }
 
 };  // namespace dsf::mobility

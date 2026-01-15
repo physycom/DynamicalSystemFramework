@@ -167,7 +167,6 @@ namespace dsf::mobility {
     /// @throws std::invalid_argument if the node does not exist
     Roundabout& makeRoundabout(Id nodeId);
 
-    void makeStochasticStreet(Id streetId, double const flowRate);
     /// @brief Add a coil (dsf::Counter sensor) on the street with streetId
     /// @param streetId The id of the street to add the coil to
     /// @param name The coil name

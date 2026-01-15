@@ -696,13 +696,6 @@ namespace dsf::mobility {
     auto const& transportCapacity{pStreet->transportCapacity()};
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     for (auto i = 0; i < std::ceil(transportCapacity); ++i) {
-      if (pStreet->isStochastic() &&
-          uniformDist(this->m_generator) >
-              dynamic_cast<StochasticStreet&>(*pStreet).flowRate()) {
-        spdlog::trace("Skipping due to flow rate {:.2f} < random value",
-                      dynamic_cast<StochasticStreet&>(*pStreet).flowRate());
-        continue;
-      }
       if (i == std::ceil(transportCapacity) - 1) {
         double integral;
         double fractional = std::modf(transportCapacity, &integral);

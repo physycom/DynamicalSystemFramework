@@ -919,13 +919,13 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
     GIVEN(
-        "A dynamics with one stochastic street and one normal street network and an "
-        "agent") {
+        "A dynamics with one street with limited flow and one normal street network and "
+        "an agent") {
       Street s1{0, std::make_pair(0, 1), 3.};
       Street s2{1, std::make_pair(1, 2), 1.};
+      s1.setTransportCapacity(0.3);
       RoadNetwork graph2;
       graph2.addStreets(s1, s2);
-      graph2.makeStochasticStreet(1, 0.3);
       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();

@@ -143,7 +143,7 @@ namespace dsf::mobility {
     }
     /// @brief Get the number of of moving agents, i.e. agents not yet enqueued
     /// @return int The number of moving agents
-    int nMovingAgents() const override;
+    int nMovingAgents() const final;
     /// @brief Get the number of agents on all queues for a given direction
     /// @param direction The direction of the agents (default is ANY)
     /// @param normalizeOnNLanes If true, the number of agents is normalized by the number of lanes
@@ -152,59 +152,23 @@ namespace dsf::mobility {
                           bool normalizeOnNLanes = false) const final;
     /// @brief Get the street's lane mapping
     /// @return std::vector<Direction> The street's lane mapping
-    inline std::vector<Direction> const& laneMapping() const { return m_laneMapping; }
+    inline auto const& laneMapping() const { return m_laneMapping; }
     /// @brief Add an agent to the street
     /// @param pAgent The agent to add to the street
-    virtual void addAgent(std::unique_ptr<Agent> pAgent);
+    void addAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Add an agent to the street's queue
     /// @param queueId The id of the queue
     /// @throw std::runtime_error If the street's queue is full
-    void enqueue(size_t const& queueId);
+    void enqueue(std::size_t const& queueId);
     /// @brief Remove an agent from the street's queue
+    /// @param index The index of the queue
     /// @return Id The id of the agent removed from the street's queue
-    virtual std::unique_ptr<Agent> dequeue(size_t index);
+    std::unique_ptr<Agent> dequeue(std::size_t const& index);
     /// @brief Check if the street has a coil (dsf::Counter sensor) on it
     /// @return bool True if the street has a coil, false otherwise
     constexpr bool hasCoil() const { return m_counter.has_value(); };
-    /// @brief Check if the street is stochastic
-    /// @return bool True if the street is stochastic, false otherwise
-    virtual constexpr bool isStochastic() const noexcept { return false; };
   };
-
-  /// @brief A stochastic street is a street with a flow rate parameter
-  /// @details The Stochastic Street is used to replace traffic lights with a lower level of detail.
-  ///          The idea is to model the flow of agents in a street as a stochastic process, limiting
-  ///          the number of agents that can exit using a parameter in [0, 1].
-  ///          Thus, the flow rate parameter represents the ratio between the green time of the
-  ///          traffic light and the total time of the traffic light cycle.
-  class StochasticStreet : public Street {
-  private:
-    double m_flowRate;
-
-  public:
-    StochasticStreet(Street&&, double flowRate);
-    StochasticStreet(Id id,
-                     std::pair<Id, Id> nodePair,
-                     double length = Road::meanVehicleLength(),
-                     double maxSpeed = 13.8888888889,
-                     int nLanes = 1,
-                     std::string name = std::string(),
-                     geometry::PolyLine geometry = {},
-                     double flowRate = 1.,
-                     std::optional<int> capacity = std::nullopt,
-                     double transportCapacity = 1.);
-    /// @brief Set the flow rate of the street, i.e. the probability that an agent can exit the street
-    /// @param flowRate The flow rate to set
-    void setFlowRate(double const flowRate);
-    /// @brief Get the flow rate of the street
-    /// @return double The flow rate of the street
-    inline auto flowRate() const { return m_flowRate; }
-    /// @brief Check if the street is stochastic
-    /// @return bool True if the street is stochastic, false otherwise
-    constexpr bool isStochastic() const noexcept final { return true; };
-  };
-
-};  // namespace dsf::mobility
+}  // namespace dsf::mobility
 
 // Specialization of std::formatter for dsf::Street
 template <>
