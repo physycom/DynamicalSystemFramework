@@ -13,7 +13,9 @@ slow_charge_rb:
 	./slow_charge_rb.out 69 0.3 ./scrb/ 900
 	$(GPROF_CMD) ./slow_charge_rb.out gmon.out > analysis_rb.txt
 stalingrado:
-	./stalingrado_tl.out
-# 	$(GPROF_CMD) ./stalingrado_tl.out gmon.out > analysis_stalingrado_tl.txt
-	./stalingrado_notl.out
-# 	$(GPROF_CMD) ./stalingrado_notl.out gmon.out > analysis_stalingrado_notl.txt
+	for i in 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7; do \
+		for j in 0.2 0.4 0.6 0.8 1.0 1.2 ; do \
+			./stalingrado_tl.out $$i $$j; \
+			./stalingrado_notl.out $$i $$j; \
+		done \
+	done
