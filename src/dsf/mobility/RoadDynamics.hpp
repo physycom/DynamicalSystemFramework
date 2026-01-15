@@ -597,15 +597,16 @@ namespace dsf::mobility {
 
     std::uniform_real_distribution<double> uniformDist{0., cumulativeProbability};
     auto const randValue = uniformDist(this->m_generator);
+    Id fallbackStreetId;
     double accumulated = 0.0;
     for (const auto& [targetStreetId, probability] : transitionProbabilities) {
       accumulated += probability;
+      fallbackStreetId = targetStreetId;
       if (randValue < accumulated) {
         return targetStreetId;
       }
     }
     // Return last one as fallback
-    auto const fallbackStreetId = std::prev(transitionProbabilities.cend())->first;
     spdlog::debug(
         "Fallback selection for {} at {}: street {}", *pAgent, *pNode, fallbackStreetId);
     return fallbackStreetId;
