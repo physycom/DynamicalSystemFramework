@@ -128,25 +128,6 @@ static void BM_Street_SetLaneMapping(benchmark::State& state) {
   }
 }
 
-static void BM_StochasticStreet_SetFlowRate(benchmark::State& state) {
-  dsf::mobility::Street baseStreet(
-      0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, std::nullopt, 1.0);
-  dsf::mobility::StochasticStreet street(std::move(baseStreet), 0.5);
-  for (auto _ : state) {
-    street.setFlowRate(0.8);
-  }
-}
-
-static void BM_StochasticStreet_FlowRate(benchmark::State& state) {
-  dsf::mobility::Street baseStreet(
-      0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, std::nullopt, 1.0);
-  dsf::mobility::StochasticStreet street(std::move(baseStreet), 0.5);
-  for (auto _ : state) {
-    double fr = street.flowRate();
-    benchmark::DoNotOptimize(fr);
-  }
-}
-
 static void BM_CoilStreet_AddAgent(benchmark::State& state) {
   dsf::mobility::Street street(0, {0, 1}, 100.0, 13.8888888889, 2, "test", {}, 100, 1.0);
   street.enableCounter();
@@ -202,8 +183,6 @@ BENCHMARK(BM_Street_Density);
 BENCHMARK(BM_Street_nMovingAgents);
 BENCHMARK(BM_Street_nExitingAgents);
 BENCHMARK(BM_Street_SetLaneMapping);
-BENCHMARK(BM_StochasticStreet_SetFlowRate);
-BENCHMARK(BM_StochasticStreet_FlowRate);
 BENCHMARK(BM_CoilStreet_AddAgent);
 BENCHMARK(BM_CoilStreet_MeanFlow);
 BENCHMARK(BM_CoilStreet_Dequeue);

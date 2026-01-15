@@ -166,45 +166,8 @@ namespace dsf::mobility {
     /// @brief Check if the street has a coil (dsf::Counter sensor) on it
     /// @return bool True if the street has a coil, false otherwise
     constexpr bool hasCoil() const { return m_counter.has_value(); };
-    /// @brief Check if the street is stochastic
-    /// @return bool True if the street is stochastic, false otherwise
-    virtual constexpr bool isStochastic() const noexcept { return false; };
   };
-
-  /// @brief A stochastic street is a street with a flow rate parameter
-  /// @details The Stochastic Street is used to replace traffic lights with a lower level of detail.
-  ///          The idea is to model the flow of agents in a street as a stochastic process, limiting
-  ///          the number of agents that can exit using a parameter in [0, 1].
-  ///          Thus, the flow rate parameter represents the ratio between the green time of the
-  ///          traffic light and the total time of the traffic light cycle.
-  class StochasticStreet : public Street {
-  private:
-    double m_flowRate;
-
-  public:
-    StochasticStreet(Street&&, double flowRate);
-    StochasticStreet(Id id,
-                     std::pair<Id, Id> nodePair,
-                     double length = Road::meanVehicleLength(),
-                     double maxSpeed = 13.8888888889,
-                     int nLanes = 1,
-                     std::string name = std::string(),
-                     geometry::PolyLine geometry = {},
-                     double flowRate = 1.,
-                     std::optional<int> capacity = std::nullopt,
-                     double transportCapacity = 1.);
-    /// @brief Set the flow rate of the street, i.e. the probability that an agent can exit the street
-    /// @param flowRate The flow rate to set
-    void setFlowRate(double const flowRate);
-    /// @brief Get the flow rate of the street
-    /// @return double The flow rate of the street
-    inline auto flowRate() const { return m_flowRate; }
-    /// @brief Check if the street is stochastic
-    /// @return bool True if the street is stochastic, false otherwise
-    constexpr bool isStochastic() const noexcept final { return true; };
-  };
-
-};  // namespace dsf::mobility
+}  // namespace dsf::mobility
 
 // Specialization of std::formatter for dsf::Street
 template <>

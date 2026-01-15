@@ -169,37 +169,4 @@ namespace dsf::mobility {
     return nAgents;
   }
 
-  StochasticStreet::StochasticStreet(Street&& street, double flowRate)
-      : Street(std::move(street)) {
-    setFlowRate(flowRate);
-  }
-  StochasticStreet::StochasticStreet(Id id,
-                                     std::pair<Id, Id> nodePair,
-                                     double length,
-                                     double maxSpeed,
-                                     int nLanes,
-                                     std::string name,
-                                     geometry::PolyLine geometry,
-                                     double flowRate,
-                                     std::optional<int> capacity,
-                                     double transportCapacity)
-      : Street(id,
-               std::move(nodePair),
-               length,
-               maxSpeed,
-               nLanes,
-               std::move(name),
-               std::move(geometry),
-               capacity,
-               transportCapacity) {
-    setFlowRate(flowRate);
-  }
-  void StochasticStreet::setFlowRate(double const flowRate) {
-    if (flowRate < 0. || flowRate > 1.) {
-      throw std::invalid_argument(
-          std::format("Flow rate ({}) must be in [0, 1]", flowRate));
-    }
-    m_flowRate = flowRate;
-  }
-
 };  // namespace dsf::mobility
