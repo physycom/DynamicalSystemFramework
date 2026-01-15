@@ -39,6 +39,9 @@ namespace dsf::mobility {
 
   class Agent;
 
+  /// @brief The position of the counter on the street
+  enum class CounterPosition : uint8_t { ENTRY = 0, MIDDLE = 1, EXIT = 2 };
+
   /// @brief The Street class represents a street in the network.
   class Street : public Road {
   private:
@@ -49,6 +52,7 @@ namespace dsf::mobility {
         m_movingAgents;
     std::vector<Direction> m_laneMapping;
     std::optional<Counter> m_counter;
+    CounterPosition m_counterPosition{CounterPosition::EXIT};
     double m_stationaryWeight{1.0};
 
   public:
@@ -94,7 +98,9 @@ namespace dsf::mobility {
     }
     /// @brief Enable a coil (dsf::Counter sensor) on the street
     /// @param name The name of the counter (default is "Coil_<street_id>")
-    void enableCounter(std::string name = std::string());
+    /// @param position The position of the counter on the street (default is EXIT)
+    void enableCounter(std::string name = std::string(),
+                       CounterPosition position = CounterPosition::EXIT);
     /// @brief Reset the counter of the street
     /// @throw std::runtime_error If the street does not have a coil
     void resetCounter();

@@ -182,10 +182,24 @@ TEST_CASE("Street") {
 }
 
 TEST_CASE("Street with a coil") {
-  SUBCASE("Counts") {
+  SUBCASE("Entry Counter") {
+    GIVEN("A street with an entry counter") {
+      Street street{1, std::make_pair(0, 1), 3.5};
+      street.enableCounter("EntryCoil", dsf::mobility::CounterPosition::ENTRY);
+      CHECK_EQ(street.counterName(), "EntryCoil");
+      WHEN("An agent is added") {
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        THEN("The input flow is one immediately") { CHECK_EQ(street.counts(), 1); }
+        street.enqueue(0);
+        THEN("The input flow is still one") { CHECK_EQ(street.counts(), 1); }
+      }
+    }
+  }
+
+  SUBCASE("Middle Counter") {
     GIVEN("A street with a counter") {
       Street street{1, std::make_pair(0, 1), 3.5};
-      street.enableCounter();
+      street.enableCounter("", dsf::mobility::CounterPosition::MIDDLE);
       CHECK_EQ(street.counterName(), "Coil_1");
       WHEN("An agent is added") {
         street.addAgent(std::make_unique<Agent>(0, 1));
@@ -194,6 +208,21 @@ TEST_CASE("Street with a coil") {
         THEN("The input flow is one once enqueued") { CHECK_EQ(street.counts(), 1); }
         street.resetCounter();
         THEN("The counts are 0 after reset") { CHECK_EQ(street.counts(), 0); }
+      }
+    }
+  }
+
+  SUBCASE("Exit Counter") {
+    GIVEN("A street with an exit counter") {
+      Street street{1, std::make_pair(0, 1), 3.5};
+      street.enableCounter("ExitCoil", dsf::mobility::CounterPosition::EXIT);
+      CHECK_EQ(street.counterName(), "ExitCoil");
+      WHEN("An agent is added and enqueued") {
+        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.enqueue(0);
+        THEN("The input flow is zero") { CHECK_EQ(street.counts(), 0); }
+        street.dequeue(0);
+        THEN("The input flow is one after dequeue") { CHECK_EQ(street.counts(), 1); }
       }
     }
   }
