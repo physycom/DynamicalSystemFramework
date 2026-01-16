@@ -783,52 +783,49 @@ namespace dsf::mobility {
 
   void RoadNetwork::autoAssignRoadPriorities() {
     spdlog::debug("Auto-assigning road priorities...");
-    tbb::parallel_for_each(
-        m_nodes.cbegin(),
-        m_nodes.cend(),
-        [this](auto const& pair) {
-          auto const& pNode{pair.second};
-          auto const& inNeighbours{pNode->ingoingEdges()};
-          std::map<RoadType, Id> types;
-          for (auto const& edgeId : inNeighbours) {
-            auto const& pStreet{this->edge(edgeId)};
-            types.emplace(pStreet->roadType(), pStreet->id());
-          }
-          if (types.size() < 2) {
-            return;
-          }
-          std::optional<RoadType> previousType{std::nullopt};
-          std::vector<Id> priorityRoads;
-          for (auto const& [type, streetId] : types) {
-            if (!previousType.has_value()) {
-              previousType = type;
-              priorityRoads.push_back(streetId);
-            } else {
-              if (type == previousType.value()) {
-                if (priorityRoads.size() == 2) {
-                  priorityRoads.clear();
-                } else {
-                  priorityRoads.push_back(streetId);
-                }
-              } else if (priorityRoads.size() < 2) {
-                previousType = type;
-                priorityRoads.clear();
-                priorityRoads.push_back(streetId);
-              }
-            }
-          }
+    tbb::parallel_for_each(m_nodes.cbegin(), m_nodes.cend(), [this](auto const& pair) {
+      auto const& pNode{pair.second};
+      auto const& inNeighbours{pNode->ingoingEdges()};
+      std::multimap<RoadType, Id> types;
+      for (auto const& edgeId : inNeighbours) {
+        auto const& pStreet{this->edge(edgeId)};
+        auto const roadType = pStreet->roadType();
+        if (roadType.has_value()) {
+          types.emplace(roadType.value(), pStreet->id());
+        }
+      }
+      if (types.size() < 2) {
+        return;
+      }
+      std::vector<Id> priorityRoads;
+      // Find the first road type that has at least 2 streets
+      for (auto it = types.begin(); it != types.end();) {
+        auto const& currentType = it->first;
+        auto const count = types.count(currentType);
 
-          if (priorityRoads.size() < 2) {
-            return;
+        if (count == 2) {
+          auto range = types.equal_range(currentType);
+          for (auto rangeIt = range.first; rangeIt != range.second; ++rangeIt) {
+            priorityRoads.push_back(rangeIt->second);
           }
+          break;
+        }
 
-          for (auto const& streetId : priorityRoads) {
-            auto const& pStreet{this->edge(streetId)};
-            pStreet->setPriority();
-            spdlog::debug("Setting priority to street {}", pStreet->id());
-          }
+        // Move to the next different type
+        it = types.upper_bound(currentType);
+      }
 
-        });
+      if (priorityRoads.size() < 2) {
+        spdlog::warn("Node {}: unable to auto-assign road priorities", pNode->id());
+        return;
+      }
+
+      for (auto const& streetId : priorityRoads) {
+        auto const& pStreet{this->edge(streetId)};
+        pStreet->setPriority();
+        spdlog::debug("Setting priority to street {}", pStreet->id());
+      }
+    });
     spdlog::debug("Done auto-assigning road priorities.");
   }
 

@@ -380,6 +380,35 @@ TEST_CASE("RoadNetwork") {
       }
     }
   }
+
+  SUBCASE("autoAssignRoadPriorities") {
+    GIVEN("A graph with a node having multiple incoming edges of different types") {
+      RoadNetwork graph{};
+      // Node 1 is the intersection
+      // Edge 1: 0 -> 1 (HIGHWAY)
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      s1.setRoadType(RoadType::HIGHWAY);
+
+      // Edge 2: 2 -> 1 (HIGHWAY)
+      Street s2(2, std::make_pair(2, 1), 100., 30., 1);
+      s2.setRoadType(RoadType::HIGHWAY);
+
+      // Edge 3: 3 -> 1 (SECONDARY)
+      Street s3(3, std::make_pair(3, 1), 100., 30., 1);
+      s3.setRoadType(RoadType::SECONDARY);
+
+      graph.addStreets(s1, s2, s3);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("The priorities are assigned to the most important roads") {
+          CHECK(graph.edge(1)->hasPriority());
+          CHECK(graph.edge(2)->hasPriority());
+          CHECK_FALSE(graph.edge(3)->hasPriority());
+        }
+      }
+    }
+  }
 }
 
 TEST_CASE("Dijkstra") {
