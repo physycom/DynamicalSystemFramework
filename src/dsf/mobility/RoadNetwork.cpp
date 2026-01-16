@@ -7,6 +7,7 @@
 
 #include <rapidcsv.h>
 #include <simdjson.h>
+#include <tbb/parallel_for_each.h>
 
 namespace dsf::mobility {
   void RoadNetwork::m_updateMaxAgentCapacity() {
@@ -773,6 +774,57 @@ namespace dsf::mobility {
             }
           });
     });
+  }
+
+  void RoadNetwork::autoAssignRoadPriorities() {
+    spdlog::debug("Auto-assigning road priorities...");
+    tbb::parallel_for_each(
+        m_nodes.cbegin(),
+        m_nodes.cend(),
+        [this](auto const& pair) {
+          auto const& pNode{pair.second};
+          auto const& inNeighbours{pNode->ingoingEdges()};
+          std::map<RoadType, Id> types;
+          for (auto const& edgeId : inNeighbours) {
+            auto const& pStreet{this->edge(edgeId)};
+            types.emplace(pStreet->roadType(), pStreet->id());
+          }
+          if (types.size() < 2) {
+            return;
+          }
+          std::optional<RoadType> previousType{std::nullopt};
+          std::vector<Id> priorityRoads;
+          for (auto const& [type, streetId] : types) {
+            if (!previousType.has_value()) {
+              previousType = type;
+              priorityRoads.push_back(streetId);
+            } else {
+              if (type == previousType.value()) {
+                if (priorityRoads.size() == 2) {
+                  priorityRoads.clear();
+                } else {
+                  priorityRoads.push_back(streetId);
+                }
+              } else if (priorityRoads.size() < 2) {
+                previousType = type;
+                priorityRoads.clear();
+                priorityRoads.push_back(streetId);
+              }
+            }
+          }
+
+          if (priorityRoads.size() < 2) {
+            return;
+          }
+
+          for (auto const& streetId : priorityRoads) {
+            auto const& pStreet{this->edge(streetId)};
+            pStreet->setPriority();
+            spdlog::debug("Setting priority to street {}", pStreet->id());
+          }
+
+        });
+    spdlog::debug("Done auto-assigning road priorities.");
   }
 
   void RoadNetwork::adjustNodeCapacities() {
