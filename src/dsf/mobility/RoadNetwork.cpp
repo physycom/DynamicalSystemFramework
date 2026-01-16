@@ -786,6 +786,11 @@ namespace dsf::mobility {
     tbb::parallel_for_each(m_nodes.cbegin(), m_nodes.cend(), [this](auto const& pair) {
       auto const& pNode{pair.second};
       auto const& inNeighbours{pNode->ingoingEdges()};
+      // NOTE: std::multimap iterates keys in ascending order of RoadType.
+      // RoadType is defined so that more important roads (e.g., HIGHWAY = 0,
+      // PRIMARY = 1, SECONDARY = 2, ...) have smaller enum values. The logic
+      // below relies on this ordering to consider higher-priority road types
+      // first when selecting streets to mark as priority roads.
       std::multimap<RoadType, Id> types;
       for (auto const& edgeId : inNeighbours) {
         auto const& pStreet{this->edge(edgeId)};
