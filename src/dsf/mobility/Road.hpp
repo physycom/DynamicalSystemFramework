@@ -101,7 +101,7 @@ namespace dsf::mobility {
     /// @return std::string The name
     inline auto const& name() const noexcept { return m_name; }
     /// @brief Get the priority
-    /// @return int The priority
+    /// @return bool Whether the road has priority
     inline auto hasPriority() const noexcept { return m_hasPriority; }
     /// @brief Get the road's forbidden turns
     /// @return std::set<Id> The road's forbidden turns
