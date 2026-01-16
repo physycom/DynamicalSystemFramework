@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
   }
   graph.adjustNodeCapacities();
   std::cout << "Setting traffic light parameters..." << '\n';
-  graph.initTrafficLights();
+  graph.autoInitTrafficLights();
   std::cout << "Done." << std::endl;
 
   std::cout << "Creating dynamics...\n";

@@ -165,13 +165,16 @@ PYBIND11_MODULE(dsf_cpp, m) {
           "adjustNodeCapacities",
           &dsf::mobility::RoadNetwork::adjustNodeCapacities,
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::adjustNodeCapacities").c_str())
-      .def("initTrafficLights",
-           &dsf::mobility::RoadNetwork::initTrafficLights,
-           pybind11::arg("minGreenTime") = 30,
-           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::initTrafficLights").c_str())
+      .def("autoInitTrafficLights",
+           &dsf::mobility::RoadNetwork::autoInitTrafficLights,
+           pybind11::arg("mainRoadPercentage") = 0.6,
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::autoInitTrafficLights").c_str())
       .def("autoMapStreetLanes",
            &dsf::mobility::RoadNetwork::autoMapStreetLanes,
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::autoMapStreetLanes").c_str())
+      .def("autoAssignRoadPriorities",
+           &dsf::mobility::RoadNetwork::autoAssignRoadPriorities,
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::autoAssignRoadPriorities").c_str())
       .def("setStreetStationaryWeights",
            &dsf::mobility::RoadNetwork::setStreetStationaryWeights,
            pybind11::arg("weights"),

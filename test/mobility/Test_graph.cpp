@@ -242,7 +242,9 @@ TEST_CASE("RoadNetwork") {
     SUBCASE("make trafficlight") {
       GIVEN("A graph with a traffic light with no parameters") {
         Street s1{1, std::make_pair(0, 1), 30., 15., 3};
+        s1.setPriority();
         Street s2{11, std::make_pair(2, 1), 30., 15., 3};
+        s2.setPriority();
         Street s3{16, std::make_pair(3, 1), 30., 15., 1};
         Street s4{21, std::make_pair(4, 1), 30., 15., 2};
         RoadNetwork graph2;
@@ -253,24 +255,24 @@ TEST_CASE("RoadNetwork") {
           pStreet->setCapacity(2 * pStreet->nLanes());
         }
         WHEN("We auto-init Traffic Lights") {
-          graph2.initTrafficLights();
+          graph2.autoInitTrafficLights();
           THEN("Parameters are correctly set") {
             auto& tl{graph2.node<dsf::mobility::TrafficLight>(1)};
             CHECK_EQ(tl.cycleTime(), 120);
             auto const& cycles{tl.cycles()};
             CHECK_EQ(cycles.size(), 4);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 26);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 48);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 24);
             CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 53);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 26);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 48);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 48);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 24);
             CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 53);
-            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 40);
-            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 80);
-            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 40);
-            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 80);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 48);
+            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 48);
+            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 72);
+            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 48);
+            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 72);
           }
         }
       }

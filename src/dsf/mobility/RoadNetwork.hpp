@@ -90,15 +90,15 @@ namespace dsf::mobility {
     /// @details The nodes' capacity is adjusted using the graph's streets transport capacity, which may vary basing on the number of lanes. The node capacity will be set to the sum of the incoming streets' transport capacity.
     void adjustNodeCapacities();
     /// @brief Initialize the traffic lights with random parameters
-    /// @param minGreenTime The minimum green time for the traffic lights cycles (default is 30)
+    /// @param mainRoadPercentage The percentage of main roads for the traffic lights cycles (default is 0.6)
     /// @details Traffic Lights with no parameters set are initialized with random parameters.
     /// Street priorities are assigned considering the number of lanes and the speed limit.
     /// Traffic Lights with an input degree lower than 3 are converted to standard intersections.
-    void initTrafficLights(Delay const minGreenTime = 30);
+    void autoInitTrafficLights(double const mainRoadPercentage = 0.6);
     /// @brief Automatically re-maps street lanes basing on network's topology
     /// @details For example, if one street has the right turn forbidden, then the right lane becomes a straight one
     void autoMapStreetLanes();
-
+    /// @brief Automatically assigns road priorities at intersections, basing on road types
     void autoAssignRoadPriorities();
 
     /// @brief Import the graph's streets from a file
