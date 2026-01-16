@@ -99,6 +99,8 @@ namespace dsf::mobility {
     /// @details For example, if one street has the right turn forbidden, then the right lane becomes a straight one
     void autoMapStreetLanes();
 
+    void autoAssignRoadPriorities();
+
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
     /// @details Supports csv, json and geojson file formats.
