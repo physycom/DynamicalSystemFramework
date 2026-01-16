@@ -8,6 +8,15 @@
 #include <string>
 
 namespace dsf::mobility {
+  enum class RoadType : std::uint8_t {
+    HIGHWAY = 0,
+    PRIMARY = 1,
+    SECONDARY = 2,
+    TERTIARY = 3,
+    RESIDENTIAL = 4,
+  };
+
+  /// @brief The Road class represents a road in the network.
   class Road : public Edge {
   protected:
     static double m_meanVehicleLength;
@@ -19,6 +28,7 @@ namespace dsf::mobility {
     std::string m_name;
     int m_priority;
     std::set<Id> m_forbiddenTurns;  // Stores the forbidden turns (road ids)
+    std::optional<RoadType> m_roadType{std::nullopt};
 
   public:
     /// @brief Construct a new Road object
@@ -69,6 +79,9 @@ namespace dsf::mobility {
     /// @brief Replace the road's forbidden turns with the given set
     /// @param forbiddenTurns The set of forbidden turns
     void setForbiddenTurns(std::set<Id> const& forbiddenTurns);
+    /// @brief Set the road type
+    /// @param roadType The road type
+    inline void setRoadType(RoadType roadType) { m_roadType = roadType; }
 
     /// @brief Get the length, in meters
     /// @return double The length, in meters
@@ -96,6 +109,9 @@ namespace dsf::mobility {
     /// @details The forbidden turns are the road ids that are not allowed to be used by the agents
     ///          when they are on the road.
     inline auto const& forbiddenTurns() const noexcept { return m_forbiddenTurns; }
+    /// @brief Get the road type
+    /// @return std::optional<RoadType> The road type
+    inline auto roadType() const noexcept { return m_roadType; }
     /// @brief Get the road's turn direction given the previous road angle
     /// @param previousStreetAngle The angle of the previous road
     /// @return Direction The turn direction

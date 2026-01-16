@@ -159,6 +159,35 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.nRoundabouts(), 1);
           CHECK_EQ(graph.nTrafficLights(), 0);
         }
+        THEN("Road types are set") {
+          int nHighways = 0, nPrimary = 0, nSecondary = 0, nTertiary = 0,
+              nResidential = 0;
+          for (auto const& [_, pEdge] : graph.edges()) {
+            if (!pEdge->roadType().has_value()) {
+              continue;
+            }
+            switch (pEdge->roadType().value()) {
+              case RoadType::HIGHWAY:
+                ++nHighways;
+                break;
+              case RoadType::PRIMARY:
+                ++nPrimary;
+                break;
+              case RoadType::SECONDARY:
+                ++nSecondary;
+                break;
+              case RoadType::TERTIARY:
+                ++nTertiary;
+                break;
+              case RoadType::RESIDENTIAL:
+                ++nResidential;
+                break;
+              default:
+                break;
+            }
+          }
+          CHECK_GT(nHighways + nPrimary + nSecondary + nTertiary + nResidential, 0);
+        }
         RoadNetwork graph2;
         graph2.importEdges((DATA_FOLDER / "postua_edges.geojson").string());
         THEN("Sizes are correct also with geojson") {
