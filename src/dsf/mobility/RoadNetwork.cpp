@@ -46,6 +46,7 @@ namespace dsf::mobility {
       auto const streetId = csvReader.GetCell<Id>("id", i);
       auto const dLength = csvReader.GetCell<double>("length", i);
       auto const name = csvReader.GetCell<std::string>("name", i);
+      auto strType = csvReader.GetCell<std::string>("type", i);
       geometry::PolyLine polyline;
       if (bHasGeometry) {
         polyline = geometry::PolyLine(csvReader.GetCell<std::string>("geometry", i));
@@ -80,6 +81,24 @@ namespace dsf::mobility {
                        iLanes,
                        name,
                        polyline));
+
+      if (!strType.empty()) {
+        std::transform(
+            strType.begin(), strType.end(), strType.begin(), [](unsigned char c) {
+              return std::tolower(c);
+            });
+        if (strType.find("motorway") != std::string::npos) {
+          edge(streetId)->setRoadType(RoadType::HIGHWAY);
+        } else if (strType.find("primary") != std::string::npos) {
+          edge(streetId)->setRoadType(RoadType::PRIMARY);
+        } else if (strType.find("secondary") != std::string::npos) {
+          edge(streetId)->setRoadType(RoadType::SECONDARY);
+        } else if (strType.find("tertiary") != std::string::npos) {
+          edge(streetId)->setRoadType(RoadType::TERTIARY);
+        } else if (strType.find("residential") != std::string::npos) {
+          edge(streetId)->setRoadType(RoadType::RESIDENTIAL);
+        }
+      }
 
       if (bHasCoilcode) {
         auto strCoilCode = csvReader.GetCell<std::string>("coilcode", i);
@@ -175,7 +194,7 @@ namespace dsf::mobility {
                          std::istreambuf_iterator<char>());
     simdjson::dom::parser parser;
     simdjson::dom::element root;
-    auto error = parser.parse(json_str).get(root);
+    auto error = parser.parse(simdjson::padded_string(json_str)).get(root);
     if (error) {
       throw std::runtime_error("Failed to parse JSON: " +
                                std::string(simdjson::error_message(error)));
@@ -200,6 +219,31 @@ namespace dsf::mobility {
       auto const& edge_id = static_cast<Id>(edge_properties["id"].get_uint64());
       auto const& edge_length =
           static_cast<double>(edge_properties["length"].get_double());
+
+      std::string strType{""};
+      switch (edge_properties["type"].type()) {
+        case simdjson::dom::element_type::STRING:
+          strType =
+              static_cast<std::string>(edge_properties["type"].get_string().value());
+          break;
+        case simdjson::dom::element_type::ARRAY: {
+          auto type_array = edge_properties["type"].get_array().value();
+          for (auto const& type_elem : type_array) {
+            if (!type_elem.is_string()) {
+              spdlog::warn("Edge {} type array contains non-string element", edge_id);
+              continue;
+            }
+            strType += static_cast<std::string>(type_elem.get_string().value()) + '|';
+          }
+          if (!strType.empty()) {
+            strType.pop_back();  // Remove last '|'
+          }
+          break;
+        }
+        default:
+          spdlog::warn("Edge {} type is of unexpected type", edge_id);
+          break;
+      }
 
       // Robust extraction for maxspeed
       double edge_maxspeed = 30.0;
@@ -245,6 +289,23 @@ namespace dsf::mobility {
                        edge_lanes,
                        name,
                        geometry));
+      if (!strType.empty()) {
+        std::transform(
+            strType.begin(), strType.end(), strType.begin(), [](unsigned char c) {
+              return std::tolower(c);
+            });
+        if (strType.find("motorway") != std::string::npos) {
+          edge(edge_id)->setRoadType(RoadType::HIGHWAY);
+        } else if (strType.find("primary") != std::string::npos) {
+          edge(edge_id)->setRoadType(RoadType::PRIMARY);
+        } else if (strType.find("secondary") != std::string::npos) {
+          edge(edge_id)->setRoadType(RoadType::SECONDARY);
+        } else if (strType.find("tertiary") != std::string::npos) {
+          edge(edge_id)->setRoadType(RoadType::TERTIARY);
+        } else if (strType.find("residential") != std::string::npos) {
+          edge(edge_id)->setRoadType(RoadType::RESIDENTIAL);
+        }
+      }
       // Check if there is coilcode property
       if (!edge_properties.at_key("coilcode").error()) {
         auto const& epCoilCode = edge_properties["coilcode"];
