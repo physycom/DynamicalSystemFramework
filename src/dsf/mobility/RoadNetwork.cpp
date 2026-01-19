@@ -381,13 +381,8 @@ namespace dsf::mobility {
             spdlog::warn("Not enough in neighbours {} for Traffic Light {}",
                          inNeighbours.size(),
                          pNode->id());
-            // Replace with a normal intersection
-            auto const& geometry{pNode->geometry()};
-            if (geometry.has_value()) {
-              pNode = std::make_unique<Intersection>(pNode->id(), *geometry);
-            } else {
-              pNode = std::make_unique<Intersection>(pNode->id());
-            }
+            // Replace with a normal intersection, preserving node properties (edges, etc.)
+            pNode = std::make_unique<Intersection>(*pNode);
             return;
           }
           for (auto const& edgeId : inNeighbours) {
