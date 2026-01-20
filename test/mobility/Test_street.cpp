@@ -245,7 +245,9 @@ TEST_CASE("Road") {
           CHECK_EQ(road.capacity(),
                    static_cast<int>(std::ceil((100.0 * 2) / Road::meanVehicleLength())));
           CHECK_EQ(road.transportCapacity(), 1.0);
-          CHECK_EQ(road.priority(), 200);  // 2 * 100
+          CHECK_FALSE(road.hasPriority());
+          road.setPriority();
+          CHECK(road.hasPriority());
         }
       }
 
@@ -385,8 +387,8 @@ TEST_CASE("Road") {
 
     SUBCASE("setPriority") {
       WHEN("Priority is set") {
-        road.setPriority(150);
-        THEN("Priority is updated") { CHECK_EQ(road.priority(), 150); }
+        road.setPriority();
+        THEN("Priority is updated") { CHECK(road.hasPriority()); }
       }
     }
   }
@@ -432,7 +434,7 @@ TEST_CASE("Road") {
              static_cast<int>(std::ceil((100.0 * 2) / Road::meanVehicleLength())));
     CHECK_EQ(road.transportCapacity(), 1.0);
     CHECK_EQ(road.name(), "Test Road");
-    CHECK_EQ(road.priority(), 200);  // 2 * 100
+    CHECK_FALSE(road.hasPriority());
     CHECK(road.forbiddenTurns().empty());
   }
 

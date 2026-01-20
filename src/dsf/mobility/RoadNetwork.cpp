@@ -1,12 +1,16 @@
+#include "RoadNetwork.hpp"
 #include "../geometry/Point.hpp"
 #include "../geometry/PolyLine.hpp"
-#include "RoadNetwork.hpp"
 
 #include <algorithm>
 #include <ranges>
 
 #include <rapidcsv.h>
 #include <simdjson.h>
+#include <tbb/parallel_for_each.h>
+
+// Default traffic light cycle duration in seconds
+constexpr dsf::Delay TRAFFICLIGHT_DEFAULT_CYCLE = 90;
 
 namespace dsf::mobility {
   void RoadNetwork::m_updateMaxAgentCapacity() {
@@ -160,7 +164,7 @@ namespace dsf::mobility {
             return std::tolower(c);
           });
       if (strType.find("traffic_signals") != std::string::npos) {
-        makeTrafficLight(nodeId, 120);
+        makeTrafficLight(nodeId, TRAFFICLIGHT_DEFAULT_CYCLE);
       } else if (strType.find("roundabout") != std::string::npos) {
         makeRoundabout(nodeId);
       }
@@ -354,212 +358,190 @@ namespace dsf::mobility {
     });
   }
 
-  void RoadNetwork::initTrafficLights(Delay const minGreenTime) {
-    for (auto& [_, pNode] : m_nodes) {
-      if (!pNode->isTrafficLight()) {
-        continue;
-      }
-      auto& tl = static_cast<TrafficLight&>(*pNode);
-      if (!tl.streetPriorities().empty() || !tl.cycles().empty()) {
-        continue;
-      }
-      auto const& inNeighbours = pNode->ingoingEdges();
-      std::map<Id, int, std::greater<int>> capacities;
-      std::unordered_map<Id, double> streetAngles;
-      std::unordered_map<Id, double> maxSpeeds;
-      std::unordered_map<Id, int> nLanes;
-      std::unordered_map<Id, std::string> streetNames;
-      double higherSpeed{0.}, lowerSpeed{std::numeric_limits<double>::max()};
-      int higherNLanes{0}, lowerNLanes{std::numeric_limits<int>::max()};
-      if (inNeighbours.size() < 3) {
-        spdlog::warn("Not enough in neighbours {} for Traffic Light {}",
-                     inNeighbours.size(),
-                     pNode->id());
-        // Replace with a normal intersection
-        auto const& geometry{pNode->geometry()};
-        if (geometry.has_value()) {
-          pNode = std::make_unique<Intersection>(pNode->id(), *geometry);
-        } else {
-          pNode = std::make_unique<Intersection>(pNode->id());
-        }
-        continue;
-      }
-      for (auto const& edgeId : inNeighbours) {
-        auto const& pStreet{edge(edgeId)};
+  void RoadNetwork::autoInitTrafficLights(double const mainRoadPercentage) {
+    tbb::parallel_for_each(
+        m_nodes.begin(), m_nodes.end(), [this, mainRoadPercentage](auto& pair) {
+          auto& pNode = pair.second;
+          if (!pNode->isTrafficLight()) {
+            return;
+          }
+          auto& tl = static_cast<TrafficLight&>(*pNode);
+          if (!tl.streetPriorities().empty() || !tl.cycles().empty()) {
+            return;
+          }
+          auto const& inNeighbours = pNode->ingoingEdges();
+          std::map<Id, int, std::greater<int>> capacities;
+          std::unordered_map<Id, double> streetAngles;
+          std::unordered_map<Id, double> maxSpeeds;
+          std::unordered_map<Id, int> nLanes;
+          std::unordered_map<Id, std::string> streetNames;
+          double higherSpeed{0.}, lowerSpeed{std::numeric_limits<double>::max()};
+          int higherNLanes{0}, lowerNLanes{std::numeric_limits<int>::max()};
+          if (inNeighbours.size() < 3) {
+            spdlog::warn("Not enough in neighbours {} for Traffic Light {}",
+                         inNeighbours.size(),
+                         pNode->id());
+            // Replace with a normal intersection, preserving node properties (edges, etc.)
+            pNode = std::make_unique<Intersection>(*pNode);
+            return;
+          }
+          for (auto const& edgeId : inNeighbours) {
+            auto const& pStreet{edge(edgeId)};
 
-        double const speed{pStreet->maxSpeed()};
-        int const nLan{pStreet->nLanes()};
-        auto const cap{pStreet->capacity()};
-        capacities.emplace(pStreet->id(), cap);
-        auto angle{pStreet->angle()};
-        if (angle < 0.) {
-          angle += 2 * std::numbers::pi;
-        }
-        streetAngles.emplace(pStreet->id(), angle);
+            double const speed{pStreet->maxSpeed()};
+            int const nLan{pStreet->nLanes()};
+            auto const cap{pStreet->capacity()};
+            capacities.emplace(pStreet->id(), cap);
+            auto angle{pStreet->angle()};
+            if (angle < 0.) {
+              angle += 2 * std::numbers::pi;
+            }
+            streetAngles.emplace(pStreet->id(), angle);
 
-        maxSpeeds.emplace(pStreet->id(), speed);
-        nLanes.emplace(pStreet->id(), nLan);
-        streetNames.emplace(pStreet->id(), pStreet->name());
+            maxSpeeds.emplace(pStreet->id(), speed);
+            nLanes.emplace(pStreet->id(), nLan);
+            streetNames.emplace(pStreet->id(), pStreet->name());
 
-        higherSpeed = std::max(higherSpeed, speed);
-        lowerSpeed = std::min(lowerSpeed, speed);
+            higherSpeed = std::max(higherSpeed, speed);
+            lowerSpeed = std::min(lowerSpeed, speed);
 
-        higherNLanes = std::max(higherNLanes, nLan);
-        lowerNLanes = std::min(lowerNLanes, nLan);
-      }
-      {
-        std::vector<std::pair<Id, double>> sortedAngles;
-        std::copy(
-            streetAngles.begin(), streetAngles.end(), std::back_inserter(sortedAngles));
-        std::sort(sortedAngles.begin(),
-                  sortedAngles.end(),
-                  [](auto const& a, auto const& b) { return a.second < b.second; });
-        streetAngles.clear();
-        for (auto const& [streetId, angle] : sortedAngles) {
-          streetAngles.emplace(streetId, angle);
-        }
-      }
-      if (tl.streetPriorities().empty()) {
-        /*************************************************************
+            higherNLanes = std::max(higherNLanes, nLan);
+            lowerNLanes = std::min(lowerNLanes, nLan);
+
+            if (pStreet->hasPriority()) {
+              tl.addStreetPriority(pStreet->id());
+            }
+          }
+
+          if (tl.streetPriorities().empty()) {
+            /*************************************************************
          * 1. Check for street names with multiple occurrences
          * ***********************************************************/
-        std::unordered_map<std::string, int> counts;
-        for (auto const& [streetId, name] : streetNames) {
-          if (name.empty()) {
-            // Ignore empty names
-            continue;
+            std::unordered_map<std::string, int> counts;
+            for (auto const& [streetId, name] : streetNames) {
+              if (name.empty()) {
+                // Ignore empty names
+                return;
+              }
+              if (!counts.contains(name)) {
+                counts[name] = 1;
+              } else {
+                ++counts.at(name);
+              }
+            }
+            // Check if spdlog is in debug mode
+            if (spdlog::get_level() <= spdlog::level::debug) {
+              for (auto const& [name, count] : counts) {
+                spdlog::debug("Street name {} has {} occurrences", name, count);
+              }
+            }
+            for (auto const& [streetId, name] : streetNames) {
+              if (!name.empty() && counts.at(name) > 1) {
+                tl.addStreetPriority(streetId);
+              }
+            }
           }
-          if (!counts.contains(name)) {
-            counts[name] = 1;
-          } else {
-            ++counts.at(name);
-          }
-        }
-        // Check if spdlog is in debug mode
-        if (spdlog::get_level() <= spdlog::level::debug) {
-          for (auto const& [name, count] : counts) {
-            spdlog::debug("Street name {} has {} occurrences", name, count);
-          }
-        }
-        for (auto const& [streetId, name] : streetNames) {
-          if (!name.empty() && counts.at(name) > 1) {
-            tl.addStreetPriority(streetId);
-          }
-        }
-      }
-      if (tl.streetPriorities().empty() && higherSpeed != lowerSpeed) {
-        /*************************************************************
+          if (tl.streetPriorities().empty() && higherSpeed != lowerSpeed) {
+            /*************************************************************
          * 2. Check for street names with same max speed
          * ***********************************************************/
-        for (auto const& [sid, speed] : maxSpeeds) {
-          if (speed == higherSpeed) {
-            tl.addStreetPriority(sid);
+            for (auto const& [sid, speed] : maxSpeeds) {
+              if (speed == higherSpeed) {
+                tl.addStreetPriority(sid);
+              }
+            }
           }
-        }
-      }
-      if (tl.streetPriorities().empty() && higherNLanes != lowerNLanes) {
-        /*************************************************************
+          if (tl.streetPriorities().empty() && higherNLanes != lowerNLanes) {
+            /*************************************************************
          * 2. Check for street names with same number of lanes
          * ***********************************************************/
-        for (auto const& [sid, nLan] : nLanes) {
-          if (nLan == higherNLanes) {
-            tl.addStreetPriority(sid);
+            for (auto const& [sid, nLan] : nLanes) {
+              if (nLan == higherNLanes) {
+                tl.addStreetPriority(sid);
+              }
+            }
           }
-        }
-      }
-      if (tl.streetPriorities().empty()) {
-        /*************************************************************
+          if (tl.streetPriorities().empty()) {
+            /*************************************************************
          * 3. Check for streets with opposite angles
          * ***********************************************************/
-        auto const& streetId = streetAngles.begin()->first;
-        auto const& angle = streetAngles.begin()->second;
-        for (auto const& [streetId2, angle2] : streetAngles) {
-          if (std::abs(angle - angle2) > 0.75 * std::numbers::pi) {
-            tl.addStreetPriority(streetId);
-            tl.addStreetPriority(streetId2);
-            break;
-          }
-        }
-      }
-      if (tl.streetPriorities().empty()) {
-        spdlog::warn("Failed to auto-init Traffic Light {} - going random", pNode->id());
-        // Assign first and third keys of capacity map
-        auto it = capacities.begin();
-        auto const& firstKey = it->first;
-        ++it;
-        ++it;
-        auto const& thirdKey = it->first;
-        tl.addStreetPriority(firstKey);
-        tl.addStreetPriority(thirdKey);
-      }
+            std::vector<std::pair<Id, double>> sortedAngles;
+            std::copy(streetAngles.begin(),
+                      streetAngles.end(),
+                      std::back_inserter(sortedAngles));
+            std::sort(sortedAngles.begin(),
+                      sortedAngles.end(),
+                      [](auto const& a, auto const& b) { return a.second < b.second; });
+            streetAngles.clear();
+            for (auto const& [streetId, angle] : sortedAngles) {
+              streetAngles.emplace(streetId, angle);
+            }
 
-      // Assign cycles
-      std::pair<Delay, Delay> greenTimes;
-      {
-        auto capPriority{0.}, capNoPriority{0.};
-        std::unordered_map<Id, double> normCapacities;
-        auto sum{0.};
-        for (auto const& [streetId, cap] : capacities) {
-          sum += cap;
-        }
-        for (auto const& [streetId, cap] : capacities) {
-          normCapacities.emplace(streetId, cap / sum);
-        }
-        for (auto const& [streetId, normCap] : normCapacities) {
-          if (tl.streetPriorities().contains(streetId)) {
-            capPriority += normCap;
-          } else {
-            capNoPriority += normCap;
+            auto const& streetId = streetAngles.begin()->first;
+            auto const& angle = streetAngles.begin()->second;
+            for (auto const& [streetId2, angle2] : streetAngles) {
+              if (std::abs(angle - angle2) > 0.75 * std::numbers::pi) {
+                tl.addStreetPriority(streetId);
+                tl.addStreetPriority(streetId2);
+                break;
+              }
+            }
           }
-        }
-        spdlog::debug("Capacities for Traffic Light {}: priority {} no priority {}",
-                      pNode->id(),
-                      capPriority,
-                      capNoPriority);
-        greenTimes = std::make_pair(static_cast<Delay>(capPriority * tl.cycleTime()),
-                                    static_cast<Delay>(capNoPriority * tl.cycleTime()));
-      }
-      // if one of green times is less than 20, set it to 20 and refactor the other to have the sum to 120
-      if (greenTimes.first < minGreenTime) {
-        greenTimes.first = minGreenTime;
-        greenTimes.second = tl.cycleTime() - minGreenTime;
-      }
-      if (greenTimes.second < minGreenTime) {
-        greenTimes.second = minGreenTime;
-        greenTimes.first = tl.cycleTime() - minGreenTime;
-      }
-      std::for_each(inNeighbours.begin(), inNeighbours.end(), [&](auto const& edgeId) {
-        auto const streetId{this->edge(edgeId)->id()};
-        auto const nLane{nLanes.at(streetId)};
-        Delay greenTime{greenTimes.first};
-        Delay phase{0};
-        if (!tl.streetPriorities().contains(streetId)) {
-          phase = greenTime;
-          greenTime = greenTimes.second;
-        }
-        spdlog::debug("Setting cycle for street {} with green time {} and phase {}",
-                      streetId,
-                      greenTime,
-                      phase);
-        switch (nLane) {
-          case 3:
-            tl.setCycle(streetId,
-                        dsf::Direction::RIGHTANDSTRAIGHT,
-                        TrafficLightCycle{static_cast<Delay>(greenTime * 2. / 3), phase});
-            tl.setCycle(
-                streetId,
-                dsf::Direction::LEFT,
-                TrafficLightCycle{
-                    static_cast<Delay>(greenTime / 3.),
-                    static_cast<Delay>(phase + static_cast<Delay>(greenTime * 2. / 3))});
-            break;
-          default:
-            tl.setCycle(
-                streetId, dsf::Direction::ANY, TrafficLightCycle{greenTime, phase});
-            break;
-        }
-      });
-    }
+          if (tl.streetPriorities().empty() || tl.streetPriorities().size() != 2) {
+            spdlog::warn("Failed to auto-init Traffic Light {} - going random",
+                         pNode->id());
+            // Assign first and third keys of capacity map
+            auto it = capacities.begin();
+            auto const& firstKey = it->first;
+            ++it;
+            ++it;
+            auto const& thirdKey = it->first;
+            tl.addStreetPriority(firstKey);
+            tl.addStreetPriority(thirdKey);
+          }
+
+          // Assign cycles
+          std::pair<Delay, Delay> greenTimes;
+          {
+            auto const mainGreenTime{
+                static_cast<Delay>(mainRoadPercentage * tl.cycleTime())};
+            auto const secondaryGreenTime{
+                static_cast<Delay>(tl.cycleTime() - mainGreenTime)};
+            greenTimes = std::make_pair(mainGreenTime, secondaryGreenTime);
+          }
+          std::for_each(inNeighbours.begin(), inNeighbours.end(), [&](auto const& edgeId) {
+            auto const streetId{this->edge(edgeId)->id()};
+            auto const nLane{nLanes.at(streetId)};
+            Delay greenTime{greenTimes.first};
+            Delay phase{0};
+            if (!tl.streetPriorities().contains(streetId)) {
+              phase = greenTime;
+              greenTime = greenTimes.second;
+            }
+            spdlog::debug("Setting cycle for street {} with green time {} and phase {}",
+                          streetId,
+                          greenTime,
+                          phase);
+            switch (nLane) {
+              case 3:
+                tl.setCycle(
+                    streetId,
+                    dsf::Direction::RIGHTANDSTRAIGHT,
+                    TrafficLightCycle{static_cast<Delay>(greenTime * 2. / 3), phase});
+                tl.setCycle(streetId,
+                            dsf::Direction::LEFT,
+                            TrafficLightCycle{
+                                static_cast<Delay>(greenTime / 3.),
+                                static_cast<Delay>(
+                                    phase + static_cast<Delay>(greenTime * 2. / 3))});
+                break;
+              default:
+                tl.setCycle(
+                    streetId, dsf::Direction::ANY, TrafficLightCycle{greenTime, phase});
+                break;
+            }
+          });
+        });
   }
   void RoadNetwork::autoMapStreetLanes() {
     auto const& nodes = this->nodes();
@@ -567,23 +549,25 @@ namespace dsf::mobility {
       auto const& pNode{pair.second};
       auto const& inNeighbours{pNode->ingoingEdges()};
       auto const& outNeighbours{pNode->outgoingEdges()};
-      int maxPriority{0};
+      double maxEstimatedFlow{0.0};
       std::for_each(inNeighbours.cbegin(),
                     inNeighbours.cend(),
-                    [this, &maxPriority](auto const& edgeId) {
+                    [this, &maxEstimatedFlow](auto const& edgeId) {
                       auto const& pStreet{this->edge(edgeId)};
-                      maxPriority = std::max(maxPriority, pStreet->priority());
+                      auto const estFlow{pStreet->maxSpeed() * pStreet->nLanes()};
+                      maxEstimatedFlow = std::max(maxEstimatedFlow, estFlow);
                     });
       std::for_each(outNeighbours.cbegin(),
                     outNeighbours.cend(),
-                    [this, &maxPriority](auto const& edgeId) {
+                    [this, &maxEstimatedFlow](auto const& edgeId) {
                       auto const& pStreet{this->edge(edgeId)};
-                      maxPriority = std::max(maxPriority, pStreet->priority());
+                      auto const estFlow{pStreet->maxSpeed() * pStreet->nLanes()};
+                      maxEstimatedFlow = std::max(maxEstimatedFlow, estFlow);
                     });
       std::for_each(
           inNeighbours.cbegin(),
           inNeighbours.cend(),
-          [this, &pNode, &outNeighbours, &maxPriority](auto const& edgeId) {
+          [this, &pNode, &outNeighbours, &maxEstimatedFlow](auto const& edgeId) {
             auto const& pInStreet{this->edge(edgeId)};
             auto const nLanes{pInStreet->nLanes()};
             if (nLanes == 1) {
@@ -593,7 +577,7 @@ namespace dsf::mobility {
             std::for_each(
                 outNeighbours.cbegin(),
                 outNeighbours.cend(),
-                [this, &pInStreet, &allowedTurns, &maxPriority](auto const& edgeId) {
+                [this, &pInStreet, &allowedTurns, &maxEstimatedFlow](auto const& edgeId) {
                   auto const& pOutStreet{this->edge(edgeId)};
                   if (pOutStreet->target() == pInStreet->source() ||
                       pInStreet->forbiddenTurns().contains(pOutStreet->id())) {
@@ -606,8 +590,11 @@ namespace dsf::mobility {
                     return;
                   }
                   // Actually going straight means remain on the same road, thus...
-                  if (((pInStreet->priority() == maxPriority) ==
-                       (outOppositeStreet->get()->priority() == maxPriority)) &&
+                  auto const inEstFlow{pInStreet->maxSpeed() * pInStreet->nLanes()};
+                  auto const outEstFlow{outOppositeStreet->get()->maxSpeed() *
+                                        outOppositeStreet->get()->nLanes()};
+                  if (((inEstFlow == maxEstimatedFlow) ==
+                       (outEstFlow == maxEstimatedFlow)) &&
                       !allowedTurns.contains(Direction::STRAIGHT)) {
                     spdlog::debug("Street {} prioritized STRAIGHT", pInStreet->id());
                     if (allowedTurns.contains(Direction::STRAIGHT) &&
@@ -773,6 +760,59 @@ namespace dsf::mobility {
             }
           });
     });
+  }
+
+  void RoadNetwork::autoAssignRoadPriorities() {
+    spdlog::debug("Auto-assigning road priorities...");
+    tbb::parallel_for_each(m_nodes.cbegin(), m_nodes.cend(), [this](auto const& pair) {
+      auto const& pNode{pair.second};
+      auto const& inNeighbours{pNode->ingoingEdges()};
+      // NOTE: std::multimap iterates keys in ascending order of RoadType.
+      // RoadType is defined so that more important roads (e.g., HIGHWAY = 0,
+      // PRIMARY = 1, SECONDARY = 2, ...) have smaller enum values. The logic
+      // below relies on this ordering to consider higher-priority road types
+      // first when selecting streets to mark as priority roads.
+      std::multimap<RoadType, Id> types;
+      for (auto const& edgeId : inNeighbours) {
+        auto const& pStreet{this->edge(edgeId)};
+        auto const roadType = pStreet->roadType();
+        if (roadType.has_value()) {
+          types.emplace(roadType.value(), pStreet->id());
+        }
+      }
+      if (types.size() < 2) {
+        return;
+      }
+      std::vector<Id> priorityRoads;
+      // Find the first road type that has at least 2 streets
+      for (auto it = types.begin(); it != types.end();) {
+        auto const& currentType = it->first;
+        auto const count = types.count(currentType);
+
+        if (count == 2) {
+          auto range = types.equal_range(currentType);
+          for (auto rangeIt = range.first; rangeIt != range.second; ++rangeIt) {
+            priorityRoads.push_back(rangeIt->second);
+          }
+          break;
+        }
+
+        // Move to the next different type
+        it = types.upper_bound(currentType);
+      }
+
+      if (priorityRoads.size() < 2) {
+        spdlog::warn("Node {}: unable to auto-assign road priorities", pNode->id());
+        return;
+      }
+
+      for (auto const& streetId : priorityRoads) {
+        auto const& pStreet{this->edge(streetId)};
+        pStreet->setPriority();
+        spdlog::debug("Setting priority to street {}", pStreet->id());
+      }
+    });
+    spdlog::debug("Done auto-assigning road priorities.");
   }
 
   void RoadNetwork::adjustNodeCapacities() {

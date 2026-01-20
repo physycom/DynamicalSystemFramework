@@ -242,7 +242,9 @@ TEST_CASE("RoadNetwork") {
     SUBCASE("make trafficlight") {
       GIVEN("A graph with a traffic light with no parameters") {
         Street s1{1, std::make_pair(0, 1), 30., 15., 3};
+        s1.setPriority();
         Street s2{11, std::make_pair(2, 1), 30., 15., 3};
+        s2.setPriority();
         Street s3{16, std::make_pair(3, 1), 30., 15., 1};
         Street s4{21, std::make_pair(4, 1), 30., 15., 2};
         RoadNetwork graph2;
@@ -253,24 +255,212 @@ TEST_CASE("RoadNetwork") {
           pStreet->setCapacity(2 * pStreet->nLanes());
         }
         WHEN("We auto-init Traffic Lights") {
-          graph2.initTrafficLights();
+          graph2.autoInitTrafficLights();
           THEN("Parameters are correctly set") {
             auto& tl{graph2.node<dsf::mobility::TrafficLight>(1)};
             CHECK_EQ(tl.cycleTime(), 120);
             auto const& cycles{tl.cycles()};
             CHECK_EQ(cycles.size(), 4);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 26);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 48);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 24);
             CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 53);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 53);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 26);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).phase(), 48);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 48);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).greenTime(), 24);
             CHECK_EQ(cycles.at(11).at(dsf::Direction::RIGHTANDSTRAIGHT).phase(), 0);
-            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 53);
-            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 40);
-            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 80);
-            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 40);
-            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 80);
+            CHECK_EQ(cycles.at(11).at(dsf::Direction::LEFT).phase(), 48);
+            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).greenTime(), 48);
+            CHECK_EQ(cycles.at(16).at(dsf::Direction::ANY).phase(), 72);
+            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).greenTime(), 48);
+            CHECK_EQ(cycles.at(21).at(dsf::Direction::ANY).phase(), 72);
+          }
+        }
+      }
+      GIVEN("A traffic light with streets having same names (priority by name)") {
+        RoadNetwork graph;
+        graph.addNDefaultNodes(4);
+        graph.makeTrafficLight(0, 100);
+        // Constructor: id, nodePair, length, maxSpeed, nLanes, name
+        Street s1{1, std::make_pair(1, 0), 50., 15., 1, "Main Street"};
+        Street s2{2, std::make_pair(2, 0), 50., 15., 1, "Main Street"};
+        Street s3{3, std::make_pair(3, 0), 50., 15., 1, "Side Street"};
+        graph.addStreets(s1, s2, s3);
+
+        WHEN("We auto-init Traffic Lights") {
+          graph.autoInitTrafficLights();
+          THEN("Streets with same name get priority") {
+            auto& tl{graph.node<dsf::mobility::TrafficLight>(0)};
+            auto const& priorities{tl.streetPriorities()};
+            CHECK_EQ(priorities.size(), 2);
+            CHECK(priorities.contains(1));
+            CHECK(priorities.contains(2));
+            CHECK_FALSE(priorities.contains(3));
+          }
+        }
+      }
+      GIVEN("A traffic light with streets having different max speeds") {
+        RoadNetwork graph;
+        graph.addNDefaultNodes(4);
+        graph.makeTrafficLight(0, 100);
+        // All streets have unique names (no name-based priority) but different speeds
+        Street s1{1, std::make_pair(1, 0), 50., 50., 1, "Road A"};  // Higher speed
+        Street s2{2, std::make_pair(2, 0), 50., 50., 1, "Road B"};  // Higher speed
+        Street s3{3, std::make_pair(3, 0), 50., 30., 1, "Road C"};  // Lower speed
+        graph.addStreets(s1, s2, s3);
+
+        WHEN("We auto-init Traffic Lights") {
+          graph.autoInitTrafficLights();
+          THEN("Streets with higher speed get priority") {
+            auto& tl{graph.node<dsf::mobility::TrafficLight>(0)};
+            auto const& priorities{tl.streetPriorities()};
+            CHECK_EQ(priorities.size(), 2);
+            CHECK(priorities.contains(1));
+            CHECK(priorities.contains(2));
+            CHECK_FALSE(priorities.contains(3));
+          }
+        }
+      }
+      GIVEN("A traffic light with streets having different lane counts") {
+        RoadNetwork graph;
+        graph.addNDefaultNodes(4);
+        graph.makeTrafficLight(0, 100);
+        // All unique names, same speed, different lane counts
+        Street s1{1, std::make_pair(1, 0), 50., 30., 2, "Road A"};  // Higher lanes
+        Street s2{2, std::make_pair(2, 0), 50., 30., 2, "Road B"};  // Higher lanes
+        Street s3{3, std::make_pair(3, 0), 50., 30., 1, "Road C"};  // Lower lanes
+        graph.addStreets(s1, s2, s3);
+
+        WHEN("We auto-init Traffic Lights") {
+          graph.autoInitTrafficLights();
+          THEN("Streets with higher lane count get priority") {
+            auto& tl{graph.node<dsf::mobility::TrafficLight>(0)};
+            auto const& priorities{tl.streetPriorities()};
+            CHECK_EQ(priorities.size(), 2);
+            CHECK(priorities.contains(1));
+            CHECK(priorities.contains(2));
+            CHECK_FALSE(priorities.contains(3));
+          }
+        }
+      }
+      GIVEN("A traffic light with less than 3 incoming streets") {
+        RoadNetwork graph;
+        graph.addNDefaultNodes(3);
+        graph.makeTrafficLight(0, 100);
+        Street s1{1, std::make_pair(1, 0), 50., 30., 1};
+        Street s2{2, std::make_pair(2, 0), 50., 30., 1};
+        graph.addStreets(s1, s2);
+
+        WHEN("We auto-init Traffic Lights") {
+          graph.autoInitTrafficLights();
+          THEN("Node is converted to intersection") {
+            CHECK_FALSE(graph.node(0)->isTrafficLight());
+            CHECK(graph.node(0)->isIntersection());
+          }
+        }
+      }
+      GIVEN("A traffic light with custom mainRoadPercentage") {
+        RoadNetwork graph;
+        graph.addNDefaultNodes(4);
+        graph.makeTrafficLight(0, 100);
+        Street s1{1, std::make_pair(1, 0), 50., 15., 1};
+        s1.setPriority();
+        Street s2{2, std::make_pair(2, 0), 50., 15., 1};
+        s2.setPriority();
+        Street s3{3, std::make_pair(3, 0), 50., 15., 1};
+        graph.addStreets(s1, s2, s3);
+
+        WHEN("We auto-init Traffic Lights with 70% main road percentage") {
+          graph.autoInitTrafficLights(0.7);
+          THEN("Green times reflect the custom percentage") {
+            auto& tl{graph.node<dsf::mobility::TrafficLight>(0)};
+            auto const& cycles{tl.cycles()};
+            // Main road gets 70% of 100 = 70
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::ANY).greenTime(), 70);
+            CHECK_EQ(cycles.at(2).at(dsf::Direction::ANY).greenTime(), 70);
+            // Secondary road gets 30% of 100 = 30
+            CHECK_EQ(cycles.at(3).at(dsf::Direction::ANY).greenTime(), 30);
+            // Phases: main roads start at 0, secondary at 70
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::ANY).phase(), 0);
+            CHECK_EQ(cycles.at(2).at(dsf::Direction::ANY).phase(), 0);
+            CHECK_EQ(cycles.at(3).at(dsf::Direction::ANY).phase(), 70);
+          }
+        }
+      }
+      GIVEN("A traffic light already initialized with cycles") {
+        RoadNetwork graph;
+        graph.addNDefaultNodes(4);
+        auto& tl = graph.makeTrafficLight(0, 100);
+        Street s1{1, std::make_pair(1, 0), 50., 15., 1};
+        Street s2{2, std::make_pair(2, 0), 50., 15., 1};
+        Street s3{3, std::make_pair(3, 0), 50., 15., 1};
+        graph.addStreets(s1, s2, s3);
+        // Pre-initialize cycles
+        tl.setCycle(1, dsf::Direction::ANY, dsf::mobility::TrafficLightCycle{50, 0});
+
+        WHEN("We auto-init Traffic Lights") {
+          graph.autoInitTrafficLights();
+          THEN("Traffic light is not modified") {
+            auto const& cycles{tl.cycles()};
+            CHECK_EQ(cycles.size(), 1);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::ANY).greenTime(), 50);
+          }
+        }
+      }
+      GIVEN("A traffic light with 4 streets all having the same characteristics") {
+        RoadNetwork graph;
+        graph.addNDefaultNodes(5);
+        graph.makeTrafficLight(0, 120);
+        // All streets identical with unique names - will fall back to angle or capacity-based selection
+        Street s1{1, std::make_pair(1, 0), 50., 30., 1, "Road A"};
+        Street s2{2, std::make_pair(2, 0), 50., 30., 1, "Road B"};
+        Street s3{3, std::make_pair(3, 0), 50., 30., 1, "Road C"};
+        Street s4{4, std::make_pair(4, 0), 50., 30., 1, "Road D"};
+        graph.addStreets(s1, s2, s3, s4);
+        for (auto const& [streetId, pStreet] : graph.edges()) {
+          pStreet->setCapacity(10);
+        }
+
+        WHEN("We auto-init Traffic Lights") {
+          graph.autoInitTrafficLights();
+          THEN("Fallback assigns exactly 2 priorities") {
+            auto& tl{graph.node<dsf::mobility::TrafficLight>(0)};
+            auto const& priorities{tl.streetPriorities()};
+            CHECK_EQ(priorities.size(), 2);
+            // Cycles should be initialized for all 4 streets
+            auto const& cycles{tl.cycles()};
+            CHECK_EQ(cycles.size(), 4);
+          }
+        }
+      }
+      GIVEN("A traffic light with 3-lane streets") {
+        RoadNetwork graph;
+        graph.addNDefaultNodes(4);
+        graph.makeTrafficLight(0, 90);
+        Street s1{1, std::make_pair(1, 0), 50., 15., 3};
+        s1.setPriority();
+        Street s2{2, std::make_pair(2, 0), 50., 15., 3};
+        s2.setPriority();
+        Street s3{3, std::make_pair(3, 0), 50., 15., 3};
+        graph.addStreets(s1, s2, s3);
+
+        WHEN("We auto-init Traffic Lights") {
+          graph.autoInitTrafficLights();
+          THEN("3-lane streets get RIGHTANDSTRAIGHT and LEFT cycles") {
+            auto& tl{graph.node<dsf::mobility::TrafficLight>(0)};
+            auto const& cycles{tl.cycles()};
+            // Each 3-lane street should have 2 cycle entries
+            CHECK(cycles.at(1).contains(dsf::Direction::RIGHTANDSTRAIGHT));
+            CHECK(cycles.at(1).contains(dsf::Direction::LEFT));
+            CHECK(cycles.at(2).contains(dsf::Direction::RIGHTANDSTRAIGHT));
+            CHECK(cycles.at(2).contains(dsf::Direction::LEFT));
+            CHECK(cycles.at(3).contains(dsf::Direction::RIGHTANDSTRAIGHT));
+            CHECK(cycles.at(3).contains(dsf::Direction::LEFT));
+            // Main road (60% of 90 = 54): RIGHTANDSTRAIGHT = 36, LEFT = 18
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 36);
+            CHECK_EQ(cycles.at(1).at(dsf::Direction::LEFT).greenTime(), 18);
+            // Secondary road (40% of 90 = 36): RIGHTANDSTRAIGHT = 24, LEFT = 12
+            CHECK_EQ(cycles.at(3).at(dsf::Direction::RIGHTANDSTRAIGHT).greenTime(), 24);
+            CHECK_EQ(cycles.at(3).at(dsf::Direction::LEFT).greenTime(), 12);
           }
         }
       }
@@ -376,6 +566,188 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.edge(1, 2)->capacity(), 16);
           CHECK_EQ(graph.edge(3, 1)->capacity(), 45);
           CHECK_EQ(graph.edge(1, 4)->capacity(), 11);
+        }
+      }
+    }
+  }
+
+  SUBCASE("autoAssignRoadPriorities") {
+    GIVEN("A graph with a node having multiple incoming edges of different types") {
+      RoadNetwork graph{};
+      // Node 1 is the intersection
+      // Edge 1: 0 -> 1 (HIGHWAY)
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      s1.setRoadType(RoadType::HIGHWAY);
+
+      // Edge 2: 2 -> 1 (HIGHWAY)
+      Street s2(2, std::make_pair(2, 1), 100., 30., 1);
+      s2.setRoadType(RoadType::HIGHWAY);
+
+      // Edge 3: 3 -> 1 (SECONDARY)
+      Street s3(3, std::make_pair(3, 1), 100., 30., 1);
+      s3.setRoadType(RoadType::SECONDARY);
+
+      graph.addStreets(s1, s2, s3);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("The priorities are assigned to the most important roads") {
+          CHECK(graph.edge(1)->hasPriority());
+          CHECK(graph.edge(2)->hasPriority());
+          CHECK_FALSE(graph.edge(3)->hasPriority());
+        }
+      }
+    }
+
+    GIVEN("A node with only one incoming edge") {
+      RoadNetwork graph{};
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      s1.setRoadType(RoadType::HIGHWAY);
+      graph.addStreets(s1);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("No priorities are assigned") { CHECK_FALSE(graph.edge(1)->hasPriority()); }
+      }
+    }
+
+    GIVEN("A node with 3 incoming edges of the same road type") {
+      RoadNetwork graph{};
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      s1.setRoadType(RoadType::PRIMARY);
+      Street s2(2, std::make_pair(2, 1), 100., 30., 1);
+      s2.setRoadType(RoadType::PRIMARY);
+      Street s3(3, std::make_pair(3, 1), 100., 30., 1);
+      s3.setRoadType(RoadType::PRIMARY);
+      graph.addStreets(s1, s2, s3);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("No priorities are assigned since count != 2") {
+          CHECK_FALSE(graph.edge(1)->hasPriority());
+          CHECK_FALSE(graph.edge(2)->hasPriority());
+          CHECK_FALSE(graph.edge(3)->hasPriority());
+        }
+      }
+    }
+
+    GIVEN("A node with edges without road type set") {
+      RoadNetwork graph{};
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      Street s2(2, std::make_pair(2, 1), 100., 30., 1);
+      Street s3(3, std::make_pair(3, 1), 100., 30., 1);
+      graph.addStreets(s1, s2, s3);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("No priorities are assigned") {
+          CHECK_FALSE(graph.edge(1)->hasPriority());
+          CHECK_FALSE(graph.edge(2)->hasPriority());
+          CHECK_FALSE(graph.edge(3)->hasPriority());
+        }
+      }
+    }
+
+    GIVEN("A node where highest type has 3 roads but lower type has exactly 2") {
+      RoadNetwork graph{};
+      // 3 HIGHWAY roads (won't match count == 2)
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      s1.setRoadType(RoadType::HIGHWAY);
+      Street s2(2, std::make_pair(2, 1), 100., 30., 1);
+      s2.setRoadType(RoadType::HIGHWAY);
+      Street s3(3, std::make_pair(3, 1), 100., 30., 1);
+      s3.setRoadType(RoadType::HIGHWAY);
+      // 2 SECONDARY roads (will match count == 2)
+      Street s4(4, std::make_pair(4, 1), 100., 30., 1);
+      s4.setRoadType(RoadType::SECONDARY);
+      Street s5(5, std::make_pair(5, 1), 100., 30., 1);
+      s5.setRoadType(RoadType::SECONDARY);
+      graph.addStreets(s1, s2, s3, s4, s5);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("Priorities go to the SECONDARY roads (first type with count == 2)") {
+          CHECK_FALSE(graph.edge(1)->hasPriority());
+          CHECK_FALSE(graph.edge(2)->hasPriority());
+          CHECK_FALSE(graph.edge(3)->hasPriority());
+          CHECK(graph.edge(4)->hasPriority());
+          CHECK(graph.edge(5)->hasPriority());
+        }
+      }
+    }
+
+    GIVEN("A node with exactly 2 PRIMARY and 1 TERTIARY road") {
+      RoadNetwork graph{};
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      s1.setRoadType(RoadType::PRIMARY);
+      Street s2(2, std::make_pair(2, 1), 100., 30., 1);
+      s2.setRoadType(RoadType::PRIMARY);
+      Street s3(3, std::make_pair(3, 1), 100., 30., 1);
+      s3.setRoadType(RoadType::TERTIARY);
+      graph.addStreets(s1, s2, s3);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("Priorities are assigned to PRIMARY roads") {
+          CHECK(graph.edge(1)->hasPriority());
+          CHECK(graph.edge(2)->hasPriority());
+          CHECK_FALSE(graph.edge(3)->hasPriority());
+        }
+      }
+    }
+
+    GIVEN("A node with 1 HIGHWAY, 1 PRIMARY, and 2 RESIDENTIAL roads") {
+      RoadNetwork graph{};
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      s1.setRoadType(RoadType::HIGHWAY);
+      Street s2(2, std::make_pair(2, 1), 100., 30., 1);
+      s2.setRoadType(RoadType::PRIMARY);
+      Street s3(3, std::make_pair(3, 1), 100., 30., 1);
+      s3.setRoadType(RoadType::RESIDENTIAL);
+      Street s4(4, std::make_pair(4, 1), 100., 30., 1);
+      s4.setRoadType(RoadType::RESIDENTIAL);
+      graph.addStreets(s1, s2, s3, s4);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("Priorities are assigned to RESIDENTIAL roads (first with count == 2)") {
+          CHECK_FALSE(graph.edge(1)->hasPriority());
+          CHECK_FALSE(graph.edge(2)->hasPriority());
+          CHECK(graph.edge(3)->hasPriority());
+          CHECK(graph.edge(4)->hasPriority());
+        }
+      }
+    }
+
+    GIVEN("Multiple nodes with different priority scenarios") {
+      RoadNetwork graph{};
+      // Node 1: 2 HIGHWAY + 1 SECONDARY
+      Street s1(1, std::make_pair(0, 1), 100., 30., 1);
+      s1.setRoadType(RoadType::HIGHWAY);
+      Street s2(2, std::make_pair(2, 1), 100., 30., 1);
+      s2.setRoadType(RoadType::HIGHWAY);
+      Street s3(3, std::make_pair(3, 1), 100., 30., 1);
+      s3.setRoadType(RoadType::SECONDARY);
+      // Node 5: 2 TERTIARY + 1 RESIDENTIAL
+      Street s4(4, std::make_pair(1, 5), 100., 30., 1);
+      s4.setRoadType(RoadType::TERTIARY);
+      Street s5(5, std::make_pair(4, 5), 100., 30., 1);
+      s5.setRoadType(RoadType::TERTIARY);
+      Street s6(6, std::make_pair(6, 5), 100., 30., 1);
+      s6.setRoadType(RoadType::RESIDENTIAL);
+      graph.addStreets(s1, s2, s3, s4, s5, s6);
+
+      WHEN("We auto assign road priorities") {
+        graph.autoAssignRoadPriorities();
+        THEN("Both nodes have correct priorities assigned") {
+          // Node 1: HIGHWAY roads get priority
+          CHECK(graph.edge(1)->hasPriority());
+          CHECK(graph.edge(2)->hasPriority());
+          CHECK_FALSE(graph.edge(3)->hasPriority());
+          // Node 5: TERTIARY roads get priority
+          CHECK(graph.edge(4)->hasPriority());
+          CHECK(graph.edge(5)->hasPriority());
+          CHECK_FALSE(graph.edge(6)->hasPriority());
         }
       }
     }

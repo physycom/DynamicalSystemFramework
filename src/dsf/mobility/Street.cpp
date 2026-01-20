@@ -57,7 +57,7 @@ namespace dsf::mobility {
     isEqual &= (this->m_maxSpeed == other.m_maxSpeed);
     isEqual &= (this->m_nLanes == other.m_nLanes);
     isEqual &= (this->m_name == other.m_name);
-    isEqual &= (this->m_priority == other.m_priority);
+    isEqual &= (this->m_hasPriority == other.m_hasPriority);
     return isEqual;
   }
 
