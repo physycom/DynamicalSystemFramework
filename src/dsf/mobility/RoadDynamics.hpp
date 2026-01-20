@@ -29,7 +29,7 @@
 #include <tbb/tbb.h>
 #include <spdlog/spdlog.h>
 
-#include "../base/Dynamics.hpp"
+#include "AgentDynamics.hpp"
 #include "Agent.hpp"
 #include "Itinerary.hpp"
 #include "RoadNetwork.hpp"
@@ -43,20 +43,17 @@ namespace dsf::mobility {
   /// @tparam delay_t The type of the agent's delay
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  class RoadDynamics : public Dynamics<RoadNetwork> {
+  class RoadDynamics : public AgentDynamics<RoadNetwork> {
     std::vector<Id> m_nodeIndices;
-    std::vector<std::unique_ptr<Agent>> m_agents;
     std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
     std::unordered_map<Id, double> m_originNodes;
     std::unordered_map<Id, double> m_destinationNodes;
-    Size m_nAgents;
 
   protected:
     std::unordered_map<Id, std::unordered_map<Id, size_t>> m_turnCounts;
     std::unordered_map<Id, std::array<long, 4>> m_turnMapping;
     tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
         m_queuesAtTrafficLights;
-    tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     std::time_t m_previousOptimizationTime;
 
   private:
@@ -72,9 +69,6 @@ namespace dsf::mobility {
     bool m_forcePriorities;
 
   private:
-    /// @brief Kill an agent
-    /// @param pAgent A std::unique_ptr to the agent to kill
-    std::unique_ptr<Agent> m_killAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Update the path of a single itinerary using Dijsktra's algorithm
     /// @param pItinerary An std::unique_prt to the itinerary
     void m_updatePath(std::unique_ptr<Itinerary> const& pItinerary);
@@ -221,18 +215,6 @@ namespace dsf::mobility {
 
     void addAgentsRandomly(Size nAgents);
 
-    /// @brief Add an agent to the simulation
-    /// @param agent std::unique_ptr to the agent
-    void addAgent(std::unique_ptr<Agent> agent);
-
-    template <typename... TArgs>
-      requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
-    void addAgent(TArgs&&... args);
-
-    template <typename... TArgs>
-      requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
-    void addAgents(Size nAgents, TArgs&&... args);
-
     /// @brief Add an itinerary
     /// @param ...args The arguments to construct the itinerary
     /// @details The arguments must be compatible with any constructor of the Itinerary class
@@ -294,27 +276,6 @@ namespace dsf::mobility {
     inline std::unordered_map<Id, double>& destinationNodes() noexcept {
       return m_destinationNodes;
     }
-    /// @brief Get the agents
-    /// @return const std::unordered_map<Id, Agent<Id>>&, The agents
-    inline const std::vector<std::unique_ptr<Agent>>& agents() const noexcept {
-      return m_agents;
-    }
-    /// @brief Get the number of agents currently in the simulation
-    /// @return Size The number of agents
-    Size nAgents() const;
-
-    /// @brief Get the mean travel time of the agents in \f$s\f$
-    /// @param clearData If true, the travel times are cleared after the computation
-    /// @return Measurement<double> The mean travel time of the agents and the standard deviation
-    Measurement<double> meanTravelTime(bool clearData = false);
-    /// @brief Get the mean travel distance of the agents in \f$m\f$
-    /// @param clearData If true, the travel distances are cleared after the computation
-    /// @return Measurement<double> The mean travel distance of the agents and the standard deviation
-    Measurement<double> meanTravelDistance(bool clearData = false);
-    /// @brief Get the mean travel speed of the agents in \f$m/s\f$
-    /// @param clearData If true, the travel times and distances are cleared after the computation
-    /// @return Measurement<double> The mean travel speed of the agents and the standard deviation
-    Measurement<double> meanTravelSpeed(bool clearData = false);
     /// @brief Get the turn counts of the agents
     /// @return const std::unordered_map<Id, std::unordered_map<Id, size_t>>& The turn counts. The outer map's key is the street id, the inner map's key is the next street id and the value is the number of counts
     inline std::unordered_map<Id, std::unordered_map<Id, size_t>> const& turnCounts()
@@ -395,8 +356,7 @@ namespace dsf::mobility {
                                       std::optional<unsigned int> seed,
                                       PathWeight const weightFunction,
                                       std::optional<double> weightTreshold)
-      : Dynamics<RoadNetwork>(graph, seed),
-        m_nAgents{0},
+      : AgentDynamics(graph, seed),
         m_previousOptimizationTime{0},
         m_errorProbability{std::nullopt},
         m_passageProbability{std::nullopt},
@@ -446,17 +406,6 @@ namespace dsf::mobility {
             }
           }
         });
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  std::unique_ptr<Agent> RoadDynamics<delay_t>::m_killAgent(
-      std::unique_ptr<Agent> pAgent) {
-    spdlog::trace("Killing agent {}", *pAgent);
-    m_travelDTs.push_back({pAgent->distance(),
-                           static_cast<double>(this->time_step() - pAgent->spawnTime())});
-    --m_nAgents;
-    return pAgent;
   }
 
   template <typename delay_t>
@@ -735,7 +684,7 @@ namespace dsf::mobility {
                 timeTolerance,
                 timeDiff);
             // Kill the agent
-            this->m_killAgent(pStreet->dequeue(queueIndex));
+            this->removeAgent(pStreet->dequeue(queueIndex));
             continue;
           }
         }
@@ -891,7 +840,7 @@ namespace dsf::mobility {
           }
         }
         if (bArrived) {
-          auto pAgent = this->m_killAgent(pStreet->dequeue(queueIndex));
+          auto pAgent = this->removeAgent(pStreet->dequeue(queueIndex));
           if (reinsert_agents) {
             // reset Agent's values
             pAgent->reset(this->time_step());
@@ -1535,32 +1484,6 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent> pAgent) {
-    m_agents.push_back(std::move(pAgent));
-    ++m_nAgents;
-    spdlog::debug("Added {}", *m_agents.back());
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  template <typename... TArgs>
-    requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
-  void RoadDynamics<delay_t>::addAgent(TArgs&&... args) {
-    addAgent(std::make_unique<Agent>(this->time_step(), std::forward<TArgs>(args)...));
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  template <typename... TArgs>
-    requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
-  void RoadDynamics<delay_t>::addAgents(Size nAgents, TArgs&&... args) {
-    for (size_t i{0}; i < nAgents; ++i) {
-      addAgent(std::make_unique<Agent>(this->time_step(), std::forward<TArgs>(args)...));
-    }
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
     requires(std::is_constructible_v<Itinerary, TArgs...>)
   void RoadDynamics<delay_t>::addItinerary(TArgs&&... args) {
@@ -2098,56 +2021,6 @@ namespace dsf::mobility {
     }
   }
 
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Size RoadDynamics<delay_t>::nAgents() const {
-    return m_nAgents;
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::meanTravelTime(bool clearData) {
-    std::vector<double> travelTimes;
-    if (!m_travelDTs.empty()) {
-      travelTimes.reserve(m_travelDTs.size());
-      for (auto const& [distance, time] : m_travelDTs) {
-        travelTimes.push_back(time);
-      }
-      if (clearData) {
-        m_travelDTs.clear();
-      }
-    }
-    return Measurement<double>(travelTimes);
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::meanTravelDistance(bool clearData) {
-    if (m_travelDTs.empty()) {
-      return Measurement(0., 0.);
-    }
-    std::vector<double> travelDistances;
-    travelDistances.reserve(m_travelDTs.size());
-    for (auto const& [distance, time] : m_travelDTs) {
-      travelDistances.push_back(distance);
-    }
-    if (clearData) {
-      m_travelDTs.clear();
-    }
-    return Measurement<double>(travelDistances);
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::meanTravelSpeed(bool clearData) {
-    std::vector<double> travelSpeeds;
-    travelSpeeds.reserve(m_travelDTs.size());
-    for (auto const& [distance, time] : m_travelDTs) {
-      travelSpeeds.push_back(distance / time);
-    }
-    if (clearData) {
-      m_travelDTs.clear();
-    }
-    return Measurement<double>(travelSpeeds);
-  }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   std::unordered_map<Id, std::unordered_map<Id, double>> const
