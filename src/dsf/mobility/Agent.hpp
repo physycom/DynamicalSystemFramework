@@ -107,7 +107,7 @@ namespace dsf::mobility {
     inline Id id() const noexcept { return m_id; };
     /// @brief Get the agent's itinerary
     /// @return std::shared_ptr<Itinerary> const&, The agent's current itinerary
-    /// @throw std::out_of_range if the agent has no itinerary
+    /// @throw std::logic_error if the agent has no itinerary
     std::shared_ptr<Itinerary> const& itinerary() const;
     /// @brief Get the agent's maximum distance
     /// @return The agent's maximum distance, or throw std::logic_error if not set
