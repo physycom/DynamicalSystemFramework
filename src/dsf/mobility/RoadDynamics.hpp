@@ -49,6 +49,8 @@ namespace dsf::mobility {
     std::unordered_map<Id, std::shared_ptr<Itinerary>> m_itineraries;
     std::unordered_map<Id, double> m_originNodes;
     std::unordered_map<Id, double> m_destinationNodes;
+    tbb::concurrent_unordered_map<Id, std::size_t> m_originCounts;
+    tbb::concurrent_unordered_map<Id, std::size_t> m_destinationCounts;
     Size m_nAgents;
 
   protected:
@@ -327,6 +329,15 @@ namespace dsf::mobility {
       return m_turnMapping;
     }
 
+    /// @brief Get the origin counts of the agents
+    /// @param bReset If true, the origin counts are cleared (default is true)
+    tbb::concurrent_unordered_map<Id, std::size_t> originCounts(
+        bool const bReset = true) noexcept;
+    /// @brief Get the destination counts of the agents
+    /// @param bReset If true, the destination counts are cleared (default is true)
+    tbb::concurrent_unordered_map<Id, std::size_t> destinationCounts(
+        bool const bReset = true) noexcept;
+
     virtual double streetMeanSpeed(Id streetId) const;
     virtual Measurement<double> streetMeanSpeed() const;
     virtual Measurement<double> streetMeanSpeed(double, bool) const;
@@ -453,6 +464,15 @@ namespace dsf::mobility {
     m_travelDTs.push_back({pAgent->distance(),
                            static_cast<double>(this->time_step() - pAgent->spawnTime())});
     --m_nAgents;
+    auto const& streetId = pAgent->streetId();
+    if (streetId.has_value()) {
+      auto const& pStreet{this->graph().edge(streetId.value())};
+      auto const& pNode{this->graph().node(pStreet->target())};
+      auto [it, bInserted] = m_destinationCounts.insert({pNode->id(), 1});
+      if (!bInserted) {
+        ++it->second;
+      }
+    }
     return pAgent;
   }
 
@@ -1513,7 +1533,14 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent> pAgent) {
     m_agents.push_back(std::move(pAgent));
     ++m_nAgents;
-    spdlog::debug("Added {}", *m_agents.back());
+    spdlog::trace("Added {}", *m_agents.back());
+    auto const& optNodeId{m_agents.back()->srcNodeId()};
+    if (optNodeId.has_value()) {
+      auto [it, bInserted] = m_originCounts.insert({*optNodeId, 1});
+      if (!bInserted) {
+        ++it->second;
+      }
+    }
   }
 
   template <typename delay_t>
@@ -2139,6 +2166,29 @@ namespace dsf::mobility {
       }
     }
     return normalizedTurnCounts;
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  tbb::concurrent_unordered_map<Id, std::size_t> RoadDynamics<delay_t>::originCounts(
+      bool const bReset) noexcept {
+    if (!bReset) {
+      return m_originCounts;
+    }
+    auto const tempCounts{std::move(m_originCounts)};
+    m_originCounts.clear();
+    return tempCounts;
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  tbb::concurrent_unordered_map<Id, std::size_t> RoadDynamics<delay_t>::destinationCounts(
+      bool const bReset) noexcept {
+    if (!bReset) {
+      return m_destinationCounts;
+    }
+    auto const tempCounts{std::move(m_destinationCounts)};
+    m_destinationCounts.clear();
+    return tempCounts;
   }
 
   template <typename delay_t>

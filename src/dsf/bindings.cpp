@@ -604,6 +604,30 @@ PYBIND11_MODULE(dsf_cpp, m) {
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::normalizedTurnCounts")
               .c_str())
       .def(
+          "originCounts",
+          [](dsf::mobility::FirstOrderDynamics& self, bool reset) {
+            // Convert C++ unordered_map<Id, size_t> to Python dict
+            pybind11::dict py_result;
+            for (const auto& [node_id, count] : self.originCounts(reset)) {
+              py_result[pybind11::int_(node_id)] = pybind11::int_(count);
+            }
+            return py_result;
+          },
+          pybind11::arg("reset") = true,
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::originCounts").c_str())
+      .def(
+          "destinationCounts",
+          [](dsf::mobility::FirstOrderDynamics& self, bool reset) {
+            // Convert C++ unordered_map<Id, size_t> to Python dict
+            pybind11::dict py_result;
+            for (const auto& [node_id, count] : self.destinationCounts(reset)) {
+              py_result[pybind11::int_(node_id)] = pybind11::int_(count);
+            }
+            return py_result;
+          },
+          pybind11::arg("reset") = true,
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::destinationCounts").c_str())
+      .def(
           "saveStreetDensities",
           &dsf::mobility::FirstOrderDynamics::saveStreetDensities,
           pybind11::arg("filename"),
