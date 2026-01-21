@@ -9,15 +9,16 @@
 #include "doctest.h"
 
 using Agent = dsf::mobility::Agent;
+using Itinerary = dsf::mobility::Itinerary;
 
 TEST_CASE("Agent") {
   SUBCASE("Constructors") {
-    GIVEN("An agent and its itinerary ids") {
-      uint16_t itineraryId{0};
+    GIVEN("An agent and its itinerary") {
+      auto itinerary = std::make_shared<Itinerary>(0, 5);
       WHEN("The Agent is constructed") {
-        Agent agent{0, itineraryId};
+        Agent agent{0, itinerary};
         THEN("The agent and itinerary ids are set correctly") {
-          CHECK_EQ(agent.itineraryId(), itineraryId);
+          CHECK_EQ(agent.itinerary()->id(), itinerary->id());
           CHECK_FALSE(agent.streetId().has_value());
           CHECK_FALSE(agent.srcNodeId().has_value());
           CHECK_EQ(agent.speed(), 0);
@@ -26,13 +27,13 @@ TEST_CASE("Agent") {
         }
       }
     }
-    GIVEN("An agent, its itinerary ids, and a node id") {
-      uint16_t itineraryId{0};
-      uint16_t srcNodeId{0};
+    GIVEN("An agent, its itinerary, and a node id") {
+      auto itinerary = std::make_shared<Itinerary>(0, 5);
+      dsf::Id srcNodeId{0};
       WHEN("The Agent is constructed") {
-        Agent agent{0, itineraryId, srcNodeId};
+        Agent agent{0, itinerary, srcNodeId};
         THEN("The agent and itinerary ids are set correctly") {
-          CHECK_EQ(agent.itineraryId(), itineraryId);
+          CHECK_EQ(agent.itinerary()->id(), itinerary->id());
           CHECK_FALSE(agent.streetId().has_value());
           CHECK(agent.srcNodeId().has_value());
           CHECK_EQ(agent.srcNodeId().value(), srcNodeId);
@@ -52,7 +53,8 @@ TEST_CASE("Agent") {
 }
 
 TEST_CASE("Agent methods") {
-  Agent agent{0, 42, 7};
+  auto itinerary42 = std::make_shared<Itinerary>(42, 100);
+  Agent agent{0, itinerary42, 7};
   SUBCASE("setSrcNodeId and srcNodeId") {
     agent.setSrcNodeId(99);
     CHECK(agent.srcNodeId().has_value());
@@ -91,15 +93,18 @@ TEST_CASE("Agent methods") {
     CHECK_EQ(agent.distance(), d0 + 5.5);
   }
   SUBCASE("updateItinerary advances index") {
-    std::vector<dsf::Id> trip = {1, 2, 3};
+    auto it1 = std::make_shared<Itinerary>(1, 10);
+    auto it2 = std::make_shared<Itinerary>(2, 20);
+    auto it3 = std::make_shared<Itinerary>(3, 30);
+    std::vector<std::shared_ptr<Itinerary>> trip = {it1, it2, it3};
     Agent a2{0, trip, 0};
-    CHECK_EQ(a2.itineraryId(), 1);
+    CHECK_EQ(a2.itinerary()->id(), 1);
     a2.updateItinerary();
-    CHECK_EQ(a2.itineraryId(), 2);
+    CHECK_EQ(a2.itinerary()->id(), 2);
     a2.updateItinerary();
-    CHECK_EQ(a2.itineraryId(), 3);
+    CHECK_EQ(a2.itinerary()->id(), 3);
     a2.updateItinerary();  // Should not go out of bounds
-    CHECK_EQ(a2.itineraryId(), 3);
+    CHECK_EQ(a2.itinerary()->id(), 3);
   }
   SUBCASE("reset resets state") {
     agent.setSpeed(10.);
@@ -112,7 +117,7 @@ TEST_CASE("Agent methods") {
     CHECK_EQ(agent.freeTime(), 0);
     CHECK_EQ(agent.speed(), 0.);
     CHECK_EQ(agent.distance(), 0.);
-    CHECK_EQ(agent.itineraryId(), 42);  // itinerary index reset
+    CHECK_EQ(agent.itinerary()->id(), 42);  // itinerary index reset
     CHECK_FALSE(agent.streetId().has_value());
     CHECK_EQ(agent.trip().size(), 1);
   }
@@ -120,7 +125,8 @@ TEST_CASE("Agent methods") {
 
 TEST_CASE("Agent formatting") {
   SUBCASE("std::format with complete agent") {
-    Agent agent{0, 42, 7};
+    auto itinerary42 = std::make_shared<Itinerary>(42, 100);
+    Agent agent{0, itinerary42, 7};
     agent.setStreetId(10);
     agent.setNextStreetId(15);
     agent.setSpeed(13.5);
@@ -155,7 +161,8 @@ TEST_CASE("Agent formatting") {
   }
 
   SUBCASE("std::format with agent with optional nullopts") {
-    Agent agent{10, 99};
+    auto itinerary99 = std::make_shared<Itinerary>(99, 200);
+    Agent agent{10, itinerary99};
 
     std::string formatted = std::format("{}", agent);
     CHECK(formatted.find("id: 0") != std::string::npos);

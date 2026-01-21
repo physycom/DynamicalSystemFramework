@@ -79,8 +79,10 @@ int main() {
   // Create the dynamics
   FirstOrderDynamics dynamics{graph, false, 69, 0.6};
   dynamics.setSpeedFluctuationSTD(0.2);
-  dynamics.addItinerary(std::unique_ptr<Itinerary>(new Itinerary(4, 4)));
+  dynamics.addItinerary(4, 4);
   dynamics.updatePaths();
+
+  auto pItinerary = dynamics.itineraries().at(4);
 
   // lauch progress bar
   thread_t t([MAX_TIME]() {
@@ -103,7 +105,7 @@ int main() {
         ofs << progress << ';' << coil->counts() << std::endl;
         coil->resetCounter();
       }
-      dynamics.addAgents(*it, 4, 0);
+      dynamics.addAgents(*it, pItinerary, 0);
     }
     dynamics.evolve(false);
     ++progress;
