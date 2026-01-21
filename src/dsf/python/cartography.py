@@ -7,6 +7,7 @@ from OpenStreetMap using OSMnx, with support for graph simplification and
 standardization of attributes.
 """
 
+import folium
 import geopandas as gpd
 import networkx as nx
 import numpy as np
@@ -449,6 +450,52 @@ def create_manhattan_cartography(
     gdf_nodes = gpd.GeoDataFrame(nodes_data, crs="EPSG:4326")
 
     return gdf_edges, gdf_nodes
+
+
+def to_folium_map(
+    G: nx.DiGraph,
+    which: str = "edges",
+) -> folium.Map:
+    """
+    Converts a NetworkX DiGraph to a Folium map for visualization.
+    Args:
+        G (nx.DiGraph): The input DiGraph.
+        which (str): Specify whether to visualize 'edges', 'nodes', or 'both'. Defaults to 'edges'.
+    Returns:
+        folium.Map: The Folium map with the graph visualized.
+    """
+
+    # Compute mean latitude and longitude for centering the map
+    mean_lat = np.mean([data["y"] for _, data in G.nodes(data=True)])
+    mean_lon = np.mean([data["x"] for _, data in G.nodes(data=True)])
+    folium_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=13)
+
+    if which in ("edges", "both"):
+        # Add edges to the map
+        for _, _, data in G.edges(data=True):
+            line = data.get("geometry")
+            if line:
+                folium.PolyLine(
+                    locations=[(point[1], point[0]) for point in line.coords],
+                    color="blue",
+                    weight=2,
+                    opacity=0.7,
+                    popup=f"Edge ID: {data.get('id')}",
+                ).add_to(folium_map)
+    if which in ("nodes", "both"):
+        # Add nodes to the map
+        for _, data in G.nodes(data=True):
+            folium.CircleMarker(
+                location=(data["y"], data["x"]),
+                radius=5,
+                color="red",
+                fill=True,
+                fill_color="red",
+                fill_opacity=0.7,
+                popup=f"Node ID: {data.get('id')}",
+            ).add_to(folium_map)
+
+    return folium_map
 
 
 # if __name__ == "__main__":

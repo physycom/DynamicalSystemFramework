@@ -4,11 +4,13 @@ Tests for cartography module.
 
 import pytest
 import networkx as nx
+import folium
 from dsf.python.cartography import (
     get_cartography,
     graph_to_gdfs,
     graph_from_gdfs,
     create_manhattan_cartography,
+    to_folium_map,
 )
 
 
@@ -216,6 +218,65 @@ class TestCreateManhattanCartography:
         # Calculate expected edges
         expected_edges = 2 * (n_y * (n_x - 1) + n_x * (n_y - 1))
         assert len(edges) == expected_edges
+
+
+class TestToFoliumMap:
+    """Tests for to_folium_map function."""
+
+    @pytest.fixture
+    def sample_graph(self):
+        """Create a sample graph for testing."""
+        edges, nodes = create_manhattan_cartography(n_x=3, n_y=3)
+        return graph_from_gdfs(edges, nodes)
+
+    def test_returns_folium_map(self, sample_graph):
+        """Test that the function returns a folium.Map object."""
+        result = to_folium_map(sample_graph)
+        assert isinstance(result, folium.Map)
+
+    def test_edges_only(self, sample_graph):
+        """Test visualization with edges only (default)."""
+        result = to_folium_map(sample_graph, which="edges")
+        assert isinstance(result, folium.Map)
+        # Check that the map has children (the edges)
+        assert len(result._children) > 0
+
+    def test_nodes_only(self, sample_graph):
+        """Test visualization with nodes only."""
+        result = to_folium_map(sample_graph, which="nodes")
+        assert isinstance(result, folium.Map)
+        assert len(result._children) > 0
+
+    def test_both_edges_and_nodes(self, sample_graph):
+        """Test visualization with both edges and nodes."""
+        result = to_folium_map(sample_graph, which="both")
+        assert isinstance(result, folium.Map)
+        # Should have more children than edges-only or nodes-only
+        edges_only = to_folium_map(sample_graph, which="edges")
+        nodes_only = to_folium_map(sample_graph, which="nodes")
+        # 'both' should have children from edges and nodes combined
+        # (minus the base tile layer which is common)
+        assert len(result._children) >= len(edges_only._children)
+        assert len(result._children) >= len(nodes_only._children)
+
+    def test_map_center_location(self, sample_graph):
+        """Test that the map is centered correctly."""
+        result = to_folium_map(sample_graph)
+        # The map should be centered around the mean of node coordinates
+        # For a Manhattan grid centered at (0, 0), the center should be near (0, 0)
+        location = result.location
+        assert location is not None
+        assert len(location) == 2
+        # Check that location is reasonable (near 0,0 for default manhattan grid)
+        assert -1 < location[0] < 1  # latitude
+        assert -1 < location[1] < 1  # longitude
+
+    def test_default_which_parameter(self, sample_graph):
+        """Test that default 'which' parameter is 'edges'."""
+        default_result = to_folium_map(sample_graph)
+        edges_result = to_folium_map(sample_graph, which="edges")
+        # Both should produce maps with the same number of children
+        assert len(default_result._children) == len(edges_result._children)
 
 
 if __name__ == "__main__":
