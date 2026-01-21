@@ -442,11 +442,41 @@ class CMakeBuild(build_ext):
                     f"Warning: Stub file not found at {stub_file} and no package dir at {package_stub_dir}"
                 )
 
+            # Copy all .pyi files from source to build_lib so they're included in the wheel
+            build_lib_dsf = Path(self.build_lib) / "dsf"
+            build_lib_dsf.mkdir(parents=True, exist_ok=True)
+            for pyi_file in source_pkg_dir.glob("**/*.pyi"):
+                rel_path = pyi_file.relative_to(source_pkg_dir)
+                dest_file = build_lib_dsf / rel_path
+                dest_file.parent.mkdir(parents=True, exist_ok=True)
+                print(f"Copying stub to build_lib: {pyi_file} -> {dest_file}")
+                shutil.copy2(pyi_file, dest_file)
+
         except subprocess.CalledProcessError as e:
             print(f"Warning: Stub generation failed: {e}")
             print(f"stdout: {e.stdout}")
             print(f"stderr: {e.stderr}")
             # Don't fail the build if stub generation fails
+
+        # Always copy existing .pyi files from source to build_lib (even if stubgen failed)
+        # This ensures pre-existing stubs like mdt.pyi and mobility.pyi are included in the wheel
+        source_pkg_dir = Path(__file__).parent / "src" / "dsf"
+        build_lib_dsf = Path(self.build_lib) / "dsf"
+        build_lib_dsf.mkdir(parents=True, exist_ok=True)
+        for pyi_file in source_pkg_dir.glob("**/*.pyi"):
+            rel_path = pyi_file.relative_to(source_pkg_dir)
+            dest_file = build_lib_dsf / rel_path
+            dest_file.parent.mkdir(parents=True, exist_ok=True)
+            if not dest_file.exists():
+                print(f"Copying existing stub to build_lib: {pyi_file} -> {dest_file}")
+                shutil.copy2(pyi_file, dest_file)
+
+        # Copy py.typed marker for PEP 561 compliance
+        py_typed_src = source_pkg_dir / "py.typed"
+        py_typed_dest = build_lib_dsf / "py.typed"
+        if py_typed_src.exists() and not py_typed_dest.exists():
+            print(f"Copying py.typed marker to build_lib: {py_typed_dest}")
+            shutil.copy2(py_typed_src, py_typed_dest)
 
 
 # Read long description from README.md if available
@@ -508,7 +538,7 @@ setup(
     package_dir={"": "src"},
     cmdclass={"build_ext": CMakeBuild},
     package_data={
-        "dsf": ["*.pyi"],
+        "dsf": ["*.pyi", "py.typed", "**/*.pyi"],
         "": ["*.pyi"],
     },
     include_package_data=True,

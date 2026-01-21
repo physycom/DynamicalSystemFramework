@@ -4,6 +4,7 @@ include CMakeLists.txt
 include Doxyfile
 recursive-include src *
 recursive-include dsf *.pyi
+include src/dsf/py.typed
 global-exclude *.pyc
 global-exclude __pycache__
 global-exclude *.so
