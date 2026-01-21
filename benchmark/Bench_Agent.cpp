@@ -3,7 +3,7 @@
 #include <benchmark/benchmark.h>
 #include <memory>
 
-static void BM_Agent_ConstructionWithItineraryId(benchmark::State& state) {
+static void BM_Agent_ConstructionWithItinerary(benchmark::State& state) {
   std::time_t spawnTime = 0;
   for (auto _ : state) {
     dsf::mobility::Agent agent(
@@ -125,7 +125,7 @@ static void BM_Agent_Getters(benchmark::State& state) {
   }
 }
 
-static void BM_Agent_ItineraryId(benchmark::State& state) {
+static void BM_Agent_Itinerary(benchmark::State& state) {
   dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   for (auto _ : state) {
     auto const& pItinerary = agent.itinerary();
@@ -145,7 +145,7 @@ static void BM_Agent_Trip(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_Agent_ConstructionWithItineraryId);
+BENCHMARK(BM_Agent_ConstructionWithItinerary);
 BENCHMARK(BM_Agent_ConstructionWithTrip);
 BENCHMARK(BM_Agent_ConstructionRandom);
 BENCHMARK(BM_Agent_SetSrcNodeId);
@@ -157,7 +157,7 @@ BENCHMARK(BM_Agent_IncrementDistance);
 BENCHMARK(BM_Agent_UpdateItinerary);
 BENCHMARK(BM_Agent_Reset);
 BENCHMARK(BM_Agent_Getters);
-BENCHMARK(BM_Agent_ItineraryId);
+BENCHMARK(BM_Agent_Itinerary);
 BENCHMARK(BM_Agent_Trip);
 
 BENCHMARK_MAIN();
