@@ -17,10 +17,7 @@ def test_consistency():
     A simple consistency test to verify that converting from GeoDataFrames to graph and back
     yields the same GeoDataFrames.
     """
-    G_CART = get_cartography("Postua, Piedmont, Italy", return_type="graph")
-    edges_cart, nodes_cart = get_cartography(
-        "Postua, Piedmont, Italy", return_type="gdfs"
-    )
+    G_CART, edges_cart, nodes_cart = get_cartography("Postua, Piedmont, Italy")
 
     edges, nodes = graph_to_gdfs(G_CART)
 
