@@ -5,8 +5,7 @@ networkx
 numpy
 osmnx
 pandas
-Pillow
 seaborn
 tqdm
-opencv-python
 shapely
+folium
