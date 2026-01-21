@@ -466,8 +466,8 @@ def to_folium_map(
     """
 
     # Compute mean latitude and longitude for centering the map
-    mean_lat = np.mean([data["y"] for _, data in G.nodes(data=True)])
-    mean_lon = np.mean([data["x"] for _, data in G.nodes(data=True)])
+    mean_lat = np.mean([data["geometry"].y for _, data in G.nodes(data=True)])
+    mean_lon = np.mean([data["geometry"].x for _, data in G.nodes(data=True)])
     folium_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=13)
 
     if which in ("edges", "both"):
@@ -486,7 +486,7 @@ def to_folium_map(
         # Add nodes to the map
         for _, data in G.nodes(data=True):
             folium.CircleMarker(
-                location=(data["y"], data["x"]),
+                location=(data["geometry"].y, data["geometry"].x),
                 radius=5,
                 color="red",
                 fill=True,
