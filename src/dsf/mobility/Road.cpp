@@ -5,6 +5,7 @@
 #include <format>
 #include <numbers>
 #include <stdexcept>
+#include <spdlog/spdlog.h>
 
 namespace dsf::mobility {
   double Road::m_meanVehicleLength = 5.;
@@ -46,6 +47,27 @@ namespace dsf::mobility {
                       transportCapacity));
     }
     m_transportCapacity = transportCapacity;
+    switch (nLanes) {
+      case 1:
+        m_laneMapping.emplace_back(Direction::ANY);
+        break;
+      case 2:
+        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
+        m_laneMapping.emplace_back(Direction::LEFT);
+        break;
+      case 3:
+        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
+        m_laneMapping.emplace_back(Direction::STRAIGHT);
+        m_laneMapping.emplace_back(Direction::LEFT);
+        break;
+      default:
+        m_laneMapping.emplace_back(Direction::RIGHT);
+        for (auto i{1}; i < nLanes - 1; ++i) {
+          m_laneMapping.emplace_back(Direction::STRAIGHT);
+        }
+        m_laneMapping.emplace_back(Direction::LEFT);
+        break;
+    }
   }
   void Road::setMeanVehicleLength(double meanVehicleLength) {
     if (!(meanVehicleLength > 0.)) {
@@ -95,5 +117,19 @@ namespace dsf::mobility {
       return Direction::RIGHT;
     }
     return Direction::LEFT;
+  }
+  void Road::setLaneMapping(std::vector<Direction> const& laneMapping) {
+    assert(laneMapping.size() == static_cast<size_t>(m_nLanes));
+    m_laneMapping = laneMapping;
+    std::string strLaneMapping;
+    std::for_each(
+        laneMapping.cbegin(), laneMapping.cend(), [&strLaneMapping](auto const item) {
+          strLaneMapping +=
+              std::format("{} - ", directionToString[static_cast<size_t>(item)]);
+        });
+    spdlog::debug("New lane mapping for road {} -> {} is: {}",
+                  m_nodePair.first,
+                  m_nodePair.second,
+                  strLaneMapping);
   }
 };  // namespace dsf::mobility

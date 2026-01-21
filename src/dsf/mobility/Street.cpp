@@ -27,27 +27,6 @@ namespace dsf::mobility {
         m_movingAgents{dsf::priority_queue<std::unique_ptr<Agent>,
                                            std::vector<std::unique_ptr<Agent>>,
                                            AgentComparator>()} {
-    switch (nLanes) {
-      case 1:
-        m_laneMapping.emplace_back(Direction::ANY);
-        break;
-      case 2:
-        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
-        m_laneMapping.emplace_back(Direction::LEFT);
-        break;
-      case 3:
-        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
-        m_laneMapping.emplace_back(Direction::STRAIGHT);
-        m_laneMapping.emplace_back(Direction::LEFT);
-        break;
-      default:
-        m_laneMapping.emplace_back(Direction::RIGHT);
-        for (auto i{1}; i < nLanes - 1; ++i) {
-          m_laneMapping.emplace_back(Direction::STRAIGHT);
-        }
-        m_laneMapping.emplace_back(Direction::LEFT);
-        break;
-    }
   }
   auto Street::operator==(Street const& other) const -> bool {
     bool isEqual{true};
@@ -61,20 +40,6 @@ namespace dsf::mobility {
     return isEqual;
   }
 
-  void Street::setLaneMapping(std::vector<Direction> const& laneMapping) {
-    assert(laneMapping.size() == static_cast<size_t>(m_nLanes));
-    m_laneMapping = laneMapping;
-    std::string strLaneMapping;
-    std::for_each(
-        laneMapping.cbegin(), laneMapping.cend(), [&strLaneMapping](auto const item) {
-          strLaneMapping +=
-              std::format("{} - ", directionToString[static_cast<size_t>(item)]);
-        });
-    spdlog::debug("New lane mapping for street {} -> {} is: {}",
-                  m_nodePair.first,
-                  m_nodePair.second,
-                  strLaneMapping);
-  }
   void Street::setQueue(dsf::queue<std::unique_ptr<Agent>> queue, size_t index) {
     assert(index < m_exitQueues.size());
     m_exitQueues[index] = std::move(queue);

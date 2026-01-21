@@ -28,6 +28,7 @@ namespace dsf::mobility {
     std::string m_name;
     bool m_hasPriority = false;
     std::set<Id> m_forbiddenTurns;  // Stores the forbidden turns (road ids)
+    std::vector<Direction> m_laneMapping;
     std::optional<RoadType> m_roadType{std::nullopt};
 
   public:
@@ -78,6 +79,9 @@ namespace dsf::mobility {
     /// @brief Replace the road's forbidden turns with the given set
     /// @param forbiddenTurns The set of forbidden turns
     void setForbiddenTurns(std::set<Id> const& forbiddenTurns);
+    /// @brief Set the road's lane mapping
+    /// @param laneMapping The road's lane mapping
+    void setLaneMapping(std::vector<Direction> const& laneMapping);
     /// @brief Set the road type
     /// @param roadType The road type
     inline void setRoadType(RoadType roadType) { m_roadType = roadType; }
@@ -108,6 +112,9 @@ namespace dsf::mobility {
     /// @details The forbidden turns are the road ids that are not allowed to be used by the agents
     ///          when they are on the road.
     inline auto const& forbiddenTurns() const noexcept { return m_forbiddenTurns; }
+    /// @brief Get the road's lane mapping
+    /// @return std::vector<Direction> The road's lane mapping
+    inline auto const& laneMapping() const { return m_laneMapping; }
     /// @brief Get the road type
     /// @return std::optional<RoadType> The road type
     inline auto roadType() const noexcept { return m_roadType; }

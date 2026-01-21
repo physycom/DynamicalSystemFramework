@@ -50,7 +50,6 @@ namespace dsf::mobility {
                         std::vector<std::unique_ptr<Agent>>,
                         AgentComparator>
         m_movingAgents;
-    std::vector<Direction> m_laneMapping;
     std::optional<Counter> m_counter;
     CounterPosition m_counterPosition{CounterPosition::EXIT};
     double m_stationaryWeight{1.0};
@@ -79,9 +78,6 @@ namespace dsf::mobility {
     Street(Street const&) = delete;
     bool operator==(Street const& other) const;
 
-    /// @brief Set the street's lane mapping
-    /// @param laneMapping The street's lane mapping
-    void setLaneMapping(std::vector<Direction> const& laneMapping);
     /// @brief Set the street's queue
     /// @param queue The street's queue
     /// @param index The index of the queue
@@ -156,9 +152,6 @@ namespace dsf::mobility {
     /// @return double The number of agents on all queues for a given direction
     double nExitingAgents(Direction direction = Direction::ANY,
                           bool normalizeOnNLanes = false) const final;
-    /// @brief Get the street's lane mapping
-    /// @return std::vector<Direction> The street's lane mapping
-    inline auto const& laneMapping() const { return m_laneMapping; }
     /// @brief Add an agent to the street
     /// @param pAgent The agent to add to the street
     void addAgent(std::unique_ptr<Agent> pAgent);
