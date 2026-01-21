@@ -468,10 +468,9 @@ namespace dsf::mobility {
     if (streetId.has_value()) {
       auto const& pStreet{this->graph().edge(streetId.value())};
       auto const& pNode{this->graph().node(pStreet->target())};
-      if (m_destinationCounts.contains(pNode->id())) [[likely]] {
-        ++m_destinationCounts[pNode->id()];
-      } else [[unlikely]] {
-        m_destinationCounts[pNode->id()] = 1;
+      auto [it, bInserted] = m_destinationCounts.insert({pNode->id(), 1});
+      if (!bInserted) {
+        ++it->second;
       }
     }
     return pAgent;
@@ -1537,10 +1536,9 @@ namespace dsf::mobility {
     spdlog::trace("Added {}", *m_agents.back());
     auto const& optNodeId{m_agents.back()->srcNodeId()};
     if (optNodeId.has_value()) {
-      if (m_originCounts.contains(*optNodeId)) [[likely]] {
-        ++m_originCounts[*optNodeId];
-      } else [[unlikely]] {
-        m_originCounts[*optNodeId] = 1;
+      auto [it, bInserted] = m_originCounts.insert({*optNodeId, 1});
+      if (!bInserted) {
+        ++it->second;
       }
     }
   }

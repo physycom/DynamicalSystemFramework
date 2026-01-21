@@ -1389,6 +1389,85 @@ TEST_CASE("RoadDynamics Configuration") {
 
   FirstOrderDynamics dynamics{defaultNetwork, false, 42};
 
+  SUBCASE("originCounts and destinationCounts") {
+    GIVEN("A simple network with origin and destination nodes") {
+      Street s1{0, std::make_pair(0, 1), 13.8888888889};
+      Street s2{1, std::make_pair(1, 2), 13.8888888889};
+      RoadNetwork graph2;
+      graph2.addStreets(s1, s2);
+      FirstOrderDynamics dyn{graph2, false, 42, 0., dsf::PathWeight::LENGTH};
+      dyn.addItinerary(2, 2);
+      dyn.updatePaths();
+
+      WHEN("We add agents with source nodes and evolve until they reach destination") {
+        dyn.addAgent(dyn.itineraries().at(2), 0);
+        dyn.addAgent(dyn.itineraries().at(2), 0);
+        dyn.addAgent(dyn.itineraries().at(2), 1);
+
+        THEN("originCounts returns the correct counts") {
+          auto counts = dyn.originCounts(false);
+          CHECK_EQ(counts.at(0), 2);
+          CHECK_EQ(counts.at(1), 1);
+        }
+
+        THEN("originCounts with bReset=true clears the counts") {
+          auto counts = dyn.originCounts(true);
+          CHECK_EQ(counts.at(0), 2);
+          CHECK_EQ(counts.at(1), 1);
+
+          auto countsAfterReset = dyn.originCounts(false);
+          CHECK(countsAfterReset.empty());
+        }
+
+        // Evolve until agents reach destination
+        while (dyn.nAgents() > 0) {
+          dyn.evolve(false);
+        }
+
+        THEN("destinationCounts returns the correct counts") {
+          auto destCounts = dyn.destinationCounts(false);
+          CHECK_EQ(destCounts.at(2), 3);
+        }
+
+        THEN("destinationCounts with bReset=true clears the counts") {
+          auto destCounts = dyn.destinationCounts(true);
+          CHECK_EQ(destCounts.at(2), 3);
+
+          auto destCountsAfterReset = dyn.destinationCounts(false);
+          CHECK(destCountsAfterReset.empty());
+        }
+      }
+    }
+
+    GIVEN("Multiple destinations") {
+      Street s0_1{0, std::make_pair(0, 1), 13.8888888889};
+      Street s1_2{1, std::make_pair(1, 2), 13.8888888889};
+      Street s1_3{2, std::make_pair(1, 3), 13.8888888889};
+      RoadNetwork graph2;
+      graph2.addStreets(s0_1, s1_2, s1_3);
+      FirstOrderDynamics dyn{graph2, false, 42, 0., dsf::PathWeight::LENGTH};
+      dyn.setDestinationNodes({2, 3});
+      dyn.updatePaths();
+
+      WHEN("Agents travel to different destinations") {
+        dyn.addAgent(dyn.itineraries().at(2), 0);
+        dyn.addAgent(dyn.itineraries().at(3), 0);
+        dyn.addAgent(dyn.itineraries().at(3), 0);
+
+        // Evolve until all agents reach destination
+        while (dyn.nAgents() > 0) {
+          dyn.evolve(false);
+        }
+
+        THEN("destinationCounts tracks each destination separately") {
+          auto destCounts = dyn.destinationCounts(false);
+          CHECK_EQ(destCounts.at(2), 1);
+          CHECK_EQ(destCounts.at(3), 2);
+        }
+      }
+    }
+  }
+
   SUBCASE("setMeanTravelDistance") {
     CHECK_THROWS_AS(dynamics.setMeanTravelDistance(-1.0), std::invalid_argument);
     CHECK_THROWS_AS(dynamics.setMeanTravelDistance(0.0), std::invalid_argument);
