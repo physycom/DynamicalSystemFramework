@@ -46,7 +46,7 @@ namespace dsf::mobility {
   class RoadDynamics : public Dynamics<RoadNetwork> {
     std::vector<Id> m_nodeIndices;
     std::vector<std::unique_ptr<Agent>> m_agents;
-    std::unordered_map<Id, std::unique_ptr<Itinerary>> m_itineraries;
+    std::unordered_map<Id, std::shared_ptr<Itinerary>> m_itineraries;
     std::unordered_map<Id, double> m_originNodes;
     std::unordered_map<Id, double> m_destinationNodes;
     Size m_nAgents;
@@ -76,8 +76,8 @@ namespace dsf::mobility {
     /// @param pAgent A std::unique_ptr to the agent to kill
     std::unique_ptr<Agent> m_killAgent(std::unique_ptr<Agent> pAgent);
     /// @brief Update the path of a single itinerary using Dijsktra's algorithm
-    /// @param pItinerary An std::unique_prt to the itinerary
-    void m_updatePath(std::unique_ptr<Itinerary> const& pItinerary);
+    /// @param pItinerary An std::shared_ptr to the itinerary
+    void m_updatePath(std::shared_ptr<Itinerary> const& pItinerary);
 
     /// @brief Get the next street id
     /// @param pAgent A std::unique_ptr to the agent
@@ -243,7 +243,7 @@ namespace dsf::mobility {
     /// @param itinerary std::unique_ptr to the itinerary
     /// @throws std::invalid_argument If the itinerary already exists
     /// @throws std::invalid_argument If the itinerary's destination is not a node of the graph
-    void addItinerary(std::unique_ptr<Itinerary> itinerary);
+    void addItinerary(std::shared_ptr<Itinerary> itinerary);
 
     /// @brief Evolve the simulation
     /// @details Evolve the simulation by moving the agents and updating the travel times.
@@ -270,10 +270,7 @@ namespace dsf::mobility {
 
     /// @brief Get the itineraries
     /// @return const std::unordered_map<Id, Itinerary>&, The itineraries
-    inline const std::unordered_map<Id, std::unique_ptr<Itinerary>>& itineraries()
-        const noexcept {
-      return m_itineraries;
-    }
+    inline auto const& itineraries() const noexcept { return m_itineraries; }
     /// @brief Get the origin nodes of the graph
     /// @return std::unordered_map<Id, double> const& The origin nodes of the graph
     inline std::unordered_map<Id, double> const& originNodes() const noexcept {
@@ -416,7 +413,7 @@ namespace dsf::mobility {
       m_nodeIndices.push_back(nodeId);
     }
     for (auto const& [nodeId, weight] : this->m_destinationNodes) {
-      m_itineraries.emplace(nodeId, std::make_unique<Itinerary>(nodeId, nodeId));
+      m_itineraries.emplace(nodeId, std::make_shared<Itinerary>(nodeId, nodeId));
     }
     std::for_each(
         this->graph().edges().cbegin(),
@@ -461,7 +458,7 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_updatePath(std::unique_ptr<Itinerary> const& pItinerary) {
+  void RoadDynamics<delay_t>::m_updatePath(std::shared_ptr<Itinerary> const& pItinerary) {
     if (m_bCacheEnabled) {
       auto const& file = std::format("{}{}.ity", CACHE_FOLDER, pItinerary->id());
       if (std::filesystem::exists(file)) {
@@ -511,20 +508,7 @@ namespace dsf::mobility {
     // Get path targets for non-random agents
     std::vector<Id> pathTargets;
     if (!pAgent->isRandom()) {
-      try {
-        pathTargets = m_itineraries.at(pAgent->itineraryId())->path().at(pNode->id());
-      } catch (const std::out_of_range&) {
-        if (!m_itineraries.contains(pAgent->itineraryId())) {
-          throw std::runtime_error(
-              std::format("No itinerary found with id {}", pAgent->itineraryId()));
-        }
-        throw std::runtime_error(std::format(
-            "No path found for itinerary {} at node {}. To solve this error, consider "
-            "using ODs extracted from a fully-connected subnetwork of your whole road "
-            "network or, alternatively, set an error probability.",
-            pAgent->itineraryId(),
-            pNode->id()));
-      }
+      pathTargets = pAgent->itinerary()->path().at(pNode->id());
     }
 
     // Calculate transition probabilities for all valid outgoing edges
@@ -626,12 +610,10 @@ namespace dsf::mobility {
       pAgent->setSpeed(0.);
       bool bArrived{false};
       if (!pAgent->isRandom()) {
-        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-            pStreet->target()) {
+        if (pAgent->itinerary()->destination() == pStreet->target()) {
           pAgent->updateItinerary();
         }
-        if (this->itineraries().at(pAgent->itineraryId())->destination() ==
-            pStreet->target()) {
+        if (pAgent->itinerary()->destination() == pStreet->target()) {
           bArrived = true;
         }
       }
@@ -873,8 +855,7 @@ namespace dsf::mobility {
           }
         }
         if (!pAgentTemp->isRandom()) {
-          if (destinationNode->id() ==
-              this->itineraries().at(pAgentTemp->itineraryId())->destination()) {
+          if (destinationNode->id() == pAgentTemp->itinerary()->destination()) {
             bArrived = true;
             spdlog::debug("Agent {} has arrived at destination node {}",
                           pAgentTemp->id(),
@@ -1166,6 +1147,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setDestinationNodes(
       std::unordered_map<Id, double> const& destinationNodes) {
+    m_itineraries.clear();
     m_destinationNodes.clear();
     m_destinationNodes.reserve(destinationNodes.size());
     auto sumWeights{0.};
@@ -1173,9 +1155,6 @@ namespace dsf::mobility {
                   destinationNodes.end(),
                   [this, &sumWeights](auto const& pair) -> void {
                     sumWeights += pair.second;
-                    if (this->itineraries().contains(pair.first)) {
-                      return;
-                    }
                     this->addItinerary(pair.first, pair.first);
                   });
     if (sumWeights == 1.) {
@@ -1223,6 +1202,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setDestinationNodes(
       std::initializer_list<Id> destinationNodes) {
+    m_itineraries.clear();
     auto const numNodes{destinationNodes.size()};
     m_destinationNodes.clear();
     m_destinationNodes.reserve(numNodes);
@@ -1230,9 +1210,6 @@ namespace dsf::mobility {
                   destinationNodes.end(),
                   [this, &numNodes](auto const& nodeId) -> void {
                     this->m_destinationNodes[nodeId] = 1. / numNodes;
-                    if (this->itineraries().contains(nodeId)) {
-                      return;
-                    }
                     this->addItinerary(nodeId, nodeId);
                   });
   }
@@ -1241,6 +1218,7 @@ namespace dsf::mobility {
   template <typename TContainer>
     requires(std::is_convertible_v<typename TContainer::value_type, Id>)
   void RoadDynamics<delay_t>::setDestinationNodes(TContainer const& destinationNodes) {
+    m_itineraries.clear();
     auto const numNodes{destinationNodes.size()};
     m_destinationNodes.clear();
     m_destinationNodes.reserve(numNodes);
@@ -1248,9 +1226,6 @@ namespace dsf::mobility {
                   destinationNodes.end(),
                   [this, &numNodes](auto const& nodeId) -> void {
                     this->m_destinationNodes[nodeId] = 1. / numNodes;
-                    if (this->itineraries().contains(nodeId)) {
-                      return;
-                    }
                     this->addItinerary(nodeId, nodeId);
                   });
   }
@@ -1313,7 +1288,7 @@ namespace dsf::mobility {
     }
     bool const bRandomItinerary{!optItineraryId.has_value() &&
                                 !this->itineraries().empty()};
-    std::optional<Id> itineraryId{std::nullopt};
+    std::shared_ptr<Itinerary> pItinerary;
     std::uniform_int_distribution<Size> itineraryDist{
         0, static_cast<Size>(this->itineraries().size() - 1)};
     std::uniform_int_distribution<Size> streetDist{
@@ -1330,7 +1305,7 @@ namespace dsf::mobility {
       if (bRandomItinerary) {
         auto itineraryIt{this->itineraries().cbegin()};
         std::advance(itineraryIt, itineraryDist(this->m_generator));
-        itineraryId = itineraryIt->first;
+        pItinerary = itineraryIt->second;
       }
       auto streetIt = this->graph().edges().begin();
       while (true) {
@@ -1343,7 +1318,7 @@ namespace dsf::mobility {
       }
       auto const& street{streetIt->second};
       this->addAgent(
-          std::make_unique<Agent>(this->time_step(), itineraryId, street->source()));
+          std::make_unique<Agent>(this->time_step(), pItinerary, street->source()));
       auto& pAgent{this->m_agents.back()};
       pAgent->setStreetId(street->id());
       this->setAgentSpeed(pAgent);
@@ -1371,14 +1346,14 @@ namespace dsf::mobility {
       if (bUniformSpawn) {
         this->addAgent();
       } else if (bSingleSource) {
-        this->addAgent(std::nullopt, spawnWeights.begin()->first);
+        this->addAgent(nullptr, spawnWeights.begin()->first);
       } else {
         auto const randValue{uniformDist(this->m_generator)};
         double cumulativeWeight{0.};
         for (auto const& [spawnNodeId, weight] : spawnWeights) {
           cumulativeWeight += weight;
           if (randValue <= cumulativeWeight) {
-            this->addAgent(std::nullopt, spawnNodeId);
+            this->addAgent(nullptr, spawnNodeId);
             break;
           }
         }
@@ -1522,7 +1497,7 @@ namespace dsf::mobility {
         continue;
       }
 
-      this->addAgent(itineraryIt->first, *srcId);
+      this->addAgent(itineraryIt->second, *srcId);
       --nAgents;
     }
   }
@@ -1564,12 +1539,12 @@ namespace dsf::mobility {
   template <typename... TArgs>
     requires(std::is_constructible_v<Itinerary, TArgs...>)
   void RoadDynamics<delay_t>::addItinerary(TArgs&&... args) {
-    addItinerary(std::make_unique<Itinerary>(std::forward<TArgs>(args)...));
+    addItinerary(std::make_shared<Itinerary>(std::forward<TArgs>(args)...));
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addItinerary(std::unique_ptr<Itinerary> itinerary) {
+  void RoadDynamics<delay_t>::addItinerary(std::shared_ptr<Itinerary> itinerary) {
     if (m_itineraries.contains(itinerary->id())) {
       throw std::invalid_argument(
           std::format("Itinerary with id {} already exists.", itinerary->id()));

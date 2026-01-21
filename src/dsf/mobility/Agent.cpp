@@ -4,20 +4,20 @@
 
 namespace dsf::mobility {
   Agent::Agent(std::time_t const& spawnTime,
-               std::optional<Id> itineraryId,
+               std::shared_ptr<Itinerary> itinerary,
                std::optional<Id> srcNodeId)
       : m_spawnTime{spawnTime},
         m_freeTime{0},
         m_id{0},
-        m_trip{itineraryId.has_value() ? std::vector<Id>{*itineraryId}
-                                       : std::vector<Id>{}},
+        m_trip{itinerary != nullptr ? std::vector<std::shared_ptr<Itinerary>>{itinerary}
+                                    : std::vector<std::shared_ptr<Itinerary>>{}},
         m_srcNodeId{srcNodeId},
         m_nextStreetId{std::nullopt},
         m_itineraryIdx{0},
         m_speed{0.},
         m_distance{0.} {}
   Agent::Agent(std::time_t const& spawnTime,
-               std::vector<Id> const& trip,
+               std::vector<std::shared_ptr<Itinerary>> const& trip,
                std::optional<Id> srcNodeId)
       : m_spawnTime{spawnTime},
         m_freeTime{spawnTime},
@@ -77,7 +77,7 @@ namespace dsf::mobility {
     m_itineraryIdx = 0;
   }
 
-  Id Agent::itineraryId() const {
+  std::shared_ptr<Itinerary> const& Agent::itinerary() const {
     if (isRandom()) {
       throw std::logic_error(
           std::format("Agent {} is a random agent and has no itinerary", m_id));

@@ -23,8 +23,9 @@ static void BM_Roundabout_Enqueue(benchmark::State& state) {
   dsf::mobility::Roundabout roundabout(0);
   roundabout.setCapacity(1000);
   std::time_t spawnTime = 0;
+  auto pItinerary = std::make_shared<dsf::mobility::Itinerary>(1, 1);
   for (auto _ : state) {
-    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
+    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, pItinerary, 0);
     roundabout.enqueue(std::move(agent));
   }
 }
@@ -34,7 +35,8 @@ static void BM_Roundabout_Dequeue(benchmark::State& state) {
   for (auto _ : state) {
     dsf::mobility::Roundabout roundabout(0);
     roundabout.setCapacity(100);
-    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
+    auto agent = std::make_unique<dsf::mobility::Agent>(
+        spawnTime++, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
     roundabout.enqueue(std::move(agent));
     auto dequeued = roundabout.dequeue();
     benchmark::DoNotOptimize(dequeued);
@@ -45,8 +47,9 @@ static void BM_Roundabout_Density(benchmark::State& state) {
   dsf::mobility::Roundabout roundabout(0);
   roundabout.setCapacity(1000);
   std::time_t spawnTime = 0;
+  auto pItinerary = std::make_shared<dsf::mobility::Itinerary>(1, 1);
   for (int i = 0; i < 100; ++i) {
-    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
+    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, pItinerary, 0);
     roundabout.enqueue(std::move(agent));
   }
   for (auto _ : state) {
@@ -59,8 +62,9 @@ static void BM_Roundabout_IsFull(benchmark::State& state) {
   dsf::mobility::Roundabout roundabout(0);
   roundabout.setCapacity(1000);
   std::time_t spawnTime = 0;
+  auto pItinerary = std::make_shared<dsf::mobility::Itinerary>(1, 1);
   for (int i = 0; i < 100; ++i) {
-    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, 1, 0);
+    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, pItinerary, 0);
     roundabout.enqueue(std::move(agent));
   }
   for (auto _ : state) {

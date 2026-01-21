@@ -93,11 +93,11 @@ TEST_CASE("Street") {
     }
   }
   SUBCASE("addAgent") {
-    Agent a1{0, 1, 0};
+    Agent a1{0, nullptr, 0};
     a1.setFreeTime(5);
-    Agent a2{0, 1, 0};
+    Agent a2{0, nullptr, 0};
     a2.setFreeTime(3);
-    Agent a3{0, 1, 0};
+    Agent a3{0, nullptr, 0};
     a3.setFreeTime(7);
 
     Street street{1, std::make_pair(0, 1), 3.5};
@@ -112,10 +112,10 @@ TEST_CASE("Street") {
     /*This tests the insertion of an agent in a street's queue*/
 
     // define some agents
-    Agent a1{0, 1, 0};  // they are all in street 1
-    Agent a2{0, 1, 0};
-    Agent a3{0, 1, 0};
-    Agent a4{0, 1, 0};
+    Agent a1{0, nullptr, 0};  // they are all in street 1
+    Agent a2{0, nullptr, 0};
+    Agent a3{0, nullptr, 0};
+    Agent a4{0, nullptr, 0};
 
     Street street{1, std::make_pair(0, 1), 3.5};
     // fill the queue
@@ -140,10 +140,10 @@ TEST_CASE("Street") {
     /*This tests the exit of an agent from a street's queue*/
 
     // define some agents
-    Agent a1{0, 1, 0};  // they are all in street 1
-    Agent a2{0, 1, 0};
-    Agent a3{0, 1, 0};
-    Agent a4{0, 1, 0};
+    Agent a1{0, nullptr, 0};  // they are all in street 1
+    Agent a2{0, nullptr, 0};
+    Agent a3{0, nullptr, 0};
+    Agent a4{0, nullptr, 0};
 
     Street street{1, std::make_pair(0, 1), 3.5};
     // fill the queue
@@ -188,7 +188,7 @@ TEST_CASE("Street with a coil") {
       street.enableCounter("EntryCoil", dsf::mobility::CounterPosition::ENTRY);
       CHECK_EQ(street.counterName(), "EntryCoil");
       WHEN("An agent is added") {
-        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.addAgent(std::make_unique<Agent>(0, nullptr));
         THEN("The input flow is one immediately") { CHECK_EQ(street.counts(), 1); }
         street.enqueue(0);
         THEN("The input flow is still one") { CHECK_EQ(street.counts(), 1); }
@@ -202,7 +202,7 @@ TEST_CASE("Street with a coil") {
       street.enableCounter("", dsf::mobility::CounterPosition::MIDDLE);
       CHECK_EQ(street.counterName(), "Coil_1");
       WHEN("An agent is added") {
-        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.addAgent(std::make_unique<Agent>(0, nullptr));
         THEN("The input flow is zero") { CHECK_EQ(street.counts(), 0); }
         street.enqueue(0);
         THEN("The input flow is one once enqueued") { CHECK_EQ(street.counts(), 1); }
@@ -218,7 +218,7 @@ TEST_CASE("Street with a coil") {
       street.enableCounter("ExitCoil", dsf::mobility::CounterPosition::EXIT);
       CHECK_EQ(street.counterName(), "ExitCoil");
       WHEN("An agent is added and enqueued") {
-        street.addAgent(std::make_unique<Agent>(0, 1));
+        street.addAgent(std::make_unique<Agent>(0, nullptr));
         street.enqueue(0);
         THEN("The input flow is zero") { CHECK_EQ(street.counts(), 0); }
         street.dequeue(0);
@@ -516,8 +516,8 @@ TEST_CASE("Street formatting") {
     Street street{30, std::make_pair(10, 20), 50.0, 15.0, 1};
 
     // Add some agents
-    auto agent1 = std::make_unique<Agent>(0, 1);
-    auto agent2 = std::make_unique<Agent>(0, 2);
+    auto agent1 = std::make_unique<Agent>(0, nullptr);
+    auto agent2 = std::make_unique<Agent>(0, nullptr);
     street.addAgent(std::move(agent1));
     street.addAgent(std::move(agent2));
 

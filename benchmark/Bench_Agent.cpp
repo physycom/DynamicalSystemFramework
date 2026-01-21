@@ -6,14 +6,18 @@
 static void BM_Agent_ConstructionWithItineraryId(benchmark::State& state) {
   std::time_t spawnTime = 0;
   for (auto _ : state) {
-    dsf::mobility::Agent agent(spawnTime++, 1, 0);
+    dsf::mobility::Agent agent(
+        spawnTime++, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
     benchmark::DoNotOptimize(agent);
   }
 }
 
 static void BM_Agent_ConstructionWithTrip(benchmark::State& state) {
   std::time_t spawnTime = 0;
-  std::vector<dsf::Id> trip = {1, 2, 3};
+  std::vector<std::shared_ptr<dsf::mobility::Itinerary>> trip = {
+      std::make_shared<dsf::mobility::Itinerary>(1, 1),
+      std::make_shared<dsf::mobility::Itinerary>(2, 2),
+      std::make_shared<dsf::mobility::Itinerary>(3, 3)};
   for (auto _ : state) {
     dsf::mobility::Agent agent(spawnTime++, trip, 0);
     benchmark::DoNotOptimize(agent);
@@ -29,35 +33,35 @@ static void BM_Agent_ConstructionRandom(benchmark::State& state) {
 }
 
 static void BM_Agent_SetSrcNodeId(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   for (auto _ : state) {
     agent.setSrcNodeId(5);
   }
 }
 
 static void BM_Agent_SetStreetId(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   for (auto _ : state) {
     agent.setStreetId(10);
   }
 }
 
 static void BM_Agent_SetNextStreetId(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   for (auto _ : state) {
     agent.setNextStreetId(15);
   }
 }
 
 static void BM_Agent_SetSpeed(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   for (auto _ : state) {
     agent.setSpeed(50.0);
   }
 }
 
 static void BM_Agent_SetFreeTime(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   std::time_t freeTime = 100;
   for (auto _ : state) {
     agent.setFreeTime(freeTime++);
@@ -65,14 +69,19 @@ static void BM_Agent_SetFreeTime(benchmark::State& state) {
 }
 
 static void BM_Agent_IncrementDistance(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   for (auto _ : state) {
     agent.incrementDistance(10.0);
   }
 }
 
 static void BM_Agent_UpdateItinerary(benchmark::State& state) {
-  std::vector<dsf::Id> trip = {1, 2, 3, 4, 5};
+  std::vector<std::shared_ptr<dsf::mobility::Itinerary>> trip = {
+      std::make_shared<dsf::mobility::Itinerary>(1, 1),
+      std::make_shared<dsf::mobility::Itinerary>(2, 2),
+      std::make_shared<dsf::mobility::Itinerary>(3, 3),
+      std::make_shared<dsf::mobility::Itinerary>(4, 4),
+      std::make_shared<dsf::mobility::Itinerary>(5, 5)};
   dsf::mobility::Agent agent(0, trip, 0);
   for (auto _ : state) {
     agent.updateItinerary();
@@ -80,7 +89,7 @@ static void BM_Agent_UpdateItinerary(benchmark::State& state) {
 }
 
 static void BM_Agent_Reset(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   agent.setSpeed(50.0);
   agent.setStreetId(10);
   std::time_t spawnTime = 1000;
@@ -91,7 +100,7 @@ static void BM_Agent_Reset(benchmark::State& state) {
 
 // Getter benchmarks - these are inline so very fast
 static void BM_Agent_Getters(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   agent.setSpeed(50.0);
   agent.setStreetId(10);
   for (auto _ : state) {
@@ -117,15 +126,19 @@ static void BM_Agent_Getters(benchmark::State& state) {
 }
 
 static void BM_Agent_ItineraryId(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, 1, 0);
+  dsf::mobility::Agent agent(0, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
   for (auto _ : state) {
-    auto itineraryId = agent.itineraryId();
-    benchmark::DoNotOptimize(itineraryId);
+    auto const& pItinerary = agent.itinerary();
+    benchmark::DoNotOptimize(pItinerary);
   }
 }
 
 static void BM_Agent_Trip(benchmark::State& state) {
-  dsf::mobility::Agent agent(0, {1, 2, 3}, 0);
+  std::vector<std::shared_ptr<dsf::mobility::Itinerary>> trip = {
+      std::make_shared<dsf::mobility::Itinerary>(1, 1),
+      std::make_shared<dsf::mobility::Itinerary>(2, 2),
+      std::make_shared<dsf::mobility::Itinerary>(3, 3)};
+  dsf::mobility::Agent agent(0, trip, 0);
   for (auto _ : state) {
     auto trip = agent.trip();
     benchmark::DoNotOptimize(trip);
