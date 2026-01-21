@@ -7,6 +7,7 @@ from OpenStreetMap using OSMnx, with support for graph simplification and
 standardization of attributes.
 """
 
+import folium
 import geopandas as gpd
 import networkx as nx
 import numpy as np
@@ -21,8 +22,7 @@ def get_cartography(
     consolidate_intersections: bool | float = 10,
     dead_ends: bool = False,
     infer_speeds: bool = False,
-    return_type: str = "gdfs",
-) -> tuple | nx.DiGraph:
+) -> tuple[nx.DiGraph, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Retrieves and processes cartography data for a specified place using OpenStreetMap data.
 
@@ -44,16 +44,14 @@ def get_cartography(
         infer_speeds (bool, optional): Whether to infer edge speeds based on road types. Defaults to False.
             If True, calls ox.routing.add_edge_speeds using np.nanmedian as aggregation function.
             Finally, the "maxspeed" attribute is replaced with the inferred "speed_kph", and the "travel_time" attribute is computed.
-        return_type (str, optional): Type of return value. Options are "gdfs" (GeoDataFrames) or
-            "graph" (NetworkX DiGraph). Defaults to "gdfs".
 
     Returns:
-        tuple | nx.DiGraph: If return_type is "gdfs", returns a tuple containing two GeoDataFrames:
+        tuple[nx.DiGraph, gpd.GeoDataFrame, gpd.GeoDataFrame]: Returns a tuple containing:
+            - NetworkX DiGraph with standardized attributes.
             - gdf_edges: GeoDataFrame with processed edge data, including columns like 'source',
               'target', 'nlanes', 'type', 'name', 'id', and 'geometry'.
             - gdf_nodes: GeoDataFrame with processed node data, including columns like 'id', 'type',
               and 'geometry'.
-            If return_type is "graph", returns the NetworkX DiGraph with standardized attributes.
     """
     if bbox is None and place_name is None:
         raise ValueError("Either place_name or bbox must be provided.")
@@ -223,32 +221,26 @@ def get_cartography(
         ):  # Check for NaN
             G.nodes[node]["type"] = "N/A"
 
-    # Return graph or GeoDataFrames based on return_type
-    if return_type == "graph":
-        return G
-    elif return_type == "gdfs":
-        # Convert back to MultiDiGraph temporarily for ox.graph_to_gdfs compatibility
-        gdf_nodes, gdf_edges = ox.graph_to_gdfs(nx.MultiDiGraph(G))
+    # Convert back to MultiDiGraph temporarily for ox.graph_to_gdfs compatibility
+    gdf_nodes, gdf_edges = ox.graph_to_gdfs(nx.MultiDiGraph(G))
 
-        # Reset index and drop unnecessary columns (id, source, target already exist from graph)
-        gdf_edges.reset_index(inplace=True)
-        # Move the "id" column to the beginning
-        id_col = gdf_edges.pop("id")
-        gdf_edges.insert(0, "id", id_col)
+    # Reset index and drop unnecessary columns (id, source, target already exist from graph)
+    gdf_edges.reset_index(inplace=True)
+    # Move the "id" column to the beginning
+    id_col = gdf_edges.pop("id")
+    gdf_edges.insert(0, "id", id_col)
 
-        # Ensure length is float
-        gdf_edges["length"] = gdf_edges["length"].astype(float)
+    # Ensure length is float
+    gdf_edges["length"] = gdf_edges["length"].astype(float)
 
-        gdf_edges.drop(columns=["u", "v", "key"], inplace=True, errors="ignore")
+    gdf_edges.drop(columns=["u", "v", "key"], inplace=True, errors="ignore")
 
-        # Reset index for nodes
-        gdf_nodes.reset_index(inplace=True)
-        gdf_nodes.drop(columns=["y", "x"], inplace=True, errors="ignore")
-        gdf_nodes.rename(columns={"osmid": "id"}, inplace=True)
+    # Reset index for nodes
+    gdf_nodes.reset_index(inplace=True)
+    gdf_nodes.drop(columns=["y", "x"], inplace=True, errors="ignore")
+    gdf_nodes.rename(columns={"osmid": "id"}, inplace=True)
 
-        return gdf_edges, gdf_nodes
-    else:
-        raise ValueError("Invalid return_type. Choose 'gdfs' or 'graph'.")
+    return G, gdf_edges, gdf_nodes
 
 
 def graph_from_gdfs(
@@ -458,6 +450,52 @@ def create_manhattan_cartography(
     gdf_nodes = gpd.GeoDataFrame(nodes_data, crs="EPSG:4326")
 
     return gdf_edges, gdf_nodes
+
+
+def to_folium_map(
+    G: nx.DiGraph,
+    which: str = "edges",
+) -> folium.Map:
+    """
+    Converts a NetworkX DiGraph to a Folium map for visualization.
+    Args:
+        G (nx.DiGraph): The input DiGraph.
+        which (str): Specify whether to visualize 'edges', 'nodes', or 'both'. Defaults to 'edges'.
+    Returns:
+        folium.Map: The Folium map with the graph visualized.
+    """
+
+    # Compute mean latitude and longitude for centering the map
+    mean_lat = np.mean([data["geometry"].y for _, data in G.nodes(data=True)])
+    mean_lon = np.mean([data["geometry"].x for _, data in G.nodes(data=True)])
+    folium_map = folium.Map(location=[mean_lat, mean_lon], zoom_start=13)
+
+    if which in ("edges", "both"):
+        # Add edges to the map
+        for _, _, data in G.edges(data=True):
+            line = data.get("geometry")
+            if line:
+                folium.PolyLine(
+                    locations=[(point[1], point[0]) for point in line.coords],
+                    color="blue",
+                    weight=2,
+                    opacity=0.7,
+                    popup=f"Edge ID: {data.get('id')}",
+                ).add_to(folium_map)
+    if which in ("nodes", "both"):
+        # Add nodes to the map
+        for _, data in G.nodes(data=True):
+            folium.CircleMarker(
+                location=(data["geometry"].y, data["geometry"].x),
+                radius=5,
+                color="red",
+                fill=True,
+                fill_color="red",
+                fill_opacity=0.7,
+                popup=f"Node ID: {data.get('id')}",
+            ).add_to(folium_map)
+
+    return folium_map
 
 
 # if __name__ == "__main__":

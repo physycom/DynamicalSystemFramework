@@ -521,5 +521,6 @@ setup(
         "numpy",
         "geopandas",
         "shapely",
+        "folium",
     ],
 )
