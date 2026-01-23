@@ -51,7 +51,7 @@ namespace dsf::mobility {
     std::unordered_map<Id, double> m_destinationNodes;
     tbb::concurrent_unordered_map<Id, std::size_t> m_originCounts;
     tbb::concurrent_unordered_map<Id, std::size_t> m_destinationCounts;
-    Size m_nAgents;
+    std::size_t m_nAgents{0};
 
   protected:
     std::unordered_map<Id, std::unordered_map<Id, size_t>> m_turnCounts;
@@ -59,19 +59,19 @@ namespace dsf::mobility {
     tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
         m_queuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
-    std::time_t m_previousOptimizationTime;
+    std::time_t m_previousOptimizationTime{0};
 
   private:
     std::function<double(std::unique_ptr<Street> const&)> m_weightFunction;
-    std::optional<double> m_errorProbability;
-    std::optional<double> m_passageProbability;
-    std::optional<double> m_meanTravelDistance;
-    std::optional<std::time_t> m_meanTravelTime;
+    std::optional<double> m_errorProbability{std::nullopt};
+    std::optional<double> m_passageProbability{std::nullopt};
+    std::optional<double> m_meanTravelDistance{std::nullopt};
+    std::optional<std::time_t> m_meanTravelTime{std::nullopt};
     double m_weightTreshold;
-    std::optional<double> m_timeToleranceFactor;
+    std::optional<double> m_timeToleranceFactor{std::nullopt};
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
-    bool m_forcePriorities;
+    bool m_forcePriorities{false};
 
   private:
     /// @brief Kill an agent
@@ -403,16 +403,7 @@ namespace dsf::mobility {
                                       std::optional<unsigned int> seed,
                                       PathWeight const weightFunction,
                                       std::optional<double> weightTreshold)
-      : Dynamics<RoadNetwork>(graph, seed),
-        m_nAgents{0},
-        m_previousOptimizationTime{0},
-        m_errorProbability{std::nullopt},
-        m_passageProbability{std::nullopt},
-        m_meanTravelDistance{std::nullopt},
-        m_meanTravelTime{std::nullopt},
-        m_timeToleranceFactor{std::nullopt},
-        m_bCacheEnabled{useCache},
-        m_forcePriorities{false} {
+      : Dynamics<RoadNetwork>(graph, seed), m_bCacheEnabled{useCache} {
     this->setWeightFunction(weightFunction, weightTreshold);
     if (m_bCacheEnabled) {
       if (!std::filesystem::exists(CACHE_FOLDER)) {
