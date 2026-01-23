@@ -178,7 +178,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
           [](dsf::mobility::RoadNetwork& self) {
             self.describe();  // Uses default std::cout
           },
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::summary").c_str())
+          dsf::g_docstrings.at("dsf::mobility::RoadNetwork::describe").c_str())
       .def("autoAssignRoadPriorities",
            &dsf::mobility::RoadNetwork::autoAssignRoadPriorities,
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::autoAssignRoadPriorities")
