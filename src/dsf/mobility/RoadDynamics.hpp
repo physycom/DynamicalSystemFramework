@@ -9,6 +9,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <cmath>
 #include <concepts>
@@ -21,6 +22,7 @@
 #include <random>
 #include <span>
 #include <sstream>
+#include <iostream>
 #include <thread>
 #include <unordered_map>
 #include <variant>
@@ -51,8 +53,8 @@ namespace dsf::mobility {
     std::unordered_map<Id, double> m_destinationNodes;
     tbb::concurrent_unordered_map<Id, std::size_t> m_originCounts;
     tbb::concurrent_unordered_map<Id, std::size_t> m_destinationCounts;
-    std::size_t m_nAgents{0}, m_nAddedAgents{0}, m_nInsertedAgents{0}, m_nKilledAgents{0},
-        m_nArrivedAgents{0};
+    std::atomic<std::size_t> m_nAgents{0}, m_nAddedAgents{0}, m_nInsertedAgents{0},
+        m_nKilledAgents{0}, m_nArrivedAgents{0};
 
   protected:
     std::unordered_map<Id, std::unordered_map<Id, size_t>> m_turnCounts;
