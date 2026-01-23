@@ -101,7 +101,8 @@ TEST_CASE("FirstOrderDynamics") {
         std::string summaryStr = oss.str();
         THEN("The summary contains expected information") {
           CHECK(summaryStr.find("RoadDynamics Summary") != std::string::npos);
-          CHECK(summaryStr.find("RoadNetwork with 120 nodes and 436 edges") != std::string::npos);
+          CHECK(summaryStr.find("RoadNetwork with 120 nodes and 436 edges") !=
+                std::string::npos);
           CHECK(summaryStr.find("Number of inserted agents") != std::string::npos);
           CHECK(summaryStr.find("Number of added agents") != std::string::npos);
           CHECK(summaryStr.find("Number of killed agents") != std::string::npos);

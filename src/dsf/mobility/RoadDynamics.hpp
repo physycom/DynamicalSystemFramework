@@ -395,7 +395,7 @@ namespace dsf::mobility {
     /// NOTE: the mean density is normalized in [0, 1] and reset is true for all observables which have such parameter
     void saveMacroscopicObservables(std::string filename = std::string(),
                                     char const separator = ';');
-    
+
     /// @brief Print a summary of the dynamics to an output stream
     /// @param os The output stream to write to (default is std::cout)
     /// @details The summary includes:
@@ -741,6 +741,7 @@ namespace dsf::mobility {
                 timeDiff);
             // Kill the agent
             this->m_killAgent(pStreet->dequeue(queueIndex));
+            ++m_nKilledAgents;
             continue;
           }
         }
@@ -896,6 +897,7 @@ namespace dsf::mobility {
         }
         if (bArrived) {
           auto pAgent = this->m_killAgent(pStreet->dequeue(queueIndex));
+          ++m_nArrivedAgents;
           if (reinsert_agents) {
             // reset Agent's values
             pAgent->reset(this->time_step());
@@ -1295,6 +1297,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::addAgentsUniformly(Size nAgents,
                                                  std::optional<Id> optItineraryId) {
+    m_nAddedAgents += nAgents;
     if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
       auto const nStagnantAgents{m_agents.size()};
       spdlog::warn(
@@ -1359,6 +1362,7 @@ namespace dsf::mobility {
              std::is_same_v<TContainer, std::map<Id, double>>)
   void RoadDynamics<delay_t>::addRandomAgents(std::size_t nAgents,
                                               TContainer const& spawnWeights) {
+    m_nAddedAgents += nAgents;
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     std::exponential_distribution<double> distDist{1. /
                                                    m_meanTravelDistance.value_or(1.)};
@@ -1405,6 +1409,7 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
                                                 const TContainer& src_weights,
                                                 const TContainer& dst_weights) {
+    m_nAddedAgents += nAgents;
     if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
       auto const nStagnantAgents{m_agents.size()};
       spdlog::warn(
@@ -1536,6 +1541,7 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent> pAgent) {
     m_agents.push_back(std::move(pAgent));
     ++m_nAgents;
+    ++m_nInsertedAgents;
     spdlog::trace("Added {}", *m_agents.back());
     auto const& optNodeId{m_agents.back()->srcNodeId()};
     if (optNodeId.has_value()) {
@@ -2507,8 +2513,8 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::summary(std::ostream& os) const {
     os << "RoadDynamics Summary:\n";
     this->graph().describe(os);
-    os << "\nNumber of inserted agents: " << m_nInsertedAgents << '\n'
-       << "Number of added agents: " << m_nAddedAgents << '\n'
+    os << "\nNumber of added agents: " << m_nAddedAgents << '\n'
+       << "Number of inserted agents: " << m_nInsertedAgents << '\n'
        << "Number of arrived agents: " << m_nArrivedAgents << '\n'
        << "Number of killed agents: " << m_nKilledAgents << '\n'
        << "Current number of agents: " << this->nAgents() << '\n';
