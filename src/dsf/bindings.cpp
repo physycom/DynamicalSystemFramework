@@ -173,6 +173,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def("autoMapStreetLanes",
            &dsf::mobility::RoadNetwork::autoMapStreetLanes,
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::autoMapStreetLanes").c_str())
+      .def("describe",
+           &dsf::mobility::RoadNetwork::describe,
+           pybind11::arg("os") = std::cout,
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::describe").c_str())
       .def("autoAssignRoadPriorities",
            &dsf::mobility::RoadNetwork::autoAssignRoadPriorities,
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::autoAssignRoadPriorities")

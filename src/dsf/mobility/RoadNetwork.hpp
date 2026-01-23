@@ -36,6 +36,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 #include <cassert>
 #include <format>
 
@@ -73,18 +74,18 @@ namespace dsf::mobility {
     RoadNetwork& operator=(RoadNetwork&&) = default;
 
     /// @brief Get the graph's number of coil streets
-    /// @return The number of coil streets
-    Size nCoils() const;
+    /// @return std::size_t The number of coil streets
+    std::size_t nCoils() const;
 
     /// @brief Get the graph's number of intersections
-    /// @return The number of intersections
-    Size nIntersections() const;
+    /// @return std::size_t The number of intersections
+    std::size_t nIntersections() const;
     /// @brief Get the graph's number of roundabouts
-    /// @return The number of roundabouts
-    Size nRoundabouts() const;
+    /// @return std::size_t The number of roundabouts
+    std::size_t nRoundabouts() const;
     /// @brief Get the graph's number of traffic lights
-    /// @return The number of traffic lights
-    Size nTrafficLights() const;
+    /// @return std::size_t The number of traffic lights
+    std::size_t nTrafficLights() const;
 
     /// @brief Adjust the nodes' transport capacity
     /// @details The nodes' capacity is adjusted using the graph's streets transport capacity, which may vary basing on the number of lanes. The node capacity will be set to the sum of the incoming streets' transport capacity.
@@ -100,6 +101,10 @@ namespace dsf::mobility {
     void autoMapStreetLanes();
     /// @brief Automatically assigns road priorities at intersections, basing on road types
     void autoAssignRoadPriorities();
+
+    /// @brief Describe the RoadNetwork
+    /// @param os The output stream to write the description to (default is std::cout)
+    void describe(std::ostream& os = std::cout) const;
 
     /// @brief Import the graph's streets from a file
     /// @param fileName The name of the file to import the streets from.
