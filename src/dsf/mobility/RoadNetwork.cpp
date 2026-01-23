@@ -336,23 +336,23 @@ namespace dsf::mobility {
 
   RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj) : Network{adj}, m_capacity{0} {}
 
-  Size RoadNetwork::nCoils() const {
+  std::size_t RoadNetwork::nCoils() const {
     return std::count_if(m_edges.cbegin(), m_edges.cend(), [](auto const& pair) {
       return pair.second->hasCoil();
     });
   }
 
-  Size RoadNetwork::nIntersections() const {
+  std::size_t RoadNetwork::nIntersections() const {
     return std::count_if(m_nodes.cbegin(), m_nodes.cend(), [](auto const& pair) {
       return pair.second->isIntersection();
     });
   }
-  Size RoadNetwork::nRoundabouts() const {
+  std::size_t RoadNetwork::nRoundabouts() const {
     return std::count_if(m_nodes.cbegin(), m_nodes.cend(), [](auto const& pair) {
       return pair.second->isRoundabout();
     });
   }
-  Size RoadNetwork::nTrafficLights() const {
+  std::size_t RoadNetwork::nTrafficLights() const {
     return std::count_if(m_nodes.cbegin(), m_nodes.cend(), [](auto const& pair) {
       return pair.second->isTrafficLight();
     });
@@ -813,6 +813,14 @@ namespace dsf::mobility {
       }
     });
     spdlog::debug("Done auto-assigning road priorities.");
+  }
+
+  void RoadNetwork::describe(std::ostream& os) const {
+    os << "RoadNetwork with " << nNodes() << " nodes and " << nEdges()
+       << " edges. Total capacity: " << m_capacity << " vehicles.\n"
+       << "There are\n- " << nIntersections() << " intersections,\n- " << nTrafficLights()
+       << " traffic lights,\n- " << nRoundabouts() << " roundabouts,\n- " << nCoils()
+       << " coil sensors.\n";
   }
 
   void RoadNetwork::adjustNodeCapacities() {

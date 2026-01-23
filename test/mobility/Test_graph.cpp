@@ -8,6 +8,7 @@
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
+#include <sstream>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
@@ -87,6 +88,15 @@ TEST_CASE("RoadNetwork") {
     CHECK(graph.edge(0, 2));
     CHECK(graph.edge(0, 3));
     CHECK(graph.edge(2, 3));
+    // Test describe method
+    std::ostringstream oss;
+    graph.describe(oss);
+    std::string description = oss.str();
+    CHECK(description.find("RoadNetwork with 4 nodes and 5 edges") != std::string::npos);
+    CHECK(description.find("intersections") != std::string::npos);
+    CHECK(description.find("traffic lights") != std::string::npos);
+    CHECK(description.find("roundabouts") != std::string::npos);
+    CHECK(description.find("coil sensors") != std::string::npos);
   }
 
   SUBCASE("automatically do things") {

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <cmath>
 #include <concepts>
@@ -21,6 +22,7 @@
 #include <random>
 #include <span>
 #include <sstream>
+#include <iostream>
 #include <thread>
 #include <unordered_map>
 #include <variant>
@@ -51,7 +53,8 @@ namespace dsf::mobility {
     std::unordered_map<Id, double> m_destinationNodes;
     tbb::concurrent_unordered_map<Id, std::size_t> m_originCounts;
     tbb::concurrent_unordered_map<Id, std::size_t> m_destinationCounts;
-    Size m_nAgents;
+    std::atomic<std::size_t> m_nAgents{0}, m_nAddedAgents{0}, m_nInsertedAgents{0},
+        m_nKilledAgents{0}, m_nArrivedAgents{0};
 
   protected:
     std::unordered_map<Id, std::unordered_map<Id, size_t>> m_turnCounts;
@@ -59,19 +62,19 @@ namespace dsf::mobility {
     tbb::concurrent_unordered_map<Id, std::unordered_map<Direction, double>>
         m_queuesAtTrafficLights;
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
-    std::time_t m_previousOptimizationTime;
+    std::time_t m_previousOptimizationTime{0};
 
   private:
     std::function<double(std::unique_ptr<Street> const&)> m_weightFunction;
-    std::optional<double> m_errorProbability;
-    std::optional<double> m_passageProbability;
-    std::optional<double> m_meanTravelDistance;
-    std::optional<std::time_t> m_meanTravelTime;
+    std::optional<double> m_errorProbability{std::nullopt};
+    std::optional<double> m_passageProbability{std::nullopt};
+    std::optional<double> m_meanTravelDistance{std::nullopt};
+    std::optional<std::time_t> m_meanTravelTime{std::nullopt};
     double m_weightTreshold;
-    std::optional<double> m_timeToleranceFactor;
+    std::optional<double> m_timeToleranceFactor{std::nullopt};
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
-    bool m_forcePriorities;
+    bool m_forcePriorities{false};
 
   private:
     /// @brief Kill an agent
@@ -394,6 +397,17 @@ namespace dsf::mobility {
     /// NOTE: the mean density is normalized in [0, 1] and reset is true for all observables which have such parameter
     void saveMacroscopicObservables(std::string filename = std::string(),
                                     char const separator = ';');
+
+    /// @brief Print a summary of the dynamics to an output stream
+    /// @param os The output stream to write to (default is std::cout)
+    /// @details The summary includes:
+    /// - The RoadNetwork description (nodes, edges, capacity, intersections, traffic lights, roundabouts, coil sensors)
+    /// - Number of inserted agents
+    /// - Number of added agents
+    /// - Number of arrived agents
+    /// - Number of killed agents
+    /// - Current number of agents in the simulation
+    void summary(std::ostream& os = std::cout) const;
   };
 
   template <typename delay_t>
@@ -403,16 +417,7 @@ namespace dsf::mobility {
                                       std::optional<unsigned int> seed,
                                       PathWeight const weightFunction,
                                       std::optional<double> weightTreshold)
-      : Dynamics<RoadNetwork>(graph, seed),
-        m_nAgents{0},
-        m_previousOptimizationTime{0},
-        m_errorProbability{std::nullopt},
-        m_passageProbability{std::nullopt},
-        m_meanTravelDistance{std::nullopt},
-        m_meanTravelTime{std::nullopt},
-        m_timeToleranceFactor{std::nullopt},
-        m_bCacheEnabled{useCache},
-        m_forcePriorities{false} {
+      : Dynamics<RoadNetwork>(graph, seed), m_bCacheEnabled{useCache} {
     this->setWeightFunction(weightFunction, weightTreshold);
     if (m_bCacheEnabled) {
       if (!std::filesystem::exists(CACHE_FOLDER)) {
@@ -738,6 +743,7 @@ namespace dsf::mobility {
                 timeDiff);
             // Kill the agent
             this->m_killAgent(pStreet->dequeue(queueIndex));
+            ++m_nKilledAgents;
             continue;
           }
         }
@@ -893,6 +899,7 @@ namespace dsf::mobility {
         }
         if (bArrived) {
           auto pAgent = this->m_killAgent(pStreet->dequeue(queueIndex));
+          ++m_nArrivedAgents;
           if (reinsert_agents) {
             // reset Agent's values
             pAgent->reset(this->time_step());
@@ -1292,6 +1299,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::addAgentsUniformly(Size nAgents,
                                                  std::optional<Id> optItineraryId) {
+    m_nAddedAgents += nAgents;
     if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
       auto const nStagnantAgents{m_agents.size()};
       spdlog::warn(
@@ -1356,6 +1364,7 @@ namespace dsf::mobility {
              std::is_same_v<TContainer, std::map<Id, double>>)
   void RoadDynamics<delay_t>::addRandomAgents(std::size_t nAgents,
                                               TContainer const& spawnWeights) {
+    m_nAddedAgents += nAgents;
     std::uniform_real_distribution<double> uniformDist{0., 1.};
     std::exponential_distribution<double> distDist{1. /
                                                    m_meanTravelDistance.value_or(1.)};
@@ -1402,6 +1411,7 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::addAgentsRandomly(Size nAgents,
                                                 const TContainer& src_weights,
                                                 const TContainer& dst_weights) {
+    m_nAddedAgents += nAgents;
     if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
       auto const nStagnantAgents{m_agents.size()};
       spdlog::warn(
@@ -1533,6 +1543,7 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::addAgent(std::unique_ptr<Agent> pAgent) {
     m_agents.push_back(std::move(pAgent));
     ++m_nAgents;
+    ++m_nInsertedAgents;
     spdlog::trace("Added {}", *m_agents.back());
     auto const& optNodeId{m_agents.back()->srcNodeId()};
     if (optNodeId.has_value()) {
@@ -2497,5 +2508,17 @@ namespace dsf::mobility {
     file << mean_travel_speed << separator << std_travel_speed << std::endl;
 
     file.close();
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::summary(std::ostream& os) const {
+    os << "RoadDynamics Summary:\n";
+    this->graph().describe(os);
+    os << "\nNumber of added agents: " << m_nAddedAgents << '\n'
+       << "Number of inserted agents: " << m_nInsertedAgents << '\n'
+       << "Number of arrived agents: " << m_nArrivedAgents << '\n'
+       << "Number of killed agents: " << m_nKilledAgents << '\n'
+       << "Current number of agents: " << this->nAgents() << '\n';
   }
 }  // namespace dsf::mobility
