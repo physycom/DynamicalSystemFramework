@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
@@ -92,6 +93,20 @@ TEST_CASE("FirstOrderDynamics") {
         defaultNetwork.addCoil(8);
         FirstOrderDynamics dynamics{defaultNetwork, false, 69};
         THEN("The street has a coil") { CHECK(dynamics.graph().edge(8)->hasCoil()); }
+      }
+      WHEN("We call summary") {
+        FirstOrderDynamics dynamics{defaultNetwork, false, 69};
+        std::ostringstream oss;
+        dynamics.summary(oss);
+        std::string summaryStr = oss.str();
+        THEN("The summary contains expected information") {
+          CHECK(summaryStr.find("RoadDynamics Summary") != std::string::npos);
+          CHECK(summaryStr.find("RoadNetwork with 120 nodes and 436 edges") != std::string::npos);
+          CHECK(summaryStr.find("Number of inserted agents") != std::string::npos);
+          CHECK(summaryStr.find("Number of added agents") != std::string::npos);
+          CHECK(summaryStr.find("Number of killed agents") != std::string::npos);
+          CHECK(summaryStr.find("Current number of agents: 0") != std::string::npos);
+        }
       }
     }
   }

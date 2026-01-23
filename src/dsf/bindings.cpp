@@ -654,7 +654,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("filename"),
            pybind11::arg("separator") = ';',
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveMacroscopicObservables")
-               .c_str());
+               .c_str())
+      .def("summary",
+           &dsf::mobility::FirstOrderDynamics::summary,
+           pybind11::arg("os") = std::cout,
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::summary").c_str());
 
   // Bind TrajectoryCollection class to mdt submodule
   pybind11::class_<dsf::mdt::TrajectoryCollection>(mdt, "TrajectoryCollection")

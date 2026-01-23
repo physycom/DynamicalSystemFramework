@@ -51,7 +51,8 @@ namespace dsf::mobility {
     std::unordered_map<Id, double> m_destinationNodes;
     tbb::concurrent_unordered_map<Id, std::size_t> m_originCounts;
     tbb::concurrent_unordered_map<Id, std::size_t> m_destinationCounts;
-    std::size_t m_nAgents{0};
+    std::size_t m_nAgents{0}, m_nAddedAgents{0}, m_nInsertedAgents{0}, m_nKilledAgents{0},
+        m_nArrivedAgents{0};
 
   protected:
     std::unordered_map<Id, std::unordered_map<Id, size_t>> m_turnCounts;
@@ -394,6 +395,17 @@ namespace dsf::mobility {
     /// NOTE: the mean density is normalized in [0, 1] and reset is true for all observables which have such parameter
     void saveMacroscopicObservables(std::string filename = std::string(),
                                     char const separator = ';');
+    
+    /// @brief Print a summary of the dynamics to an output stream
+    /// @param os The output stream to write to (default is std::cout)
+    /// @details The summary includes:
+    /// - The RoadNetwork description (nodes, edges, capacity, intersections, traffic lights, roundabouts, coil sensors)
+    /// - Number of inserted agents
+    /// - Number of added agents
+    /// - Number of arrived agents
+    /// - Number of killed agents
+    /// - Current number of agents in the simulation
+    void summary(std::ostream& os = std::cout) const;
   };
 
   template <typename delay_t>
@@ -2488,5 +2500,17 @@ namespace dsf::mobility {
     file << mean_travel_speed << separator << std_travel_speed << std::endl;
 
     file.close();
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::summary(std::ostream& os) const {
+    os << "RoadDynamics Summary:\n";
+    this->graph().describe(os);
+    os << "\nNumber of inserted agents: " << m_nInsertedAgents << '\n'
+       << "Number of added agents: " << m_nAddedAgents << '\n'
+       << "Number of arrived agents: " << m_nArrivedAgents << '\n'
+       << "Number of killed agents: " << m_nKilledAgents << '\n'
+       << "Current number of agents: " << this->nAgents() << '\n';
   }
 }  // namespace dsf::mobility
