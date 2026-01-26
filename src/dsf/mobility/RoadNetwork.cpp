@@ -949,10 +949,33 @@ namespace dsf::mobility {
                       ++nAffectedRoads;
                     }
                   });
-    spdlog::info("Set status {} to {} streets with name containing \"{}\"",
-                 status,
-                 nAffectedRoads.load(),
-                 streetName);
+    // spdlog::info("Set status {} to {} streets with name containing \"{}\"",
+    //              status,
+    //              nAffectedRoads.load(),
+    //              streetName);
+  }
+  void RoadNetwork::changeStreetCapacityById(Id const streetId, double const factor) {
+    auto const& pStreet{edge(streetId)};
+    auto const& currentCapacity{pStreet->capacity()};
+    pStreet->setCapacity(std::ceil(currentCapacity * factor));
+  }
+  void RoadNetwork::changeStreetCapacityByName(std::string const& streetName,
+                                                  double const factor) {
+    std::atomic<std::size_t> nAffectedRoads{0};
+    std::for_each(DSF_EXECUTION m_edges.cbegin(),
+                  m_edges.cend(),
+                  [this, &streetName, &factor, &nAffectedRoads](auto const& pair) {
+                    auto const& pStreet = pair.second;
+                    if (pStreet->name().find(streetName) != std::string::npos) {
+                      auto const& currentCapacity = pStreet->capacity();
+                      pStreet->setCapacity(std::ceil(currentCapacity * factor));
+                      ++nAffectedRoads;
+                    }
+                  });
+    // spdlog::info("Changed capacity by factor {} to {} streets with name containing \"{}\"",
+    //              factor,
+    //              nAffectedRoads.load(),
+    //              streetName);
   }
 
   void RoadNetwork::setStreetStationaryWeights(

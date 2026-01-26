@@ -208,6 +208,10 @@ namespace dsf::mobility {
     /// @param status The status to set
     void setStreetStatusByName(std::string const& name, RoadStatus const status);
 
+    void changeStreetCapacityById(Id const streetId, double const factor);
+
+    void changeStreetCapacityByName(std::string const& name, double const factor);
+
     /// @brief Set the streets' stationary weights
     /// @param streetWeights A map where the key is the street id and the value is the street stationary weight. If a street id is not present in the map, its stationary weight is set to 1.0.
     void setStreetStationaryWeights(std::unordered_map<Id, double> const& streetWeights);
