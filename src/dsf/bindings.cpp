@@ -34,6 +34,12 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .value("DOUBLE_TAIL", dsf::TrafficLightOptimization::DOUBLE_TAIL)
       .export_values();
 
+  // Bind RoadStatus enum
+  pybind11::enum_<dsf::mobility::RoadStatus>(mobility, "RoadStatus")
+      .value("OPEN", dsf::mobility::RoadStatus::OPEN)
+      .value("CLOSED", dsf::mobility::RoadStatus::CLOSED)
+      .export_values();
+
   // Bind spdlog log level enum
   pybind11::enum_<spdlog::level::level_enum>(m, "LogLevel")
       .value("TRACE", spdlog::level::trace)
@@ -243,6 +249,18 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("cycleTime"),
           pybind11::arg("counter"),
           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::makeTrafficLight").c_str())
+      .def(
+          "setStreetStatusById",
+          &dsf::mobility::RoadNetwork::setStreetStatusById,
+          pybind11::arg("streetId"),
+          pybind11::arg("status"),
+          dsf::g_docstrings.at("dsf::mobility::RoadNetwork::setStreetStatusById").c_str())
+      .def("setStreetStatusByName",
+           &dsf::mobility::RoadNetwork::setStreetStatusByName,
+           pybind11::arg("name"),
+           pybind11::arg("status"),
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::setStreetStatusByName")
+               .c_str())
       .def("addCoil",
            &dsf::mobility::RoadNetwork::addCoil,
            pybind11::arg("streetId"),

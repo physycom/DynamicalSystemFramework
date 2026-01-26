@@ -1311,3 +1311,240 @@ TEST_CASE("ShortestPath") {
     CHECK_EQ(path[0], 0);
   }
 }
+
+TEST_CASE("RoadStatus") {
+  SUBCASE("setStreetStatusById") {
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    Street s12(1, std::make_pair(1, 2), 100.0);
+    graph.addStreets(s01, s12);
+
+    // Initially all streets are OPEN
+    CHECK_EQ(graph.edge(0)->roadStatus(), RoadStatus::OPEN);
+    CHECK_EQ(graph.edge(1)->roadStatus(), RoadStatus::OPEN);
+
+    // Close street by id
+    graph.setStreetStatusById(0, RoadStatus::CLOSED);
+    CHECK_EQ(graph.edge(0)->roadStatus(), RoadStatus::CLOSED);
+    CHECK_EQ(graph.edge(1)->roadStatus(), RoadStatus::OPEN);
+
+    // Re-open street
+    graph.setStreetStatusById(0, RoadStatus::OPEN);
+    CHECK_EQ(graph.edge(0)->roadStatus(), RoadStatus::OPEN);
+  }
+
+  SUBCASE("setStreetStatusByName") {
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+    graph.addNode(3, dsf::geometry::Point(3.0, 0.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0, 13.8888, 1, "Main Street");
+    Street s12(1, std::make_pair(1, 2), 100.0, 13.8888, 1, "Main Street");
+    Street s23(2, std::make_pair(2, 3), 100.0, 13.8888, 1, "Side Road");
+    graph.addStreets(s01, s12, s23);
+
+    // Initially all streets are OPEN
+    CHECK_EQ(graph.edge(0)->roadStatus(), RoadStatus::OPEN);
+    CHECK_EQ(graph.edge(1)->roadStatus(), RoadStatus::OPEN);
+    CHECK_EQ(graph.edge(2)->roadStatus(), RoadStatus::OPEN);
+
+    // Close all streets with name "Main Street"
+    graph.setStreetStatusByName("Main Street", RoadStatus::CLOSED);
+    CHECK_EQ(graph.edge(0)->roadStatus(), RoadStatus::CLOSED);
+    CHECK_EQ(graph.edge(1)->roadStatus(), RoadStatus::CLOSED);
+    CHECK_EQ(graph.edge(2)->roadStatus(), RoadStatus::OPEN);
+
+    // Re-open Main Street
+    graph.setStreetStatusByName("Main Street", RoadStatus::OPEN);
+    CHECK_EQ(graph.edge(0)->roadStatus(), RoadStatus::OPEN);
+    CHECK_EQ(graph.edge(1)->roadStatus(), RoadStatus::OPEN);
+  }
+
+  SUBCASE("setStreetStatusByName - partial match") {
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0, 13.8888, 1, "Via Roma Nord");
+    Street s12(1, std::make_pair(1, 2), 100.0, 13.8888, 1, "Via Roma Sud");
+    graph.addStreets(s01, s12);
+
+    // Close all streets containing "Roma" in the name
+    graph.setStreetStatusByName("Roma", RoadStatus::CLOSED);
+    CHECK_EQ(graph.edge(0)->roadStatus(), RoadStatus::CLOSED);
+    CHECK_EQ(graph.edge(1)->roadStatus(), RoadStatus::CLOSED);
+  }
+}
+
+TEST_CASE("ShortestPath with closed roads") {
+  SUBCASE("Closed road forces alternative path") {
+    // Create a network: 0 -> 1 -> 2
+    //                   |         ^
+    //                   +-> 3 ----+
+    // Path 0->1->2 has length 200, path 0->3->2 has length 300
+    // If we close 0->1, shortest path should go through 3
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+    graph.addNode(3, dsf::geometry::Point(1.0, 1.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    Street s12(1, std::make_pair(1, 2), 100.0);
+    Street s03(2, std::make_pair(0, 3), 150.0);
+    Street s32(3, std::make_pair(3, 2), 150.0);
+    graph.addStreets(s01, s12, s03, s32);
+
+    // Initially, shortest path is 0 -> 1 -> 2
+    auto pathMap =
+        graph.shortestPath(0, 2, [](auto const& pEdge) { return pEdge->length(); });
+    REQUIRE(pathMap.contains(0));
+    CHECK_EQ(pathMap.at(0)[0], 1);
+
+    // Close street 0->1
+    graph.setStreetStatusById(0, RoadStatus::CLOSED);
+
+    // Now shortest path should be 0 -> 3 -> 2
+    pathMap = graph.shortestPath(0, 2, [](auto const& pEdge) { return pEdge->length(); });
+    REQUIRE(pathMap.contains(0));
+    CHECK_EQ(pathMap.at(0).size(), 1);
+    CHECK_EQ(pathMap.at(0)[0], 3);
+
+    REQUIRE(pathMap.contains(3));
+    CHECK_EQ(pathMap.at(3).size(), 1);
+    CHECK_EQ(pathMap.at(3)[0], 2);
+  }
+
+  SUBCASE("No path when all routes closed") {
+    // Create a linear network: 0 -> 1 -> 2
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    Street s12(1, std::make_pair(1, 2), 100.0);
+    graph.addStreets(s01, s12);
+
+    // Close the middle street
+    graph.setStreetStatusById(1, RoadStatus::CLOSED);
+
+    // No path should exist from 0 to 2
+    auto pathMap =
+        graph.shortestPath(0, 2, [](auto const& pEdge) { return pEdge->length(); });
+    CHECK(pathMap.empty());
+  }
+
+  SUBCASE("Reopening road restores path") {
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    Street s12(1, std::make_pair(1, 2), 100.0);
+    graph.addStreets(s01, s12);
+
+    // Close and then reopen
+    graph.setStreetStatusById(0, RoadStatus::CLOSED);
+    auto pathMap =
+        graph.shortestPath(0, 2, [](auto const& pEdge) { return pEdge->length(); });
+    CHECK(pathMap.empty());
+
+    graph.setStreetStatusById(0, RoadStatus::OPEN);
+    pathMap = graph.shortestPath(0, 2, [](auto const& pEdge) { return pEdge->length(); });
+    CHECK_FALSE(pathMap.empty());
+    REQUIRE(pathMap.contains(0));
+    CHECK_EQ(pathMap.at(0)[0], 1);
+  }
+}
+
+TEST_CASE("allPathsTo with closed roads") {
+  SUBCASE("Closed road excluded from paths") {
+    // Create a network: 0 -> 1 -> 2
+    //                   |         ^
+    //                   +-> 3 ----+
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+    graph.addNode(3, dsf::geometry::Point(1.0, 1.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    Street s12(1, std::make_pair(1, 2), 100.0);
+    Street s03(2, std::make_pair(0, 3), 150.0);
+    Street s32(3, std::make_pair(3, 2), 150.0);
+    graph.addStreets(s01, s12, s03, s32);
+
+    // Close street 0->1
+    graph.setStreetStatusById(0, RoadStatus::CLOSED);
+
+    // allPathsTo should not include node 1 as next hop from 0
+    auto pathMap = graph.allPathsTo(2, [](auto const& pEdge) { return pEdge->length(); });
+
+    REQUIRE(pathMap.contains(0));
+    // Node 0 should only have node 3 as next hop (not 1, since 0->1 is closed)
+    CHECK_EQ(pathMap.at(0).size(), 1);
+    CHECK_EQ(pathMap.at(0)[0], 3);
+
+    // Node 1 should still have a path to 2 via 1->2 (which is still open)
+    REQUIRE(pathMap.contains(1));
+    CHECK_EQ(pathMap.at(1).size(), 1);
+    CHECK_EQ(pathMap.at(1)[0], 2);
+  }
+
+  SUBCASE("All paths blocked to target") {
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0);
+    Street s12(1, std::make_pair(1, 2), 100.0);
+    graph.addStreets(s01, s12);
+
+    // Close the only path to node 2
+    graph.setStreetStatusById(1, RoadStatus::CLOSED);
+
+    auto pathMap = graph.allPathsTo(2, [](auto const& pEdge) { return pEdge->length(); });
+
+    // Node 0 should not have a path to 2
+    CHECK_FALSE(pathMap.contains(0));
+    // Node 1 should not have a path to 2 either
+    CHECK_FALSE(pathMap.contains(1));
+  }
+
+  SUBCASE("Closing road by name affects allPathsTo") {
+    RoadNetwork graph{};
+    graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+    graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+    graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+    graph.addNode(3, dsf::geometry::Point(1.0, 1.0));
+
+    Street s01(0, std::make_pair(0, 1), 100.0, 13.8888, 1, "Main Road");
+    Street s12(1, std::make_pair(1, 2), 100.0, 13.8888, 1, "Main Road");
+    Street s03(2, std::make_pair(0, 3), 150.0, 13.8888, 1, "Side Road");
+    Street s32(3, std::make_pair(3, 2), 150.0, 13.8888, 1, "Side Road");
+    graph.addStreets(s01, s12, s03, s32);
+
+    // Close all "Main Road" streets
+    graph.setStreetStatusByName("Main Road", RoadStatus::CLOSED);
+
+    auto pathMap = graph.allPathsTo(2, [](auto const& pEdge) { return pEdge->length(); });
+
+    // From node 0, only path should be via node 3
+    REQUIRE(pathMap.contains(0));
+    CHECK_EQ(pathMap.at(0).size(), 1);
+    CHECK_EQ(pathMap.at(0)[0], 3);
+
+    // Node 1 should have no path to 2 (since 1->2 is closed)
+    CHECK_FALSE(pathMap.contains(1));
+  }
+}

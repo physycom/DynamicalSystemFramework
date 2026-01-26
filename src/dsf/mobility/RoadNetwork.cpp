@@ -934,6 +934,27 @@ namespace dsf::mobility {
     addEdge<Street>(std::move(street));
   }
 
+  void RoadNetwork::setStreetStatusById(Id const streetId, RoadStatus const status) {
+    edge(streetId)->setStatus(status);
+  }
+  void RoadNetwork::setStreetStatusByName(std::string const& streetName,
+                                          RoadStatus const status) {
+    std::atomic<std::size_t> nAffectedRoads{0};
+    std::for_each(DSF_EXECUTION m_edges.cbegin(),
+                  m_edges.cend(),
+                  [this, &streetName, &status, &nAffectedRoads](auto const& pair) {
+                    auto const& pStreet = pair.second;
+                    if (pStreet->name().find(streetName) != std::string::npos) {
+                      pStreet->setStatus(status);
+                      ++nAffectedRoads;
+                    }
+                  });
+    spdlog::info("Set status {} to {} streets with name containing \"{}\"",
+                 status,
+                 nAffectedRoads.load(),
+                 streetName);
+  }
+
   void RoadNetwork::setStreetStationaryWeights(
       std::unordered_map<Id, double> const& weights) {
     std::for_each(DSF_EXECUTION m_edges.cbegin(),
