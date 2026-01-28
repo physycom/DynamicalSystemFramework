@@ -204,12 +204,16 @@ namespace dsf::mobility {
     /// @param status The status to set
     void setStreetStatusById(Id const streetId, RoadStatus const status);
     /// @brief Set the street's status of all streets with the given name
-    /// @param name The name of the street
+    /// @param name The name to match
     /// @param status The status to set
     void setStreetStatusByName(std::string const& name, RoadStatus const status);
-
+    /// @brief Change the street's capacity by its id
+    /// @param streetId The id of the street
+    /// @param factor The factor to multiply the capacity by
     void changeStreetCapacityById(Id const streetId, double const factor);
-
+    /// @brief Change the street's capacity of all streets with the given name
+    /// @param name The name to match
+    /// @param factor The factor to multiply the capacity by
     void changeStreetCapacityByName(std::string const& name, double const factor);
 
     /// @brief Set the streets' stationary weights
