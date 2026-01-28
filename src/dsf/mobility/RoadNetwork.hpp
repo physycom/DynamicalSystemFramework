@@ -198,6 +198,24 @@ namespace dsf::mobility {
       requires is_street_v<std::remove_reference_t<T1>> &&
                (is_street_v<std::remove_reference_t<Tn>> && ...)
     void addStreets(T1&& street, Tn&&... streets);
+
+    /// @brief Set the street's status by its id
+    /// @param streetId The id of the street
+    /// @param status The status to set
+    void setStreetStatusById(Id const streetId, RoadStatus const status);
+    /// @brief Set the street's status of all streets with the given name
+    /// @param name The name to match
+    /// @param status The status to set
+    void setStreetStatusByName(std::string const& name, RoadStatus const status);
+    /// @brief Change the street's capacity by its id
+    /// @param streetId The id of the street
+    /// @param factor The factor to multiply the capacity by
+    void changeStreetCapacityById(Id const streetId, double const factor);
+    /// @brief Change the street's capacity of all streets with the given name
+    /// @param name The name to match
+    /// @param factor The factor to multiply the capacity by
+    void changeStreetCapacityByName(std::string const& name, double const factor);
+
     /// @brief Set the streets' stationary weights
     /// @param streetWeights A map where the key is the street id and the value is the street stationary weight. If a street id is not present in the map, its stationary weight is set to 1.0.
     void setStreetStationaryWeights(std::unordered_map<Id, double> const& streetWeights);
@@ -366,6 +384,10 @@ namespace dsf::mobility {
       // Explore all incoming edges (nodes that can reach currentNode)
       auto const& inEdges = node(currentNode)->ingoingEdges();
       for (auto const& inEdgeId : inEdges) {
+        // Skip closed roads
+        if (edge(inEdgeId)->roadStatus() == RoadStatus::CLOSED) {
+          continue;
+        }
         Id neighborId = edge(inEdgeId)->source();
 
         // Calculate the weight of the edge from neighbor to currentNode using the dynamics function
@@ -471,6 +493,10 @@ namespace dsf::mobility {
       // Explore all incoming edges (nodes that can reach currentNode)
       auto const& inEdges = node(currentNode)->ingoingEdges();
       for (auto const& inEdgeId : inEdges) {
+        // Skip closed roads
+        if (edge(inEdgeId)->roadStatus() == RoadStatus::CLOSED) {
+          continue;
+        }
         Id neighborId = edge(inEdgeId)->source();
 
         // Calculate the weight of the edge from neighbor to currentNode using the dynamics function

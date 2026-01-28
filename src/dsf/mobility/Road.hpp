@@ -2,6 +2,7 @@
 
 #include "../base/Edge.hpp"
 
+#include <format>
 #include <memory>
 #include <optional>
 #include <set>
@@ -14,6 +15,10 @@ namespace dsf::mobility {
     SECONDARY = 2,
     TERTIARY = 3,
     RESIDENTIAL = 4,
+  };
+  enum class RoadStatus : std::uint8_t {
+    OPEN = 0,
+    CLOSED = 1,
   };
 
   /// @brief The Road class represents a road in the network.
@@ -29,6 +34,7 @@ namespace dsf::mobility {
     bool m_hasPriority = false;
     std::set<Id> m_forbiddenTurns;  // Stores the forbidden turns (road ids)
     std::optional<RoadType> m_roadType{std::nullopt};
+    RoadStatus m_roadStatus = RoadStatus::OPEN;
 
   public:
     /// @brief Construct a new Road object
@@ -80,7 +86,10 @@ namespace dsf::mobility {
     void setForbiddenTurns(std::set<Id> const& forbiddenTurns);
     /// @brief Set the road type
     /// @param roadType The road type
-    inline void setRoadType(RoadType roadType) { m_roadType = roadType; }
+    inline void setRoadType(RoadType const roadType) { m_roadType = roadType; }
+    /// @brief Set the road status
+    /// @param status The road status
+    inline void setStatus(RoadStatus const status) { m_roadStatus = status; }
 
     /// @brief Get the length, in meters
     /// @return double The length, in meters
@@ -111,6 +120,9 @@ namespace dsf::mobility {
     /// @brief Get the road type
     /// @return std::optional<RoadType> The road type
     inline auto roadType() const noexcept { return m_roadType; }
+    /// @brief Get the road status
+    /// @return RoadStatus The road status
+    inline auto roadStatus() const noexcept { return m_roadStatus; }
     /// @brief Get the road's turn direction given the previous road angle
     /// @param previousStreetAngle The angle of the previous road
     /// @return Direction The turn direction
@@ -128,3 +140,24 @@ namespace dsf::mobility {
     virtual double density(bool normalized = false) const = 0;
   };
 }  // namespace dsf::mobility
+
+template <>
+struct std::formatter<dsf::mobility::RoadStatus> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(dsf::mobility::RoadStatus const& status, FormatContext&& ctx) const {
+    std::string_view name;
+    switch (status) {
+      case dsf::mobility::RoadStatus::OPEN:
+        name = "OPEN";
+        break;
+      case dsf::mobility::RoadStatus::CLOSED:
+        name = "CLOSED";
+        break;
+      default:
+        name = "UNKNOWN";
+        break;
+    }
+    return std::format_to(ctx.out(), "{}", name);
+  }
+};
