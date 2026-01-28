@@ -2,6 +2,7 @@
 
 #include "../base/Edge.hpp"
 
+#include <format>
 #include <memory>
 #include <optional>
 #include <set>
@@ -139,3 +140,24 @@ namespace dsf::mobility {
     virtual double density(bool normalized = false) const = 0;
   };
 }  // namespace dsf::mobility
+
+template <>
+struct std::formatter<dsf::mobility::RoadStatus> {
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+  template <typename FormatContext>
+  auto format(dsf::mobility::RoadStatus const& status, FormatContext&& ctx) const {
+    std::string_view name;
+    switch (status) {
+      case dsf::mobility::RoadStatus::OPEN:
+        name = "OPEN";
+        break;
+      case dsf::mobility::RoadStatus::CLOSED:
+        name = "CLOSED";
+        break;
+      default:
+        name = "UNKNOWN";
+        break;
+    }
+    return std::format_to(ctx.out(), "{}", name);
+  }
+};

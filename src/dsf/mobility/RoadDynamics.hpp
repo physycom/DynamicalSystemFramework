@@ -499,10 +499,10 @@ namespace dsf::mobility {
     pItinerary->setPath(path);
     auto const newSize{pItinerary->path().size()};
     if (oldSize > 0 && newSize != oldSize) {
-      spdlog::warn("Path for itinerary {} changed size from {} to {}",
-                   pItinerary->id(),
-                   oldSize,
-                   newSize);
+      spdlog::debug("Path for itinerary {} changed size from {} to {}",
+                    pItinerary->id(),
+                    oldSize,
+                    newSize);
     }
     if (m_bCacheEnabled) {
       pItinerary->save(std::format("{}{}.ity", CACHE_FOLDER, pItinerary->id()));
@@ -731,7 +731,7 @@ namespace dsf::mobility {
           auto const timeTolerance{m_timeToleranceFactor.value() *
                                    std::ceil(pStreet->length() / pStreet->maxSpeed())};
           if (timeDiff > timeTolerance) {
-            spdlog::warn(
+            spdlog::debug(
                 "Time-step {} - {} currently on {} ({} turn - Traffic Light? {}), "
                 "has been still for more than {} seconds ({} seconds). Killing it.",
                 this->time_step(),
@@ -1302,7 +1302,7 @@ namespace dsf::mobility {
     m_nAddedAgents += nAgents;
     if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
       auto const nStagnantAgents{m_agents.size()};
-      spdlog::warn(
+      spdlog::debug(
           "Removing {} stagnant agents that were not inserted since the previous call to "
           "addAgentsUniformly().",
           nStagnantAgents);
@@ -1414,7 +1414,7 @@ namespace dsf::mobility {
     m_nAddedAgents += nAgents;
     if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
       auto const nStagnantAgents{m_agents.size()};
-      spdlog::warn(
+      spdlog::debug(
           "Removing {} stagnant agents that were not inserted since the previous call to "
           "addAgentsRandomly().",
           nStagnantAgents);
@@ -1520,9 +1520,9 @@ namespace dsf::mobility {
       // Check if destination is reachable from source
       auto const& itinerary = itineraryIt->second;
       if (!itinerary->path().contains(*srcId)) {
-        spdlog::warn("Destination {} not reachable from source {}. Skipping agent.",
-                     *dstId,
-                     *srcId);
+        spdlog::debug("Destination {} not reachable from source {}. Skipping agent.",
+                      *dstId,
+                      *srcId);
         --nAgents;
         continue;
       }
