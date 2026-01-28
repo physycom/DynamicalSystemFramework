@@ -935,7 +935,11 @@ namespace dsf::mobility {
   }
 
   void RoadNetwork::setStreetStatusById(Id const streetId, RoadStatus const status) {
-    edge(streetId)->setStatus(status);
+    try {
+      edge(streetId)->setStatus(status);
+    } catch (const std::out_of_range&) {
+      throw std::out_of_range(std::format("Street with id {} not found", streetId));
+    }
   }
   void RoadNetwork::setStreetStatusByName(std::string const& streetName,
                                           RoadStatus const status) {
@@ -955,9 +959,13 @@ namespace dsf::mobility {
                  streetName);
   }
   void RoadNetwork::changeStreetCapacityById(Id const streetId, double const factor) {
-    auto const& pStreet{edge(streetId)};
-    auto const& currentCapacity{pStreet->capacity()};
-    pStreet->setCapacity(std::ceil(currentCapacity * factor));
+    try {
+      auto const& pStreet{edge(streetId)};
+      auto const& currentCapacity{pStreet->capacity()};
+      pStreet->setCapacity(std::ceil(currentCapacity * factor));
+    } catch (const std::out_of_range&) {
+      throw std::out_of_range(std::format("Street with id {} not found", streetId));
+    }
   }
   void RoadNetwork::changeStreetCapacityByName(std::string const& streetName,
                                                double const factor) {
