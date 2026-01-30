@@ -261,6 +261,20 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("status"),
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::setStreetStatusByName")
                .c_str())
+      .def("changeStreetNLanesById",
+           &dsf::mobility::RoadNetwork::changeStreetNLanesById,
+           pybind11::arg("streetId"),
+           pybind11::arg("nLanes"),
+           pybind11::arg("speedFactor") = std::nullopt,
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::changeStreetNLanesById")
+               .c_str())
+      .def("changeStreetNLanesByName",
+           &dsf::mobility::RoadNetwork::changeStreetNLanesByName,
+           pybind11::arg("name"),
+           pybind11::arg("nLanes"),
+           pybind11::arg("speedFactor") = std::nullopt,
+           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::changeStreetNLanesByName")
+               .c_str())
       .def("changeStreetCapacityById",
            &dsf::mobility::RoadNetwork::changeStreetCapacityById,
            pybind11::arg("streetId"),

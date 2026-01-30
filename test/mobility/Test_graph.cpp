@@ -1548,3 +1548,139 @@ TEST_CASE("allPathsTo with closed roads") {
     CHECK_FALSE(pathMap.contains(1));
   }
 }
+
+TEST_CASE("Change Street Lanes") {
+  Road::setMeanVehicleLength(5.);
+
+  SUBCASE("changeStreetNLanesById") {
+    GIVEN("A network with multiple streets") {
+      RoadNetwork graph{};
+      graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+      graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+      graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+
+      Street s01(10, std::make_pair(0, 1), 100.0, 20.0, 2);
+      Street s12(11, std::make_pair(1, 2), 150.0, 25.0, 3);
+      graph.addStreets(s01, s12);
+
+      auto const* pStreet01 = graph.street(0, 1);
+      REQUIRE(pStreet01 != nullptr);
+      auto const initialCapacity = (*pStreet01)->capacity();
+      auto const initialMaxSpeed = (*pStreet01)->maxSpeed();
+
+      WHEN("Lanes are increased for street by id") {
+        graph.changeStreetNLanesById(10, 4);
+
+        THEN("The street's properties are updated correctly") {
+          CHECK_EQ((*pStreet01)->nLanes(), 4);
+          CHECK_EQ((*pStreet01)->capacity(), initialCapacity * 2);
+          CHECK_EQ((*pStreet01)->maxSpeed(), initialMaxSpeed);
+          CHECK_EQ((*pStreet01)->exitQueues().size(), 4);
+        }
+      }
+
+      WHEN("Lanes are changed with speed factor") {
+        graph.changeStreetNLanesById(10, 1, 0.6);
+
+        THEN("Both lanes and speed are updated") {
+          CHECK_EQ((*pStreet01)->nLanes(), 1);
+          CHECK_EQ((*pStreet01)->maxSpeed(), doctest::Approx(initialMaxSpeed * 0.6));
+        }
+      }
+
+      WHEN("Invalid street id is provided") {
+        THEN("Exception is thrown") {
+          CHECK_THROWS_AS(graph.changeStreetNLanesById(999, 2), std::out_of_range);
+        }
+      }
+
+      WHEN("Invalid number of lanes is provided") {
+        THEN("Exception is thrown") {
+          CHECK_THROWS_AS(graph.changeStreetNLanesById(10, 0), std::invalid_argument);
+          CHECK_THROWS_AS(graph.changeStreetNLanesById(10, -1), std::invalid_argument);
+        }
+      }
+    }
+  }
+
+  SUBCASE("changeStreetNLanesByName") {
+    GIVEN("A network with named streets") {
+      RoadNetwork graph{};
+      graph.addNode(0, dsf::geometry::Point(0.0, 0.0));
+      graph.addNode(1, dsf::geometry::Point(1.0, 0.0));
+      graph.addNode(2, dsf::geometry::Point(2.0, 0.0));
+      graph.addNode(3, dsf::geometry::Point(1.0, 1.0));
+
+      Street s01(10, std::make_pair(0, 1), 100.0, 20.0, 2, "Main Street");
+      Street s12(11, std::make_pair(1, 2), 150.0, 25.0, 3, "Main Street");
+      Street s03(12, std::make_pair(0, 3), 120.0, 15.0, 1, "Side Road");
+      Street s32(13, std::make_pair(3, 2), 130.0, 18.0, 2, "Side Road");
+      graph.addStreets(s01, s12, s03, s32);
+
+      auto const* pMainStreet1 = graph.street(0, 1);
+      auto const* pMainStreet2 = graph.street(1, 2);
+      auto const* pSideRoad1 = graph.street(0, 3);
+      auto const* pSideRoad2 = graph.street(3, 2);
+
+      REQUIRE(pMainStreet1 != nullptr);
+      REQUIRE(pMainStreet2 != nullptr);
+      REQUIRE(pSideRoad1 != nullptr);
+      REQUIRE(pSideRoad2 != nullptr);
+
+      auto const initialMainSpeed1 = (*pMainStreet1)->maxSpeed();
+      auto const initialMainSpeed2 = (*pMainStreet2)->maxSpeed();
+      auto const initialSideSpeed1 = (*pSideRoad1)->maxSpeed();
+      auto const initialSideSpeed2 = (*pSideRoad2)->maxSpeed();
+
+      WHEN("All streets with 'Main' in name are changed") {
+        graph.changeStreetNLanesByName("Main", 1);
+
+        THEN("Only Main Streets are affected") {
+          CHECK_EQ((*pMainStreet1)->nLanes(), 1);
+          CHECK_EQ((*pMainStreet2)->nLanes(), 1);
+          CHECK_EQ((*pSideRoad1)->nLanes(), 1);  // unchanged
+          CHECK_EQ((*pSideRoad2)->nLanes(), 2);  // unchanged
+          CHECK_EQ((*pMainStreet1)->maxSpeed(), initialMainSpeed1);
+          CHECK_EQ((*pMainStreet2)->maxSpeed(), initialMainSpeed2);
+        }
+      }
+
+      WHEN("Streets are changed by name with speed factor") {
+        graph.changeStreetNLanesByName("Side", 3, 0.8);
+
+        THEN("Only Side Roads are affected with both changes") {
+          CHECK_EQ((*pSideRoad1)->nLanes(), 3);
+          CHECK_EQ((*pSideRoad2)->nLanes(), 3);
+          CHECK_EQ((*pMainStreet1)->nLanes(), 2);  // unchanged
+          CHECK_EQ((*pMainStreet2)->nLanes(), 3);  // unchanged
+          CHECK_EQ((*pSideRoad1)->maxSpeed(), doctest::Approx(initialSideSpeed1 * 0.8));
+          CHECK_EQ((*pSideRoad2)->maxSpeed(), doctest::Approx(initialSideSpeed2 * 0.8));
+          CHECK_EQ((*pMainStreet1)->maxSpeed(), initialMainSpeed1);  // unchanged
+          CHECK_EQ((*pMainStreet2)->maxSpeed(), initialMainSpeed2);  // unchanged
+        }
+      }
+
+      WHEN("No streets match the name pattern") {
+        graph.changeStreetNLanesByName("NonExistent", 5);
+
+        THEN("No streets are changed") {
+          CHECK_EQ((*pMainStreet1)->nLanes(), 2);
+          CHECK_EQ((*pMainStreet2)->nLanes(), 3);
+          CHECK_EQ((*pSideRoad1)->nLanes(), 1);
+          CHECK_EQ((*pSideRoad2)->nLanes(), 2);
+        }
+      }
+
+      WHEN("Partial name match is used") {
+        graph.changeStreetNLanesByName("Street", 4);
+
+        THEN("All streets with 'Street' in name are changed") {
+          CHECK_EQ((*pMainStreet1)->nLanes(), 4);
+          CHECK_EQ((*pMainStreet2)->nLanes(), 4);
+          CHECK_EQ((*pSideRoad1)->nLanes(), 1);  // unchanged
+          CHECK_EQ((*pSideRoad2)->nLanes(), 2);  // unchanged
+        }
+      }
+    }
+  }
+}

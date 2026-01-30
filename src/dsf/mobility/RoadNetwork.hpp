@@ -207,6 +207,20 @@ namespace dsf::mobility {
     /// @param name The name to match
     /// @param status The status to set
     void setStreetStatusByName(std::string const& name, RoadStatus const status);
+    /// @brief Change the street's number of lanes by its id
+    /// @param streetId The id of the street
+    /// @param nLanes The new number of lanes
+    /// @param speedFactor Optional, The factor to multiply the max speed of the street
+    void changeStreetNLanesById(Id const streetId,
+                                int const nLanes,
+                                std::optional<double> const speedFactor = std::nullopt);
+    /// @brief Change the street's number of lanes of all streets with the given name
+    /// @param name The name to match
+    /// @param nLanes The new number of lanes
+    /// @param speedFactor Optional, The factor to multiply the max speed of the street
+    void changeStreetNLanesByName(std::string const& name,
+                                  int const nLanes,
+                                  std::optional<double> const speedFactor = std::nullopt);
     /// @brief Change the street's capacity by its id
     /// @param streetId The id of the street
     /// @param factor The factor to multiply the capacity by
