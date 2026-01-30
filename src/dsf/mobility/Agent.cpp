@@ -3,12 +3,13 @@
 #include <utility>
 
 namespace dsf::mobility {
-  Agent::Agent(std::time_t const& spawnTime,
+  Agent::Agent(Id const id,
+               std::time_t const& spawnTime,
                std::shared_ptr<Itinerary> itinerary,
                std::optional<Id> srcNodeId)
-      : m_spawnTime{spawnTime},
+      : m_id{id},
+        m_spawnTime{spawnTime},
         m_freeTime{0},
-        m_id{0},
         m_trip{itinerary != nullptr ? std::vector<std::shared_ptr<Itinerary>>{itinerary}
                                     : std::vector<std::shared_ptr<Itinerary>>{}},
         m_srcNodeId{srcNodeId},
@@ -16,12 +17,13 @@ namespace dsf::mobility {
         m_itineraryIdx{0},
         m_speed{0.},
         m_distance{0.} {}
-  Agent::Agent(std::time_t const& spawnTime,
+  Agent::Agent(Id const id,
+               std::time_t const& spawnTime,
                std::vector<std::shared_ptr<Itinerary>> const& trip,
                std::optional<Id> srcNodeId)
-      : m_spawnTime{spawnTime},
+      : m_id{id},
+        m_spawnTime{spawnTime},
         m_freeTime{spawnTime},
-        m_id{0},
         m_trip{trip},
         m_srcNodeId{srcNodeId},
         m_nextStreetId{std::nullopt},

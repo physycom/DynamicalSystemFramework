@@ -26,7 +26,7 @@ static void BM_Intersection_AddAgentWithAngle(benchmark::State& state) {
     intersection.setCapacity(100);
     auto agent = std::make_unique<dsf::mobility::Agent>(
         spawnTime++, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
-    intersection.addAgent(0.0, std::move(agent));
+    intersection.addAgent(0, 0.0, std::move(agent));
   }
 }
 
@@ -35,7 +35,7 @@ static void BM_Intersection_AddAgentWithoutAngle(benchmark::State& state) {
   for (auto _ : state) {
     dsf::mobility::Intersection intersection(0);
     intersection.setCapacity(100);
-    auto agent = std::make_unique<dsf::mobility::Agent>(
+    auto agent = std::make_unique<dsf::mobility::Agent>(0,
         spawnTime++, std::make_shared<dsf::mobility::Itinerary>(1, 1), 0);
     intersection.addAgent(std::move(agent));
   }
@@ -47,7 +47,7 @@ static void BM_Intersection_nAgents(benchmark::State& state) {
   std::time_t spawnTime = 0;
   auto pItinerary = std::make_shared<dsf::mobility::Itinerary>(1, 1);
   for (int i = 0; i < 100; ++i) {
-    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, pItinerary, 0);
+    auto agent = std::make_unique<dsf::mobility::Agent>(0, spawnTime++, pItinerary, 0);
     intersection.addAgent(std::move(agent));
   }
   for (auto _ : state) {
@@ -62,7 +62,7 @@ static void BM_Intersection_Density(benchmark::State& state) {
   std::time_t spawnTime = 0;
   auto pItinerary = std::make_shared<dsf::mobility::Itinerary>(1, 1);
   for (int i = 0; i < 100; ++i) {
-    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, pItinerary, 0);
+    auto agent = std::make_unique<dsf::mobility::Agent>(0, spawnTime++, pItinerary, 0);
     intersection.addAgent(std::move(agent));
   }
   for (auto _ : state) {
@@ -77,7 +77,7 @@ static void BM_Intersection_IsFull(benchmark::State& state) {
   std::time_t spawnTime = 0;
   auto pItinerary = std::make_shared<dsf::mobility::Itinerary>(1, 1);
   for (int i = 0; i < 100; ++i) {
-    auto agent = std::make_unique<dsf::mobility::Agent>(spawnTime++, pItinerary, 0);
+    auto agent = std::make_unique<dsf::mobility::Agent>(0, spawnTime++, pItinerary, 0);
     intersection.addAgent(std::move(agent));
   }
   for (auto _ : state) {

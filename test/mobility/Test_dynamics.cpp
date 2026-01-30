@@ -1020,9 +1020,9 @@ TEST_CASE("FirstOrderDynamics") {
       dynamics.updatePaths();
       WHEN("We add agents and evolve the dynamics") {
         // add an agent in C, D, A
-        dynamics.addAgent(dynamics.itineraries().at(2), 4);  // Second
-        dynamics.addAgent(dynamics.itineraries().at(2), 3);  // Third
-        dynamics.addAgent(dynamics.itineraries().at(2), 1);  // First
+        dynamics.addAgent(0, dynamics.itineraries().at(2), 4);  // Second
+        dynamics.addAgent(1, dynamics.itineraries().at(2), 3);  // Third
+        dynamics.addAgent(2, dynamics.itineraries().at(2), 1);  // First
         dynamics.evolve(false);
         dynamics.evolve(false);
         dynamics.evolve(false);
