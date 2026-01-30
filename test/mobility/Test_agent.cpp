@@ -16,7 +16,7 @@ TEST_CASE("Agent") {
     GIVEN("An agent and its itinerary") {
       auto itinerary = std::make_shared<Itinerary>(0, 5);
       WHEN("The Agent is constructed") {
-        Agent agent{0, itinerary};
+        Agent agent{0, 0, itinerary};
         THEN("The agent and itinerary ids are set correctly") {
           CHECK_EQ(agent.itinerary()->id(), itinerary->id());
           CHECK_FALSE(agent.streetId().has_value());
@@ -31,7 +31,7 @@ TEST_CASE("Agent") {
       auto itinerary = std::make_shared<Itinerary>(0, 5);
       dsf::Id srcNodeId{0};
       WHEN("The Agent is constructed") {
-        Agent agent{0, itinerary, srcNodeId};
+        Agent agent{0, 0, itinerary, srcNodeId};
         THEN("The agent and itinerary ids are set correctly") {
           CHECK_EQ(agent.itinerary()->id(), itinerary->id());
           CHECK_FALSE(agent.streetId().has_value());
@@ -45,7 +45,7 @@ TEST_CASE("Agent") {
     }
     GIVEN("No initinerary ids and no source node id") {
       WHEN("The agent is constructed") {
-        auto randomAgent = Agent{0};
+        auto randomAgent = Agent{0, 0};
         THEN("The agent is a random agent") { CHECK(randomAgent.isRandom()); }
       }
     }
@@ -54,7 +54,7 @@ TEST_CASE("Agent") {
 
 TEST_CASE("Agent methods") {
   auto itinerary42 = std::make_shared<Itinerary>(42, 100);
-  Agent agent{0, itinerary42, 7};
+  Agent agent{0, 0, itinerary42, 7};
   SUBCASE("setSrcNodeId and srcNodeId") {
     agent.setSrcNodeId(99);
     CHECK(agent.srcNodeId().has_value());
@@ -97,7 +97,7 @@ TEST_CASE("Agent methods") {
     auto it2 = std::make_shared<Itinerary>(2, 20);
     auto it3 = std::make_shared<Itinerary>(3, 30);
     std::vector<std::shared_ptr<Itinerary>> trip = {it1, it2, it3};
-    Agent a2{0, trip, 0};
+    Agent a2{0, 0, trip, 0};
     CHECK_EQ(a2.itinerary()->id(), 1);
     a2.updateItinerary();
     CHECK_EQ(a2.itinerary()->id(), 2);
@@ -126,7 +126,7 @@ TEST_CASE("Agent methods") {
 TEST_CASE("Agent formatting") {
   SUBCASE("std::format with complete agent") {
     auto itinerary42 = std::make_shared<Itinerary>(42, 100);
-    Agent agent{0, itinerary42, 7};
+    Agent agent{0, 0, itinerary42, 7};
     agent.setStreetId(10);
     agent.setNextStreetId(15);
     agent.setSpeed(13.5);
@@ -146,7 +146,7 @@ TEST_CASE("Agent formatting") {
   }
 
   SUBCASE("std::format with random agent") {
-    Agent randomAgent{5};
+    Agent randomAgent{0, 5, 0};
 
     std::string formatted = std::format("{}", randomAgent);
     CHECK(formatted.find("id: 0") != std::string::npos);
@@ -162,7 +162,7 @@ TEST_CASE("Agent formatting") {
 
   SUBCASE("std::format with agent with optional nullopts") {
     auto itinerary99 = std::make_shared<Itinerary>(99, 200);
-    Agent agent{10, itinerary99};
+    Agent agent{0, 10, itinerary99};
 
     std::string formatted = std::format("{}", agent);
     CHECK(formatted.find("id: 0") != std::string::npos);
@@ -172,7 +172,7 @@ TEST_CASE("Agent formatting") {
     CHECK(formatted.find("itineraryId: 99") != std::string::npos);
   }
   SUBCASE("hasArrived") {
-    Agent agent{10};  // spawnTime = 10
+    Agent agent{0, 10};  // spawnTime = 10
     CHECK(agent.isRandom());
 
     // Test Max Distance
@@ -187,7 +187,7 @@ TEST_CASE("Agent formatting") {
 
     // Test Max Time
     // Reset agent
-    agent = Agent{10};
+    agent = Agent{1, 10};
     agent.setMaxTime(50);  // Max duration 50. Should expire at 10+50=60.
 
     // Before expiration

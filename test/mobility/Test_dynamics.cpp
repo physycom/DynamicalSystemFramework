@@ -1359,7 +1359,7 @@ TEST_CASE("Stationary Weights Impact on Random Navigation") {
 
   // Add many random agents to Street 0
   for (int i = 0; i < numAgents; ++i) {
-    auto agent = std::make_unique<Agent>(0, nullptr, 0);
+    auto agent = std::make_unique<Agent>(i, 0, nullptr, 0);
     agent->setStreetId(0);
     agent->setSpeed(10.0);
     agent->setFreeTime(0);

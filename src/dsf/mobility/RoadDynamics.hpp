@@ -231,12 +231,12 @@ namespace dsf::mobility {
     void addAgent(std::unique_ptr<Agent> agent);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
+      requires(std::is_constructible_v<Agent, Id, std::time_t, TArgs...>)
     void addAgent(TArgs&&... args);
 
     template <typename... TArgs>
-      requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
-    void addAgents(Size nAgents, TArgs&&... args);
+      requires(std::is_constructible_v<Agent, Id, std::time_t, TArgs...>)
+    void addAgents(std::size_t const nAgents, TArgs&&... args);
 
     /// @brief Add an itinerary
     /// @param ...args The arguments to construct the itinerary
@@ -1345,8 +1345,7 @@ namespace dsf::mobility {
         streetIt = this->graph().edges().begin();
       }
       auto const& street{streetIt->second};
-      this->addAgent(
-          std::make_unique<Agent>(this->time_step(), pItinerary, street->source()));
+      this->addAgent(pItinerary, street->source());
       auto& pAgent{this->m_agents.back()};
       pAgent->setStreetId(street->id());
       this->setAgentSpeed(pAgent);
@@ -1557,18 +1556,20 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
+    requires(std::is_constructible_v<Agent, Id, std::time_t, TArgs...>)
   void RoadDynamics<delay_t>::addAgent(TArgs&&... args) {
-    addAgent(std::make_unique<Agent>(this->time_step(), std::forward<TArgs>(args)...));
+    addAgent(std::make_unique<Agent>(
+        this->m_nAddedAgents, this->time_step(), std::forward<TArgs>(args)...));
   }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   template <typename... TArgs>
-    requires(std::is_constructible_v<Agent, std::time_t, TArgs...>)
-  void RoadDynamics<delay_t>::addAgents(Size nAgents, TArgs&&... args) {
+    requires(std::is_constructible_v<Agent, Id, std::time_t, TArgs...>)
+  void RoadDynamics<delay_t>::addAgents(std::size_t const nAgents, TArgs&&... args) {
     for (size_t i{0}; i < nAgents; ++i) {
-      addAgent(std::make_unique<Agent>(this->time_step(), std::forward<TArgs>(args)...));
+      addAgent(std::make_unique<Agent>(
+          this->m_nAddedAgents, this->time_step(), std::forward<TArgs>(args)...));
     }
   }
 
