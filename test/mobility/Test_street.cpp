@@ -92,6 +92,79 @@ TEST_CASE("Street") {
       }
     }
   }
+  SUBCASE("changeNLanes") {
+    GIVEN("A street with 2 lanes") {
+      Street street{1, std::make_pair(0, 1), 100.0, 20.0, 2};
+      int const initialCapacity = street.capacity();
+      double const initialTransportCapacity = street.transportCapacity();
+      double const initialMaxSpeed = street.maxSpeed();
+
+      WHEN("Number of lanes is increased to 4") {
+        street.changeNLanes(4);
+        THEN("All properties scale correctly") {
+          CHECK_EQ(street.nLanes(), 4);
+          CHECK_EQ(street.capacity(), initialCapacity * 2);
+          CHECK_EQ(street.transportCapacity(), initialTransportCapacity * 2);
+          CHECK_EQ(street.maxSpeed(), initialMaxSpeed);
+          CHECK_EQ(street.exitQueues().size(), 4);
+          CHECK_EQ(street.laneMapping().size(), 4);
+        }
+      }
+
+      WHEN("Number of lanes is decreased to 1") {
+        street.changeNLanes(1);
+        THEN("All properties scale correctly") {
+          CHECK_EQ(street.nLanes(), 1);
+          CHECK_EQ(street.capacity(), initialCapacity / 2);
+          CHECK_EQ(street.transportCapacity(), initialTransportCapacity / 2);
+          CHECK_EQ(street.maxSpeed(), initialMaxSpeed);
+          CHECK_EQ(street.exitQueues().size(), 1);
+          CHECK_EQ(street.laneMapping().size(), 1);
+        }
+      }
+
+      WHEN("Number of lanes is kept the same") {
+        street.changeNLanes(2);
+        THEN("Nothing changes") {
+          CHECK_EQ(street.nLanes(), 2);
+          CHECK_EQ(street.capacity(), initialCapacity);
+          CHECK_EQ(street.transportCapacity(), initialTransportCapacity);
+          CHECK_EQ(street.maxSpeed(), initialMaxSpeed);
+        }
+      }
+
+      WHEN("Number of lanes changes with speed factor") {
+        street.changeNLanes(1, 0.5);
+        THEN("Speed is reduced by the factor") {
+          CHECK_EQ(street.nLanes(), 1);
+          CHECK_EQ(street.maxSpeed(), doctest::Approx(initialMaxSpeed * 0.5));
+        }
+      }
+
+      WHEN("Invalid number of lanes is provided") {
+        THEN("Exception is thrown") {
+          CHECK_THROWS_AS(street.changeNLanes(0), std::invalid_argument);
+          CHECK_THROWS_AS(street.changeNLanes(-1), std::invalid_argument);
+        }
+      }
+    }
+
+    GIVEN("A street with 3 lanes") {
+      Street street{2, std::make_pair(1, 2), 150.0, 25.0, 3};
+
+      WHEN("Lanes change from 3 to 6 with speed factor 1.2") {
+        double const initialMaxSpeed = street.maxSpeed();
+        street.changeNLanes(6, 1.2);
+        THEN("Capacity doubles and speed increases") {
+          CHECK_EQ(street.nLanes(), 6);
+          CHECK_EQ(street.capacity(),
+                   static_cast<int>(std::ceil((150.0 * 6) / Road::meanVehicleLength())));
+          CHECK_EQ(street.maxSpeed(), doctest::Approx(initialMaxSpeed * 1.2));
+          CHECK_EQ(street.exitQueues().size(), 6);
+        }
+      }
+    }
+  }
   SUBCASE("addAgent") {
     Agent a1{0, nullptr, 0};
     a1.setFreeTime(5);

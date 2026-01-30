@@ -55,6 +55,10 @@ namespace dsf::mobility {
     CounterPosition m_counterPosition{CounterPosition::EXIT};
     double m_stationaryWeight{1.0};
 
+    /// @brief Update the street's lane mapping
+    /// @param nLanes The street's number of lanes
+    void m_updateLaneMapping(int const nLanes);
+
   public:
     /// @brief Construct a new Street object
     /// @param id The street's id
@@ -96,6 +100,12 @@ namespace dsf::mobility {
       weight > 0. ? m_stationaryWeight = weight
                   : throw std::invalid_argument("Stationary weight must be positive");
     }
+    /// @brief Change the number of lanes of the street. Usually if there is a construction site, you may want to
+    /// reduce the number of lanes and possibly the max speed.
+    /// @param nLanes The new number of lanes
+    /// @param speedFactor Optional, The factor to multiply the max speed of the street
+    void changeNLanes(int const nLanes,
+                      std::optional<double> const speedFactor = std::nullopt);
     /// @brief Enable a coil (dsf::Counter sensor) on the street
     /// @param name The name of the counter (default is "Coil_<street_id>")
     /// @param position The position of the counter on the street (default is EXIT)
