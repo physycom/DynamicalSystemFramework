@@ -936,7 +936,9 @@ namespace dsf::mobility {
 
   void RoadNetwork::setStreetStatusById(Id const streetId, RoadStatus const status) {
     try {
-      edge(streetId)->setStatus(status);
+      auto const& pStreet{edge(streetId)};
+      pStreet->setStatus(status);
+      spdlog::info("Changed status of {} to {}", *pStreet, status);
     } catch (const std::out_of_range&) {
       throw std::out_of_range(std::format("Street with id {} not found", streetId));
     }
@@ -957,6 +959,36 @@ namespace dsf::mobility {
                  status,
                  nAffectedRoads.load(),
                  streetName);
+  }
+  void RoadNetwork::changeStreetNLanesById(Id const streetId,
+                                           int const nLanes,
+                                           std::optional<double> const speedFactor) {
+    try {
+      edge(streetId)->changeNLanes(nLanes, speedFactor);
+    } catch (const std::out_of_range&) {
+      throw std::out_of_range(std::format("Street with id {} not found", streetId));
+    }
+  }
+  void RoadNetwork::changeStreetNLanesByName(std::string const& streetName,
+                                             int const nLanes,
+                                             std::optional<double> const speedFactor) {
+    std::atomic<std::size_t> nAffectedRoads{0};
+    std::for_each(
+        DSF_EXECUTION m_edges.cbegin(),
+        m_edges.cend(),
+        [this, &streetName, &nLanes, &speedFactor, &nAffectedRoads](auto const& pair) {
+          auto const& pStreet = pair.second;
+          if (pStreet->name().find(streetName) != std::string::npos) {
+            pStreet->changeNLanes(nLanes, speedFactor);
+            ++nAffectedRoads;
+          }
+        });
+    spdlog::info(
+        "Changed number of lanes to {} for {} streets with name containing "
+        "\"{}\"",
+        nLanes,
+        nAffectedRoads.load(),
+        streetName);
   }
   void RoadNetwork::changeStreetCapacityById(Id const streetId, double const factor) {
     try {

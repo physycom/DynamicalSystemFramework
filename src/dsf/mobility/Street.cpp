@@ -5,6 +5,30 @@
 #include <spdlog/spdlog.h>
 
 namespace dsf::mobility {
+  void Street::m_updateLaneMapping(int const nLanes) {
+    m_laneMapping.clear();
+    switch (nLanes) {
+      case 1:
+        m_laneMapping.emplace_back(Direction::ANY);
+        break;
+      case 2:
+        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
+        m_laneMapping.emplace_back(Direction::LEFT);
+        break;
+      case 3:
+        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
+        m_laneMapping.emplace_back(Direction::STRAIGHT);
+        m_laneMapping.emplace_back(Direction::LEFT);
+        break;
+      default:
+        m_laneMapping.emplace_back(Direction::RIGHT);
+        for (auto i{1}; i < nLanes - 1; ++i) {
+          m_laneMapping.emplace_back(Direction::STRAIGHT);
+        }
+        m_laneMapping.emplace_back(Direction::LEFT);
+        break;
+    }
+  }
   Street::Street(Id id,
                  std::pair<Id, Id> nodePair,
                  double length,
@@ -27,27 +51,7 @@ namespace dsf::mobility {
         m_movingAgents{dsf::priority_queue<std::unique_ptr<Agent>,
                                            std::vector<std::unique_ptr<Agent>>,
                                            AgentComparator>()} {
-    switch (nLanes) {
-      case 1:
-        m_laneMapping.emplace_back(Direction::ANY);
-        break;
-      case 2:
-        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
-        m_laneMapping.emplace_back(Direction::LEFT);
-        break;
-      case 3:
-        m_laneMapping.emplace_back(Direction::RIGHTANDSTRAIGHT);
-        m_laneMapping.emplace_back(Direction::STRAIGHT);
-        m_laneMapping.emplace_back(Direction::LEFT);
-        break;
-      default:
-        m_laneMapping.emplace_back(Direction::RIGHT);
-        for (auto i{1}; i < nLanes - 1; ++i) {
-          m_laneMapping.emplace_back(Direction::STRAIGHT);
-        }
-        m_laneMapping.emplace_back(Direction::LEFT);
-        break;
-    }
+    m_updateLaneMapping(nLanes);
   }
   auto Street::operator==(Street const& other) const -> bool {
     bool isEqual{true};
@@ -78,6 +82,29 @@ namespace dsf::mobility {
   void Street::setQueue(dsf::queue<std::unique_ptr<Agent>> queue, size_t index) {
     assert(index < m_exitQueues.size());
     m_exitQueues[index] = std::move(queue);
+  }
+  void Street::changeNLanes(int const nLanes, std::optional<double> const speedFactor) {
+    if (this->nExitingAgents() > 0) {
+      spdlog::warn("Changing number of lanes for {} which has {} exiting agents",
+                   *this,
+                   this->nExitingAgents());
+    }
+    if (nLanes <= 0) {
+      throw std::invalid_argument("Number of lanes must be positive");
+    }
+    if (nLanes == m_nLanes) {
+      return;
+    }
+    spdlog::info(
+        "Changing number of lanes for {} from {} to {}", *this, m_nLanes, nLanes);
+    m_capacity = static_cast<int>(m_capacity * static_cast<double>(nLanes) / m_nLanes);
+    m_transportCapacity = m_transportCapacity * nLanes / m_nLanes;
+    m_nLanes = nLanes;
+    if (speedFactor.has_value()) {
+      m_maxSpeed = m_maxSpeed * speedFactor.value();
+    }
+    m_exitQueues.resize(m_nLanes);
+    m_updateLaneMapping(m_nLanes);
   }
   void Street::enableCounter(std::string name, CounterPosition position) {
     if (m_counter.has_value()) {
