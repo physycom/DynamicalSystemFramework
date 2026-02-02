@@ -11,7 +11,6 @@ namespace dsf {
     typedef typename Container::iterator iterator;
     typedef typename Container::const_iterator const_iterator;
 
-    queue() = default;
     queue(queue&&) noexcept = default;
     queue& operator=(queue&&) noexcept = default;
     queue(const queue&) = delete;
@@ -36,13 +35,12 @@ namespace dsf {
     typedef typename Container::iterator iterator;
     typedef typename Container::const_iterator const_iterator;
 
-    priority_queue() = default;
     priority_queue(priority_queue&&) noexcept = default;
     priority_queue& operator=(priority_queue&&) noexcept = default;
     priority_queue(const priority_queue&) = delete;
     priority_queue& operator=(const priority_queue&) = delete;
 
-    // c is a protected member of std::queue, which is the underlying container
+    // c is a protected member of std::priority_queue, which is the underlying container
     iterator begin() { return this->c.begin(); }
     iterator end() { return this->c.end(); }
     const_iterator begin() const { return this->c.begin(); }

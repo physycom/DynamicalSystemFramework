@@ -964,11 +964,7 @@ namespace dsf::mobility {
                                            int const nLanes,
                                            std::optional<double> const speedFactor) {
     try {
-      auto const& pStreet{edge(streetId)};
-      pStreet->changeNLanes(nLanes);
-      if (speedFactor.has_value()) {
-        pStreet->setMaxSpeed(pStreet->maxSpeed() * speedFactor.value());
-      }
+      edge(streetId)->changeNLanes(nLanes, speedFactor);
     } catch (const std::out_of_range&) {
       throw std::out_of_range(std::format("Street with id {} not found", streetId));
     }
@@ -983,10 +979,7 @@ namespace dsf::mobility {
         [this, &streetName, &nLanes, &speedFactor, &nAffectedRoads](auto const& pair) {
           auto const& pStreet = pair.second;
           if (pStreet->name().find(streetName) != std::string::npos) {
-            pStreet->changeNLanes(nLanes);
-            if (speedFactor.has_value()) {
-              pStreet->setMaxSpeed(pStreet->maxSpeed() * speedFactor.value());
-            }
+            pStreet->changeNLanes(nLanes, speedFactor);
             ++nAffectedRoads;
           }
         });

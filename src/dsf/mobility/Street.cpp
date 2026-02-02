@@ -84,6 +84,11 @@ namespace dsf::mobility {
     m_exitQueues[index] = std::move(queue);
   }
   void Street::changeNLanes(int const nLanes, std::optional<double> const speedFactor) {
+    if (this->nExitingAgents() > 0) {
+      spdlog::warn("Changing number of lanes for {} which has {} exiting agents",
+                   *this,
+                   this->nExitingAgents());
+    }
     if (nLanes <= 0) {
       throw std::invalid_argument("Number of lanes must be positive");
     }
@@ -91,7 +96,7 @@ namespace dsf::mobility {
       return;
     }
     spdlog::info(
-        "Changing number of lanes for street {} from {} to {}", *this, m_nLanes, nLanes);
+        "Changing number of lanes for {} from {} to {}", *this, m_nLanes, nLanes);
     m_capacity = static_cast<int>(m_capacity * static_cast<double>(nLanes) / m_nLanes);
     m_transportCapacity = m_transportCapacity * nLanes / m_nLanes;
     m_nLanes = nLanes;
