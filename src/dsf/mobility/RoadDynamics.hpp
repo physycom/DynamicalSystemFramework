@@ -1559,7 +1559,7 @@ namespace dsf::mobility {
     requires(std::is_constructible_v<Agent, Id, std::time_t, TArgs...>)
   void RoadDynamics<delay_t>::addAgent(TArgs&&... args) {
     addAgent(std::make_unique<Agent>(
-        this->m_nAddedAgents, this->time_step(), std::forward<TArgs>(args)...));
+        this->m_nInsertedAgents, this->time_step(), std::forward<TArgs>(args)...));
   }
 
   template <typename delay_t>
@@ -1569,7 +1569,7 @@ namespace dsf::mobility {
   void RoadDynamics<delay_t>::addAgents(std::size_t const nAgents, TArgs&&... args) {
     for (size_t i{0}; i < nAgents; ++i) {
       addAgent(std::make_unique<Agent>(
-          this->m_nAddedAgents, this->time_step(), std::forward<TArgs>(args)...));
+          this->m_nInsertedAgents, this->time_step(), std::forward<TArgs>(args)...));
     }
   }
 

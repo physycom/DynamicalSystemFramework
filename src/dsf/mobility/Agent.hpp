@@ -59,6 +59,8 @@ namespace dsf::mobility {
           std::vector<std::shared_ptr<Itinerary>> const& trip,
           std::optional<Id> srcNodeId = std::nullopt);
 
+    /// @brief Set the id of the source node of the agent
+    /// @param srcNodeId The id of the source node
     void setSrcNodeId(Id srcNodeId);
     /// @brief Set the street occupied by the agent
     /// @param streetId The id of the street currently occupied by the agent

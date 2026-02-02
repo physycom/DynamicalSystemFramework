@@ -146,7 +146,7 @@ TEST_CASE("Agent formatting") {
   }
 
   SUBCASE("std::format with random agent") {
-    Agent randomAgent{0, 5, 0};
+    Agent randomAgent{0, 5};
 
     std::string formatted = std::format("{}", randomAgent);
     CHECK(formatted.find("id: 0") != std::string::npos);
