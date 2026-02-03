@@ -12,6 +12,7 @@
 #include "Road.hpp"
 #include "Sensors.hpp"
 #include "../utility/TypeTraits/is_numeric.hpp"
+#include "../utility/Measurement.hpp"
 #include "../utility/queue.hpp"
 #include "../utility/Typedef.hpp"
 
@@ -50,6 +51,8 @@ namespace dsf::mobility {
                         std::vector<std::unique_ptr<Agent>>,
                         AgentComparator>
         m_movingAgents;
+    std::unordered_map<Id, std::time_t> m_agentsInsertionTimes;
+    std::vector<double> m_avgSpeeds;
     std::vector<Direction> m_laneMapping;
     std::optional<Counter> m_counter;
     CounterPosition m_counterPosition{CounterPosition::EXIT};
@@ -166,20 +169,28 @@ namespace dsf::mobility {
     /// @return double The number of agents on all queues for a given direction
     double nExitingAgents(Direction direction = Direction::ANY,
                           bool normalizeOnNLanes = false) const final;
+    /// @brief Get the mean speed of the agents that have passed through the street
+    /// @param bReset If true, the average speed data is reset after the computation
+    /// @return Measurement<double> The (mean, std) speed of the agents that have passed through the street
+    Measurement<double> meanSpeed(bool const bReset = true);
+
     /// @brief Get the street's lane mapping
     /// @return std::vector<Direction> The street's lane mapping
     inline auto const& laneMapping() const { return m_laneMapping; }
     /// @brief Add an agent to the street
     /// @param pAgent The agent to add to the street
-    void addAgent(std::unique_ptr<Agent> pAgent);
+    /// @param currentTime The current simulation time
+    void addAgent(std::unique_ptr<Agent> pAgent, std::time_t const currentTime);
     /// @brief Add an agent to the street's queue
     /// @param queueId The id of the queue
     /// @throw std::runtime_error If the street's queue is full
     void enqueue(std::size_t const& queueId);
     /// @brief Remove an agent from the street's queue
     /// @param index The index of the queue
+    /// @param currentTime The current simulation time
     /// @return Id The id of the agent removed from the street's queue
-    std::unique_ptr<Agent> dequeue(std::size_t const& index);
+    std::unique_ptr<Agent> dequeue(std::size_t const& index,
+                                   std::time_t const currentTime);
     /// @brief Check if the street has a coil (dsf::Counter sensor) on it
     /// @return bool True if the street has a coil, false otherwise
     constexpr bool hasCoil() const { return m_counter.has_value(); };

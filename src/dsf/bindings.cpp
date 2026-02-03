@@ -684,6 +684,12 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("normalized") = true,
           pybind11::arg("separator") = ';',
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetDensities").c_str())
+      .def("saveStreetSpeeds",
+           &dsf::mobility::FirstOrderDynamics::saveStreetSpeeds,
+           pybind11::arg("filename"),
+           pybind11::arg("separator") = ';',
+           pybind11::arg("normalized") = false,
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetSpeeds").c_str())
       .def("saveCoilCounts",
            &dsf::mobility::FirstOrderDynamics::saveCoilCounts,
            pybind11::arg("filename"),

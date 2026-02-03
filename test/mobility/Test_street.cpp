@@ -174,11 +174,11 @@ TEST_CASE("Street") {
     a3.setFreeTime(7);
 
     Street street{1, std::make_pair(0, 1), 3.5};
-    street.addAgent(std::make_unique<Agent>(a1));
+    street.addAgent(std::make_unique<Agent>(a1), 0);
     CHECK_EQ(street.movingAgents().top()->freeTime(), 5);
-    street.addAgent(std::make_unique<Agent>(a2));
+    street.addAgent(std::make_unique<Agent>(a2), 0);
     CHECK_EQ(street.movingAgents().top()->freeTime(), 3);
-    street.addAgent(std::make_unique<Agent>(a3));
+    street.addAgent(std::make_unique<Agent>(a3), 0);
     CHECK_EQ(street.movingAgents().top()->freeTime(), 3);
   }
   SUBCASE("Enqueue") {
@@ -192,14 +192,14 @@ TEST_CASE("Street") {
 
     Street street{1, std::make_pair(0, 1), 3.5};
     // fill the queue
-    street.addAgent(std::make_unique<Agent>(a1));
+    street.addAgent(std::make_unique<Agent>(a1), 0);
     street.enqueue(0);
-    street.addAgent(std::make_unique<Agent>(a2));
+    street.addAgent(std::make_unique<Agent>(a2), 0);
     street.enqueue(0);
     CHECK_EQ(doctest::Approx(street.density()), 0.571429);
-    street.addAgent(std::make_unique<Agent>(a3));
+    street.addAgent(std::make_unique<Agent>(a3), 0);
     street.enqueue(0);
-    street.addAgent(std::make_unique<Agent>(a4));
+    street.addAgent(std::make_unique<Agent>(a4), 0);
     street.enqueue(0);
     CHECK(street.queue(0).front());
     CHECK(street.queue(0).back());
@@ -220,26 +220,26 @@ TEST_CASE("Street") {
 
     Street street{1, std::make_pair(0, 1), 3.5};
     // fill the queue
-    street.addAgent(std::make_unique<Agent>(a1));
+    street.addAgent(std::make_unique<Agent>(a1), 0);
     street.enqueue(0);
-    street.addAgent(std::make_unique<Agent>(a2));
+    street.addAgent(std::make_unique<Agent>(a2), 0);
     street.enqueue(0);
-    street.addAgent(std::make_unique<Agent>(a3));
+    street.addAgent(std::make_unique<Agent>(a3), 0);
     street.enqueue(0);
-    street.addAgent(std::make_unique<Agent>(a4));
+    street.addAgent(std::make_unique<Agent>(a4), 0);
     street.enqueue(0);
     CHECK(street.queue(0).front());
     // dequeue
-    street.dequeue(0);
+    street.dequeue(0, 1);
     CHECK(street.queue(0).front());  // check that agent 2 is now at front
     // check that the length of the queue has decreased
     CHECK_EQ(street.queue(0).size(), 3);
     CHECK_EQ(street.queue(0).size(), 3);
     // check that the next agent dequeued is agent 2
-    CHECK(street.dequeue(0));
+    CHECK(street.dequeue(0, 2));
     CHECK_EQ(street.queue(0).size(), 2);
-    street.dequeue(0);
-    street.dequeue(0);  // the queue is now empty
+    street.dequeue(0, 3);
+    street.dequeue(0, 4);  // the queue is now empty
   }
   SUBCASE("Angle") {
     /// This tests the angle method
@@ -261,7 +261,7 @@ TEST_CASE("Street with a coil") {
       street.enableCounter("EntryCoil", dsf::mobility::CounterPosition::ENTRY);
       CHECK_EQ(street.counterName(), "EntryCoil");
       WHEN("An agent is added") {
-        street.addAgent(std::make_unique<Agent>(0, 0, nullptr, 0));
+        street.addAgent(std::make_unique<Agent>(0, 0, nullptr, 0), 0);
         THEN("The input flow is one immediately") { CHECK_EQ(street.counts(), 1); }
         street.enqueue(0);
         THEN("The input flow is still one") { CHECK_EQ(street.counts(), 1); }
@@ -275,7 +275,7 @@ TEST_CASE("Street with a coil") {
       street.enableCounter("", dsf::mobility::CounterPosition::MIDDLE);
       CHECK_EQ(street.counterName(), "Coil_1");
       WHEN("An agent is added") {
-        street.addAgent(std::make_unique<Agent>(0, 0, nullptr, 0));
+        street.addAgent(std::make_unique<Agent>(0, 0, nullptr, 0), 0);
         THEN("The input flow is zero") { CHECK_EQ(street.counts(), 0); }
         street.enqueue(0);
         THEN("The input flow is one once enqueued") { CHECK_EQ(street.counts(), 1); }
@@ -291,11 +291,80 @@ TEST_CASE("Street with a coil") {
       street.enableCounter("ExitCoil", dsf::mobility::CounterPosition::EXIT);
       CHECK_EQ(street.counterName(), "ExitCoil");
       WHEN("An agent is added and enqueued") {
-        street.addAgent(std::make_unique<Agent>(0, 0, nullptr, 0));
+        street.addAgent(std::make_unique<Agent>(0, 0, nullptr, 0), 0);
         street.enqueue(0);
         THEN("The input flow is zero") { CHECK_EQ(street.counts(), 0); }
-        street.dequeue(0);
+        street.dequeue(0, 1);
         THEN("The input flow is one after dequeue") { CHECK_EQ(street.counts(), 1); }
+      }
+    }
+  }
+
+  SUBCASE("meanSpeed") {
+    GIVEN("A street with multiple agents") {
+      Street street{1, std::make_pair(0, 1), 100.0, 20.0};
+
+      WHEN("No agents have exited") {
+        THEN("meanSpeed returns zero mean and std") {
+          auto measurement = street.meanSpeed(false);
+          CHECK_EQ(measurement.mean, 0.);
+          CHECK_EQ(measurement.std, 0.);
+        }
+      }
+
+      WHEN("Agents are added and dequeued at different times") {
+        // Add agents at time 0
+        street.addAgent(std::make_unique<Agent>(0, 0, nullptr, 0), 0);
+        street.addAgent(std::make_unique<Agent>(1, 0, nullptr, 0), 0);
+        street.addAgent(std::make_unique<Agent>(2, 0, nullptr, 0), 0);
+
+        // Enqueue them
+        street.enqueue(0);
+        street.enqueue(0);
+        street.enqueue(0);
+
+        // Dequeue at time 5 (speed = 100/5 = 20 m/s for each)
+        street.dequeue(0, 5);
+        street.dequeue(0, 5);
+        street.dequeue(0, 5);
+
+        THEN("meanSpeed returns correct mean and std without reset") {
+          auto measurement = street.meanSpeed(false);
+          CHECK_EQ(measurement.mean, 20.0);
+          CHECK_EQ(measurement.std, 0.0);
+        }
+
+        THEN("meanSpeed data is not cleared when bReset=false") {
+          street.meanSpeed(false);
+          auto measurement = street.meanSpeed(false);
+          CHECK_EQ(measurement.mean, 20.0);
+        }
+
+        THEN("meanSpeed data is cleared when bReset=true") {
+          street.meanSpeed(true);
+          auto measurement = street.meanSpeed(false);
+          CHECK_EQ(measurement.mean, 0.0);
+          CHECK_EQ(measurement.std, 0.0);
+        }
+      }
+
+      WHEN("Agents exit at different times") {
+        // Agent 0 added at time 0, exits at time 10 (speed = 100/10 = 10 m/s)
+        street.addAgent(std::make_unique<Agent>(0, 0, nullptr, 0), 0);
+        street.enqueue(0);
+        street.dequeue(0, 10);
+
+        // Agent 1 added at time 0, exits at time 5 (speed = 100/5 = 20 m/s)
+        street.addAgent(std::make_unique<Agent>(1, 0, nullptr, 0), 0);
+        street.enqueue(0);
+        street.dequeue(0, 5);
+
+        THEN("meanSpeed returns correct mean and std") {
+          auto measurement = street.meanSpeed(false);
+          CHECK_EQ(measurement.mean, 15.0);  // (10 + 20) / 2
+          CHECK_EQ(measurement.std,
+                   doctest::Approx(5.0));  // sqrt(((10-15)^2 + (20-15)^2)/2)
+        }
       }
     }
   }
@@ -591,8 +660,8 @@ TEST_CASE("Street formatting") {
     // Add some agents
     auto agent1 = std::make_unique<Agent>(0, 0, nullptr);
     auto agent2 = std::make_unique<Agent>(1, 0, nullptr);
-    street.addAgent(std::move(agent1));
-    street.addAgent(std::move(agent2));
+    street.addAgent(std::move(agent1), 0);
+    street.addAgent(std::move(agent2), 0);
 
     std::string formatted = std::format("{}", street);
     CHECK(formatted.find("Street(id: 30") != std::string::npos);

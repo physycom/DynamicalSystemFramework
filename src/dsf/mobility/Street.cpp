@@ -126,9 +126,10 @@ namespace dsf::mobility {
     m_counter->reset();
   }
 
-  void Street::addAgent(std::unique_ptr<Agent> pAgent) {
+  void Street::addAgent(std::unique_ptr<Agent> pAgent, std::time_t const currentTime) {
     assert(!isFull());
-    spdlog::debug("Adding {} on {}", *pAgent, *this);
+    spdlog::trace("Adding {} on {}", *pAgent, *this);
+    m_agentsInsertionTimes[pAgent->id()] = currentTime;
     m_movingAgents.push(std::move(pAgent));
     if (m_counter.has_value() && m_counterPosition == CounterPosition::ENTRY) {
       ++(*m_counter);
@@ -144,9 +145,15 @@ namespace dsf::mobility {
       ++(*m_counter);
     }
   }
-  std::unique_ptr<Agent> Street::dequeue(std::size_t const& index) {
+  std::unique_ptr<Agent> Street::dequeue(std::size_t const& index,
+                                         std::time_t const currentTime) {
     assert(!m_exitQueues[index].empty());
     auto pAgent{std::move(m_exitQueues[index].front())};
+    // Keep track of average speed
+    m_avgSpeeds.push_back(m_length /
+                          (currentTime - m_agentsInsertionTimes[pAgent->id()]));
+    m_agentsInsertionTimes.erase(pAgent->id());
+
     m_exitQueues[index].pop();
     if (m_counter.has_value() && m_counterPosition == CounterPosition::EXIT) {
       ++(*m_counter);
@@ -201,6 +208,13 @@ namespace dsf::mobility {
       n > 1 ? nAgents /= n : nAgents;
     }
     return nAgents;
+  }
+  Measurement<double> Street::meanSpeed(bool const bReset) {
+    auto const avgSpeed{Measurement<double>(m_avgSpeeds)};
+    if (bReset) {
+      m_avgSpeeds.clear();
+    }
+    return avgSpeed;
   }
 
 };  // namespace dsf::mobility
