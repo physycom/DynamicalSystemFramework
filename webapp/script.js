@@ -867,40 +867,59 @@ function updateEdgeInfo(edge) {
   `;
 }
 
-// Data directory loader
-const loadDataBtn = document.getElementById('loadDataBtn');
-const dataDirInput = document.getElementById('dataDir');
-
-dataDirInput.addEventListener('keydown', function(event) {
-  if (event.key === 'Enter') {
-    loadDataBtn.click();
-  }
-});
-
-loadDataBtn.addEventListener('click', async function() {
-  const input = document.getElementById('dataDir');
-  const dirName = input.value.trim();
-  
-  if (!dirName) {
-    alert('Please enter a data directory name');
-    return;
-  }
-
+// Auto-load data from config file on page load
+async function loadDataFromConfig() {
   try {
-    // Show loading state
-    loadDataBtn.textContent = 'Loading...';
-    loadDataBtn.disabled = true;
-    
-    // Fetch CSV files from the data subdirectory
-    const edgesUrl = `../${dirName}/edges.csv`;
-    const densitiesUrl = `../${dirName}/densities.csv`;
-    const dataUrl = `../${dirName}/data.csv`;
+    // Load config file
+    const configResponse = await fetch('config.json');
+    if (!configResponse.ok) {
+      throw new Error('Could not load config.json');
+    }
+    const config = await configResponse.json();
+
+    // Convert absolute paths to relative paths for HTTP access
+    const convertToRelativePath = (absolutePath, serverRoot) => {
+      if (!absolutePath) return null;
+      console.log('Converting path:', absolutePath, 'with server root:', serverRoot);
+      // If already a relative path or URL, use as-is
+      if (!absolutePath.startsWith('/') || absolutePath.startsWith('http')) {
+        return absolutePath;
+      }
+      
+      // Remove server root prefix to get path relative to server root
+      if (absolutePath.startsWith(serverRoot)) {
+        let relativePath = absolutePath.substring(serverRoot.length);
+        // Ensure it starts with /
+        if (relativePath.startsWith('/')) {
+          // Remove first /
+          relativePath = relativePath.substring(1);
+        }
+        // Add how many ../ are needed based on server root depth
+        const serverRootDepth = serverRoot.split('/').filter(part => part.length > 0).length;
+        let prefix = '';
+        for (let i = 0; i < serverRootDepth; i++) {
+          prefix += '../';
+        }
+        relativePath = prefix + relativePath;
+        // Remove leading / to make it relative
+        console.log('Converted to relative path:', relativePath.substring(1));
+        return relativePath.substring(1);
+      }
+      
+      // If path doesn't start with server root, return as-is and hope for the best
+      return absolutePath;
+    };
+
+    // Fetch CSV files using paths from config
+    const edgesUrl = convertToRelativePath(config.edges, config.serverRoot);
+    const densitiesUrl = convertToRelativePath(config.densities, config.serverRoot);
+    const dataUrl = convertToRelativePath(config.data, config.serverRoot);
 
     // Load CSV data
     Promise.all([
       d3.dsv(";", edgesUrl, parseEdges),
       d3.dsv(";", densitiesUrl, parseDensity),
-      d3.dsv(";", dataUrl, parseData).catch(e => { console.warn('data.csv not found or invalid', e); return []; })
+      dataUrl ? d3.dsv(";", dataUrl, parseData).catch(e => { console.warn('data.csv not found or invalid', e); return []; }) : Promise.resolve([])
     ]).then(([edgesData, densityData, additionalData]) => {
       edges = edgesData;
       densities = densityData;
@@ -1317,29 +1336,23 @@ loadDataBtn.addEventListener('click', async function() {
       }
     });
 
-      // Hide data selector and show slider and search
-      document.querySelector('.data-selector').style.display = 'none';
+      // Show slider and search
       document.querySelector('.slider-container').style.display = 'block';
       
       const legendContainer = document.querySelector('.legend-container');
       legendContainer.style.display = 'block';
     }).catch(error => {
       console.error("Error loading CSV files:", error);
-      alert('Error loading data files. Please check the console for details.');
-    }).finally(() => {
-      // Reset button state
-      loadDataBtn.textContent = 'Load Data';
-      loadDataBtn.disabled = false;
+      alert('Error loading data files. Please check the console and verify paths in config.json.');
     });
   } catch (error) {
     console.error('Error:', error);
-    alert('Error loading data. Please try again.');
-    loadDataBtn.textContent = 'Load Data';
-    loadDataBtn.disabled = false;
+    alert('Error loading config file. Please ensure config.json exists in the webapp directory.');
   }
-});
+}
 
-// Parsing function for edges CSV, including geometry parsing
+// Load data when page loads
+window.addEventListener('DOMContentLoaded', loadDataFromConfig);
 function parseEdges(d) {
       let geometry = [];
       if (d.geometry) {
