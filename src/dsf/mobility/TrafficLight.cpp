@@ -154,7 +154,7 @@ namespace dsf::mobility {
             }
             break;
           default:
-            spdlog::warn(
+            spdlog::debug(
                 "Street {} has ...ANDSTRAIGHT phase but Traffic Light {} doesn't.",
                 streetId,
                 m_id);
