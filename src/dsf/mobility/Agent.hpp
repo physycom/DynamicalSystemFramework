@@ -27,13 +27,13 @@ namespace dsf::mobility {
   /// @brief The Agent class represents an agent in the network.
   class Agent {
   private:
-    std::time_t m_spawnTime, m_freeTime;
     Id m_id;
+    std::time_t m_spawnTime, m_freeTime;
     std::vector<std::shared_ptr<Itinerary>> m_trip;
     std::optional<Id> m_streetId;
     std::optional<Id> m_srcNodeId;
     std::optional<Id> m_nextStreetId;
-    size_t m_itineraryIdx;
+    std::size_t m_itineraryIdx;
     double m_speed;
     double m_distance;                     // Travelled distance
     std::optional<double> m_maxDistance;   // Maximum distance for stochastic agents
@@ -41,20 +41,26 @@ namespace dsf::mobility {
 
   public:
     /// @brief Construct a new Agent object
+    /// @param id The agent's id
     /// @param spawnTime The agent's spawn time
     /// @param itineraryId Optional, The agent's destination node. If not provided, the agent is a random agent
     /// @param srcNodeId Optional, The id of the source node of the agent
-    Agent(std::time_t const& spawnTime,
+    Agent(Id const id,
+          std::time_t const& spawnTime,
           std::shared_ptr<Itinerary> itinerary = nullptr,
           std::optional<Id> srcNodeId = std::nullopt);
     /// @brief Construct a new Agent object
+    /// @param id The agent's id
     /// @param spawnTime The agent's spawn time
     /// @param itineraryIds The agent's itinerary
     /// @param srcNodeId Optional, The id of the source node of the agent
-    Agent(std::time_t const& spawnTime,
+    Agent(Id const id,
+          std::time_t const& spawnTime,
           std::vector<std::shared_ptr<Itinerary>> const& trip,
           std::optional<Id> srcNodeId = std::nullopt);
 
+    /// @brief Set the id of the source node of the agent
+    /// @param srcNodeId The id of the source node
     void setSrcNodeId(Id srcNodeId);
     /// @brief Set the street occupied by the agent
     /// @param streetId The id of the street currently occupied by the agent
