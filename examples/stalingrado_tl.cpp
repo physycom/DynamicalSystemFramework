@@ -5,6 +5,7 @@
 #include <dsf/dsf.hpp>
 #include <array>
 #include <cstdint>
+#include <format>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -22,10 +23,6 @@
 std::atomic<unsigned int> progress{0};
 
 constexpr std::size_t SAVE_INTERVAL = 300;
-constexpr std::size_t SCALING_FACTOR = 1;
-
-using Unit = unsigned int;
-using Delay = uint8_t;
 
 using namespace dsf::mobility;
 
@@ -35,18 +32,20 @@ void printLoadingBar(int const i, int const n) {
   std::cout.flush();
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+  const auto SCALING_FACTOR = std::stod(argv[1]);
+  const auto TIME_SCALING = std::stod(argv[2]);
   // Import input data
   std::ifstream ifs{"./data/stalingrado_input.txt"};
-  Unit timeUnit{0};
+  std::size_t timeUnit{0};
   ifs >> timeUnit;
-  std::vector<Unit> vehiclesToInsert{};
+  std::vector<std::size_t> vehiclesToInsert{};
   while (!ifs.eof()) {
-    Unit vehicleId{0};
+    std::size_t vehicleId{0};
     ifs >> vehicleId;
     vehiclesToInsert.push_back(vehicleId);
   }
-  const auto MAX_TIME{static_cast<Unit>(timeUnit * vehiclesToInsert.size())};
+  const auto MAX_TIME{static_cast<std::size_t>(timeUnit * vehiclesToInsert.size())};
 
   // Create the graph
   RoadNetwork graph;
@@ -60,19 +59,27 @@ int main() {
   // Viale Aldo Moro
   graph.addNode<TrafficLight>(1, 132);
   auto& tl1 = graph.node<TrafficLight>(1);
-  tl1.setCycle(s01.id(), dsf::Direction::ANY, {62, 0});
+  tl1.setCycle(s01.id(),
+               dsf::Direction::ANY,
+               {static_cast<dsf::Delay>(std::ceil(62 * TIME_SCALING)), 0});
   // Via Donato Creti
   graph.addNode<TrafficLight>(2, 141);
   auto& tl2 = graph.node<TrafficLight>(2);
-  tl2.setCycle(s12.id(), dsf::Direction::ANY, {72, 0});
+  tl2.setCycle(s12.id(),
+               dsf::Direction::ANY,
+               {static_cast<dsf::Delay>(std::ceil(72 * TIME_SCALING)), 0});
   // Via del Lavoro
   graph.addNode<TrafficLight>(3, 138);
   auto& tl3 = graph.node<TrafficLight>(3);
-  tl3.setCycle(s23.id(), dsf::Direction::ANY, {88, 0});
+  tl3.setCycle(s23.id(),
+               dsf::Direction::ANY,
+               {static_cast<dsf::Delay>(std::ceil(88 * TIME_SCALING)), 0});
   // Viali
   graph.addNode<TrafficLight>(4, 131);
   auto& tl4 = graph.node<TrafficLight>(4);
-  tl4.setCycle(s34.id(), dsf::Direction::ANY, {81, 0});
+  tl4.setCycle(s34.id(),
+               dsf::Direction::ANY,
+               {static_cast<dsf::Delay>(std::ceil(81 * TIME_SCALING)), 0});
 
   graph.addStreets(s01, s12, s23, s34);
   graph.adjustNodeCapacities();
@@ -96,8 +103,10 @@ int main() {
   });
   // Evolution
   auto it = vehiclesToInsert.begin();
-  std::ofstream ofs{"./stalingrado_output_tl.csv"};
-  std::ofstream ofs_queues{"./stalingrado_tl_queues.csv"};
+  std::ofstream ofs{std::format(
+      "./stalingrado_output_tl_{:.1f}_{:.2f}.csv", SCALING_FACTOR, TIME_SCALING)};
+  std::ofstream ofs_queues{std::format(
+      "./stalingrado_tl_queues_{:.1f}_{:.2f}.csv", SCALING_FACTOR, TIME_SCALING)};
   // print two columns, time and vehicles
   ofs << "time;vehicle_flux\n";
   ofs_queues << "time;1;7;13;19\n";
@@ -113,7 +122,8 @@ int main() {
         ofs << progress << ';' << coil->counts() << std::endl;
         coil->resetCounter();
       }
-      dynamics.addAgents(*it * SCALING_FACTOR, pItinerary, 0);
+      dynamics.addAgents(
+          static_cast<std::size_t>(std::round(*it * SCALING_FACTOR)), pItinerary, 0);
     }
     if (progress % 30 == 0) {
       ofs_queues << progress << ';' << edges.at(1)->nExitingAgents() << ';'
