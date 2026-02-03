@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+
 namespace dsf {
   /// @brief The Measurement struct represents the mean of a quantity and its standard deviation
   /// @tparam T The type of the quantity

@@ -26,6 +26,7 @@
 #include <format>
 #include <cassert>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace dsf::mobility {

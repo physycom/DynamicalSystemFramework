@@ -358,11 +358,11 @@ namespace dsf::mobility {
 
     /// @brief Save the street densities in csv format
     /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_densities.csv")
-    /// @param normalized If true, the densities are normalized in [0, 1]
     /// @param separator The separator character (default is ';')
+    /// @param normalized If true, the densities are normalized in [0, 1] dividing by the street capacity attribute
     void saveStreetDensities(std::string filename = std::string(),
-                             bool normalized = true,
-                             char const separator = ';') const;
+                             char const separator = ';',
+                             bool const normalized = true) const;
     /// @brief Save the street speeds in csv format
     /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_speeds.csv")
     /// @param separator The separator character (default is ';')
@@ -2310,8 +2310,8 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::saveStreetDensities(std::string filename,
-                                                  bool normalized,
-                                                  char const separator) const {
+                                                  char const separator,
+                                                  bool const normalized) const {
     if (filename.empty()) {
       filename =
           this->m_safeDateTime() + '_' + this->m_safeName() + "_street_densities.csv";

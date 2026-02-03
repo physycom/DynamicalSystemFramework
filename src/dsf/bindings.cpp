@@ -681,8 +681,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
           "saveStreetDensities",
           &dsf::mobility::FirstOrderDynamics::saveStreetDensities,
           pybind11::arg("filename"),
-          pybind11::arg("normalized") = true,
           pybind11::arg("separator") = ';',
+          pybind11::arg("normalized") = true,
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetDensities").c_str())
       .def("saveStreetSpeeds",
            &dsf::mobility::FirstOrderDynamics::saveStreetSpeeds,
