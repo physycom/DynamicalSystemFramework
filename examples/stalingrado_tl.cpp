@@ -21,6 +21,9 @@
 
 std::atomic<unsigned int> progress{0};
 
+constexpr std::size_t SAVE_INTERVAL = 300;
+constexpr std::size_t SCALING_FACTOR = 1;
+
 using Unit = unsigned int;
 using Delay = uint8_t;
 
@@ -49,7 +52,7 @@ int main() {
   RoadNetwork graph;
 
   // Street(StreetId, Capacity, Length, vMax, (from, to))
-  dsf::mobility::Road::setMeanVehicleLength(8.);
+  dsf::mobility::Road::setMeanVehicleLength(5.);
   Street s01{1, std::make_pair(0, 1), 2281., 13.9, 2};
   Street s12{7, std::make_pair(1, 2), 118., 13.9, 2};
   Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};
@@ -77,9 +80,9 @@ int main() {
   auto const& coil = graph.edge(19);
 
   // Create the dynamics
-  FirstOrderDynamics dynamics{graph, false, 69, 0.6};
-  dynamics.setSpeedFluctuationSTD(0.2);
-  dynamics.addItinerary(4, 4);
+  FirstOrderDynamics dynamics{graph, false, 69, 0.8};
+  // dynamics.setSpeedFluctuationSTD(0.2);
+  dynamics.addItinerary(std::make_shared<Itinerary>(4, 4));
   dynamics.updatePaths();
 
   auto pItinerary = dynamics.itineraries().at(4);
@@ -93,19 +96,29 @@ int main() {
   });
   // Evolution
   auto it = vehiclesToInsert.begin();
-  std::ofstream ofs{"./stalingrado_output.csv"};
+  std::ofstream ofs{"./stalingrado_output_tl.csv"};
+  std::ofstream ofs_queues{"./stalingrado_tl_queues.csv"};
   // print two columns, time and vehicles
-  ofs << "time;vehicle_flux" << '\n';
+  ofs << "time;vehicle_flux\n";
+  ofs_queues << "time;1;7;13;19\n";
+
+  auto const& edges{dynamics.graph().edges()};
+
   while (progress < MAX_TIME) {
     if (progress % 60 == 0) {
       if (progress != 0) {
         ++it;
       }
-      if (progress % 300 == 0) {
+      if (progress % SAVE_INTERVAL == 0) {
         ofs << progress << ';' << coil->counts() << std::endl;
         coil->resetCounter();
       }
-      dynamics.addAgents(*it, pItinerary, 0);
+      dynamics.addAgents(*it * SCALING_FACTOR, pItinerary, 0);
+    }
+    if (progress % 30 == 0) {
+      ofs_queues << progress << ';' << edges.at(1)->nExitingAgents() << ';'
+                 << edges.at(7)->nExitingAgents() << ';' << edges.at(13)->nExitingAgents()
+                 << ';' << edges.at(19)->nExitingAgents() << std::endl;
     }
     dynamics.evolve(false);
     ++progress;
@@ -114,6 +127,9 @@ int main() {
 #ifdef __APPLE__
   t.join();
 #endif
+
+  ofs.close();
+  ofs_queues.close();
 
   return 0;
 }

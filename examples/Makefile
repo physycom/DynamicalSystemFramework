@@ -13,5 +13,7 @@ slow_charge_rb:
 	./slow_charge_rb.out 69 0.3 ./scrb/ 900
 	$(GPROF_CMD) ./slow_charge_rb.out gmon.out > analysis_rb.txt
 stalingrado:
-	./stalingrado.out
-	$(GPROF_CMD) ./stalingrado.out gmon.out > analysis_stalingrado.txt
+	./stalingrado_tl.out
+# 	$(GPROF_CMD) ./stalingrado_tl.out gmon.out > analysis_stalingrado_tl.txt
+	./stalingrado_notl.out
+# 	$(GPROF_CMD) ./stalingrado_notl.out gmon.out > analysis_stalingrado_notl.txt
