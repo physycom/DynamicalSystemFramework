@@ -2367,11 +2367,18 @@ namespace dsf::mobility {
     }
     file << this->strDateTime() << separator << this->time_step();
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      double speed{pStreet->meanSpeed(true).mean};
+      auto const measure = pStreet->meanSpeed(true);
+      file << separator;
+      // If not valid, write empty value (less space w.r.t. NaN)
+      if (!measure.is_valid) {
+        continue;
+      }
+
+      double speed{measure.mean};
       if (bNormalized) {
         speed /= pStreet->maxSpeed();
       }
-      file << separator << std::fixed << std::setprecision(2) << speed;
+      file << std::fixed << std::setprecision(2) << speed;
     }
     file << std::endl;
     file.close();
