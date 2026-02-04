@@ -8,20 +8,21 @@ namespace dsf {
   /// @tparam T The type of the quantity
   /// @param mean The mean
   /// @param std The standard deviation of the sample
+  /// @param is_valid True if the measurement is valid, false otherwise (i.e. checks if the sample is not empty)
   template <typename T>
   struct Measurement {
-    T mean;
-    T std;
+    T mean = static_cast<T>(0);
+    T std = static_cast<T>(0);
+    bool is_valid = false;
 
-    Measurement(T mean, T std) : mean{mean}, std{std} {}
+    Measurement(T mean, T std) : mean{mean}, std{std}, is_valid{true} {}
     template <typename TContainer>
-    Measurement(TContainer data) {
-      auto x_mean = static_cast<T>(0), x2_mean = static_cast<T>(0);
+    Measurement(TContainer const& data) {
       if (data.empty()) {
-        mean = static_cast<T>(0);
-        std = static_cast<T>(0);
         return;
       }
+      is_valid = true;
+      auto x_mean = static_cast<T>(0), x2_mean = static_cast<T>(0);
 
       std::for_each(data.begin(), data.end(), [&x_mean, &x2_mean](auto value) -> void {
         x_mean += value;
