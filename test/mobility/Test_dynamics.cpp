@@ -1199,6 +1199,138 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(fileFound);
         }
       }
+
+      WHEN("We call saveStreetSpeeds with default filename") {
+        // Use explicit filename in test to avoid cluttering the workspace
+        const std::string testFile = "test_street_speeds.csv";
+        dynamics.saveStreetSpeeds(testFile);
+
+        THEN("The file is created with correct header") {
+          std::ifstream file(testFile);
+          REQUIRE(file.is_open());
+
+          std::string header;
+          std::getline(file, header);
+          CHECK(header.find("datetime") != std::string::npos);
+          CHECK(header.find("time_step") != std::string::npos);
+          CHECK(header.find("0") != std::string::npos);
+          CHECK(header.find("1") != std::string::npos);
+
+          file.close();
+          std::filesystem::remove(testFile);
+        }
+      }
+
+      WHEN("We call saveStreetSpeeds multiple times to test appending") {
+        const std::string testFile = "test_street_speeds_append.csv";
+
+        // Add some agents and evolve
+        dynamics.addRandomAgents(5);
+        dynamics.evolve(false);
+
+        // Save first time
+        dynamics.saveStreetSpeeds(testFile);
+
+        // Evolve again and save
+        dynamics.evolve(false);
+        dynamics.saveStreetSpeeds(testFile);
+
+        THEN("The file contains multiple rows with one header") {
+          std::ifstream file(testFile);
+          REQUIRE(file.is_open());
+
+          std::string line;
+          int lineCount = 0;
+          int headerCount = 0;
+
+          while (std::getline(file, line)) {
+            lineCount++;
+            if (line.find("datetime") != std::string::npos) {
+              headerCount++;
+            }
+          }
+
+          CHECK_EQ(headerCount, 1);  // Only one header
+          CHECK_EQ(lineCount, 3);    // Header + 2 data rows
+
+          file.close();
+          std::filesystem::remove(testFile);
+        }
+      }
+
+      WHEN("We call saveStreetSpeeds with normalized flag") {
+        const std::string testFile = "test_street_speeds_normalized.csv";
+
+        // Add agents and evolve to generate some speeds
+        dynamics.addRandomAgents(10);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+
+        // Save normalized speeds
+        dynamics.saveStreetSpeeds(testFile, ',', true);
+
+        THEN("The file is created and speeds are normalized") {
+          std::ifstream file(testFile);
+          REQUIRE(file.is_open());
+
+          std::string header;
+          std::getline(file, header);
+
+          std::string dataLine;
+          std::getline(file, dataLine);
+
+          // Parse the data line to check normalized values are between 0 and 1
+          std::stringstream ss(dataLine);
+          std::string token;
+          std::getline(ss, token, ',');  // datetime
+          std::getline(ss, token, ',');  // time_step
+
+          // Check that speed values are between 0 and 1 (normalized)
+          while (std::getline(ss, token, ',')) {
+            if (!token.empty()) {
+              double speed = std::stod(token);
+              CHECK(speed >= 0.0);
+              CHECK(speed <= 1.0);
+            }
+          }
+
+          file.close();
+          std::filesystem::remove(testFile);
+        }
+      }
+
+      WHEN("We call saveStreetSpeeds with empty string (default behavior)") {
+        // This tests the actual default filename generation
+        dynamics.saveStreetSpeeds();
+
+        THEN("A file with datetime and name in filename is created") {
+          // Find the generated file
+          std::string pattern = "*_street_speeds.csv";
+          bool fileFound = false;
+
+          for (const auto& entry : std::filesystem::directory_iterator(".")) {
+            if (entry.path().filename().string().find("street_speeds.csv") !=
+                std::string::npos) {
+              fileFound = true;
+
+              // Check the file has correct header
+              std::ifstream file(entry.path());
+              REQUIRE(file.is_open());
+
+              std::string header;
+              std::getline(file, header);
+              CHECK(header.find("datetime") != std::string::npos);
+              CHECK(header.find("time_step") != std::string::npos);
+
+              file.close();
+              std::filesystem::remove(entry.path());
+              break;
+            }
+          }
+
+          CHECK(fileFound);
+        }
+      }
     }
   }
   SUBCASE("Transition probabilities") {
@@ -1363,7 +1495,7 @@ TEST_CASE("Stationary Weights Impact on Random Navigation") {
     agent->setStreetId(0);
     agent->setSpeed(10.0);
     agent->setFreeTime(0);
-    dynamics.graph().edge(0)->addAgent(std::move(agent));
+    dynamics.graph().edge(0)->addAgent(std::move(agent), dynamics.time_step());
   }
 
   // Evolve simulation

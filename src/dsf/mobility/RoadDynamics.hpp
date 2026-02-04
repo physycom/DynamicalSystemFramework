@@ -358,11 +358,18 @@ namespace dsf::mobility {
 
     /// @brief Save the street densities in csv format
     /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_densities.csv")
-    /// @param normalized If true, the densities are normalized in [0, 1]
     /// @param separator The separator character (default is ';')
+    /// @param normalized If true, the densities are normalized in [0, 1] dividing by the street capacity attribute
     void saveStreetDensities(std::string filename = std::string(),
-                             bool normalized = true,
-                             char const separator = ';') const;
+                             char const separator = ';',
+                             bool const normalized = true) const;
+    /// @brief Save the street speeds in csv format
+    /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_speeds.csv")
+    /// @param separator The separator character (default is ';')
+    /// @param bNormalized If true, the speeds are normalized in [0, 1] dividing by the street maxSpeed attribute
+    void saveStreetSpeeds(std::string filename = std::string(),
+                          char const separator = ';',
+                          bool bNormalized = false) const;
     /// @brief Save the street input counts in csv format
     /// @param filename The name of the file
     /// @param reset If true, the input counts are cleared after the computation
@@ -742,7 +749,7 @@ namespace dsf::mobility {
                 timeTolerance,
                 timeDiff);
             // Kill the agent
-            this->m_killAgent(pStreet->dequeue(queueIndex));
+            this->m_killAgent(pStreet->dequeue(queueIndex, this->time_step()));
             ++m_nKilledAgents;
             continue;
           }
@@ -898,7 +905,8 @@ namespace dsf::mobility {
           }
         }
         if (bArrived) {
-          auto pAgent = this->m_killAgent(pStreet->dequeue(queueIndex));
+          auto pAgent =
+              this->m_killAgent(pStreet->dequeue(queueIndex, this->time_step()));
           ++m_nArrivedAgents;
           if (reinsert_agents) {
             // reset Agent's values
@@ -920,7 +928,7 @@ namespace dsf::mobility {
               *nextStreet);
           continue;
         }
-        auto pAgent{pStreet->dequeue(queueIndex)};
+        auto pAgent{pStreet->dequeue(queueIndex, this->time_step())};
         spdlog::debug(
             "{} at time {} has been dequeued from street {} and enqueued on street {} "
             "with free time {}.",
@@ -990,7 +998,7 @@ namespace dsf::mobility {
               pNode->id(),
               nextStreet->id(),
               pAgent->freeTime());
-          nextStreet->addAgent(std::move(pAgent));
+          nextStreet->addAgent(std::move(pAgent), this->time_step());
           it = intersection.agents().erase(it);
           break;
         }
@@ -1018,7 +1026,7 @@ namespace dsf::mobility {
               nextStreet->id(),
               pAgent->freeTime(),
               *pAgent);
-          nextStreet->addAgent(std::move(pAgent));
+          nextStreet->addAgent(std::move(pAgent), this->time_step());
         } else {
           return;
         }
@@ -1351,7 +1359,7 @@ namespace dsf::mobility {
       this->setAgentSpeed(pAgent);
       pAgent->setFreeTime(this->time_step() +
                           std::ceil(street->length() / pAgent->speed()));
-      street->addAgent(std::move(pAgent));
+      street->addAgent(std::move(pAgent), this->time_step());
       this->m_agents.pop_back();
     }
   }
@@ -2302,8 +2310,8 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::saveStreetDensities(std::string filename,
-                                                  bool normalized,
-                                                  char const separator) const {
+                                                  char const separator,
+                                                  bool const normalized) const {
     if (filename.empty()) {
       filename =
           this->m_safeDateTime() + '_' + this->m_safeName() + "_street_densities.csv";
@@ -2329,6 +2337,48 @@ namespace dsf::mobility {
       // keep 2 decimal digits;
       file << separator << std::scientific << std::setprecision(2)
            << pStreet->density(normalized);
+    }
+    file << std::endl;
+    file.close();
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::saveStreetSpeeds(std::string filename,
+                                               char const separator,
+                                               bool const bNormalized) const {
+    if (filename.empty()) {
+      filename = this->m_safeDateTime() + '_' + this->m_safeName() + "_street_speeds.csv";
+    }
+    bool bEmptyFile{false};
+    {
+      std::ifstream file(filename);
+      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
+    }
+    std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+      throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
+    }
+    if (bEmptyFile) {
+      file << "datetime" << separator << "time_step";
+      for (auto const& [streetId, pStreet] : this->graph().edges()) {
+        file << separator << streetId;
+      }
+      file << std::endl;
+    }
+    file << this->strDateTime() << separator << this->time_step();
+    for (auto const& [streetId, pStreet] : this->graph().edges()) {
+      auto const measure = pStreet->meanSpeed(true);
+      file << separator;
+      // If not valid, write empty value (less space w.r.t. NaN)
+      if (!measure.is_valid) {
+        continue;
+      }
+
+      double speed{measure.mean};
+      if (bNormalized) {
+        speed /= pStreet->maxSpeed();
+      }
+      file << std::fixed << std::setprecision(2) << speed;
     }
     file << std::endl;
     file.close();
