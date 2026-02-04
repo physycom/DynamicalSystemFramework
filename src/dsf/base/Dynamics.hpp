@@ -43,8 +43,9 @@ namespace dsf {
   class Dynamics {
   private:
     network_t m_graph;
-    std::string m_name;
-    std::time_t m_timeInit, m_timeStep;
+    std::string m_name = "unnamed simulation";
+    std::time_t m_timeInit = 0;
+    std::time_t m_timeStep = 0;
 
   protected:
     tbb::task_arena m_taskArena;
@@ -120,11 +121,7 @@ namespace dsf {
 
   template <typename network_t>
   Dynamics<network_t>::Dynamics(network_t& graph, std::optional<unsigned int> seed)
-      : m_graph{std::move(graph)},
-        m_name{"unnamed simulation"},
-        m_timeInit{0},
-        m_timeStep{0},
-        m_generator{std::random_device{}()} {
+      : m_graph{std::move(graph)}, m_generator{std::random_device{}()} {
     if (seed.has_value()) {
       m_generator.seed(*seed);
     }
