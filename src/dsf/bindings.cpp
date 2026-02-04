@@ -13,6 +13,12 @@ PYBIND11_MODULE(dsf_cpp, m) {
   m.doc() = "Python bindings for the DSF library";
   m.attr("__version__") = dsf::version();
 
+  // Bind the dsf::log_to_file function
+  m.def("log_to_file",
+        &dsf::log_to_file,
+        pybind11::arg("path"),
+        "Set up logging to a specified file");
+
   // Create mobility submodule
   auto mobility = m.def_submodule("mobility",
                                   "Bindings for mobility-related classes and functions, "
