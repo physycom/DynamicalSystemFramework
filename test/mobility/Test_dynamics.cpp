@@ -959,44 +959,6 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
-  SUBCASE("streetMeanSpeed") {
-    /// GIVEN: a dynamics object
-    /// WHEN: we evolve the dynamics
-    /// THEN: the agent mean speed is the same as the street mean speed
-    Road::setMeanVehicleLength(2.);
-    Street s1{0, std::make_pair(0, 1), 20., 20.};
-    Street s2{1, std::make_pair(1, 2), 30., 15.};
-    Street s3{2, std::make_pair(3, 1), 30., 15.};
-    Street s4{3, std::make_pair(1, 4), 30., 15.};
-    RoadNetwork graph2;
-    graph2.addStreets(s1, s2, s3, s4);
-    for (const auto& [id, pNode] : graph2.nodes()) {
-      pNode->setCapacity(4);
-      pNode->setTransportCapacity(4);
-    }
-    FirstOrderDynamics dynamics{graph2, false, 69, 0.5};
-    dynamics.addItinerary(2, 2);
-    dynamics.updatePaths();
-    for (int i = 0; i < 4; ++i) {
-      dynamics.addAgent(dynamics.itineraries().at(2), 0);
-    }
-    auto const& pStreet{dynamics.graph().edge(0)};
-    dynamics.evolve(false);
-    dynamics.evolve(false);
-    CHECK_EQ(dynamics.streetMeanSpeed(0), 18.5);
-    // I don't think the mean speed of agents should be equal to the street's
-    // one... CHECK_EQ(dynamics.streetMeanSpeed().mean,
-    // dynamics.agentMeanSpeed().mean); CHECK_EQ(dynamics.streetMeanSpeed().std,
-    // 0.); street 1 density should be 0.4 so...
-    CHECK_EQ(dynamics.streetMeanSpeed(0.2, true).mean, 18.5);
-    CHECK_EQ(dynamics.streetMeanSpeed(0.2, true).std, 0.);
-    CHECK_EQ(dynamics.streetMeanSpeed(0.8, false).mean, 15.875);
-    CHECK_EQ(dynamics.streetMeanSpeed(0.8, false).std, doctest::Approx(1.51554));
-    dynamics.evolve(false);
-    dynamics.evolve(false);
-    CHECK_EQ(pStreet->queue(0).size(), 2);
-    CHECK_EQ(dynamics.streetMeanSpeed(0), 0.);
-  }
   SUBCASE("Intersection right of way") {
     GIVEN("A dynamics object with five nodes and eight streets") {
       RoadNetwork graph2;

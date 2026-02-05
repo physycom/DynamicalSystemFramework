@@ -28,8 +28,6 @@ std::atomic<bool> bExitFlag{false};
 
 // uncomment these lines to print densities, flows and speeds
 #define PRINT_DENSITIES
-// #define PRINT_FLOWS
-// #define PRINT_SPEEDS
 // #define PRINT_TP
 
 using RoadNetwork = dsf::mobility::RoadNetwork;
@@ -182,22 +180,6 @@ int main(int argc, char** argv) {
 
   std::cout << "Done." << std::endl;
   std::cout << "Running simulation...\n";
-#ifdef PRINT_FLOWS
-  std::ofstream streetFlow(OUT_FOLDER + "flows.csv");
-  streetFlow << "time";
-  for (const auto& [id, street] : dynamics.graph().edges()) {
-    streetFlow << ';' << id;
-  }
-  streetFlow << '\n';
-#endif
-#ifdef PRINT_SPEEDS
-  std::ofstream streetSpeed(OUT_FOLDER + "speeds.csv");
-  streetSpeed << "time";
-  for (const auto& [id, street] : dynamics.graph().edges()) {
-    streetSpeed << ';' << id;
-  }
-  streetSpeed << '\n';
-#endif
 #ifdef PRINT_TP
   std::ofstream outTP(OUT_FOLDER + "turn_probabilities.csv");
   outTP << "time";
@@ -299,39 +281,9 @@ int main(int argc, char** argv) {
 #ifdef PRINT_DENSITIES
       dynamics.saveStreetDensities(true);
 #endif
-#ifdef PRINT_FLOWS
-      streetFlow << ';' << dynamics.time_step();
-      for (const auto& [id, street] : dynamics.graph().edges()) {
-        const auto& meanSpeed = dynamics.streetMeanSpeed(id);
-        if (meanSpeed.has_value()) {
-          streetFlow << ';' << meanSpeed.value() * street->density();
-        } else {
-          streetFlow << ';';
-        }
-      }
-      streetFlow << std::endl;
-#endif
-#ifdef PRINT_SPEEDS
-      streetSpeed << dynamics.time_step();
-      for (const auto& [id, street] : dynamics.graph().edges()) {
-        const auto& meanSpeed = dynamics.streetMeanSpeed(id);
-        if (meanSpeed.has_value()) {
-          streetSpeed << ';' << meanSpeed.value();
-        } else {
-          streetSpeed << ';';
-        }
-      }
-      streetSpeed << std::endl;
-#endif
     }
     ++progress;
   }
-#ifdef PRINT_FLOWS
-  streetFlow.close();
-#endif
-#ifdef PRINT_SPEEDS
-  streetSpeed.close();
-#endif
   // std::cout << std::endl;
   // std::map<uint8_t, std::string> turnNames{
   //     {0, "left"}, {1, "straight"}, {2, "right"}, {3, "u-turn"}};
