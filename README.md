@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/dsf-mobility)](https://pypi.org/project/dsf-mobility/)
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![TBB](https://img.shields.io/badge/TBB-2022.3.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
-[![SPDLOG](https://img.shields.io/badge/spdlog-1.16.0-blue.svg)](https://github.com/gabime/spdlog)
+[![SPDLOG](https://img.shields.io/badge/spdlog-1.17.0-blue.svg)](https://github.com/gabime/spdlog)
 [![CSV](https://img.shields.io/badge/rapidcsv-8.89-blue.svg)](https://github.com/d99kris/rapidcsv)
 [![JSON](https://img.shields.io/badge/simdjson-4.2.1-blue.svg)](https://github.com/simdjson/simdjson)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
