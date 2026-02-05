@@ -5,6 +5,8 @@
 #include "dsf/mobility/Intersection.hpp"
 #include "dsf/mobility/Agent.hpp"
 
+#include <SQLiteCpp/SQLiteCpp.h>
+
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -1083,253 +1085,263 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
-  SUBCASE("Save functions with default filenames") {
+  SUBCASE("Save functions to database") {
     GIVEN("A dynamics object with some streets and agents") {
       Street s1{0, std::make_pair(0, 1), 30., 15.};
       Street s2{1, std::make_pair(1, 2), 30., 15.};
       RoadNetwork graph2;
       graph2.addStreets(s1, s2);
+      graph2.addCoil(0);  // Add coil for testing saveCoilCounts
       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
       dynamics.addAgent(dynamics.itineraries().at(2), 0);
 
-      // Evolve a few times to generate some data
-      for (int i = 0; i < 5; ++i) {
-        dynamics.evolve(false);
-      }
+      const std::string testDbPath = "test_dynamics.db";
+      // Remove existing test database if present
+      std::filesystem::remove(testDbPath);
 
-      WHEN("We call saveStreetDensities with default filename") {
-        // Use explicit filename in test to avoid cluttering the workspace
-        const std::string testFile = "test_street_densities.csv";
-        dynamics.saveStreetDensities(testFile);
-
-        THEN("The file is created with correct header") {
-          std::ifstream file(testFile);
-          REQUIRE(file.is_open());
-
-          std::string header;
-          std::getline(file, header);
-          CHECK(header.find("datetime") != std::string::npos);
-          CHECK(header.find("time_step") != std::string::npos);
-          CHECK(header.find("0") != std::string::npos);
-          CHECK(header.find("1") != std::string::npos);
-
-          file.close();
-          std::filesystem::remove(testFile);
+      WHEN("We call a save function without connecting a database") {
+        THEN("An exception is thrown") {
+          CHECK_THROWS_AS(dynamics.saveStreetDensities(), std::runtime_error);
+          CHECK_THROWS_AS(dynamics.saveStreetSpeeds(), std::runtime_error);
+          CHECK_THROWS_AS(dynamics.saveCoilCounts(), std::runtime_error);
+          CHECK_THROWS_AS(dynamics.saveTravelData(), std::runtime_error);
         }
       }
 
-      WHEN("We call saveTravelData with default filename") {
-        const std::string testFile = "test_travel_data.csv";
-        dynamics.saveTravelData(testFile);
+      WHEN("We connect a database and call saveStreetDensities") {
+        dynamics.connectDataBase(testDbPath);
 
-        THEN("The file is created with correct header") {
-          std::ifstream file(testFile);
-          REQUIRE(file.is_open());
-
-          std::string header;
-          std::getline(file, header);
-          CHECK(header.find("datetime") != std::string::npos);
-          CHECK(header.find("time_step") != std::string::npos);
-          CHECK(header.find("distances") != std::string::npos);
-          CHECK(header.find("times") != std::string::npos);
-          CHECK(header.find("speeds") != std::string::npos);
-
-          file.close();
-          std::filesystem::remove(testFile);
+        // Evolve a few times to generate some data
+        for (int i = 0; i < 5; ++i) {
+          dynamics.evolve(false);
         }
-      }
 
-      WHEN("We call saveMacroscopicObservables with default filename") {
-        const std::string testFile = "test_macroscopic_observables.csv";
-        dynamics.saveMacroscopicObservables(testFile);
-
-        THEN("The file is created with correct header") {
-          std::ifstream file(testFile);
-          REQUIRE(file.is_open());
-
-          std::string header;
-          std::getline(file, header);
-          CHECK(header.find("datetime") != std::string::npos);
-          CHECK(header.find("time_step") != std::string::npos);
-          CHECK(header.find("n_ghost_agents") != std::string::npos);
-          CHECK(header.find("n_agents") != std::string::npos);
-          CHECK(header.find("mean_speed_kph") != std::string::npos);
-          CHECK(header.find("mean_density_vpk") != std::string::npos);
-          CHECK(header.find("mean_flow_vph") != std::string::npos);
-          CHECK(header.find("mean_traveltime_m") != std::string::npos);
-          CHECK(header.find("mean_traveldistance_km") != std::string::npos);
-          CHECK(header.find("mean_travelspeed_kph") != std::string::npos);
-
-          file.close();
-          std::filesystem::remove(testFile);
-        }
-      }
-
-      WHEN("We call saveStreetDensities with empty string (default behavior)") {
-        // This tests the actual default filename generation
         dynamics.saveStreetDensities();
 
-        THEN("A file with datetime and name in filename is created") {
-          // Find the generated file
-          std::string pattern = "*_street_densities.csv";
-          bool fileFound = false;
+        THEN("The street_densities table is created with correct data") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM street_densities");
+          REQUIRE(query.executeStep());
+          CHECK(query.getColumn(0).getInt() == 2);  // 2 streets
 
-          for (const auto& entry : std::filesystem::directory_iterator(".")) {
-            if (entry.path().filename().string().find("street_densities.csv") !=
-                std::string::npos) {
-              fileFound = true;
-
-              // Check the file has correct header
-              std::ifstream file(entry.path());
-              REQUIRE(file.is_open());
-
-              std::string header;
-              std::getline(file, header);
-              CHECK(header.find("datetime") != std::string::npos);
-              CHECK(header.find("time_step") != std::string::npos);
-
-              file.close();
-              std::filesystem::remove(entry.path());
-              break;
-            }
+          SQLite::Statement cols(db, "SELECT street_id, density FROM street_densities");
+          while (cols.executeStep()) {
+            auto streetId = cols.getColumn(0).getInt();
+            auto density = cols.getColumn(1).getDouble();
+            CHECK(streetId >= 0);
+            CHECK(streetId < 2);
+            CHECK(density >= 0.0);
           }
-
-          CHECK(fileFound);
         }
+
+        std::filesystem::remove(testDbPath);
       }
 
-      WHEN("We call saveStreetSpeeds with default filename") {
-        // Use explicit filename in test to avoid cluttering the workspace
-        const std::string testFile = "test_street_speeds.csv";
-        dynamics.saveStreetSpeeds(testFile);
+      WHEN("We connect a database and call saveStreetSpeeds") {
+        dynamics.connectDataBase(testDbPath);
 
-        THEN("The file is created with correct header") {
-          std::ifstream file(testFile);
-          REQUIRE(file.is_open());
-
-          std::string header;
-          std::getline(file, header);
-          CHECK(header.find("datetime") != std::string::npos);
-          CHECK(header.find("time_step") != std::string::npos);
-          CHECK(header.find("0") != std::string::npos);
-          CHECK(header.find("1") != std::string::npos);
-
-          file.close();
-          std::filesystem::remove(testFile);
-        }
-      }
-
-      WHEN("We call saveStreetSpeeds multiple times to test appending") {
-        const std::string testFile = "test_street_speeds_append.csv";
-
-        // Add some agents and evolve
+        // Add agents so we have speed data
         dynamics.addRandomAgents(5);
-        dynamics.evolve(false);
-
-        // Save first time
-        dynamics.saveStreetSpeeds(testFile);
-
-        // Evolve again and save
-        dynamics.evolve(false);
-        dynamics.saveStreetSpeeds(testFile);
-
-        THEN("The file contains multiple rows with one header") {
-          std::ifstream file(testFile);
-          REQUIRE(file.is_open());
-
-          std::string line;
-          int lineCount = 0;
-          int headerCount = 0;
-
-          while (std::getline(file, line)) {
-            lineCount++;
-            if (line.find("datetime") != std::string::npos) {
-              headerCount++;
-            }
-          }
-
-          CHECK_EQ(headerCount, 1);  // Only one header
-          CHECK_EQ(lineCount, 3);    // Header + 2 data rows
-
-          file.close();
-          std::filesystem::remove(testFile);
+        for (int i = 0; i < 3; ++i) {
+          dynamics.evolve(false);
         }
-      }
 
-      WHEN("We call saveStreetSpeeds with normalized flag") {
-        const std::string testFile = "test_street_speeds_normalized.csv";
-
-        // Add agents and evolve to generate some speeds
-        dynamics.addRandomAgents(10);
-        dynamics.evolve(false);
-        dynamics.evolve(false);
-
-        // Save normalized speeds
-        dynamics.saveStreetSpeeds(testFile, ',', true);
-
-        THEN("The file is created and speeds are normalized") {
-          std::ifstream file(testFile);
-          REQUIRE(file.is_open());
-
-          std::string header;
-          std::getline(file, header);
-
-          std::string dataLine;
-          std::getline(file, dataLine);
-
-          // Parse the data line to check normalized values are between 0 and 1
-          std::stringstream ss(dataLine);
-          std::string token;
-          std::getline(ss, token, ',');  // datetime
-          std::getline(ss, token, ',');  // time_step
-
-          // Check that speed values are between 0 and 1 (normalized)
-          while (std::getline(ss, token, ',')) {
-            if (!token.empty()) {
-              double speed = std::stod(token);
-              CHECK(speed >= 0.0);
-              CHECK(speed <= 1.0);
-            }
-          }
-
-          file.close();
-          std::filesystem::remove(testFile);
-        }
-      }
-
-      WHEN("We call saveStreetSpeeds with empty string (default behavior)") {
-        // This tests the actual default filename generation
         dynamics.saveStreetSpeeds();
 
-        THEN("A file with datetime and name in filename is created") {
-          // Find the generated file
-          std::string pattern = "*_street_speeds.csv";
-          bool fileFound = false;
+        THEN("The street_speeds table is created with correct data") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM street_speeds");
+          REQUIRE(query.executeStep());
+          CHECK(query.getColumn(0).getInt() == 2);  // 2 streets
 
-          for (const auto& entry : std::filesystem::directory_iterator(".")) {
-            if (entry.path().filename().string().find("street_speeds.csv") !=
-                std::string::npos) {
-              fileFound = true;
-
-              // Check the file has correct header
-              std::ifstream file(entry.path());
-              REQUIRE(file.is_open());
-
-              std::string header;
-              std::getline(file, header);
-              CHECK(header.find("datetime") != std::string::npos);
-              CHECK(header.find("time_step") != std::string::npos);
-
-              file.close();
-              std::filesystem::remove(entry.path());
-              break;
-            }
+          SQLite::Statement cols(db, "SELECT street_id, speed FROM street_speeds");
+          while (cols.executeStep()) {
+            auto streetId = cols.getColumn(0).getInt();
+            CHECK(streetId >= 0);
+            CHECK(streetId < 2);
+            // Speed can be NULL if no agents
           }
-
-          CHECK(fileFound);
         }
+
+        std::filesystem::remove(testDbPath);
+      }
+
+      WHEN("We connect a database and call saveStreetSpeeds with normalized flag") {
+        dynamics.connectDataBase(testDbPath);
+
+        // Add agents so we have speed data
+        dynamics.addRandomAgents(10);
+        for (int i = 0; i < 3; ++i) {
+          dynamics.evolve(false);
+        }
+
+        dynamics.saveStreetSpeeds(true);  // normalized
+
+        THEN("The speeds are normalized between 0 and 1") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement query(
+              db, "SELECT speed FROM street_speeds WHERE speed IS NOT NULL");
+          while (query.executeStep()) {
+            double speed = query.getColumn(0).getDouble();
+            CHECK(speed >= 0.0);
+            CHECK(speed <= 1.0);
+          }
+        }
+
+        std::filesystem::remove(testDbPath);
+      }
+
+      WHEN("We connect a database and call saveCoilCounts") {
+        dynamics.connectDataBase(testDbPath);
+
+        // Evolve to generate some counts
+        for (int i = 0; i < 3; ++i) {
+          dynamics.evolve(false);
+        }
+
+        dynamics.saveCoilCounts();
+
+        THEN("The coil_counts table is created with correct data") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM coil_counts");
+          REQUIRE(query.executeStep());
+          CHECK(query.getColumn(0).getInt() >= 1);  // At least one coil
+
+          SQLite::Statement cols(db, "SELECT coil_name, count FROM coil_counts");
+          while (cols.executeStep()) {
+            auto coilName = cols.getColumn(0).getText();
+            auto count = cols.getColumn(1).getInt();
+            CHECK(!std::string(coilName).empty());
+            CHECK(count >= 0);
+          }
+        }
+
+        std::filesystem::remove(testDbPath);
+      }
+
+      WHEN("We connect a database and call saveCoilCounts with reset") {
+        dynamics.connectDataBase(testDbPath);
+
+        // Evolve to generate some counts
+        dynamics.addRandomAgents(5);
+        for (int i = 0; i < 5; ++i) {
+          dynamics.evolve(false);
+        }
+
+        dynamics.saveCoilCounts(true);  // with reset
+
+        THEN("The counter is reset after saving") {
+          auto const& street = dynamics.graph().edge(0);
+          CHECK(street->counts() == 0);
+        }
+
+        std::filesystem::remove(testDbPath);
+      }
+
+      WHEN("We connect a database and call saveTravelData") {
+        dynamics.connectDataBase(testDbPath);
+
+        // Evolve until agent reaches destination (with limit)
+        for (int iter = 0; iter < 1000 && dynamics.nAgents() > 0; ++iter) {
+          dynamics.evolve(false);
+        }
+
+        dynamics.saveTravelData();
+
+        THEN("The travel_data table is created with correct data") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM travel_data");
+          REQUIRE(query.executeStep());
+          CHECK(query.getColumn(0).getInt() >= 1);  // At least one trip
+
+          SQLite::Statement cols(db, "SELECT distance, time, speed FROM travel_data");
+          while (cols.executeStep()) {
+            auto distance = cols.getColumn(0).getDouble();
+            auto time = cols.getColumn(1).getDouble();
+            auto speed = cols.getColumn(2).getDouble();
+            CHECK(distance > 0.0);
+            CHECK(time > 0.0);
+            CHECK(speed > 0.0);
+            CHECK(doctest::Approx(speed) == distance / time);
+          }
+        }
+
+        std::filesystem::remove(testDbPath);
+      }
+
+      WHEN("We connect a database and call saveTravelData with reset") {
+        dynamics.connectDataBase(testDbPath);
+
+        // Evolve until agent reaches destination (with limit)
+        for (int iter = 0; iter < 1000 && dynamics.nAgents() > 0; ++iter) {
+          dynamics.evolve(false);
+        }
+
+        // Check that there is travel data
+        auto travelTime = dynamics.meanTravelTime(false);
+        CHECK(travelTime.mean > 0.0);
+
+        dynamics.saveTravelData(true);  // with reset
+
+        // After reset, there should be no travel data
+        auto travelTimeAfter = dynamics.meanTravelTime(false);
+        CHECK(travelTimeAfter.mean == 0.0);
+
+        std::filesystem::remove(testDbPath);
+      }
+
+      WHEN("We call save functions multiple times") {
+        dynamics.connectDataBase(testDbPath);
+
+        // First save
+        dynamics.saveStreetDensities();
+
+        // Evolve and save again
+        dynamics.evolve(false);
+        dynamics.saveStreetDensities();
+
+        THEN("Multiple rows are inserted") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM street_densities");
+          REQUIRE(query.executeStep());
+          CHECK(query.getColumn(0).getInt() == 4);  // 2 streets x 2 saves
+        }
+
+        std::filesystem::remove(testDbPath);
+      }
+
+      WHEN("We connect a database and call saveMacroscopicObservables") {
+        dynamics.connectDataBase(testDbPath);
+
+        // Add agents and evolve until some reach destination (with limit)
+        dynamics.addRandomAgents(10);
+        for (int iter = 0; iter < 1000 && dynamics.nAgents() > 0; ++iter) {
+          dynamics.evolve(false);
+        }
+
+        dynamics.saveMacroscopicObservables();
+
+        THEN("The macroscopic_observables table is created with correct data") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM macroscopic_observables");
+          REQUIRE(query.executeStep());
+          CHECK(query.getColumn(0).getInt() == 1);
+
+          SQLite::Statement cols(
+              db,
+              "SELECT n_ghost_agents, n_agents, mean_speed_kph, std_speed_kph, "
+              "mean_density_vpk, std_density_vpk, mean_flow_vph, std_flow_vph "
+              "FROM macroscopic_observables");
+          REQUIRE(cols.executeStep());
+          CHECK(cols.getColumn(0).getInt() >= 0);  // n_ghost_agents
+          CHECK(cols.getColumn(1).getInt() >= 0);  // n_agents
+          // Mean speed should be positive
+          CHECK(cols.getColumn(2).getDouble() >= 0);  // mean_speed_kph
+        }
+
+        std::filesystem::remove(testDbPath);
       }
     }
   }

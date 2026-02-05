@@ -175,6 +175,9 @@ int main(int argc, char** argv) {
   if (OPTIMIZE)
     dynamics.setDataUpdatePeriod(30);  // Store data every 30 time steps
 
+  // Connect database for saving data
+  dynamics.connectDataBase(OUT_FOLDER + "simulation_data.db");
+
   const auto TM = dynamics.turnMapping();
 
   std::cout << "Done." << std::endl;
@@ -256,8 +259,8 @@ int main(int argc, char** argv) {
     if (dynamics.time_step() % 300 == 0) {
       // printLoadingBar(dynamics.time_step(), MAX_TIME);
       // deltaAgents = std::labs(dynamics.agents().size() - previousAgents);
-      dynamics.saveCoilCounts(std::format("{}coil_counts.csv", OUT_FOLDER));
-      dynamics.saveMacroscopicObservables(std::format("{}data.csv", OUT_FOLDER));
+      dynamics.saveCoilCounts();
+      dynamics.saveMacroscopicObservables();
       // deltas.push_back(deltaAgents);
       // previousAgents = dynamics.agents().size();
 #ifdef PRINT_TP
@@ -294,7 +297,7 @@ int main(int argc, char** argv) {
     }
     if (dynamics.time_step() % 10 == 0) {
 #ifdef PRINT_DENSITIES
-      dynamics.saveStreetDensities(OUT_FOLDER + "densities.csv", true);
+      dynamics.saveStreetDensities(true);
 #endif
 #ifdef PRINT_FLOWS
       streetFlow << ';' << dynamics.time_step();
