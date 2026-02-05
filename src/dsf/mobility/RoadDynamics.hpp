@@ -75,6 +75,11 @@ namespace dsf::mobility {
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
     bool m_forcePriorities{false};
+    // Saving variables
+    std::time_t m_savingInterval{0};
+    bool m_bSaveStreetSpeeds{false};
+    bool m_bSaveStreetDensities{false};
+    bool m_bSaveMacroscopicObservables{false};
 
   private:
     /// @brief Kill an agent
@@ -341,9 +346,6 @@ namespace dsf::mobility {
     tbb::concurrent_unordered_map<Id, std::size_t> destinationCounts(
         bool const bReset = true) noexcept;
 
-    virtual double streetMeanSpeed(Id streetId) const;
-    virtual Measurement<double> streetMeanSpeed() const;
-    virtual Measurement<double> streetMeanSpeed(double, bool) const;
     /// @brief Get the mean density of the streets in \f$m^{-1}\f$
     /// @return Measurement<double> The mean density of the streets and the standard deviation
     Measurement<double> streetMeanDensity(bool normalized = false) const;
@@ -2198,48 +2200,6 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  double RoadDynamics<delay_t>::streetMeanSpeed(Id streetId) const {
-    auto const& pStreet{this->graph().edge(streetId)};
-    auto const nAgents{pStreet->nAgents()};
-    if (nAgents == 0) {
-      return 0.;
-    }
-    double speed{0.};
-    for (auto const& pAgent : pStreet->movingAgents()) {
-      speed += pAgent->speed();
-    }
-    return speed / nAgents;
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::streetMeanSpeed() const {
-    std::vector<double> speeds;
-    speeds.reserve(this->graph().nEdges());
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      speeds.push_back(streetMeanSpeed(streetId));
-    }
-    return Measurement<double>(speeds);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::streetMeanSpeed(double threshold,
-                                                             bool above) const {
-    std::vector<double> speeds;
-    speeds.reserve(this->graph().nEdges());
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      if (above && (pStreet->density(true) > threshold)) {
-        speeds.push_back(streetMeanSpeed(streetId));
-      } else if (!above && (pStreet->density(true) < threshold)) {
-        speeds.push_back(streetMeanSpeed(streetId));
-      }
-    }
-    return Measurement<double>(speeds);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::streetMeanDensity(bool normalized) const {
     if (this->graph().edges().empty()) {
       return Measurement(0., 0.);
@@ -2271,7 +2231,10 @@ namespace dsf::mobility {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
     for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
+      auto const speedMeasure = pStreet->meanSpeed();
+      if (speedMeasure.is_valid) {
+        flows.push_back(pStreet->density() * speedMeasure.mean);
+      }
     }
     return Measurement<double>(flows);
   }
@@ -2283,10 +2246,14 @@ namespace dsf::mobility {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
     for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      auto const speedMeasure = pStreet->meanSpeed();
+      if (!speedMeasure.is_valid) {
+        continue;
+      }
       if (above && (pStreet->density(true) > threshold)) {
-        flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
+        flows.push_back(pStreet->density() * speedMeasure.mean);
       } else if (!above && (pStreet->density(true) < threshold)) {
-        flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
+        flows.push_back(pStreet->density() * speedMeasure.mean);
       }
     }
     return Measurement<double>(flows);
@@ -2485,24 +2452,32 @@ namespace dsf::mobility {
         std_travel_time{0.}, std_travel_speed{0.};
     auto const& nEdges{this->graph().nEdges()};
     auto const& nData{m_travelDTs.size()};
+    std::size_t nValidSpeeds{0};
 
     for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      auto const& speed{this->streetMeanSpeed(streetId) * 3.6};
+      auto const speedMeasure = pStreet->meanSpeed();
       auto const& density{pStreet->density() * 1e3};
-      auto const& flow{density * speed};
-      mean_speed += speed;
+      if (speedMeasure.is_valid) {
+        auto const speed = speedMeasure.mean * 3.6;  // to kph
+        auto const speed_std = speedMeasure.std * 3.6;
+        mean_speed += speed;
+        std_speed += speed * speed + speed_std * speed_std;
+
+        auto const& flow{density * speed};
+        mean_flow += flow;
+        std_flow += speed_std;
+
+        ++nValidSpeeds;
+      }
       mean_density += density;
-      mean_flow += flow;
-      std_speed += speed * speed;
       std_density += density * density;
-      std_flow += flow * flow;
     }
-    mean_speed /= nEdges;
+    mean_speed /= nValidSpeeds;
     mean_density /= nEdges;
-    mean_flow /= nEdges;
-    std_speed = std::sqrt(std_speed / nEdges - mean_speed * mean_speed);
+    mean_flow /= nValidSpeeds;
+    std_speed = std::sqrt(std_speed / nValidSpeeds - mean_speed * mean_speed);
     std_density = std::sqrt(std_density / nEdges - mean_density * mean_density);
-    std_flow = std::sqrt(std_flow / nEdges - mean_flow * mean_flow);
+    std_flow = std::sqrt(std_flow / nValidSpeeds - mean_flow * mean_flow);
 
     for (auto const& [distance, time] : m_travelDTs) {
       mean_travel_distance += distance * 1e-3;
