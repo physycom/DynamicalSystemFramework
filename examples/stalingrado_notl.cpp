@@ -77,10 +77,10 @@ int main(int argc, char* argv[]) {
   graph.addStreets(s01, s12, s23, s34);
   graph.adjustNodeCapacities();
 
-  graph.edge(1)->setTransportCapacity((62. / 132.) * TIME_SCALING);
-  graph.edge(7)->setTransportCapacity((72. / 141.) * TIME_SCALING);
-  graph.edge(13)->setTransportCapacity((88. / 138.) * TIME_SCALING);
-  graph.edge(19)->setTransportCapacity((81. / 131.) * TIME_SCALING);
+  graph.edge(1)->setTransportCapacity((62. / 132.));
+  graph.edge(7)->setTransportCapacity((72. / 141.));
+  graph.edge(13)->setTransportCapacity((88. / 138.));
+  graph.edge(19)->setTransportCapacity((81. / 131.));
 
   graph.addCoil(19);
   auto const& coil = graph.edge(19);

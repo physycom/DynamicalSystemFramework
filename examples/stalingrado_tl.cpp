@@ -57,25 +57,25 @@ int main(int argc, char* argv[]) {
   Street s23{13, std::make_pair(2, 3), 222., 13.9, 2};
   Street s34{19, std::make_pair(3, 4), 651., 13.9, 2};
   // Viale Aldo Moro
-  graph.addNode<TrafficLight>(1, 132);
+  graph.addNode<TrafficLight>(1, std::ceil(132 * TIME_SCALING));
   auto& tl1 = graph.node<TrafficLight>(1);
   tl1.setCycle(s01.id(),
                dsf::Direction::ANY,
                {static_cast<dsf::Delay>(std::ceil(62 * TIME_SCALING)), 0});
   // Via Donato Creti
-  graph.addNode<TrafficLight>(2, 141);
+  graph.addNode<TrafficLight>(2, std::ceil(141 * TIME_SCALING));
   auto& tl2 = graph.node<TrafficLight>(2);
   tl2.setCycle(s12.id(),
                dsf::Direction::ANY,
                {static_cast<dsf::Delay>(std::ceil(72 * TIME_SCALING)), 0});
   // Via del Lavoro
-  graph.addNode<TrafficLight>(3, 138);
+  graph.addNode<TrafficLight>(3, std::ceil(138 * TIME_SCALING));
   auto& tl3 = graph.node<TrafficLight>(3);
   tl3.setCycle(s23.id(),
                dsf::Direction::ANY,
                {static_cast<dsf::Delay>(std::ceil(88 * TIME_SCALING)), 0});
   // Viali
-  graph.addNode<TrafficLight>(4, 131);
+  graph.addNode<TrafficLight>(4, std::ceil(131 * TIME_SCALING));
   auto& tl4 = graph.node<TrafficLight>(4);
   tl4.setCycle(s34.id(),
                dsf::Direction::ANY,
