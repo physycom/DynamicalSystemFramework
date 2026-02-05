@@ -449,6 +449,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("datetime"),
           dsf::g_docstrings.at("dsf::Dynamics::setInitTime").c_str())
+      .def("connectDataBase",
+           &dsf::mobility::FirstOrderDynamics::connectDataBase,
+           pybind11::arg("dbPath"),
+           dsf::g_docstrings.at("dsf::Dynamics::connectDataBase").c_str())
       .def(
           "setForcePriorities",
           &dsf::mobility::FirstOrderDynamics::setForcePriorities,
@@ -686,31 +690,22 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def(
           "saveStreetDensities",
           &dsf::mobility::FirstOrderDynamics::saveStreetDensities,
-          pybind11::arg("filename"),
-          pybind11::arg("separator") = ';',
           pybind11::arg("normalized") = true,
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetDensities").c_str())
       .def("saveStreetSpeeds",
            &dsf::mobility::FirstOrderDynamics::saveStreetSpeeds,
-           pybind11::arg("filename"),
-           pybind11::arg("separator") = ';',
            pybind11::arg("normalized") = false,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetSpeeds").c_str())
       .def("saveCoilCounts",
            &dsf::mobility::FirstOrderDynamics::saveCoilCounts,
-           pybind11::arg("filename"),
            pybind11::arg("reset") = false,
-           pybind11::arg("separator") = ';',
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveCoilCounts").c_str())
       .def("saveTravelData",
            &dsf::mobility::FirstOrderDynamics::saveTravelData,
-           pybind11::arg("filename"),
            pybind11::arg("reset") = false,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveTravelData").c_str())
       .def("saveMacroscopicObservables",
            &dsf::mobility::FirstOrderDynamics::saveMacroscopicObservables,
-           pybind11::arg("filename"),
-           pybind11::arg("separator") = ';',
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveMacroscopicObservables")
                .c_str())
       .def(

@@ -104,9 +104,12 @@ namespace dsf {
     /// @brief Get the name of the simulation
     /// @return const std::string&, The name of the simulation
     inline auto const& name() const { return m_name; };
-    /// @brief Get the database connection
-    /// @return const SQLite::Database&, The database connection
+    /// @brief Get the database connection (const version)
+    /// @return const std::unique_ptr<SQLite::Database>&, The database connection
     inline auto const& database() const { return m_database; }
+    /// @brief Get the database connection (mutable version for writing)
+    /// @return std::unique_ptr<SQLite::Database>&, The database connection
+    inline auto& database() { return m_database; }
     /// @brief Get the current simulation time as epoch time
     /// @return std::time_t, The current simulation time as epoch time
     inline auto time() const { return m_timeInit + m_timeStep; }

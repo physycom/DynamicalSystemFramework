@@ -119,6 +119,9 @@ int main(int argc, char** argv) {
   // dynamics.setForcePriorities(true);
   dynamics.setSpeedFluctuationSTD(0.1);
 
+  // Connect database for saving data
+  dynamics.connectDataBase(OUT_FOLDER + "simulation_data.db");
+
   std::cout << "Done." << std::endl;
   std::cout << "Running simulation...\n";
 #ifdef PRINT_FLOWS
@@ -176,13 +179,13 @@ int main(int argc, char** argv) {
     }
 
     if (dynamics.time_step() % 300 == 0) {
-      dynamics.saveCoilCounts(std::format("{}coil_counts.csv", OUT_FOLDER));
+      dynamics.saveCoilCounts();
       printLoadingBar(dynamics.time_step(), MAX_TIME);
-      dynamics.saveMacroscopicObservables(std::format("{}data.csv", OUT_FOLDER));
+      dynamics.saveMacroscopicObservables();
     }
     if (dynamics.time_step() % 10 == 0) {
 #ifdef PRINT_DENSITIES
-      dynamics.saveStreetDensities(OUT_FOLDER + "densities.csv", true);
+      dynamics.saveStreetDensities(true);
 #endif
 #ifdef PRINT_FLOWS
       streetFlow << dynamics.time_step();
