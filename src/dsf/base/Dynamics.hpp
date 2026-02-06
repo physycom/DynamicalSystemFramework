@@ -17,6 +17,7 @@
 #include <chrono>
 #include <concepts>
 #include <vector>
+#include <memory>
 #include <random>
 #include <span>
 #include <numeric>
@@ -35,6 +36,7 @@
 #endif
 
 #include <tbb/tbb.h>
+#include <SQLiteCpp/SQLiteCpp.h>
 
 namespace dsf {
   /// @brief The Dynamics class represents the dynamics of the network.
@@ -43,9 +45,11 @@ namespace dsf {
   class Dynamics {
   private:
     network_t m_graph;
+    Id m_id;
     std::string m_name = "unnamed simulation";
     std::time_t m_timeInit = 0;
     std::time_t m_timeStep = 0;
+    std::unique_ptr<SQLite::Database> m_database;
 
   protected:
     tbb::task_arena m_taskArena;
@@ -90,12 +94,26 @@ namespace dsf {
     /// @param timeEpoch The initial time as epoch time
     inline void setInitTime(std::time_t timeEpoch) { m_timeInit = timeEpoch; };
 
+    inline void connectDataBase(std::string const& dbPath) {
+      m_database = std::make_unique<SQLite::Database>(
+          dbPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+    }
+
     /// @brief Get the graph
     /// @return const network_t&, The graph
-    inline const auto& graph() const { return m_graph; };
+    inline auto const& graph() const { return m_graph; };
+    /// @brief Get the id of the simulation
+    /// @return const Id&, The id of the simulation
+    inline auto const& id() const { return m_id; };
     /// @brief Get the name of the simulation
     /// @return const std::string&, The name of the simulation
-    inline const auto& name() const { return m_name; };
+    inline auto const& name() const { return m_name; };
+    /// @brief Get the database connection (const version)
+    /// @return const std::unique_ptr<SQLite::Database>&, The database connection
+    inline auto const& database() const { return m_database; }
+    /// @brief Get the database connection (mutable version for writing)
+    /// @return std::unique_ptr<SQLite::Database>&, The database connection
+    inline auto& database() { return m_database; }
     /// @brief Get the current simulation time as epoch time
     /// @return std::time_t, The current simulation time as epoch time
     inline auto time() const { return m_timeInit + m_timeStep; }
@@ -126,5 +144,19 @@ namespace dsf {
       m_generator.seed(*seed);
     }
     m_taskArena.initialize();
+    // Take the current time and set id as YYYYMMDDHHMMSS
+    auto const now = std::chrono::system_clock::now();
+#ifdef __APPLE__
+    std::time_t const t = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream oss;
+    oss << std::put_time(std::localtime(&t), "%Y%m%d%H%M%S");
+    m_id = std::stoull(oss.str());
+#else
+    m_id = std::stoull(std::format(
+        "{:%Y%m%d%H%M%S}",
+        std::chrono::floor<std::chrono::seconds>(
+            std::chrono::current_zone()->to_local(std::chrono::system_clock::from_time_t(
+                std::chrono::system_clock::to_time_t(now))))));
+#endif
   }
 };  // namespace dsf

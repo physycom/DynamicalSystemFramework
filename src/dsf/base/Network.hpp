@@ -3,7 +3,6 @@
 #include <cassert>
 #include <unordered_map>
 
-#include "AdjacencyMatrix.hpp"
 #include "Edge.hpp"
 #include "Node.hpp"
 
@@ -21,10 +20,6 @@ namespace dsf {
   public:
     /// @brief Construct a new empty Network object
     Network() = default;
-
-    /// @brief Construct a new Network object
-    /// @param adj The adjacency matrix representing the network
-    explicit Network(AdjacencyMatrix const& adj);
 
     /// @brief Get the nodes as an unordered map
     /// @return std::unordered_map<Id, std::unique_ptr<node_t>> The nodes
@@ -103,17 +98,6 @@ namespace dsf {
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
   Id Network<node_t, edge_t>::m_cantorHash(std::pair<Id, Id> const& idPair) const {
     return m_cantorHash(idPair.first, idPair.second);
-  }
-
-  template <typename node_t, typename edge_t>
-    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
-  Network<node_t, edge_t>::Network(AdjacencyMatrix const& adj) {
-    auto const& values{adj.elements()};
-    // Add as many nodes as adj.n()
-    addNDefaultNodes(adj.n());
-    std::for_each(values.cbegin(), values.cend(), [&](auto const& pair) {
-      addEdge(m_cantorHash(pair), std::make_pair(pair.first, pair.second));
-    });
   }
 
   template <typename node_t, typename edge_t>

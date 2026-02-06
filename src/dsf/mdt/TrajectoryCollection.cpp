@@ -131,8 +131,7 @@ namespace dsf::mdt {
          &check_min_duration,
          min_points_per_trajectory,
          cluster_radius_km,
-         max_speed_kph,
-         min_duration_min](auto& pair) {
+         max_speed_kph](auto& pair) {
           auto const& uid = pair.first;
           auto& trajectory =
               pair.second
