@@ -64,16 +64,17 @@ namespace dsf::mobility {
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     std::time_t m_previousOptimizationTime{0};
 
-  private:
+  protected:
     std::function<double(std::unique_ptr<Street> const&)> m_weightFunction;
     std::optional<double> m_errorProbability{std::nullopt};
     std::optional<double> m_passageProbability{std::nullopt};
     std::optional<double> m_meanTravelDistance{std::nullopt};
     std::optional<std::time_t> m_meanTravelTime{std::nullopt};
-    double m_weightTreshold;
-    std::optional<double> m_timeToleranceFactor{std::nullopt};
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
+    PathWeight m_pathWeight = PathWeight::TRAVELTIME;
+    double m_weightTreshold;
+    std::optional<double> m_timeToleranceFactor{std::nullopt};
     bool m_forcePriorities{false};
     // Saving variables
     std::time_t m_savingInterval{0};
@@ -116,11 +117,13 @@ namespace dsf::mobility {
     virtual double m_streetEstimatedTravelTime(
         std::unique_ptr<Street> const& pStreet) const = 0;
 
-    void m_initStreetTable();
+    void m_initStreetTable() const;
 
-    void m_initAvgStatsTable();
+    void m_initAvgStatsTable() const;
 
-    void m_initTravelDataTable();
+    void m_initTravelDataTable() const;
+
+    virtual void m_dumpSimInfo() const = 0;
 
   public:
     /// @brief Construct a new RoadDynamics object
@@ -1054,7 +1057,7 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_initStreetTable() {
+  void RoadDynamics<delay_t>::m_initStreetTable() const {
     if (!this->database()) {
       throw std::runtime_error(
           "No database connected. Call connectDataBase() before saving data.");
@@ -1063,6 +1066,7 @@ namespace dsf::mobility {
     this->database()->exec(
         "CREATE TABLE IF NOT EXISTS road_data ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "simulation_id INTEGER NOT NULL, "
         "datetime TEXT NOT NULL, "
         "time_step INTEGER NOT NULL, "
         "street_id INTEGER NOT NULL, "
@@ -1076,7 +1080,7 @@ namespace dsf::mobility {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_initAvgStatsTable() {
+  void RoadDynamics<delay_t>::m_initAvgStatsTable() const {
     if (!this->database()) {
       throw std::runtime_error(
           "No database connected. Call connectDataBase() before saving data.");
@@ -1085,6 +1089,7 @@ namespace dsf::mobility {
     this->database()->exec(
         "CREATE TABLE IF NOT EXISTS avg_stats ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "simulation_id INTEGER NOT NULL, "
         "datetime TEXT NOT NULL, "
         "time_step INTEGER NOT NULL, "
         "n_ghost_agents INTEGER NOT NULL, "
@@ -1098,7 +1103,7 @@ namespace dsf::mobility {
   }
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::m_initTravelDataTable() {
+  void RoadDynamics<delay_t>::m_initTravelDataTable() const {
     if (!this->database()) {
       throw std::runtime_error(
           "No database connected. Call connectDataBase() before saving data.");
@@ -1107,6 +1112,7 @@ namespace dsf::mobility {
     this->database()->exec(
         "CREATE TABLE IF NOT EXISTS travel_data ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "simulation_id INTEGER NOT NULL, "
         "datetime TEXT NOT NULL, "
         "time_step INTEGER NOT NULL, "
         "distance_m REAL NOT NULL, "
@@ -1146,6 +1152,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setWeightFunction(PathWeight const pathWeight,
                                                 std::optional<double> weightTreshold) {
+    m_pathWeight = pathWeight;
     switch (pathWeight) {
       case PathWeight::LENGTH:
         m_weightFunction = [](std::unique_ptr<Street> const& pStreet) {
@@ -1281,6 +1288,8 @@ namespace dsf::mobility {
     if (saveTravelData) {
       m_initTravelDataTable();
     }
+
+    this->m_dumpSimInfo();
 
     spdlog::info(
         "Data saving configured: interval={}s, avg_stats={}, street_data={}, "
@@ -1773,31 +1782,32 @@ namespace dsf::mobility {
         SQLite::Transaction transaction(*this->database());
         SQLite::Statement insertStmt(
             *this->database(),
-            "INSERT INTO road_data (datetime, time_step, street_id, "
+            "INSERT INTO road_data (datetime, time_step, simulation_id, street_id, "
             "coil, density, avg_speed, std_speed, counts) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         for (auto const& record : streetDataRecords) {
           insertStmt.bind(1, this->strDateTime());
           insertStmt.bind(2, static_cast<std::int64_t>(this->time_step()));
-          insertStmt.bind(3, static_cast<std::int64_t>(record.streetId));
+          insertStmt.bind(3, static_cast<std::int64_t>(this->id()));
+          insertStmt.bind(4, static_cast<std::int64_t>(record.streetId));
           if (record.coilName.has_value()) {
-            insertStmt.bind(4, record.coilName.value());
+            insertStmt.bind(5, record.coilName.value());
           } else {
-            insertStmt.bind(4);
+            insertStmt.bind(5);
           }
-          insertStmt.bind(5, record.density);
+          insertStmt.bind(6, record.density);
           if (record.avgSpeed.has_value()) {
-            insertStmt.bind(6, record.avgSpeed.value());
-            insertStmt.bind(7, record.stdSpeed.value());
+            insertStmt.bind(7, record.avgSpeed.value());
+            insertStmt.bind(8, record.stdSpeed.value());
           } else {
-            insertStmt.bind(6);
             insertStmt.bind(7);
+            insertStmt.bind(8);
           }
           if (record.counts.has_value()) {
-            insertStmt.bind(8, static_cast<std::int64_t>(record.counts.value()));
+            insertStmt.bind(9, static_cast<std::int64_t>(record.counts.value()));
           } else {
-            insertStmt.bind(8);
+            insertStmt.bind(9);
           }
           insertStmt.exec();
           insertStmt.reset();
@@ -1807,16 +1817,17 @@ namespace dsf::mobility {
 
       if (m_bSaveTravelData) {  // Begin transaction for better performance
         SQLite::Transaction transaction(*this->database());
-        SQLite::Statement insertStmt(
-            *this->database(),
-            "INSERT INTO travel_data (datetime, time_step, distance_m, travel_time_s) "
-            "VALUES (?, ?, ?, ?)");
+        SQLite::Statement insertStmt(*this->database(),
+                                     "INSERT INTO travel_data (datetime, time_step, "
+                                     "simulation_id, distance_m, travel_time_s) "
+                                     "VALUES (?, ?, ?, ?, ?)");
 
         for (auto const& [distance, time] : m_travelDTs) {
           insertStmt.bind(1, this->strDateTime());
           insertStmt.bind(2, static_cast<int64_t>(this->time_step()));
-          insertStmt.bind(3, distance);
-          insertStmt.bind(4, time);
+          insertStmt.bind(3, static_cast<int64_t>(this->id()));
+          insertStmt.bind(4, distance);
+          insertStmt.bind(5, time);
           insertStmt.exec();
           insertStmt.reset();
         }
@@ -1842,17 +1853,18 @@ namespace dsf::mobility {
         SQLite::Statement insertStmt(
             *this->database(),
             "INSERT INTO avg_stats ("
-            "datetime, time_step, n_ghost_agents, n_agents, "
+            "simulation_id, datetime, time_step, n_ghost_agents, n_agents, "
             "mean_speed_kph, std_speed_kph, mean_density_vpk, std_density_vpk) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        insertStmt.bind(1, this->strDateTime());
-        insertStmt.bind(2, static_cast<std::int64_t>(this->time_step()));
-        insertStmt.bind(3, static_cast<std::int64_t>(m_agents.size()));
-        insertStmt.bind(4, static_cast<std::int64_t>(this->nAgents()));
-        insertStmt.bind(5, mean_speed);
-        insertStmt.bind(6, std_speed);
-        insertStmt.bind(7, mean_density);
-        insertStmt.bind(8, std_density);
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        insertStmt.bind(1, static_cast<std::int64_t>(this->id()));
+        insertStmt.bind(2, this->strDateTime());
+        insertStmt.bind(3, static_cast<std::int64_t>(this->time_step()));
+        insertStmt.bind(4, static_cast<std::int64_t>(m_agents.size()));
+        insertStmt.bind(5, static_cast<std::int64_t>(this->nAgents()));
+        insertStmt.bind(6, mean_speed);
+        insertStmt.bind(7, std_speed);
+        insertStmt.bind(8, mean_density);
+        insertStmt.bind(9, std_density);
         insertStmt.exec();
       }
     }

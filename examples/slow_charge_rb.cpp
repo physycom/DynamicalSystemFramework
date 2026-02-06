@@ -66,14 +66,13 @@ int main(int argc, char** argv) {
                                            std::to_string(SEED))};  // output folder
   constexpr auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
 
-  // Clear output folder or create it if it doesn't exist
+  // Create output folder if it doesn't exist (preserve existing database)
   if (!fs::exists(BASE_OUT_FOLDER)) {
     fs::create_directory(BASE_OUT_FOLDER);
   }
-  if (fs::exists(OUT_FOLDER)) {
-    fs::remove_all(OUT_FOLDER);
+  if (!fs::exists(OUT_FOLDER)) {
+    fs::create_directory(OUT_FOLDER);
   }
-  fs::create_directory(OUT_FOLDER);
   // Starting
   std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};

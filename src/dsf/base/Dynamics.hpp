@@ -45,6 +45,7 @@ namespace dsf {
   class Dynamics {
   private:
     network_t m_graph;
+    Id m_id;
     std::string m_name = "unnamed simulation";
     std::time_t m_timeInit = 0;
     std::time_t m_timeStep = 0;
@@ -101,6 +102,9 @@ namespace dsf {
     /// @brief Get the graph
     /// @return const network_t&, The graph
     inline auto const& graph() const { return m_graph; };
+    /// @brief Get the id of the simulation
+    /// @return const Id&, The id of the simulation
+    inline auto const& id() const { return m_id; };
     /// @brief Get the name of the simulation
     /// @return const std::string&, The name of the simulation
     inline auto const& name() const { return m_name; };
@@ -140,5 +144,19 @@ namespace dsf {
       m_generator.seed(*seed);
     }
     m_taskArena.initialize();
+    // Take the current time and set id as YYYYMMDDHHMMSS
+    auto const now = std::chrono::system_clock::now();
+#ifdef __APPLE__
+    std::time_t const t = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream oss;
+    oss << std::put_time(std::localtime(&t), "%Y%m%d%H%M%S");
+    m_id = std::stoull(oss.str());
+#else
+    m_id = std::stoull(std::format(
+        "{:%Y%m%d%H%M%S}",
+        std::chrono::floor<std::chrono::seconds>(
+            std::chrono::current_zone()->to_local(std::chrono::system_clock::from_time_t(
+                std::chrono::system_clock::to_time_t(now))))));
+#endif
   }
 };  // namespace dsf
