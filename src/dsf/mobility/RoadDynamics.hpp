@@ -125,6 +125,8 @@ namespace dsf::mobility {
 
     virtual void m_dumpSimInfo() const = 0;
 
+    void m_dumpNetwork() const;
+
   public:
     /// @brief Construct a new RoadDynamics object
     /// @param graph The graph representing the network
@@ -1120,6 +1122,84 @@ namespace dsf::mobility {
 
     spdlog::info("Initialized travel_data table in the database.");
   }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_dumpNetwork() const {
+    if (!this->database()) {
+      throw std::runtime_error(
+          "No database connected. Call connectDataBase() before saving data.");
+    }
+    // Check if edges and nodes tables already exists
+    SQLite::Statement edgesQuery(
+        *this->database(),
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='edges';");
+    SQLite::Statement nodesQuery(
+        *this->database(),
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='nodes';");
+    bool edgesTableExists = edgesQuery.executeStep();
+    bool nodesTableExists = nodesQuery.executeStep();
+    if (edgesTableExists && nodesTableExists) {
+      spdlog::info(
+          "Edges and nodes tables already exist in the database. Skipping network dump.");
+      return;
+    }
+
+    // Create edges table
+    this->database()->exec(
+        "CREATE TABLE IF NOT EXISTS edges ("
+        "id INTEGER PRIMARY KEY, "
+        "source INTEGER NOT NULL, "
+        "target INTEGER NOT NULL, "
+        "length REAL NOT NULL, "
+        "maxspeed REAL NOT NULL, "
+        "name TEXT, "
+        "nlanes INTEGER NOT NULL, "
+        "geometry TEXT NOT NULL)");
+    // Create nodes table
+    this->database()->exec(
+        "CREATE TABLE IF NOT EXISTS nodes ("
+        "id INTEGER PRIMARY KEY, "
+        "type TEXT, "
+        "geometry TEXT NOT NULL)");
+
+    // Insert edges
+    SQLite::Statement insertEdgeStmt(*this->database(),
+                                     "INSERT INTO edges (id, source, target, length, "
+                                     "maxspeed, name, nlanes, geometry) "
+                                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?);");
+    for (const auto& [edgeId, pEdge] : this->graph().edges()) {
+      insertEdgeStmt.bind(1, static_cast<std::int64_t>(edgeId));
+      insertEdgeStmt.bind(2, static_cast<std::int64_t>(pEdge->source()));
+      insertEdgeStmt.bind(3, static_cast<std::int64_t>(pEdge->target()));
+      insertEdgeStmt.bind(4, pEdge->length());
+      insertEdgeStmt.bind(5, pEdge->maxSpeed());
+      insertEdgeStmt.bind(6, pEdge->name());
+      insertEdgeStmt.bind(7, pEdge->nLanes());
+      insertEdgeStmt.bind(8, std::format("{}", pEdge->geometry()));
+      insertEdgeStmt.exec();
+      insertEdgeStmt.reset();
+    }
+    // Insert nodes
+    SQLite::Statement insertNodeStmt(
+        *this->database(), "INSERT INTO nodes (id, type, geometry) VALUES (?, ?, ?);");
+    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
+      insertNodeStmt.bind(1, static_cast<std::int64_t>(nodeId));
+      if (pNode->isTrafficLight()) {
+        insertNodeStmt.bind(2, "traffic_light");
+      } else if (pNode->isRoundabout()) {
+        insertNodeStmt.bind(2, "roundabout");
+      } else {
+        insertNodeStmt.bind(2);
+      }
+      if (pNode->geometry().has_value()) {
+        insertNodeStmt.bind(3, std::format("{}", *pNode->geometry()));
+      } else {
+        insertNodeStmt.bind(3, "NULL");
+      }
+      insertNodeStmt.exec();
+      insertNodeStmt.reset();
+    }
+  }
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
@@ -1290,6 +1370,7 @@ namespace dsf::mobility {
     }
 
     this->m_dumpSimInfo();
+    this->m_dumpNetwork();
 
     spdlog::info(
         "Data saving configured: interval={}s, avg_stats={}, street_data={}, "

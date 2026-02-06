@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <set>
 #include <sstream>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
@@ -1161,20 +1162,127 @@ TEST_CASE("FirstOrderDynamics") {
           dynamics.evolve(true);
         }
 
-        THEN("All tables are created") {
+        THEN("All tables are created with correct schema") {
           SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
 
+          // Check road_data table
           SQLite::Statement roadQuery(db, "SELECT COUNT(*) FROM road_data");
           REQUIRE(roadQuery.executeStep());
           CHECK(roadQuery.getColumn(0).getInt() >= 1);
 
+          SQLite::Statement roadSchema(db, "PRAGMA table_info(road_data)");
+          std::set<std::string> roadColumns;
+          while (roadSchema.executeStep()) {
+            roadColumns.insert(roadSchema.getColumn(1).getString());
+          }
+          CHECK(roadColumns.count("id") == 1);
+          CHECK(roadColumns.count("simulation_id") == 1);
+          CHECK(roadColumns.count("datetime") == 1);
+          CHECK(roadColumns.count("time_step") == 1);
+          CHECK(roadColumns.count("street_id") == 1);
+          CHECK(roadColumns.count("coil") == 1);
+          CHECK(roadColumns.count("density") == 1);
+          CHECK(roadColumns.count("avg_speed") == 1);
+          CHECK(roadColumns.count("std_speed") == 1);
+          CHECK(roadColumns.count("counts") == 1);
+
+          // Check avg_stats table
           SQLite::Statement avgQuery(db, "SELECT COUNT(*) FROM avg_stats");
           REQUIRE(avgQuery.executeStep());
           CHECK(avgQuery.getColumn(0).getInt() >= 1);
 
+          SQLite::Statement avgSchema(db, "PRAGMA table_info(avg_stats)");
+          std::set<std::string> avgColumns;
+          while (avgSchema.executeStep()) {
+            avgColumns.insert(avgSchema.getColumn(1).getString());
+          }
+          CHECK(avgColumns.count("id") == 1);
+          CHECK(avgColumns.count("simulation_id") == 1);
+          CHECK(avgColumns.count("datetime") == 1);
+          CHECK(avgColumns.count("time_step") == 1);
+          CHECK(avgColumns.count("n_ghost_agents") == 1);
+          CHECK(avgColumns.count("n_agents") == 1);
+          CHECK(avgColumns.count("mean_speed_kph") == 1);
+          CHECK(avgColumns.count("std_speed_kph") == 1);
+          CHECK(avgColumns.count("mean_density_vpk") == 1);
+          CHECK(avgColumns.count("std_density_vpk") == 1);
+
+          // Check travel_data table
           SQLite::Statement travelQuery(db, "SELECT COUNT(*) FROM travel_data");
           REQUIRE(travelQuery.executeStep());
           CHECK(travelQuery.getColumn(0).getInt() >= 1);
+
+          SQLite::Statement travelSchema(db, "PRAGMA table_info(travel_data)");
+          std::set<std::string> travelColumns;
+          while (travelSchema.executeStep()) {
+            travelColumns.insert(travelSchema.getColumn(1).getString());
+          }
+          CHECK(travelColumns.count("id") == 1);
+          CHECK(travelColumns.count("simulation_id") == 1);
+          CHECK(travelColumns.count("datetime") == 1);
+          CHECK(travelColumns.count("time_step") == 1);
+          CHECK(travelColumns.count("distance_m") == 1);
+          CHECK(travelColumns.count("travel_time_s") == 1);
+
+          // Check simulations table
+          SQLite::Statement simQuery(
+              db,
+              "SELECT name FROM sqlite_master WHERE type='table' AND name='simulations'");
+          REQUIRE(simQuery.executeStep());
+
+          SQLite::Statement simSchema(db, "PRAGMA table_info(simulations)");
+          std::set<std::string> simColumns;
+          while (simSchema.executeStep()) {
+            simColumns.insert(simSchema.getColumn(1).getString());
+          }
+          CHECK(simColumns.count("id") == 1);
+          CHECK(simColumns.count("name") == 1);
+          CHECK(simColumns.count("alpha") == 1);
+          CHECK(simColumns.count("speed_fluctuation_std") == 1);
+          CHECK(simColumns.count("weight_function") == 1);
+          CHECK(simColumns.count("weight_threshold") == 1);
+          CHECK(simColumns.count("error_probability") == 1);
+          CHECK(simColumns.count("passage_probability") == 1);
+          CHECK(simColumns.count("mean_travel_distance_m") == 1);
+          CHECK(simColumns.count("mean_travel_time_s") == 1);
+          CHECK(simColumns.count("stagnant_tolerance_factor") == 1);
+          CHECK(simColumns.count("force_priorities") == 1);
+          CHECK(simColumns.count("save_avg_stats") == 1);
+          CHECK(simColumns.count("save_road_data") == 1);
+          CHECK(simColumns.count("save_travel_data") == 1);
+
+          // Check edges table exists
+          SQLite::Statement edgesQuery(
+              db, "SELECT name FROM sqlite_master WHERE type='table' AND name='edges'");
+          REQUIRE(edgesQuery.executeStep());
+
+          SQLite::Statement edgesSchema(db, "PRAGMA table_info(edges)");
+          std::set<std::string> edgesColumns;
+          while (edgesSchema.executeStep()) {
+            edgesColumns.insert(edgesSchema.getColumn(1).getString());
+          }
+          CHECK(edgesColumns.count("id") == 1);
+          CHECK(edgesColumns.count("source") == 1);
+          CHECK(edgesColumns.count("target") == 1);
+          CHECK(edgesColumns.count("length") == 1);
+          CHECK(edgesColumns.count("maxspeed") == 1);
+          CHECK(edgesColumns.count("name") == 1);
+          CHECK(edgesColumns.count("nlanes") == 1);
+          CHECK(edgesColumns.count("geometry") == 1);
+
+          // Check nodes table exists
+          SQLite::Statement nodesQuery(
+              db, "SELECT name FROM sqlite_master WHERE type='table' AND name='nodes'");
+          REQUIRE(nodesQuery.executeStep());
+
+          SQLite::Statement nodesSchema(db, "PRAGMA table_info(nodes)");
+          std::set<std::string> nodesColumns;
+          while (nodesSchema.executeStep()) {
+            nodesColumns.insert(nodesSchema.getColumn(1).getString());
+          }
+          CHECK(nodesColumns.count("id") == 1);
+          CHECK(nodesColumns.count("type") == 1);
+          CHECK(nodesColumns.count("geometry") == 1);
         }
 
         std::filesystem::remove(testDbPath);
