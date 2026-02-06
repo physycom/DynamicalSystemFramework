@@ -21,9 +21,25 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- sql.js for SQLite in browser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- Database selector modal -->
+  <div id="db-modal" class="modal">
+    <div class="modal-content">
+      <h2>Load SQLite Database</h2>
+      <p>Select the SQLite database file from your simulation output:</p>
+      <div class="db-input-group">
+        <input type="file" id="dbFileInput" accept=".db,.sqlite,.sqlite3" />
+      </div>
+      <div id="db-status" class="db-status"></div>
+      <button id="loadDbBtn" class="load-db-btn">Load Database</button>
+    </div>
+  </div>
+
   <div id="app-container">
     <!-- Map container -->
     <div id="map"></div>

@@ -5,6 +5,104 @@ body, html {
     height: 100%;
   }
 
+  /* Database modal styles */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal.hidden {
+    display: none;
+  }
+
+  .modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+  }
+
+  .modal-content h2 {
+    margin-top: 0;
+    color: #333;
+  }
+
+  .modal-content p {
+    color: #666;
+    margin-bottom: 20px;
+  }
+
+  .db-input-group {
+    margin-bottom: 20px;
+  }
+
+  .db-input-group input[type="file"] {
+    padding: 10px;
+    border: 2px dashed #ccc;
+    border-radius: 5px;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+  }
+
+  .db-input-group input[type="file"]:hover {
+    border-color: #4CAF50;
+  }
+
+  .db-status {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    min-height: 20px;
+  }
+
+  .db-status.error {
+    background: #ffebee;
+    color: #c62828;
+  }
+
+  .db-status.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+
+  .db-status.loading {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+
+  .load-db-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .load-db-btn:hover {
+    background: #45a049;
+  }
+
+  .load-db-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
   #app-container {
     width: 100%;
     height: 100%;
