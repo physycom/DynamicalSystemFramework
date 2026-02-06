@@ -11,6 +11,8 @@ namespace dsf::mobility {
 
     double m_streetEstimatedTravelTime(std::unique_ptr<Street> const& pStreet) const final;
 
+    void m_dumpSimInfo() const final;
+
   public:
     /// @brief Construct a new First Order Dynamics object
     /// @param graph The graph representing the network
