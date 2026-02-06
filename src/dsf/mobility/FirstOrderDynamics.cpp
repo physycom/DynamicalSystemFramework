@@ -73,7 +73,7 @@ namespace dsf::mobility {
       insertSimStmt.bind(9);
     }
     if (this->m_meanTravelTime.has_value()) {
-      insertSimStmt.bind(10, *this->m_meanTravelTime);
+      insertSimStmt.bind(10, static_cast<int64_t>(*this->m_meanTravelTime));
     } else {
       insertSimStmt.bind(10);
     }
