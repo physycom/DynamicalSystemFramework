@@ -1047,13 +1047,13 @@ TEST_CASE("FirstOrderDynamics") {
       }
     }
   }
-  SUBCASE("Save functions to database") {
+  SUBCASE("saveData function to database") {
     GIVEN("A dynamics object with some streets and agents") {
       Street s1{0, std::make_pair(0, 1), 30., 15.};
       Street s2{1, std::make_pair(1, 2), 30., 15.};
       RoadNetwork graph2;
       graph2.addStreets(s1, s2);
-      graph2.addCoil(0);  // Add coil for testing saveCoilCounts
+      graph2.addCoil(0);  // Add coil for testing road_data with coils
       FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
       dynamics.addItinerary(2, 2);
       dynamics.updatePaths();
@@ -1063,154 +1063,43 @@ TEST_CASE("FirstOrderDynamics") {
       // Remove existing test database if present
       std::filesystem::remove(testDbPath);
 
-      WHEN("We call a save function without connecting a database") {
-        THEN("An exception is thrown") {
-          CHECK_THROWS_AS(dynamics.saveStreetDensities(), std::runtime_error);
-          CHECK_THROWS_AS(dynamics.saveStreetSpeeds(), std::runtime_error);
-          CHECK_THROWS_AS(dynamics.saveCoilCounts(), std::runtime_error);
-          CHECK_THROWS_AS(dynamics.saveTravelData(), std::runtime_error);
-        }
-      }
-
-      WHEN("We connect a database and call saveStreetDensities") {
+      WHEN("We connect a database and configure saveData with street data") {
         dynamics.connectDataBase(testDbPath);
+        // Configure saving: interval=1 (save every step), saveStreetData=true
+        dynamics.saveData(1, false, true, false);
 
-        // Evolve a few times to generate some data
+        // Evolve a few times to generate and save data
         for (int i = 0; i < 5; ++i) {
-          dynamics.evolve(false);
+          dynamics.evolve(true);
         }
 
-        dynamics.saveStreetDensities();
-
-        THEN("The street_densities table is created with correct data") {
+        THEN("The road_data table is created with correct data") {
           SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
-          SQLite::Statement query(db, "SELECT COUNT(*) FROM street_densities");
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM road_data");
           REQUIRE(query.executeStep());
-          CHECK(query.getColumn(0).getInt() == 2);  // 2 streets
+          CHECK(query.getColumn(0).getInt() >= 2);  // At least 2 streets
 
-          SQLite::Statement cols(db, "SELECT street_id, density FROM street_densities");
-          while (cols.executeStep()) {
-            auto streetId = cols.getColumn(0).getInt();
-            auto density = cols.getColumn(1).getDouble();
-            CHECK(streetId >= 0);
-            CHECK(streetId < 2);
-            CHECK(density >= 0.0);
-          }
-        }
-
-        std::filesystem::remove(testDbPath);
-      }
-
-      WHEN("We connect a database and call saveStreetSpeeds") {
-        dynamics.connectDataBase(testDbPath);
-
-        // Add agents so we have speed data
-        dynamics.addRandomAgents(5);
-        for (int i = 0; i < 3; ++i) {
-          dynamics.evolve(false);
-        }
-
-        dynamics.saveStreetSpeeds();
-
-        THEN("The street_speeds table is created with correct data") {
-          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
-          SQLite::Statement query(db, "SELECT COUNT(*) FROM street_speeds");
-          REQUIRE(query.executeStep());
-          CHECK(query.getColumn(0).getInt() == 2);  // 2 streets
-
-          SQLite::Statement cols(db, "SELECT street_id, speed FROM street_speeds");
+          SQLite::Statement cols(db,
+                                 "SELECT street_id, density, avg_speed FROM road_data");
           while (cols.executeStep()) {
             auto streetId = cols.getColumn(0).getInt();
             CHECK(streetId >= 0);
             CHECK(streetId < 2);
-            // Speed can be NULL if no agents
           }
         }
 
         std::filesystem::remove(testDbPath);
       }
 
-      WHEN("We connect a database and call saveStreetSpeeds with normalized flag") {
+      WHEN("We connect a database and configure saveData with travel data") {
         dynamics.connectDataBase(testDbPath);
-
-        // Add agents so we have speed data
-        dynamics.addRandomAgents(10);
-        for (int i = 0; i < 3; ++i) {
-          dynamics.evolve(false);
-        }
-
-        dynamics.saveStreetSpeeds(true);  // normalized
-
-        THEN("The speeds are normalized between 0 and 1") {
-          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
-          SQLite::Statement query(
-              db, "SELECT speed FROM street_speeds WHERE speed IS NOT NULL");
-          while (query.executeStep()) {
-            double speed = query.getColumn(0).getDouble();
-            CHECK(speed >= 0.0);
-            CHECK(speed <= 1.0);
-          }
-        }
-
-        std::filesystem::remove(testDbPath);
-      }
-
-      WHEN("We connect a database and call saveCoilCounts") {
-        dynamics.connectDataBase(testDbPath);
-
-        // Evolve to generate some counts
-        for (int i = 0; i < 3; ++i) {
-          dynamics.evolve(false);
-        }
-
-        dynamics.saveCoilCounts();
-
-        THEN("The coil_counts table is created with correct data") {
-          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
-          SQLite::Statement query(db, "SELECT COUNT(*) FROM coil_counts");
-          REQUIRE(query.executeStep());
-          CHECK(query.getColumn(0).getInt() >= 1);  // At least one coil
-
-          SQLite::Statement cols(db, "SELECT coil_name, count FROM coil_counts");
-          while (cols.executeStep()) {
-            auto coilName = cols.getColumn(0).getText();
-            auto count = cols.getColumn(1).getInt();
-            CHECK(!std::string(coilName).empty());
-            CHECK(count >= 0);
-          }
-        }
-
-        std::filesystem::remove(testDbPath);
-      }
-
-      WHEN("We connect a database and call saveCoilCounts with reset") {
-        dynamics.connectDataBase(testDbPath);
-
-        // Evolve to generate some counts
-        dynamics.addRandomAgents(5);
-        for (int i = 0; i < 5; ++i) {
-          dynamics.evolve(false);
-        }
-
-        dynamics.saveCoilCounts(true);  // with reset
-
-        THEN("The counter is reset after saving") {
-          auto const& street = dynamics.graph().edge(0);
-          CHECK(street->counts() == 0);
-        }
-
-        std::filesystem::remove(testDbPath);
-      }
-
-      WHEN("We connect a database and call saveTravelData") {
-        dynamics.connectDataBase(testDbPath);
+        // Configure saving: interval=1, saveTravelData=true
+        dynamics.saveData(1, false, false, true);
 
         // Evolve until agent reaches destination (with limit)
         for (int iter = 0; iter < 1000 && dynamics.nAgents() > 0; ++iter) {
-          dynamics.evolve(false);
+          dynamics.evolve(true);
         }
-
-        dynamics.saveTravelData();
 
         THEN("The travel_data table is created with correct data") {
           SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
@@ -1218,89 +1107,74 @@ TEST_CASE("FirstOrderDynamics") {
           REQUIRE(query.executeStep());
           CHECK(query.getColumn(0).getInt() >= 1);  // At least one trip
 
-          SQLite::Statement cols(db, "SELECT distance, time, speed FROM travel_data");
+          SQLite::Statement cols(db, "SELECT distance_m, travel_time_s FROM travel_data");
           while (cols.executeStep()) {
             auto distance = cols.getColumn(0).getDouble();
             auto time = cols.getColumn(1).getDouble();
-            auto speed = cols.getColumn(2).getDouble();
             CHECK(distance > 0.0);
             CHECK(time > 0.0);
-            CHECK(speed > 0.0);
-            CHECK(doctest::Approx(speed) == distance / time);
           }
         }
 
         std::filesystem::remove(testDbPath);
       }
 
-      WHEN("We connect a database and call saveTravelData with reset") {
+      WHEN("We connect a database and configure saveData with average stats") {
         dynamics.connectDataBase(testDbPath);
+        // Configure saving: interval=1, saveAverageStats=true
+        dynamics.saveData(1, true, false, false);
 
-        // Evolve until agent reaches destination (with limit)
-        for (int iter = 0; iter < 1000 && dynamics.nAgents() > 0; ++iter) {
-          dynamics.evolve(false);
-        }
-
-        // Check that there is travel data
-        auto travelTime = dynamics.meanTravelTime(false);
-        CHECK(travelTime.mean > 0.0);
-
-        dynamics.saveTravelData(true);  // with reset
-
-        // After reset, there should be no travel data
-        auto travelTimeAfter = dynamics.meanTravelTime(false);
-        CHECK(travelTimeAfter.mean == 0.0);
-
-        std::filesystem::remove(testDbPath);
-      }
-
-      WHEN("We call save functions multiple times") {
-        dynamics.connectDataBase(testDbPath);
-
-        // First save
-        dynamics.saveStreetDensities();
-
-        // Evolve and save again
-        dynamics.evolve(false);
-        dynamics.saveStreetDensities();
-
-        THEN("Multiple rows are inserted") {
-          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
-          SQLite::Statement query(db, "SELECT COUNT(*) FROM street_densities");
-          REQUIRE(query.executeStep());
-          CHECK(query.getColumn(0).getInt() == 4);  // 2 streets x 2 saves
-        }
-
-        std::filesystem::remove(testDbPath);
-      }
-
-      WHEN("We connect a database and call saveMacroscopicObservables") {
-        dynamics.connectDataBase(testDbPath);
-
-        // Add agents and evolve until some reach destination (with limit)
+        // Add agents and evolve
         dynamics.addRandomAgents(10);
-        for (int iter = 0; iter < 1000 && dynamics.nAgents() > 0; ++iter) {
-          dynamics.evolve(false);
+        for (int iter = 0; iter < 10; ++iter) {
+          dynamics.evolve(true);
         }
 
-        dynamics.saveMacroscopicObservables();
-
-        THEN("The macroscopic_observables table is created with correct data") {
+        THEN("The avg_stats table is created with correct data") {
           SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
-          SQLite::Statement query(db, "SELECT COUNT(*) FROM macroscopic_observables");
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM avg_stats");
           REQUIRE(query.executeStep());
-          CHECK(query.getColumn(0).getInt() == 1);
+          CHECK(query.getColumn(0).getInt() >= 1);
 
           SQLite::Statement cols(
               db,
               "SELECT n_ghost_agents, n_agents, mean_speed_kph, std_speed_kph, "
-              "mean_density_vpk, std_density_vpk, mean_flow_vph, std_flow_vph "
-              "FROM macroscopic_observables");
+              "mean_density_vpk, std_density_vpk "
+              "FROM avg_stats");
           REQUIRE(cols.executeStep());
-          CHECK(cols.getColumn(0).getInt() >= 0);  // n_ghost_agents
-          CHECK(cols.getColumn(1).getInt() >= 0);  // n_agents
-          // Mean speed should be positive
+          CHECK(cols.getColumn(0).getInt() >= 0);     // n_ghost_agents
+          CHECK(cols.getColumn(1).getInt() >= 0);     // n_agents
           CHECK(cols.getColumn(2).getDouble() >= 0);  // mean_speed_kph
+        }
+
+        std::filesystem::remove(testDbPath);
+      }
+
+      WHEN("We configure saveData with all options enabled") {
+        dynamics.connectDataBase(testDbPath);
+        // Configure saving: interval=1, all data types enabled
+        dynamics.saveData(1, true, true, true);
+
+        // Add agents and evolve until some reach destination
+        dynamics.addRandomAgents(10);
+        for (int iter = 0; iter < 1000 && dynamics.nAgents() > 0; ++iter) {
+          dynamics.evolve(true);
+        }
+
+        THEN("All tables are created") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+
+          SQLite::Statement roadQuery(db, "SELECT COUNT(*) FROM road_data");
+          REQUIRE(roadQuery.executeStep());
+          CHECK(roadQuery.getColumn(0).getInt() >= 1);
+
+          SQLite::Statement avgQuery(db, "SELECT COUNT(*) FROM avg_stats");
+          REQUIRE(avgQuery.executeStep());
+          CHECK(avgQuery.getColumn(0).getInt() >= 1);
+
+          SQLite::Statement travelQuery(db, "SELECT COUNT(*) FROM travel_data");
+          REQUIRE(travelQuery.executeStep());
+          CHECK(travelQuery.getColumn(0).getInt() >= 1);
         }
 
         std::filesystem::remove(testDbPath);

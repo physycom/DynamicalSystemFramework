@@ -687,27 +687,20 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("reset") = true,
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::destinationCounts").c_str())
-      .def(
-          "saveStreetDensities",
-          &dsf::mobility::FirstOrderDynamics::saveStreetDensities,
-          pybind11::arg("normalized") = true,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetDensities").c_str())
-      .def("saveStreetSpeeds",
-           &dsf::mobility::FirstOrderDynamics::saveStreetSpeeds,
-           pybind11::arg("normalized") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetSpeeds").c_str())
-      .def("saveCoilCounts",
-           &dsf::mobility::FirstOrderDynamics::saveCoilCounts,
-           pybind11::arg("reset") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveCoilCounts").c_str())
-      .def("saveTravelData",
-           &dsf::mobility::FirstOrderDynamics::saveTravelData,
-           pybind11::arg("reset") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveTravelData").c_str())
-      .def("saveMacroscopicObservables",
-           &dsf::mobility::FirstOrderDynamics::saveMacroscopicObservables,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveMacroscopicObservables")
-               .c_str())
+      .def("saveData",
+           &dsf::mobility::FirstOrderDynamics::saveData,
+           pybind11::arg("saving_interval"),
+           pybind11::arg("save_average_stats") = false,
+           pybind11::arg("save_street_data") = false,
+           pybind11::arg("save_travel_data") = false,
+           "Configure data saving during simulation.\n\n"
+           "Args:\n"
+           "    saving_interval: Interval in time steps between data saves\n"
+           "    save_average_stats: Whether to save average statistics (speed, density, "
+           "flow)\n"
+           "    save_street_data: Whether to save per-street data (density, speed, coil "
+           "counts)\n"
+           "    save_travel_data: Whether to save travel data (distance, travel time)")
       .def(
           "summary",
           [](dsf::mobility::FirstOrderDynamics& self) {
