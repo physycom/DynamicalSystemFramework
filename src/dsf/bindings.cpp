@@ -78,79 +78,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
                      &dsf::Measurement<double>::std,
                      dsf::g_docstrings.at("dsf::Measurement::std").c_str());
 
-  // Bind AdjacencyMatrix to main module (general graph structure)
-  pybind11::class_<dsf::AdjacencyMatrix>(m, "AdjacencyMatrix")
-      .def(pybind11::init<>(),
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::AdjacencyMatrix").c_str())
-      .def(pybind11::init<std::string const&>(),
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::AdjacencyMatrix")
-               .c_str())  // Added constructor
-      .def("n",
-           &dsf::AdjacencyMatrix::n,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::n").c_str())
-      .def("size",
-           &dsf::AdjacencyMatrix::size,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::size").c_str())
-      .def("empty",
-           &dsf::AdjacencyMatrix::empty,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::empty").c_str())  // Added empty
-      .def("getRow",
-           &dsf::AdjacencyMatrix::getRow,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getRow").c_str())
-      .def("getCol",
-           &dsf::AdjacencyMatrix::getCol,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getCol").c_str())  // Added getCol
-      .def(
-          "__call__",
-          [](const dsf::AdjacencyMatrix& self, dsf::Id i, dsf::Id j) {
-            return self(i, j);
-          },
-          dsf::g_docstrings.at("dsf::AdjacencyMatrix::operator()").c_str())
-      .def("insert",
-           &dsf::AdjacencyMatrix::insert,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::insert").c_str())  // Added insert
-      .def("contains",
-           &dsf::AdjacencyMatrix::contains,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::contains")
-               .c_str())  // Added contains
-      .def("elements",
-           &dsf::AdjacencyMatrix::elements,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::elements")
-               .c_str())  // Added elements
-      .def("clear",
-           &dsf::AdjacencyMatrix::clear,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clear").c_str())
-      .def("clearRow",
-           &dsf::AdjacencyMatrix::clearRow,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clearRow")
-               .c_str())  // Added clearRow
-      .def("clearCol",
-           &dsf::AdjacencyMatrix::clearCol,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clearCol")
-               .c_str())  // Added clearCol
-      .def("getInDegreeVector",
-           &dsf::AdjacencyMatrix::getInDegreeVector,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getInDegreeVector")
-               .c_str())  // Added getInDegreeVector
-      .def("getOutDegreeVector",
-           &dsf::AdjacencyMatrix::getOutDegreeVector,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getOutDegreeVector")
-               .c_str())  // Added getOutDegreeVector
-      .def("read",
-           &dsf::AdjacencyMatrix::read,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::read").c_str())  // Added read
-      .def("save",
-           &dsf::AdjacencyMatrix::save,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::save").c_str());  // Added save
-
   // Bind mobility-related classes to mobility submodule
   pybind11::class_<dsf::mobility::RoadNetwork>(mobility, "RoadNetwork")
       .def(pybind11::init<>(),
-           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::RoadNetwork").c_str())
-      .def(pybind11::init<const dsf::AdjacencyMatrix&>(),
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::RoadNetwork").c_str())
       .def("nNodes",
            &dsf::mobility::RoadNetwork::nNodes,

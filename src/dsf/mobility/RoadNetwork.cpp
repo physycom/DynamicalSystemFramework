@@ -332,10 +332,6 @@ namespace dsf::mobility {
     this->m_edges.rehash(0);
   }
 
-  RoadNetwork::RoadNetwork() : Network{AdjacencyMatrix()}, m_capacity{0} {}
-
-  RoadNetwork::RoadNetwork(AdjacencyMatrix const& adj) : Network{adj}, m_capacity{0} {}
-
   std::size_t RoadNetwork::nCoils() const {
     return std::count_if(m_edges.cbegin(), m_edges.cend(), [](auto const& pair) {
       return pair.second->hasCoil();
