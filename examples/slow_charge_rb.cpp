@@ -120,6 +120,13 @@ int main(int argc, char** argv) {
   // Connect database for saving data
   dynamics.connectDataBase(OUT_FOLDER + "simulation_data.db");
 
+  // Configure data saving: interval=10, saveAverageStats=true, saveStreetData=true
+#ifdef PRINT_DENSITIES
+  dynamics.saveData(300, true, true, false);
+#else
+  dynamics.saveData(300, true, false, false);
+#endif
+
   std::cout << "Done." << std::endl;
   std::cout << "Running simulation...\n";
 
@@ -161,15 +168,10 @@ int main(int argc, char** argv) {
     }
 
     if (dynamics.time_step() % 300 == 0) {
-      dynamics.saveCoilCounts();
+      // Data is now saved automatically by saveData() configuration
       printLoadingBar(dynamics.time_step(), MAX_TIME);
-      dynamics.saveMacroscopicObservables();
     }
-    if (dynamics.time_step() % 10 == 0) {
-#ifdef PRINT_DENSITIES
-      dynamics.saveStreetDensities(true);
-#endif
-    }
+    // Street densities are now saved automatically by saveData() configuration
     ++progress;
   }
   // std::cout << std::endl;

@@ -176,6 +176,13 @@ int main(int argc, char** argv) {
   // Connect database for saving data
   dynamics.connectDataBase(OUT_FOLDER + "simulation_data.db");
 
+  // Configure data saving: interval=10, saveAverageStats=true, saveStreetData=true
+#ifdef PRINT_DENSITIES
+  dynamics.saveData(300, true, true, false);
+#else
+  dynamics.saveData(300, true, false, false);
+#endif
+
   const auto TM = dynamics.turnMapping();
 
   std::cout << "Done." << std::endl;
@@ -241,8 +248,7 @@ int main(int argc, char** argv) {
     if (dynamics.time_step() % 300 == 0) {
       // printLoadingBar(dynamics.time_step(), MAX_TIME);
       // deltaAgents = std::labs(dynamics.agents().size() - previousAgents);
-      dynamics.saveCoilCounts();
-      dynamics.saveMacroscopicObservables();
+      // Data is now saved automatically by saveData() configuration
       // deltas.push_back(deltaAgents);
       // previousAgents = dynamics.agents().size();
 #ifdef PRINT_TP
@@ -277,11 +283,7 @@ int main(int argc, char** argv) {
       outTP << std::endl;
 #endif
     }
-    if (dynamics.time_step() % 10 == 0) {
-#ifdef PRINT_DENSITIES
-      dynamics.saveStreetDensities(true);
-#endif
-    }
+    // Street densities are now saved automatically by saveData() configuration
     ++progress;
   }
   // std::cout << std::endl;
