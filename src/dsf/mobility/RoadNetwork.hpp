@@ -9,7 +9,6 @@
 
 #pragma once
 
-#include "../base/AdjacencyMatrix.hpp"
 #include "../base/Network.hpp"
 #include "RoadJunction.hpp"
 #include "Intersection.hpp"
@@ -62,10 +61,7 @@ namespace dsf::mobility {
     void m_jsonEdgesImporter(std::ifstream& file);
 
   public:
-    RoadNetwork();
-    /// @brief Construct a new RoadNetwork object
-    /// @param adj An adjacency matrix made by a SparseMatrix representing the graph's adjacency matrix
-    RoadNetwork(AdjacencyMatrix const& adj);
+    RoadNetwork() = default;
     // Disable copy constructor and copy assignment operator
     RoadNetwork(const RoadNetwork&) = delete;
     RoadNetwork& operator=(const RoadNetwork&) = delete;
