@@ -139,6 +139,12 @@ endif()
 # Check if the user has TBB installed
 find_package(TBB REQUIRED CONFIG)
 # Get SQLiteCpp
+# Disable cppcheck on Windows to avoid issues with missing cppcheck installation
+if(WIN32)
+  set(SQLITECPP_RUN_CPPCHECK
+      OFF
+      CACHE BOOL "Run cppcheck on SQLiteCpp" FORCE)
+endif()
 FetchContent_Declare(
   SQLiteCpp
   GIT_REPOSITORY https://github.com/SRombauts/SQLiteCpp
