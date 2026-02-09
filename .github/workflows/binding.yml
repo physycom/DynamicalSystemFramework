@@ -127,13 +127,13 @@ jobs:
     - name: Verify package metadata
       run: |
         python -c "
-        import pkg_resources
+        import importlib.metadata
         try:
-            dist = pkg_resources.get_distribution('dsf')
-            print(f'Package name: {dist.project_name}')
+            dist = importlib.metadata.distribution('dsf')
+            print(f'Package name: {dist.name}')
             print(f'Package version: {dist.version}')
-            print(f'Package location: {dist.location}')
-        except pkg_resources.DistributionNotFound:
+            print(f'Package location: {dist.locate_file(\"\")}')
+        except importlib.metadata.PackageNotFoundError:
             print('Warning: Package metadata not found')
         "
 
