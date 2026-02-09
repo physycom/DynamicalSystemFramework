@@ -27,8 +27,6 @@ std::atomic<bool> bExitFlag{false};
 
 // uncomment these lines to print densities, flows and speeds
 #define PRINT_DENSITIES
-// #define PRINT_FLOWS
-// #define PRINT_SPEEDS
 
 using RoadNetwork = dsf::mobility::RoadNetwork;
 using Dynamics = dsf::mobility::FirstOrderDynamics;
@@ -68,14 +66,13 @@ int main(int argc, char** argv) {
                                            std::to_string(SEED))};  // output folder
   constexpr auto MAX_TIME{static_cast<unsigned int>(5e5)};  // maximum time of simulation
 
-  // Clear output folder or create it if it doesn't exist
+  // Create output folder if it doesn't exist (preserve existing database)
   if (!fs::exists(BASE_OUT_FOLDER)) {
     fs::create_directory(BASE_OUT_FOLDER);
   }
-  if (fs::exists(OUT_FOLDER)) {
-    fs::remove_all(OUT_FOLDER);
+  if (!fs::exists(OUT_FOLDER)) {
+    fs::create_directory(OUT_FOLDER);
   }
-  fs::create_directory(OUT_FOLDER);
   // Starting
   std::cout << "Using dsf version: " << dsf::version() << '\n';
   RoadNetwork graph{};
@@ -119,24 +116,18 @@ int main(int argc, char** argv) {
   // dynamics.setForcePriorities(true);
   dynamics.setSpeedFluctuationSTD(0.1);
 
+  // Connect database for saving data
+  dynamics.connectDataBase(OUT_FOLDER + "simulation_data.db");
+
+  // Configure data saving: interval=10, saveAverageStats=true, saveStreetData=true
+#ifdef PRINT_DENSITIES
+  dynamics.saveData(300, true, true, false);
+#else
+  dynamics.saveData(300, true, false, false);
+#endif
+
   std::cout << "Done." << std::endl;
   std::cout << "Running simulation...\n";
-#ifdef PRINT_FLOWS
-  std::ofstream streetFlow(OUT_FOLDER + "flows.csv");
-  streetFlow << "time";
-  for (const auto& [id, street] : dynamics.graph().edges()) {
-    streetFlow << ';' << id;
-  }
-  streetFlow << '\n';
-#endif
-#ifdef PRINT_SPEEDS
-  std::ofstream streetSpeed(OUT_FOLDER + "speeds.csv");
-  streetSpeed << "time;";
-  for (const auto& [id, street] : dynamics.graph().edges()) {
-    streetSpeed << ';' << id;
-  }
-  streetSpeed << '\n';
-#endif
 
   int deltaAgents{std::numeric_limits<int>::max()};
   int previousAgents{0};
@@ -176,47 +167,12 @@ int main(int argc, char** argv) {
     }
 
     if (dynamics.time_step() % 300 == 0) {
-      dynamics.saveCoilCounts(std::format("{}coil_counts.csv", OUT_FOLDER));
+      // Data is now saved automatically by saveData() configuration
       printLoadingBar(dynamics.time_step(), MAX_TIME);
-      dynamics.saveMacroscopicObservables(std::format("{}data.csv", OUT_FOLDER));
     }
-    if (dynamics.time_step() % 10 == 0) {
-#ifdef PRINT_DENSITIES
-      dynamics.saveStreetDensities(OUT_FOLDER + "densities.csv", true);
-#endif
-#ifdef PRINT_FLOWS
-      streetFlow << dynamics.time_step();
-      for (const auto& [id, street] : dynamics.graph().edges()) {
-        const auto& meanSpeed = dynamics.streetMeanSpeed(id);
-        if (meanSpeed.has_value()) {
-          streetFlow << ';' << meanSpeed.value() * street->density();
-        } else {
-          streetFlow << ';';
-        }
-      }
-      streetFlow << std::endl;
-#endif
-#ifdef PRINT_SPEEDS
-      streetSpeed << dynamics.time_step();
-      for (const auto& [id, street] : dynamics.graph().edges()) {
-        const auto& meanSpeed = dynamics.streetMeanSpeed(id);
-        if (meanSpeed.has_value()) {
-          streetSpeed << ';' << meanSpeed.value();
-        } else {
-          streetSpeed << ';';
-        }
-      }
-      streetSpeed << std::endl;
-#endif
-    }
+    // Street densities are now saved automatically by saveData() configuration
     ++progress;
   }
-#ifdef PRINT_FLOWS
-  streetFlow.close();
-#endif
-#ifdef PRINT_SPEEDS
-  streetSpeed.close();
-#endif
   // std::cout << std::endl;
   // std::map<uint8_t, std::string> turnNames{
   //     {0, "left"}, {1, "straight"}, {2, "right"}, {3, "u-turn"}};

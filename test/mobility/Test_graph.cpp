@@ -3,7 +3,6 @@
 #include "dsf/base/Node.hpp"
 #include "dsf/mobility/Road.hpp"
 #include "dsf/mobility/Street.hpp"
-#include "dsf/base/AdjacencyMatrix.hpp"
 
 #include <cassert>
 #include <cstdint>
@@ -41,21 +40,6 @@ TEST_CASE("RoadNetwork") {
     network.addEdge<Street>(1, std::make_pair(0, 1));
     CHECK_EQ(network.nEdges(), 1);
     CHECK_EQ(network.nNodes(), 2);
-  }
-  SUBCASE("AdjacencyMatrix Constructor") {
-    AdjacencyMatrix sm;
-    sm.insert(0, 1);
-    sm.insert(1, 0);
-    sm.insert(1, 2);
-    sm.insert(2, 3);
-    sm.insert(3, 2);
-    RoadNetwork graph{sm};
-    CHECK_EQ(graph.nNodes(), 4);
-    CHECK_EQ(graph.nEdges(), 5);
-    CHECK(graph.edge(1, 2));
-    CHECK(graph.edge(2, 3));
-    CHECK(graph.edge(3, 2));
-    CHECK_THROWS_AS(graph.edge(2, 1), std::out_of_range);
   }
 
   SUBCASE("Construction with addEdge") {

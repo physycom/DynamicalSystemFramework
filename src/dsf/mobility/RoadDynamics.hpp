@@ -64,17 +64,23 @@ namespace dsf::mobility {
     tbb::concurrent_vector<std::pair<double, double>> m_travelDTs;
     std::time_t m_previousOptimizationTime{0};
 
-  private:
+  protected:
     std::function<double(std::unique_ptr<Street> const&)> m_weightFunction;
     std::optional<double> m_errorProbability{std::nullopt};
     std::optional<double> m_passageProbability{std::nullopt};
     std::optional<double> m_meanTravelDistance{std::nullopt};
     std::optional<std::time_t> m_meanTravelTime{std::nullopt};
-    double m_weightTreshold;
-    std::optional<double> m_timeToleranceFactor{std::nullopt};
     std::optional<delay_t> m_dataUpdatePeriod;
     bool m_bCacheEnabled;
+    PathWeight m_pathWeight = PathWeight::TRAVELTIME;
+    double m_weightTreshold;
+    std::optional<double> m_timeToleranceFactor{std::nullopt};
     bool m_forcePriorities{false};
+    // Saving variables
+    std::time_t m_savingInterval{0};
+    bool m_bSaveStreetData{false};
+    bool m_bSaveTravelData{false};
+    bool m_bSaveAverageStats{false};
 
   private:
     /// @brief Kill an agent
@@ -110,6 +116,74 @@ namespace dsf::mobility {
     virtual double m_speedFactor(double const& density) const = 0;
     virtual double m_streetEstimatedTravelTime(
         std::unique_ptr<Street> const& pStreet) const = 0;
+
+    /// @brief Initialize the street data table.
+    /// This table contains the data of each street. Columns are:
+    ///
+    /// - id: The entry id (auto-incremented)
+    ///
+    /// - simulation_id: The simulation id
+    ///
+    /// - datetime: The datetime of the data entry
+    ///
+    /// - time_step: The time step of the data entry
+    ///
+    /// - street_id: The id of the street
+    ///
+    /// - coil: The name of the coil on the street (can be null)
+    ///
+    /// - density_vpk: The density in vehicles per kilometer
+    ///
+    /// - avg_speed_kph: The average speed in kilometers per hour
+    ///
+    /// - std_speed_kph: The standard deviation of the speed in kilometers per hour
+    ///
+    /// - counts: The counts of the coil sensor (can be null)
+    ///
+    /// - queue_length: The length of the queue on the street
+    void m_initStreetTable() const;
+    /// @brief Initialize the average stats table.
+    /// This table contains the average stats of the simulation at each time step. Columns are:
+    ///
+    /// - id: The entry id (auto-incremented)
+    ///
+    /// - simulation_id: The simulation id
+    ///
+    /// - datetime: The datetime of the data entry
+    ///
+    /// - time_step: The time step of the data entry
+    ///
+    /// - n_ghost_agents: The number of ghost agents
+    ///
+    /// - n_agents: The number of agents
+    ///
+    /// - mean_speed_kph: The mean speed of the agents in kilometers per hour
+    ///
+    /// - std_speed_kph: The standard deviation of the speed of the agents in kilometers per hour
+    ///
+    /// - mean_density_vpk: The mean density of the streets in vehicles per kilometer
+    ///
+    /// - std_density_vpk: The standard deviation of the density of the streets in vehicles per kilometer
+    void m_initAvgStatsTable() const;
+    /// @brief Initialize the travel data table.
+    /// This table contains the travel data of the agents. Columns are:
+    ///
+    /// - id: The entry id (auto-incremented)
+    ///
+    /// - simulation_id: The simulation id
+    ///
+    /// - datetime: The datetime of the data entry
+    ///
+    /// - time_step: The time step of the data entry
+    ///
+    /// - distance_m: The distance travelled by the agent in meters
+    ///
+    /// - travel_time_s: The travel time of the agent in seconds
+    void m_initTravelDataTable() const;
+
+    virtual void m_dumpSimInfo() const = 0;
+
+    void m_dumpNetwork() const;
 
   public:
     /// @brief Construct a new RoadDynamics object
@@ -194,6 +268,11 @@ namespace dsf::mobility {
     /// @brief Reset the turn counts map values to zero
     /// @throws std::runtime_error if the turn counts map is not initialized
     void resetTurnCounts();
+
+    void saveData(std::time_t const savingInterval,
+                  bool const saveAverageStats = false,
+                  bool const saveStreetData = false,
+                  bool const saveTravelData = false);
 
     /// @brief Update the paths of the itineraries based on the given weight function
     /// @param throw_on_empty If true, throws an exception if an itinerary has an empty path (default is true)
@@ -341,9 +420,6 @@ namespace dsf::mobility {
     tbb::concurrent_unordered_map<Id, std::size_t> destinationCounts(
         bool const bReset = true) noexcept;
 
-    virtual double streetMeanSpeed(Id streetId) const;
-    virtual Measurement<double> streetMeanSpeed() const;
-    virtual Measurement<double> streetMeanSpeed(double, bool) const;
     /// @brief Get the mean density of the streets in \f$m^{-1}\f$
     /// @return Measurement<double> The mean density of the streets and the standard deviation
     Measurement<double> streetMeanDensity(bool normalized = false) const;
@@ -355,55 +431,6 @@ namespace dsf::mobility {
     /// @param above If true, the function returns the mean flow of the streets with a density above the threshold, otherwise below
     /// @return Measurement<double> The mean flow of the streets and the standard deviation
     Measurement<double> streetMeanFlow(double threshold, bool above) const;
-
-    /// @brief Save the street densities in csv format
-    /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_densities.csv")
-    /// @param separator The separator character (default is ';')
-    /// @param normalized If true, the densities are normalized in [0, 1] dividing by the street capacity attribute
-    void saveStreetDensities(std::string filename = std::string(),
-                             char const separator = ';',
-                             bool const normalized = true) const;
-    /// @brief Save the street speeds in csv format
-    /// @param filename The name of the file (default is "{datetime}_{simulation_name}_street_speeds.csv")
-    /// @param separator The separator character (default is ';')
-    /// @param bNormalized If true, the speeds are normalized in [0, 1] dividing by the street maxSpeed attribute
-    void saveStreetSpeeds(std::string filename = std::string(),
-                          char const separator = ';',
-                          bool bNormalized = false) const;
-    /// @brief Save the street input counts in csv format
-    /// @param filename The name of the file
-    /// @param reset If true, the input counts are cleared after the computation
-    /// @param separator The separator character (default is ';')
-    /// @details NOTE: counts are saved only if the street has a coil on it
-    void saveCoilCounts(const std::string& filename,
-                        bool reset = false,
-                        char const separator = ';');
-    /// @brief Save the travel data of the agents in csv format.
-    /// @details The file contains the following columns:
-    /// - time: the time of the simulation
-    /// - distances: the travel distances of the agents
-    /// - times: the travel times of the agents
-    /// - speeds: the travel speeds of the agents
-    /// @param filename The name of the file (default is "{datetime}_{simulation_name}_travel_data.csv")
-    /// @param reset If true, the travel speeds are cleared after the computation
-    void saveTravelData(std::string filename = std::string(), bool reset = false);
-    /// @brief Save the main macroscopic observables in csv format
-    /// @param filename The name of the file (default is "{datetime}_{simulation_name}_macroscopic_observables.csv")
-    /// @param separator The separator character (default is ';')
-    /// @details The file contains the following columns:
-    /// - time: the time of the simulation
-    /// - n_ghost_agents: the number of agents waiting to be inserted in the simulation
-    /// - n_agents: the number of agents currently in the simulation
-    /// - mean_speed - mean_speed_std (km/h): the mean speed of the agents
-    /// - mean_density - mean_density_std (veh/km): the mean density of the streets
-    /// - mean_flow - mean_flow_std (veh/h): the mean flow of the streets
-    /// - mean_traveltime - mean_traveltime_std (min): the mean travel time of the agents
-    /// - mean_traveldistance - mean_traveldistance_err (km): the mean travel distance of the agents
-    /// - mean_travelspeed - mean_travelspeed_std (km/h): the mean travel speed of the agents
-    ///
-    /// NOTE: the mean density is normalized in [0, 1] and reset is true for all observables which have such parameter
-    void saveMacroscopicObservables(std::string filename = std::string(),
-                                    char const separator = ';');
 
     /// @brief Print a summary of the dynamics to an output stream
     /// @param os The output stream to write to (default is std::cout)
@@ -1090,6 +1117,151 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_initStreetTable() const {
+    if (!this->database()) {
+      throw std::runtime_error(
+          "No database connected. Call connectDataBase() before saving data.");
+    }
+    // Create table if it doesn't exist
+    this->database()->exec(
+        "CREATE TABLE IF NOT EXISTS road_data ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "simulation_id INTEGER NOT NULL, "
+        "datetime TEXT NOT NULL, "
+        "time_step INTEGER NOT NULL, "
+        "street_id INTEGER NOT NULL, "
+        "coil TEXT, "
+        "density_vpk REAL, "
+        "avg_speed_kph REAL, "
+        "std_speed_kph REAL, "
+        "counts INTEGER, "
+        "queue_length INTEGER)");
+
+    spdlog::info("Initialized road_data table in the database.");
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_initAvgStatsTable() const {
+    if (!this->database()) {
+      throw std::runtime_error(
+          "No database connected. Call connectDataBase() before saving data.");
+    }
+    // Create table if it doesn't exist
+    this->database()->exec(
+        "CREATE TABLE IF NOT EXISTS avg_stats ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "simulation_id INTEGER NOT NULL, "
+        "datetime TEXT NOT NULL, "
+        "time_step INTEGER NOT NULL, "
+        "n_ghost_agents INTEGER NOT NULL, "
+        "n_agents INTEGER NOT NULL, "
+        "mean_speed_kph REAL, "
+        "std_speed_kph REAL, "
+        "mean_density_vpk REAL NOT NULL, "
+        "std_density_vpk REAL NOT NULL)");
+
+    spdlog::info("Initialized avg_stats table in the database.");
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_initTravelDataTable() const {
+    if (!this->database()) {
+      throw std::runtime_error(
+          "No database connected. Call connectDataBase() before saving data.");
+    }
+    // Create table if it doesn't exist
+    this->database()->exec(
+        "CREATE TABLE IF NOT EXISTS travel_data ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "simulation_id INTEGER NOT NULL, "
+        "datetime TEXT NOT NULL, "
+        "time_step INTEGER NOT NULL, "
+        "distance_m REAL NOT NULL, "
+        "travel_time_s REAL NOT NULL)");
+
+    spdlog::info("Initialized travel_data table in the database.");
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::m_dumpNetwork() const {
+    if (!this->database()) {
+      throw std::runtime_error(
+          "No database connected. Call connectDataBase() before saving data.");
+    }
+    // Check if edges and nodes tables already exists
+    SQLite::Statement edgesQuery(
+        *this->database(),
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='edges';");
+    SQLite::Statement nodesQuery(
+        *this->database(),
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='nodes';");
+    bool edgesTableExists = edgesQuery.executeStep();
+    bool nodesTableExists = nodesQuery.executeStep();
+    if (edgesTableExists && nodesTableExists) {
+      spdlog::info(
+          "Edges and nodes tables already exist in the database. Skipping network dump.");
+      return;
+    }
+
+    // Create edges table
+    this->database()->exec(
+        "CREATE TABLE IF NOT EXISTS edges ("
+        "id INTEGER PRIMARY KEY, "
+        "source INTEGER NOT NULL, "
+        "target INTEGER NOT NULL, "
+        "length REAL NOT NULL, "
+        "maxspeed REAL NOT NULL, "
+        "name TEXT, "
+        "nlanes INTEGER NOT NULL, "
+        "geometry TEXT NOT NULL)");
+    // Create nodes table
+    this->database()->exec(
+        "CREATE TABLE IF NOT EXISTS nodes ("
+        "id INTEGER PRIMARY KEY, "
+        "type TEXT, "
+        "geometry TEXT)");
+
+    // Insert edges
+    SQLite::Statement insertEdgeStmt(*this->database(),
+                                     "INSERT INTO edges (id, source, target, length, "
+                                     "maxspeed, name, nlanes, geometry) "
+                                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?);");
+    for (const auto& [edgeId, pEdge] : this->graph().edges()) {
+      insertEdgeStmt.bind(1, static_cast<std::int64_t>(edgeId));
+      insertEdgeStmt.bind(2, static_cast<std::int64_t>(pEdge->source()));
+      insertEdgeStmt.bind(3, static_cast<std::int64_t>(pEdge->target()));
+      insertEdgeStmt.bind(4, pEdge->length());
+      insertEdgeStmt.bind(5, pEdge->maxSpeed());
+      insertEdgeStmt.bind(6, pEdge->name());
+      insertEdgeStmt.bind(7, pEdge->nLanes());
+      insertEdgeStmt.bind(8, std::format("{}", pEdge->geometry()));
+      insertEdgeStmt.exec();
+      insertEdgeStmt.reset();
+    }
+    // Insert nodes
+    SQLite::Statement insertNodeStmt(
+        *this->database(), "INSERT INTO nodes (id, type, geometry) VALUES (?, ?, ?);");
+    for (const auto& [nodeId, pNode] : this->graph().nodes()) {
+      insertNodeStmt.bind(1, static_cast<std::int64_t>(nodeId));
+      if (pNode->isTrafficLight()) {
+        insertNodeStmt.bind(2, "traffic_light");
+      } else if (pNode->isRoundabout()) {
+        insertNodeStmt.bind(2, "roundabout");
+      } else {
+        insertNodeStmt.bind(2);
+      }
+      if (pNode->geometry().has_value()) {
+        insertNodeStmt.bind(3, std::format("{}", *pNode->geometry()));
+      } else {
+        insertNodeStmt.bind(3);
+      }
+      insertNodeStmt.exec();
+      insertNodeStmt.reset();
+    }
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setErrorProbability(double errorProbability) {
     if (errorProbability < 0. || errorProbability > 1.) {
       throw std::invalid_argument(
@@ -1119,6 +1291,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::setWeightFunction(PathWeight const pathWeight,
                                                 std::optional<double> weightTreshold) {
+    m_pathWeight = pathWeight;
     switch (pathWeight) {
       case PathWeight::LENGTH:
         m_weightFunction = [](std::unique_ptr<Street> const& pStreet) {
@@ -1231,6 +1404,40 @@ namespace dsf::mobility {
         m_turnCounts[edgeId][nextEdgeId] = 0;
       }
     }
+  }
+
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::saveData(std::time_t const savingInterval,
+                                       bool const saveAverageStats,
+                                       bool const saveStreetData,
+                                       bool const saveTravelData) {
+    m_savingInterval = savingInterval;
+    m_bSaveAverageStats = saveAverageStats;
+    m_bSaveStreetData = saveStreetData;
+    m_bSaveTravelData = saveTravelData;
+
+    // Initialize the required tables
+    if (saveStreetData) {
+      m_initStreetTable();
+    }
+    if (saveAverageStats) {
+      m_initAvgStatsTable();
+    }
+    if (saveTravelData) {
+      m_initTravelDataTable();
+    }
+
+    this->m_dumpSimInfo();
+    this->m_dumpNetwork();
+
+    spdlog::info(
+        "Data saving configured: interval={}s, avg_stats={}, street_data={}, "
+        "travel_data={}",
+        savingInterval,
+        saveAverageStats,
+        saveStreetData,
+        saveTravelData);
   }
 
   template <typename delay_t>
@@ -1602,20 +1809,39 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::evolve(bool reinsert_agents) {
+    std::atomic<double> mean_speed{0.}, mean_density{0.};
+    std::atomic<double> std_speed{0.}, std_density{0.};
+    std::atomic<std::size_t> nValidEdges{0};
+    bool const bComputeStats = this->database() != nullptr && m_savingInterval > 0 &&
+                               this->time_step() % m_savingInterval == 0;
+
+    // Struct to collect street data for batch insert after parallel section
+    struct StreetDataRecord {
+      Id streetId;
+      std::optional<std::string> coilName;
+      double density;
+      std::optional<double> avgSpeed;
+      std::optional<double> stdSpeed;
+      std::optional<std::size_t> counts;
+      std::size_t queueLength;
+    };
+    tbb::concurrent_vector<StreetDataRecord> streetDataRecords;
+
     spdlog::debug("Init evolve at time {}", this->time_step());
     // move the first agent of each street queue, if possible, putting it in the next node
     bool const bUpdateData = m_dataUpdatePeriod.has_value() &&
                              this->time_step() % m_dataUpdatePeriod.value() == 0;
     auto const numNodes{this->graph().nNodes()};
+    auto const numEdges{this->graph().nEdges()};
 
     const unsigned int concurrency = std::thread::hardware_concurrency();
     // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
     const size_t grainSize = std::max(size_t(1), numNodes / concurrency);
     this->m_taskArena.execute([&] {
       tbb::parallel_for(
-          tbb::blocked_range<size_t>(0, numNodes, grainSize),
-          [&](const tbb::blocked_range<size_t>& range) {
-            for (size_t i = range.begin(); i != range.end(); ++i) {
+          tbb::blocked_range<std::size_t>(0, numNodes, grainSize),
+          [&](const tbb::blocked_range<std::size_t>& range) {
+            for (std::size_t i = range.begin(); i != range.end(); ++i) {
               auto const& pNode = this->graph().node(m_nodeIndices[i]);
               for (auto const& inEdgeId : pNode->ingoingEdges()) {
                 auto const& pStreet{this->graph().edge(inEdgeId)};
@@ -1634,6 +1860,44 @@ namespace dsf::mobility {
                   }
                 }
                 m_evolveStreet(pStreet, reinsert_agents);
+                if (bComputeStats) {
+                  auto const& density{pStreet->density() * 1e3};
+
+                  auto const speedMeasure = pStreet->meanSpeed(true);
+                  if (speedMeasure.is_valid) {
+                    auto const speed = speedMeasure.mean * 3.6;  // to kph
+                    auto const speed_std = speedMeasure.std * 3.6;
+                    if (m_bSaveAverageStats) {
+                      mean_speed.fetch_add(speed, std::memory_order_relaxed);
+                      std_speed.fetch_add(speed * speed + speed_std * speed_std,
+                                          std::memory_order_relaxed);
+
+                      ++nValidEdges;
+                    }
+                  }
+                  if (m_bSaveAverageStats) {
+                    mean_density.fetch_add(density, std::memory_order_relaxed);
+                    std_density.fetch_add(density * density, std::memory_order_relaxed);
+                  }
+
+                  if (m_bSaveStreetData) {
+                    // Collect data for batch insert after parallel section
+                    StreetDataRecord record;
+                    record.streetId = pStreet->id();
+                    record.density = density;
+                    if (pStreet->hasCoil()) {
+                      record.coilName = pStreet->counterName();
+                      record.counts = pStreet->counts();
+                      pStreet->resetCounter();
+                    }
+                    if (speedMeasure.is_valid) {
+                      record.avgSpeed = speedMeasure.mean * 3.6;  // to kph
+                      record.stdSpeed = speedMeasure.std * 3.6;
+                    }
+                    record.queueLength = pStreet->nExitingAgents();
+                    streetDataRecords.push_back(record);
+                  }
+                }
               }
             }
           });
@@ -1654,7 +1918,106 @@ namespace dsf::mobility {
                         });
     });
     this->m_evolveAgents();
-    // cycle over agents and update their times
+
+    if (bComputeStats) {
+      // Batch insert street data collected during parallel section
+      if (m_bSaveStreetData) {
+        SQLite::Transaction transaction(*this->database());
+        SQLite::Statement insertStmt(
+            *this->database(),
+            "INSERT INTO road_data (datetime, time_step, simulation_id, street_id, "
+            "coil, density_vpk, avg_speed_kph, std_speed_kph, counts, queue_length) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        for (auto const& record : streetDataRecords) {
+          insertStmt.bind(1, this->strDateTime());
+          insertStmt.bind(2, static_cast<std::int64_t>(this->time_step()));
+          insertStmt.bind(3, static_cast<std::int64_t>(this->id()));
+          insertStmt.bind(4, static_cast<std::int64_t>(record.streetId));
+          if (record.coilName.has_value()) {
+            insertStmt.bind(5, record.coilName.value());
+          } else {
+            insertStmt.bind(5);
+          }
+          insertStmt.bind(6, record.density);
+          if (record.avgSpeed.has_value()) {
+            insertStmt.bind(7, record.avgSpeed.value());
+            insertStmt.bind(8, record.stdSpeed.value());
+          } else {
+            insertStmt.bind(7);
+            insertStmt.bind(8);
+          }
+          if (record.counts.has_value()) {
+            insertStmt.bind(9, static_cast<std::int64_t>(record.counts.value()));
+          } else {
+            insertStmt.bind(9);
+          }
+          insertStmt.bind(10, static_cast<std::int64_t>(record.queueLength));
+          insertStmt.exec();
+          insertStmt.reset();
+        }
+        transaction.commit();
+      }
+
+      if (m_bSaveTravelData) {  // Begin transaction for better performance
+        SQLite::Transaction transaction(*this->database());
+        SQLite::Statement insertStmt(*this->database(),
+                                     "INSERT INTO travel_data (datetime, time_step, "
+                                     "simulation_id, distance_m, travel_time_s) "
+                                     "VALUES (?, ?, ?, ?, ?)");
+
+        for (auto const& [distance, time] : m_travelDTs) {
+          insertStmt.bind(1, this->strDateTime());
+          insertStmt.bind(2, static_cast<int64_t>(this->time_step()));
+          insertStmt.bind(3, static_cast<int64_t>(this->id()));
+          insertStmt.bind(4, distance);
+          insertStmt.bind(5, time);
+          insertStmt.exec();
+          insertStmt.reset();
+        }
+        transaction.commit();
+        m_travelDTs.clear();
+      }
+
+      if (m_bSaveAverageStats) {  // Average Stats Table
+        mean_speed.store(mean_speed.load() / nValidEdges.load());
+        mean_density.store(mean_density.load() / numEdges);
+        {
+          double std_speed_val = std_speed.load();
+          double mean_speed_val = mean_speed.load();
+          std_speed.store(std::sqrt(std_speed_val / nValidEdges.load() -
+                                    mean_speed_val * mean_speed_val));
+        }
+        {
+          double std_density_val = std_density.load();
+          double mean_density_val = mean_density.load();
+          std_density.store(std::sqrt(std_density_val / numEdges -
+                                      mean_density_val * mean_density_val));
+        }
+        SQLite::Statement insertStmt(
+            *this->database(),
+            "INSERT INTO avg_stats ("
+            "simulation_id, datetime, time_step, n_ghost_agents, n_agents, "
+            "mean_speed_kph, std_speed_kph, mean_density_vpk, std_density_vpk) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        insertStmt.bind(1, static_cast<std::int64_t>(this->id()));
+        insertStmt.bind(2, this->strDateTime());
+        insertStmt.bind(3, static_cast<std::int64_t>(this->time_step()));
+        insertStmt.bind(4, static_cast<std::int64_t>(m_agents.size()));
+        insertStmt.bind(5, static_cast<std::int64_t>(this->nAgents()));
+        if (nValidEdges.load() > 0) {
+          insertStmt.bind(6, mean_speed);
+          insertStmt.bind(7, std_speed);
+        } else {
+          insertStmt.bind(6);
+          insertStmt.bind(7);
+        }
+        insertStmt.bind(8, mean_density);
+        insertStmt.bind(9, std_density);
+        insertStmt.exec();
+      }
+    }
+
     Dynamics<RoadNetwork>::m_evolve();
   }
 
@@ -2213,48 +2576,6 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  double RoadDynamics<delay_t>::streetMeanSpeed(Id streetId) const {
-    auto const& pStreet{this->graph().edge(streetId)};
-    auto const nAgents{pStreet->nAgents()};
-    if (nAgents == 0) {
-      return 0.;
-    }
-    double speed{0.};
-    for (auto const& pAgent : pStreet->movingAgents()) {
-      speed += pAgent->speed();
-    }
-    return speed / nAgents;
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::streetMeanSpeed() const {
-    std::vector<double> speeds;
-    speeds.reserve(this->graph().nEdges());
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      speeds.push_back(streetMeanSpeed(streetId));
-    }
-    return Measurement<double>(speeds);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Measurement<double> RoadDynamics<delay_t>::streetMeanSpeed(double threshold,
-                                                             bool above) const {
-    std::vector<double> speeds;
-    speeds.reserve(this->graph().nEdges());
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      if (above && (pStreet->density(true) > threshold)) {
-        speeds.push_back(streetMeanSpeed(streetId));
-      } else if (!above && (pStreet->density(true) < threshold)) {
-        speeds.push_back(streetMeanSpeed(streetId));
-      }
-    }
-    return Measurement<double>(speeds);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::streetMeanDensity(bool normalized) const {
     if (this->graph().edges().empty()) {
       return Measurement(0., 0.);
@@ -2286,7 +2607,10 @@ namespace dsf::mobility {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
     for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
+      auto const speedMeasure = pStreet->meanSpeed();
+      if (speedMeasure.is_valid) {
+        flows.push_back(pStreet->density() * speedMeasure.mean);
+      }
     }
     return Measurement<double>(flows);
   }
@@ -2298,267 +2622,17 @@ namespace dsf::mobility {
     std::vector<double> flows;
     flows.reserve(this->graph().nEdges());
     for (const auto& [streetId, pStreet] : this->graph().edges()) {
+      auto const speedMeasure = pStreet->meanSpeed();
+      if (!speedMeasure.is_valid) {
+        continue;
+      }
       if (above && (pStreet->density(true) > threshold)) {
-        flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
+        flows.push_back(pStreet->density() * speedMeasure.mean);
       } else if (!above && (pStreet->density(true) < threshold)) {
-        flows.push_back(pStreet->density() * this->streetMeanSpeed(streetId));
+        flows.push_back(pStreet->density() * speedMeasure.mean);
       }
     }
     return Measurement<double>(flows);
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveStreetDensities(std::string filename,
-                                                  char const separator,
-                                                  bool const normalized) const {
-    if (filename.empty()) {
-      filename =
-          this->m_safeDateTime() + '_' + this->m_safeName() + "_street_densities.csv";
-    }
-    bool bEmptyFile{false};
-    {
-      std::ifstream file(filename);
-      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
-    }
-    std::ofstream file(filename, std::ios::app);
-    if (!file.is_open()) {
-      throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
-    }
-    if (bEmptyFile) {
-      file << "datetime" << separator << "time_step";
-      for (auto const& [streetId, pStreet] : this->graph().edges()) {
-        file << separator << streetId;
-      }
-      file << std::endl;
-    }
-    file << this->strDateTime() << separator << this->time_step();
-    for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      // keep 2 decimal digits;
-      file << separator << std::scientific << std::setprecision(2)
-           << pStreet->density(normalized);
-    }
-    file << std::endl;
-    file.close();
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveStreetSpeeds(std::string filename,
-                                               char const separator,
-                                               bool const bNormalized) const {
-    if (filename.empty()) {
-      filename = this->m_safeDateTime() + '_' + this->m_safeName() + "_street_speeds.csv";
-    }
-    bool bEmptyFile{false};
-    {
-      std::ifstream file(filename);
-      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
-    }
-    std::ofstream file(filename, std::ios::app);
-    if (!file.is_open()) {
-      throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
-    }
-    if (bEmptyFile) {
-      file << "datetime" << separator << "time_step";
-      for (auto const& [streetId, pStreet] : this->graph().edges()) {
-        file << separator << streetId;
-      }
-      file << std::endl;
-    }
-    file << this->strDateTime() << separator << this->time_step();
-    for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      auto const measure = pStreet->meanSpeed(true);
-      file << separator;
-      // If not valid, write empty value (less space w.r.t. NaN)
-      if (!measure.is_valid) {
-        continue;
-      }
-
-      double speed{measure.mean};
-      if (bNormalized) {
-        speed /= pStreet->maxSpeed();
-      }
-      file << std::fixed << std::setprecision(2) << speed;
-    }
-    file << std::endl;
-    file.close();
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveCoilCounts(const std::string& filename,
-                                             bool reset,
-                                             char const separator) {
-    bool bEmptyFile{false};
-    {
-      std::ifstream file(filename);
-      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
-    }
-    std::ofstream file(filename, std::ios::app);
-    if (!file.is_open()) {
-      throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
-    }
-    if (bEmptyFile) {
-      file << "datetime" << separator << "time_step";
-      for (auto const& [streetId, pStreet] : this->graph().edges()) {
-        if (pStreet->hasCoil()) {
-          file << separator << pStreet->counterName();
-        }
-      }
-      file << std::endl;
-    }
-    file << this->strDateTime() << separator << this->time_step();
-    for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      if (pStreet->hasCoil()) {
-        file << separator << pStreet->counts();
-        if (reset) {
-          pStreet->resetCounter();
-        }
-      }
-    }
-    file << std::endl;
-    file.close();
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveTravelData(std::string filename, bool reset) {
-    if (filename.empty()) {
-      filename = this->m_safeDateTime() + '_' + this->m_safeName() + "_travel_data.csv";
-    }
-    bool bEmptyFile{false};
-    {
-      std::ifstream file(filename);
-      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
-    }
-    std::ofstream file(filename, std::ios::app);
-    if (!file.is_open()) {
-      throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
-    }
-    if (bEmptyFile) {
-      file << "datetime;time_step;distances;times;speeds" << std::endl;
-    }
-
-    // Construct strings efficiently with proper formatting
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2);
-
-    std::string strTravelDistances, strTravelTimes, strTravelSpeeds;
-    strTravelDistances.reserve(m_travelDTs.size() *
-                               10);  // Rough estimate for numeric strings
-    strTravelTimes.reserve(m_travelDTs.size() * 10);
-    strTravelSpeeds.reserve(m_travelDTs.size() * 10);
-
-    for (auto it = m_travelDTs.cbegin(); it != m_travelDTs.cend(); ++it) {
-      oss.str("");  // Clear the stream
-      oss << it->first;
-      strTravelDistances += oss.str();
-
-      oss.str("");
-      oss << it->second;
-      strTravelTimes += oss.str();
-
-      oss.str("");
-      oss << (it->first / it->second);
-      strTravelSpeeds += oss.str();
-
-      if (it != m_travelDTs.cend() - 1) {
-        strTravelDistances += ',';
-        strTravelTimes += ',';
-        strTravelSpeeds += ',';
-      }
-    }
-
-    // Write all data at once
-    file << this->strDateTime() << ';' << this->time_step() << ';' << strTravelDistances
-         << ';' << strTravelTimes << ';' << strTravelSpeeds << std::endl;
-
-    file.close();
-    if (reset) {
-      m_travelDTs.clear();
-    }
-  }
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::saveMacroscopicObservables(std::string filename,
-                                                         char const separator) {
-    if (filename.empty()) {
-      filename = this->m_safeDateTime() + '_' + this->m_safeName() +
-                 "_macroscopic_observables.csv";
-    }
-    bool bEmptyFile{false};
-    {
-      std::ifstream file(filename);
-      bEmptyFile = file.peek() == std::ifstream::traits_type::eof();
-    }
-    std::ofstream file(filename, std::ios::app);
-    if (!file.is_open()) {
-      throw std::runtime_error("Error opening file \"" + filename + "\" for writing.");
-    }
-    if (bEmptyFile) {
-      constexpr auto strHeader{
-          "datetime;time_step;n_ghost_agents;n_agents;mean_speed_kph;std_speed_kph;"
-          "mean_density_vpk;std_density_vpk;mean_flow_vph;std_flow_vph;mean_"
-          "traveltime_m;std_traveltime_m;mean_traveldistance_km;std_traveldistance_"
-          "km;mean_travelspeed_kph;std_travelspeed_kph\n"};
-      file << strHeader;
-    }
-    double mean_speed{0.}, mean_density{0.}, mean_flow{0.}, mean_travel_distance{0.},
-        mean_travel_time{0.}, mean_travel_speed{0.};
-    double std_speed{0.}, std_density{0.}, std_flow{0.}, std_travel_distance{0.},
-        std_travel_time{0.}, std_travel_speed{0.};
-    auto const& nEdges{this->graph().nEdges()};
-    auto const& nData{m_travelDTs.size()};
-
-    for (auto const& [streetId, pStreet] : this->graph().edges()) {
-      auto const& speed{this->streetMeanSpeed(streetId) * 3.6};
-      auto const& density{pStreet->density() * 1e3};
-      auto const& flow{density * speed};
-      mean_speed += speed;
-      mean_density += density;
-      mean_flow += flow;
-      std_speed += speed * speed;
-      std_density += density * density;
-      std_flow += flow * flow;
-    }
-    mean_speed /= nEdges;
-    mean_density /= nEdges;
-    mean_flow /= nEdges;
-    std_speed = std::sqrt(std_speed / nEdges - mean_speed * mean_speed);
-    std_density = std::sqrt(std_density / nEdges - mean_density * mean_density);
-    std_flow = std::sqrt(std_flow / nEdges - mean_flow * mean_flow);
-
-    for (auto const& [distance, time] : m_travelDTs) {
-      mean_travel_distance += distance * 1e-3;
-      mean_travel_time += time / 60.;
-      mean_travel_speed += distance / time * 3.6;
-      std_travel_distance += distance * distance * 1e-6;
-      std_travel_time += time * time / 3600.;
-      std_travel_speed += (distance / time) * (distance / time) * 12.96;
-    }
-    m_travelDTs.clear();
-
-    mean_travel_distance /= nData;
-    mean_travel_time /= nData;
-    mean_travel_speed /= nData;
-    std_travel_distance = std::sqrt(std_travel_distance / nData -
-                                    mean_travel_distance * mean_travel_distance);
-    std_travel_time =
-        std::sqrt(std_travel_time / nData - mean_travel_time * mean_travel_time);
-    std_travel_speed =
-        std::sqrt(std_travel_speed / nData - mean_travel_speed * mean_travel_speed);
-
-    file << this->strDateTime() << separator;
-    file << this->time_step() << separator;
-    file << m_agents.size() << separator;
-    file << this->nAgents() << separator;
-    file << std::scientific << std::setprecision(2);
-    file << mean_speed << separator << std_speed << separator;
-    file << mean_density << separator << std_density << separator;
-    file << mean_flow << separator << std_flow << separator;
-    file << mean_travel_time << separator << std_travel_time << separator;
-    file << mean_travel_distance << separator << std_travel_distance << separator;
-    file << mean_travel_speed << separator << std_travel_speed << std::endl;
-
-    file.close();
   }
 
   template <typename delay_t>

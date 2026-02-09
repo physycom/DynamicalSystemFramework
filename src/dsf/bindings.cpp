@@ -78,79 +78,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
                      &dsf::Measurement<double>::std,
                      dsf::g_docstrings.at("dsf::Measurement::std").c_str());
 
-  // Bind AdjacencyMatrix to main module (general graph structure)
-  pybind11::class_<dsf::AdjacencyMatrix>(m, "AdjacencyMatrix")
-      .def(pybind11::init<>(),
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::AdjacencyMatrix").c_str())
-      .def(pybind11::init<std::string const&>(),
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::AdjacencyMatrix")
-               .c_str())  // Added constructor
-      .def("n",
-           &dsf::AdjacencyMatrix::n,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::n").c_str())
-      .def("size",
-           &dsf::AdjacencyMatrix::size,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::size").c_str())
-      .def("empty",
-           &dsf::AdjacencyMatrix::empty,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::empty").c_str())  // Added empty
-      .def("getRow",
-           &dsf::AdjacencyMatrix::getRow,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getRow").c_str())
-      .def("getCol",
-           &dsf::AdjacencyMatrix::getCol,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getCol").c_str())  // Added getCol
-      .def(
-          "__call__",
-          [](const dsf::AdjacencyMatrix& self, dsf::Id i, dsf::Id j) {
-            return self(i, j);
-          },
-          dsf::g_docstrings.at("dsf::AdjacencyMatrix::operator()").c_str())
-      .def("insert",
-           &dsf::AdjacencyMatrix::insert,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::insert").c_str())  // Added insert
-      .def("contains",
-           &dsf::AdjacencyMatrix::contains,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::contains")
-               .c_str())  // Added contains
-      .def("elements",
-           &dsf::AdjacencyMatrix::elements,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::elements")
-               .c_str())  // Added elements
-      .def("clear",
-           &dsf::AdjacencyMatrix::clear,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clear").c_str())
-      .def("clearRow",
-           &dsf::AdjacencyMatrix::clearRow,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clearRow")
-               .c_str())  // Added clearRow
-      .def("clearCol",
-           &dsf::AdjacencyMatrix::clearCol,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::clearCol")
-               .c_str())  // Added clearCol
-      .def("getInDegreeVector",
-           &dsf::AdjacencyMatrix::getInDegreeVector,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getInDegreeVector")
-               .c_str())  // Added getInDegreeVector
-      .def("getOutDegreeVector",
-           &dsf::AdjacencyMatrix::getOutDegreeVector,
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::getOutDegreeVector")
-               .c_str())  // Added getOutDegreeVector
-      .def("read",
-           &dsf::AdjacencyMatrix::read,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::read").c_str())  // Added read
-      .def("save",
-           &dsf::AdjacencyMatrix::save,
-           pybind11::arg("fileName"),
-           dsf::g_docstrings.at("dsf::AdjacencyMatrix::save").c_str());  // Added save
-
   // Bind mobility-related classes to mobility submodule
   pybind11::class_<dsf::mobility::RoadNetwork>(mobility, "RoadNetwork")
       .def(pybind11::init<>(),
-           dsf::g_docstrings.at("dsf::mobility::RoadNetwork::RoadNetwork").c_str())
-      .def(pybind11::init<const dsf::AdjacencyMatrix&>(),
            dsf::g_docstrings.at("dsf::mobility::RoadNetwork::RoadNetwork").c_str())
       .def("nNodes",
            &dsf::mobility::RoadNetwork::nNodes,
@@ -449,6 +379,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("datetime"),
           dsf::g_docstrings.at("dsf::Dynamics::setInitTime").c_str())
+      .def("connectDataBase",
+           &dsf::mobility::FirstOrderDynamics::connectDataBase,
+           pybind11::arg("dbPath"),
+           dsf::g_docstrings.at("dsf::Dynamics::connectDataBase").c_str())
       .def(
           "setForcePriorities",
           &dsf::mobility::FirstOrderDynamics::setForcePriorities,
@@ -683,36 +617,20 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("reset") = true,
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::destinationCounts").c_str())
-      .def(
-          "saveStreetDensities",
-          &dsf::mobility::FirstOrderDynamics::saveStreetDensities,
-          pybind11::arg("filename"),
-          pybind11::arg("separator") = ';',
-          pybind11::arg("normalized") = true,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetDensities").c_str())
-      .def("saveStreetSpeeds",
-           &dsf::mobility::FirstOrderDynamics::saveStreetSpeeds,
-           pybind11::arg("filename"),
-           pybind11::arg("separator") = ';',
-           pybind11::arg("normalized") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveStreetSpeeds").c_str())
-      .def("saveCoilCounts",
-           &dsf::mobility::FirstOrderDynamics::saveCoilCounts,
-           pybind11::arg("filename"),
-           pybind11::arg("reset") = false,
-           pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveCoilCounts").c_str())
-      .def("saveTravelData",
-           &dsf::mobility::FirstOrderDynamics::saveTravelData,
-           pybind11::arg("filename"),
-           pybind11::arg("reset") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveTravelData").c_str())
-      .def("saveMacroscopicObservables",
-           &dsf::mobility::FirstOrderDynamics::saveMacroscopicObservables,
-           pybind11::arg("filename"),
-           pybind11::arg("separator") = ';',
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::saveMacroscopicObservables")
-               .c_str())
+      .def("saveData",
+           &dsf::mobility::FirstOrderDynamics::saveData,
+           pybind11::arg("saving_interval"),
+           pybind11::arg("save_average_stats") = false,
+           pybind11::arg("save_street_data") = false,
+           pybind11::arg("save_travel_data") = false,
+           "Configure data saving during simulation.\n\n"
+           "Args:\n"
+           "    saving_interval: Interval in time steps between data saves\n"
+           "    save_average_stats: Whether to save average statistics (speed, density, "
+           "flow)\n"
+           "    save_street_data: Whether to save per-street data (density, speed, coil "
+           "counts)\n"
+           "    save_travel_data: Whether to save travel data (distance, travel time)")
       .def(
           "summary",
           [](dsf::mobility::FirstOrderDynamics& self) {

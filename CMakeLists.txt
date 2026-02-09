@@ -138,6 +138,21 @@ if(NOT simdjson_POPULATED)
 endif()
 # Check if the user has TBB installed
 find_package(TBB REQUIRED CONFIG)
+# Get SQLiteCpp
+# Disable cppcheck on Windows to avoid issues with missing cppcheck installation
+if(WIN32)
+  set(SQLITECPP_RUN_CPPCHECK
+      OFF
+      CACHE BOOL "Run cppcheck on SQLiteCpp" FORCE)
+endif()
+FetchContent_Declare(
+  SQLiteCpp
+  GIT_REPOSITORY https://github.com/SRombauts/SQLiteCpp
+  GIT_TAG 3.3.3)
+FetchContent_GetProperties(SQLiteCpp)
+if(NOT SQLiteCpp_POPULATED)
+  FetchContent_MakeAvailable(SQLiteCpp)
+endif()
 
 add_library(dsf STATIC ${SOURCES})
 target_compile_definitions(dsf PRIVATE SPDLOG_USE_STD_FORMAT)
@@ -151,7 +166,7 @@ target_include_directories(
 target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src)
 
 # Link other libraries - no csv dependency needed now
-target_link_libraries(dsf PRIVATE TBB::tbb simdjson::simdjson spdlog::spdlog)
+target_link_libraries(dsf PUBLIC TBB::tbb SQLiteCpp PRIVATE simdjson::simdjson spdlog::spdlog)
 
 # Install dsf library
 install(

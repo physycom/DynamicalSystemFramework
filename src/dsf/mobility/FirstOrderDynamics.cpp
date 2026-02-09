@@ -9,6 +9,85 @@ namespace dsf::mobility {
     return pStreet->length() /
            (pStreet->maxSpeed() * m_speedFactor(pStreet->density(true)));
   }
+  void FirstOrderDynamics::m_dumpSimInfo() const {
+    // Dump simulation info (parameters) to the database, if connected
+    if (!this->database()) {
+      return;
+    }
+    // Create simulations table if it doesn't exist
+    SQLite::Statement createTableStmt(*this->database(),
+                                      "CREATE TABLE IF NOT EXISTS simulations ("
+                                      "id INTEGER PRIMARY KEY, "
+                                      "name TEXT, "
+                                      "alpha REAL, "
+                                      "speed_fluctuation_std REAL, "
+                                      "weight_function TEXT, "
+                                      "weight_threshold REAL NOT NULL, "
+                                      "error_probability REAL, "
+                                      "passage_probability REAL, "
+                                      "mean_travel_distance_m REAL, "
+                                      "mean_travel_time_s REAL, "
+                                      "stagnant_tolerance_factor REAL, "
+                                      "force_priorities BOOLEAN, "
+                                      "save_avg_stats BOOLEAN, "
+                                      "save_road_data BOOLEAN, "
+                                      "save_travel_data BOOLEAN)");
+    createTableStmt.exec();
+    // Insert simulation parameters into the simulations table
+    SQLite::Statement insertSimStmt(
+        *this->database(),
+        "INSERT INTO simulations (id, name, alpha, speed_fluctuation_std, "
+        "weight_function, weight_threshold, error_probability, passage_probability, "
+        "mean_travel_distance_m, mean_travel_time_s, stagnant_tolerance_factor, "
+        "force_priorities, save_avg_stats, save_road_data, save_travel_data) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    insertSimStmt.bind(1, static_cast<std::int64_t>(this->id()));
+    insertSimStmt.bind(2, this->name());
+    insertSimStmt.bind(3, m_alpha);
+    insertSimStmt.bind(4, m_speedFluctuationSTD);
+    switch (this->m_pathWeight) {
+      case PathWeight::LENGTH:
+        insertSimStmt.bind(5, "LENGTH");
+        break;
+      case PathWeight::TRAVELTIME:
+        insertSimStmt.bind(5, "TRAVELTIME");
+        break;
+      case PathWeight::WEIGHT:
+        insertSimStmt.bind(5, "WEIGHT");
+        break;
+    }
+    insertSimStmt.bind(6, this->m_weightTreshold);
+    if (this->m_errorProbability.has_value()) {
+      insertSimStmt.bind(7, *this->m_errorProbability);
+    } else {
+      insertSimStmt.bind(7);
+    }
+    if (this->m_passageProbability.has_value()) {
+      insertSimStmt.bind(8, *this->m_passageProbability);
+    } else {
+      insertSimStmt.bind(8);
+    }
+    if (this->m_meanTravelDistance.has_value()) {
+      insertSimStmt.bind(9, *this->m_meanTravelDistance);
+    } else {
+      insertSimStmt.bind(9);
+    }
+    if (this->m_meanTravelTime.has_value()) {
+      insertSimStmt.bind(10, static_cast<int64_t>(*this->m_meanTravelTime));
+    } else {
+      insertSimStmt.bind(10);
+    }
+    if (this->m_timeToleranceFactor.has_value()) {
+      insertSimStmt.bind(11, *this->m_timeToleranceFactor);
+    } else {
+      insertSimStmt.bind(11);
+    }
+    insertSimStmt.bind(12, this->m_forcePriorities);
+    insertSimStmt.bind(13, this->m_bSaveAverageStats);
+    insertSimStmt.bind(14, this->m_bSaveStreetData);
+    insertSimStmt.bind(15, this->m_bSaveTravelData);
+    insertSimStmt.exec();
+  }
   FirstOrderDynamics::FirstOrderDynamics(RoadNetwork& graph,
                                          bool useCache,
                                          std::optional<unsigned int> seed,
@@ -55,60 +134,5 @@ namespace dsf::mobility {
                       speedFluctuationSTD));
     }
     m_speedFluctuationSTD = speedFluctuationSTD;
-  }
-
-  double FirstOrderDynamics::streetMeanSpeed(Id streetId) const {
-    const auto& street{this->graph().edge(streetId)};
-    if (street->nAgents() == 0) {
-      return street->maxSpeed();
-    }
-    double meanSpeed{0.};
-    Size n{0};
-    if (street->nExitingAgents() == 0) {
-      n = static_cast<Size>(street->movingAgents().size());
-      double alpha{m_alpha / street->capacity()};
-      meanSpeed = street->maxSpeed() * n * (1. - 0.5 * alpha * (n - 1.));
-    } else {
-      for (auto const& pAgent : street->movingAgents()) {
-        meanSpeed += pAgent->speed();
-        ++n;
-      }
-      for (auto const& queue : street->exitQueues()) {
-        for (auto const& pAgent : queue) {
-          meanSpeed += pAgent->speed();
-          ++n;
-        }
-      }
-    }
-    return meanSpeed / n;
-  }
-
-  Measurement<double> FirstOrderDynamics::streetMeanSpeed() const {
-    if (this->agents().empty()) {
-      return Measurement(0., 0.);
-    }
-    std::vector<double> speeds;
-    speeds.reserve(this->graph().edges().size());
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      speeds.push_back(this->streetMeanSpeed(streetId));
-    }
-    return Measurement<double>(speeds);
-  }
-  Measurement<double> FirstOrderDynamics::streetMeanSpeed(double threshold,
-                                                          bool above) const {
-    std::vector<double> speeds;
-    speeds.reserve(this->graph().edges().size());
-    for (const auto& [streetId, pStreet] : this->graph().edges()) {
-      if (above) {
-        if (pStreet->density(true) > threshold) {
-          speeds.push_back(this->streetMeanSpeed(streetId));
-        }
-      } else {
-        if (pStreet->density(true) < threshold) {
-          speeds.push_back(this->streetMeanSpeed(streetId));
-        }
-      }
-    }
-    return Measurement<double>(speeds);
   }
 }  // namespace dsf::mobility

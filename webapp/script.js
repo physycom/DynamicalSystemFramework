@@ -2,6 +2,11 @@
 const baseZoom = 13;
 const map = L.map('map').setView([0, 0], 1);
 
+// Grufoony - 9/2/2026
+// TODO: make this dynamic based on data range
+const MAX_DENSITY = 200;
+const MAX_DENSITY_INVERTED = 1 / MAX_DENSITY;
+
 // Add OpenStreetMap tile layer with inverted grayscale effect
 const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -677,6 +682,7 @@ L.CanvasEdges = L.Layer.extend({
       // Calculate width based on density
       let density = this.densities[index] || 0;
       // Scale width: base width + density factor
+      density *= MAX_DENSITY_INVERTED;
       // Assuming density is roughly 0-1, but can be higher.
       // Let's cap the max width increase to avoid huge lines.
       const densityFactor = Math.min(density, 2.0); 
@@ -814,6 +820,8 @@ let timeStamp = new Date();
 let highlightedEdge = null;
 let highlightedNode = null;
 let chart;
+let db = null;
+let selectedSimulationId = null;
 
 function formatTime(date) {
   const year = date.getFullYear();
@@ -826,7 +834,7 @@ function formatTime(date) {
 
 // Create a color scale for density values using three color stops
 const colorScale = d3.scaleLinear()
-  .domain([0, 0.5, 1])
+  .domain([0, MAX_DENSITY / 2, MAX_DENSITY])
   .range(["green", "yellow", "red"]);
 
 // Update node highlight position
@@ -867,71 +875,142 @@ function updateEdgeInfo(edge) {
   `;
 }
 
-// Auto-load data from config file on page load
-async function loadDataFromConfig() {
-  try {
-    // Load config file
-    const configResponse = await fetch('config.json');
-    if (!configResponse.ok) {
-      throw new Error('Could not load config.json');
+// Parse geometry from LINESTRING format (for SQL database)
+function parseGeometry(geometryStr) {
+  if (!geometryStr) return [];
+  const coordsStr = geometryStr.replace(/^LINESTRING\s*\(/, '').replace(/\)$/, '');
+  return coordsStr.split(",").map(coordStr => {
+    const coords = coordStr.trim().split(/\s+/);
+    return { x: +coords[0], y: +coords[1] };
+  });
+}
+
+// Load edges from SQLite database
+function loadEdgesFromDB() {
+  const result = db.exec("SELECT id, source, target, length, maxspeed, name, nlanes, geometry FROM edges");
+  if (result.length === 0) return [];
+  
+  const columns = result[0].columns;
+  const values = result[0].values;
+  
+  return values.map(row => {
+    const edge = {};
+    columns.forEach((col, i) => {
+      edge[col] = row[i];
+    });
+    edge.geometry = parseGeometry(edge.geometry);
+    edge.maxspeed = +edge.maxspeed || 0;
+    edge.nlanes = +edge.nlanes || 1;
+    edge.length = +edge.length || 0;
+    return edge;
+  });
+}
+
+// Load road_data from SQLite for selected simulation and transform to density format
+function loadRoadDataFromDB() {
+  // Get edge IDs in order
+  const edgeIds = edges.map(e => e.id);
+  
+  // Single query to get all data ordered by datetime and street_id
+  const result = db.exec(
+    `SELECT datetime, street_id, density_vpk FROM road_data WHERE simulation_id = ${selectedSimulationId} ORDER BY datetime, street_id`
+  );
+  if (result.length === 0) return [];
+  
+  const densityData = [];
+  let currentTs = null;
+  let currentMap = {};
+  
+  for (const row of result[0].values) {
+    const [ts, streetId, density] = row;
+    if (ts !== currentTs) {
+      if (currentTs !== null) {
+        // Build densities array in same order as edges for previous timestamp
+        const densityArray = edgeIds.map(id => currentMap[id] || 0);
+        densityData.push({
+          datetime: new Date(currentTs),
+          densities: densityArray
+        });
+      }
+      currentTs = ts;
+      currentMap = {};
     }
-    const config = await configResponse.json();
+    currentMap[streetId] = density;
+  }
+  
+  // Handle the last timestamp
+  if (currentTs !== null) {
+    const densityArray = edgeIds.map(id => currentMap[id] || 0);
+    densityData.push({
+      datetime: new Date(currentTs),
+      densities: densityArray
+    });
+  }
+  
+  return densityData;
+}
 
-    // Convert absolute paths to relative paths for HTTP access
-    const convertToRelativePath = (absolutePath, serverRoot) => {
-      if (!absolutePath) return null;
-      console.log('Converting path:', absolutePath, 'with server root:', serverRoot);
-      // If already a relative path or URL, use as-is
-      if (!absolutePath.startsWith('/') || absolutePath.startsWith('http')) {
-        return absolutePath;
-      }
-      
-      // Remove server root prefix to get path relative to server root
-      if (absolutePath.startsWith(serverRoot)) {
-        let relativePath = absolutePath.substring(serverRoot.length);
-        // Ensure it starts with /
-        if (relativePath.startsWith('/')) {
-          // Remove first /
-          relativePath = relativePath.substring(1);
-        }
-        // Add how many ../ are needed based on server root depth
-        const serverRootDepth = serverRoot.split('/').filter(part => part.length > 0).length;
-        let prefix = '';
-        for (let i = 0; i < serverRootDepth; i++) {
-          prefix += '../';
-        }
-        relativePath = prefix + relativePath;
-        // Remove leading / to make it relative
-        console.log('Converted to relative path:', relativePath.substring(1));
-        return relativePath.substring(1);
-      }
-      
-      // If path doesn't start with server root, return as-is and hope for the best
-      return absolutePath;
-    };
+// Load global data (aggregated statistics per timestamp)
+function loadGlobalDataFromDB() {
+  // Calculate mean density, avg_speed, etc. per timestamp for selected simulation
+  const result = db.exec(`
+    SELECT datetime, 
+           AVG(density_vpk) as mean_density_vpk,
+           AVG(avg_speed_kph) as mean_speed_kph,
+           SUM(counts) as total_counts
+    FROM road_data 
+    WHERE simulation_id = ${selectedSimulationId}
+    GROUP BY datetime 
+    ORDER BY datetime
+  `);
+  
+  if (result.length === 0) return [];
+  
+  const columns = result[0].columns;
+  const values = result[0].values;
+  
+  return values.map(row => {
+    const data = { datetime: new Date(row[0]) };
+    for (let i = 1; i < columns.length; i++) {
+      data[columns[i]] = +row[i] || 0;
+    }
+    return data;
+  });
+}
 
-    // Fetch CSV files using paths from config
-    const edgesUrl = convertToRelativePath(config.edges, config.serverRoot);
-    const densitiesUrl = convertToRelativePath(config.densities, config.serverRoot);
-    const dataUrl = convertToRelativePath(config.data, config.serverRoot);
+// Get available simulations from database
+function getSimulations() {
+  const result = db.exec("SELECT id, name FROM simulations ORDER BY id");
+  if (result.length === 0) return [];
+  
+  return result[0].values.map(row => ({
+    id: row[0],
+    name: row[1] || `Simulation ${row[0]}`
+  }));
+}
 
-    // Load CSV data
-    Promise.all([
-      d3.dsv(";", edgesUrl, parseEdges),
-      d3.dsv(";", densitiesUrl, parseDensity),
-      dataUrl ? d3.dsv(";", dataUrl, parseData).catch(e => { console.warn('data.csv not found or invalid', e); return []; }) : Promise.resolve([])
-    ]).then(([edgesData, densityData, additionalData]) => {
-      edges = edgesData;
-      densities = densityData;
-      globalData = additionalData;
+// Initialize the app after database and simulation are loaded
+function initializeApp() {
+  // Load data from database
+  edges = loadEdgesFromDB();
+  densities = loadRoadDataFromDB();
+  globalData = loadGlobalDataFromDB();
 
-      // console.log("Edges:", edges);
-      // console.log("Densities:", densities);
+  console.log("Loaded edges:", edges.length);
+  console.log("Loaded density timestamps:", densities.length);
+  console.log("Loaded global data:", globalData.length);
 
-      if (!edges.length || !densities.length) {
-        console.error("Missing CSV data.");
-        return;
-      }      timeStamp = densities[0].datetime;
+  if (!edges.length) {
+    alert("No edges found in database.");
+    return;
+  }
+
+  if (!densities.length) {
+    alert(`No road_data found for simulation ID ${selectedSimulationId}.`);
+    return;
+  }
+
+  timeStamp = densities[0].datetime;
 
     // Calculate median center from edge geometries
     let allLats = [];
@@ -1336,63 +1415,102 @@ async function loadDataFromConfig() {
       }
     });
 
-      // Show slider and search
-      document.querySelector('.slider-container').style.display = 'block';
-      
-      const legendContainer = document.querySelector('.legend-container');
-      legendContainer.style.display = 'block';
-    }).catch(error => {
-      console.error("Error loading CSV files:", error);
-      alert('Error loading data files. Please check the console and verify paths in config.json.');
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Error loading config file. Please ensure config.json exists in the webapp directory.');
+  // Show UI elements
+  document.querySelector('.slider-container').style.display = 'block';
+  document.querySelector('.legend-container').style.display = 'block';
+  if (globalData.length > 0) {
+    document.querySelector('.chart-container').style.display = 'block';
   }
 }
 
-// Load data when page loads
-window.addEventListener('DOMContentLoaded', loadDataFromConfig);
-function parseEdges(d) {
-      let geometry = [];
-      if (d.geometry) {
-        const coordsStr = d.geometry.replace(/^LINESTRING\s*\(/, '').replace(/\)$/, '');
-        geometry = coordsStr.split(",").map(coordStr => {
-          const coords = coordStr.trim().split(/\s+/);
-          return { x: +coords[0], y: +coords[1] };
-        });
-      }
-      return {
-        id: d.id,
-        source: d.source,
-        target: d.target,
-        name: d.name,
-        maxspeed: +d.maxspeed,
-        nlanes: +d.nlanes,
-        geometry: geometry,
-        coilcode: d.coilcode
-      };
-}
-
-// Parsing function for density CSV
-function parseDensity(d) {
-      const datetime = new Date(d.datetime);
-      const densities = Object.keys(d)
-        .filter(key => !key.includes('time'))
-        .map(key => {
-          const val = d[key] ? d[key].trim() : "";
-          return val === "" ? 0 : +val;
-        });
-      return { datetime, densities };
-}
-
-// Parsing function for data CSV
-function parseData(d) {
-  const result = { datetime: new Date(d.datetime) };
-  for (const key in d) {
-    if (key !== 'datetime') {
-      result[key] = +d[key];
+// Database loading and simulation selection via modal
+document.addEventListener('DOMContentLoaded', () => {
+  const dbFileInput = document.getElementById('dbFileInput');
+  const loadDbBtn = document.getElementById('loadDbBtn');
+  const dbStatus = document.getElementById('db-status');
+  
+  loadDbBtn.addEventListener('click', async () => {
+    const file = dbFileInput.files[0];
+    if (!file) {
+      dbStatus.className = 'db-status error';
+      dbStatus.textContent = 'Please select a database file.';
+      return;
     }
+    
+    dbStatus.className = 'db-status loading';
+    dbStatus.textContent = 'Loading database...';
+    loadDbBtn.disabled = true;
+    
+    try {
+      // Initialize sql.js
+      const SQL = await initSqlJs({
+        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+      });
+      
+      // Read the file
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      // Open the database
+      db = new SQL.Database(uint8Array);
+      
+      // Verify tables exist
+      const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
+      const tableNames = tables.length > 0 ? tables[0].values.map(r => r[0]) : [];
+      
+      if (!tableNames.includes('edges')) {
+        throw new Error("Database missing 'edges' table");
+      }
+      if (!tableNames.includes('road_data')) {
+        throw new Error("Database missing 'road_data' table");
+      }
+      if (!tableNames.includes('simulations')) {
+        throw new Error("Database missing 'simulations' table");
+      }
+      
+      // Get available simulations
+      const simulations = getSimulations();
+      
+      if (simulations.length === 0) {
+        throw new Error("No simulations found in database");
+      }
+      
+      dbStatus.className = 'db-status success';
+      dbStatus.textContent = `Database loaded! Found ${simulations.length} simulation(s).`;
+      
+      // Show simulation selector
+      setTimeout(() => {
+        showSimulationSelector(simulations);
+      }, 500);
+      
+    } catch (error) {
+      console.error('Database loading error:', error);
+      dbStatus.className = 'db-status error';
+      dbStatus.textContent = `Error: ${error.message}`;
+      loadDbBtn.disabled = false;
+    }
+  });
+  
+  // Simulation selector function
+  function showSimulationSelector(simulations) {
+    const modalContent = document.querySelector('.modal-content');
+    
+    modalContent.innerHTML = `
+      <h2>Select Simulation</h2>
+      <p>Choose which simulation to visualize:</p>
+      <div class="db-input-group">
+        <select id="simulationSelector" style="width: 100%; padding: 10px; font-size: 16px; border: 2px solid #ccc; border-radius: 5px;">
+          ${simulations.map(sim => `<option value="${sim.id}">${sim.name} (ID: ${sim.id})</option>`).join('')}
+        </select>
+      </div>
+      <div id="db-status" class="db-status"></div>
+      <button id="loadSimBtn" class="load-db-btn">Load Simulation</button>
+    `;
+    
+    document.getElementById('loadSimBtn').addEventListener('click', () => {
+      selectedSimulationId = parseInt(document.getElementById('simulationSelector').value);
+      document.getElementById('db-modal').classList.add('hidden');
+      initializeApp();
+    });
   }
-  return result;
-}
+});
