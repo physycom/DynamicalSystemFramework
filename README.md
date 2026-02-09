@@ -6,6 +6,7 @@
 [![SPDLOG](https://img.shields.io/badge/spdlog-1.17.0-blue.svg)](https://github.com/gabime/spdlog)
 [![CSV](https://img.shields.io/badge/rapidcsv-8.89-blue.svg)](https://github.com/d99kris/rapidcsv)
 [![JSON](https://img.shields.io/badge/simdjson-4.2.1-blue.svg)](https://github.com/simdjson/simdjson)
+[![SQLite](https://img.shields.io/badge/SQLiteCpp-3.3.3-blue.svg)](https://github.com/SRombauts/SQLiteCpp)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
 
 The aim of this project is to rework the original [Traffic Flow Dynamics Model](https://github.com/Grufoony/TrafficFlowDynamicsModel).
@@ -35,7 +36,7 @@ print(dsf.__version__)
 ## Installation (from source)
 
 ### Requirements
-The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, `spdlog` and `rapidcsv`.
+The project requires `C++20` or greater, `cmake`, `tbb` `simdjson`, `spdlog`, `rapidcsv` and `SQLiteCpp`.
 To install requirements on Ubuntu:
 ```shell
 sudo apt install cmake libtbb-dev
