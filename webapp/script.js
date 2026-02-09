@@ -2,6 +2,11 @@
 const baseZoom = 13;
 const map = L.map('map').setView([0, 0], 1);
 
+// Grufoony - 9/2/2026
+// TODO: make this dynamic based on data range
+const MAX_DENSITY = 200;
+const MAX_DENSITY_INVERTED = 1 / MAX_DENSITY;
+
 // Add OpenStreetMap tile layer with inverted grayscale effect
 const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -677,6 +682,7 @@ L.CanvasEdges = L.Layer.extend({
       // Calculate width based on density
       let density = this.densities[index] || 0;
       // Scale width: base width + density factor
+      density *= MAX_DENSITY_INVERTED;
       // Assuming density is roughly 0-1, but can be higher.
       // Let's cap the max width increase to avoid huge lines.
       const densityFactor = Math.min(density, 2.0); 
@@ -828,7 +834,7 @@ function formatTime(date) {
 
 // Create a color scale for density values using three color stops
 const colorScale = d3.scaleLinear()
-  .domain([0, 0.5, 1])
+  .domain([0, MAX_DENSITY / 2, MAX_DENSITY])
   .range(["green", "yellow", "red"]);
 
 // Update node highlight position
