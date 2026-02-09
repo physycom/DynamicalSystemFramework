@@ -132,7 +132,8 @@ jobs:
             dist = importlib.metadata.distribution('dsf')
             print(f'Package name: {dist.name}')
             print(f'Package version: {dist.version}')
-            print(f'Package location: {dist.locate_file(\"\")}')
+            location = str(dist.locate_file(''))
+            print(f'Package location: {location}')
         except importlib.metadata.PackageNotFoundError:
             print('Warning: Package metadata not found')
         "
