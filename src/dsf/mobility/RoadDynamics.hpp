@@ -1219,7 +1219,7 @@ namespace dsf::mobility {
         "CREATE TABLE IF NOT EXISTS nodes ("
         "id INTEGER PRIMARY KEY, "
         "type TEXT, "
-        "geometry TEXT NOT NULL)");
+        "geometry TEXT)");
 
     // Insert edges
     SQLite::Statement insertEdgeStmt(*this->database(),
@@ -1253,7 +1253,7 @@ namespace dsf::mobility {
       if (pNode->geometry().has_value()) {
         insertNodeStmt.bind(3, std::format("{}", *pNode->geometry()));
       } else {
-        insertNodeStmt.bind(3, "NULL");
+        insertNodeStmt.bind(3);
       }
       insertNodeStmt.exec();
       insertNodeStmt.reset();
@@ -1868,15 +1868,16 @@ namespace dsf::mobility {
                     auto const speed = speedMeasure.mean * 3.6;  // to kph
                     auto const speed_std = speedMeasure.std * 3.6;
                     if (m_bSaveAverageStats) {
-                      mean_speed += speed;
-                      std_speed += speed * speed + speed_std * speed_std;
+                      mean_speed.fetch_add(speed, std::memory_order_relaxed);
+                      std_speed.fetch_add(speed * speed + speed_std * speed_std,
+                                          std::memory_order_relaxed);
 
                       ++nValidEdges;
                     }
                   }
                   if (m_bSaveAverageStats) {
-                    mean_density += density;
-                    std_density += density * density;
+                    mean_density.fetch_add(density, std::memory_order_relaxed);
+                    std_density.fetch_add(density * density, std::memory_order_relaxed);
                   }
 
                   if (m_bSaveStreetData) {
@@ -2004,8 +2005,13 @@ namespace dsf::mobility {
         insertStmt.bind(3, static_cast<std::int64_t>(this->time_step()));
         insertStmt.bind(4, static_cast<std::int64_t>(m_agents.size()));
         insertStmt.bind(5, static_cast<std::int64_t>(this->nAgents()));
-        insertStmt.bind(6, mean_speed);
-        insertStmt.bind(7, std_speed);
+        if (nValidEdges.load() > 0) {
+          insertStmt.bind(6, mean_speed);
+          insertStmt.bind(7, std_speed);
+        } else {
+          insertStmt.bind(6);
+          insertStmt.bind(7);
+        }
         insertStmt.bind(8, mean_density);
         insertStmt.bind(9, std_density);
         insertStmt.exec();

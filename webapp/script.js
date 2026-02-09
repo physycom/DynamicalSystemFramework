@@ -908,38 +908,41 @@ function loadEdgesFromDB() {
 
 // Load road_data from SQLite for selected simulation and transform to density format
 function loadRoadDataFromDB() {
-  // Get distinct timestamps for the selected simulation
-  const timestampResult = db.exec(
-    `SELECT DISTINCT datetime FROM road_data WHERE simulation_id = ${selectedSimulationId} ORDER BY datetime`
-  );
-  if (timestampResult.length === 0) return [];
-  
-  const timestamps = timestampResult[0].values.map(row => row[0]);
-  
   // Get edge IDs in order
   const edgeIds = edges.map(e => e.id);
   
-  // Build density data for each timestamp
-  const densityData = [];
+  // Single query to get all data ordered by datetime and street_id
+  const result = db.exec(
+    `SELECT datetime, street_id, density_vpk FROM road_data WHERE simulation_id = ${selectedSimulationId} ORDER BY datetime, street_id`
+  );
+  if (result.length === 0) return [];
   
-  for (const ts of timestamps) {
-    // Get all road_data for this timestamp and simulation
-    const dataResult = db.exec(
-      `SELECT street_id, density FROM road_data WHERE simulation_id = ${selectedSimulationId} AND datetime = '${ts}'`
-    );
-    
-    const densityMap = {};
-    if (dataResult.length > 0) {
-      dataResult[0].values.forEach(row => {
-        densityMap[row[0]] = row[1];
-      });
+  const densityData = [];
+  let currentTs = null;
+  let currentMap = {};
+  
+  for (const row of result[0].values) {
+    const [ts, streetId, density] = row;
+    if (ts !== currentTs) {
+      if (currentTs !== null) {
+        // Build densities array in same order as edges for previous timestamp
+        const densityArray = edgeIds.map(id => currentMap[id] || 0);
+        densityData.push({
+          datetime: new Date(currentTs),
+          densities: densityArray
+        });
+      }
+      currentTs = ts;
+      currentMap = {};
     }
-    
-    // Build densities array in same order as edges
-    const densityArray = edgeIds.map(id => densityMap[id] || 0);
-    
+    currentMap[streetId] = density;
+  }
+  
+  // Handle the last timestamp
+  if (currentTs !== null) {
+    const densityArray = edgeIds.map(id => currentMap[id] || 0);
     densityData.push({
-      datetime: new Date(ts),
+      datetime: new Date(currentTs),
       densities: densityArray
     });
   }
@@ -952,8 +955,8 @@ function loadGlobalDataFromDB() {
   // Calculate mean density, avg_speed, etc. per timestamp for selected simulation
   const result = db.exec(`
     SELECT datetime, 
-           AVG(density) as mean_density,
-           AVG(avg_speed) as mean_speed,
+           AVG(density_vpk) as mean_density_vpk,
+           AVG(avg_speed_kph) as mean_speed_kph,
            SUM(counts) as total_counts
     FROM road_data 
     WHERE simulation_id = ${selectedSimulationId}
@@ -1422,7 +1425,6 @@ function initializeApp() {
 
 // Database loading and simulation selection via modal
 document.addEventListener('DOMContentLoaded', () => {
-  const modal = document.getElementById('db-modal');
   const dbFileInput = document.getElementById('dbFileInput');
   const loadDbBtn = document.getElementById('loadDbBtn');
   const dbStatus = document.getElementById('db-status');
