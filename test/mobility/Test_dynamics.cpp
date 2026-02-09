@@ -1080,8 +1080,8 @@ TEST_CASE("FirstOrderDynamics") {
           REQUIRE(query.executeStep());
           CHECK(query.getColumn(0).getInt() >= 2);  // At least 2 streets
 
-          SQLite::Statement cols(db,
-                                 "SELECT street_id, density, avg_speed FROM road_data");
+          SQLite::Statement cols(
+              db, "SELECT street_id, density_vpk, avg_speed_kph FROM road_data");
           while (cols.executeStep()) {
             auto streetId = cols.getColumn(0).getInt();
             CHECK(streetId >= 0);
@@ -1181,9 +1181,9 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(roadColumns.count("time_step") == 1);
           CHECK(roadColumns.count("street_id") == 1);
           CHECK(roadColumns.count("coil") == 1);
-          CHECK(roadColumns.count("density") == 1);
-          CHECK(roadColumns.count("avg_speed") == 1);
-          CHECK(roadColumns.count("std_speed") == 1);
+          CHECK(roadColumns.count("density_vpk") == 1);
+          CHECK(roadColumns.count("avg_speed_kph") == 1);
+          CHECK(roadColumns.count("std_speed_kph") == 1);
           CHECK(roadColumns.count("counts") == 1);
 
           // Check avg_stats table

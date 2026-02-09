@@ -117,10 +117,68 @@ namespace dsf::mobility {
     virtual double m_streetEstimatedTravelTime(
         std::unique_ptr<Street> const& pStreet) const = 0;
 
+    /// @brief Initialize the street data table.
+    /// This table contains the data of each street. Columns are:
+    ///
+    /// - id: The entry id (auto-incremented)
+    ///
+    /// - simulation_id: The simulation id
+    ///
+    /// - datetime: The datetime of the data entry
+    ///
+    /// - time_step: The time step of the data entry
+    ///
+    /// - street_id: The id of the street
+    ///
+    /// - coil: The name of the coil on the street (can be null)
+    ///
+    /// - density_vpk: The density in vehicles per kilometer
+    ///
+    /// - avg_speed_kph: The average speed in kilometers per hour
+    ///
+    /// - std_speed_kph: The standard deviation of the speed in kilometers per hour
+    ///
+    /// - counts: The counts of the coil sensor (can be null)
+    ///
+    /// - queue_length: The length of the queue on the street
     void m_initStreetTable() const;
-
+    /// @brief Initialize the average stats table.
+    /// This table contains the average stats of the simulation at each time step. Columns are:
+    ///
+    /// - id: The entry id (auto-incremented)
+    ///
+    /// - simulation_id: The simulation id
+    ///
+    /// - datetime: The datetime of the data entry
+    ///
+    /// - time_step: The time step of the data entry
+    ///
+    /// - n_ghost_agents: The number of ghost agents
+    ///
+    /// - n_agents: The number of agents
+    ///
+    /// - mean_speed_kph: The mean speed of the agents in kilometers per hour
+    ///
+    /// - std_speed_kph: The standard deviation of the speed of the agents in kilometers per hour
+    ///
+    /// - mean_density_vpk: The mean density of the streets in vehicles per kilometer
+    ///
+    /// - std_density_vpk: The standard deviation of the density of the streets in vehicles per kilometer
     void m_initAvgStatsTable() const;
-
+    /// @brief Initialize the travel data table.
+    /// This table contains the travel data of the agents. Columns are:
+    ///
+    /// - id: The entry id (auto-incremented)
+    ///
+    /// - simulation_id: The simulation id
+    ///
+    /// - datetime: The datetime of the data entry
+    ///
+    /// - time_step: The time step of the data entry
+    ///
+    /// - distance_m: The distance travelled by the agent in meters
+    ///
+    /// - travel_time_s: The travel time of the agent in seconds
     void m_initTravelDataTable() const;
 
     virtual void m_dumpSimInfo() const = 0;
@@ -1073,10 +1131,11 @@ namespace dsf::mobility {
         "time_step INTEGER NOT NULL, "
         "street_id INTEGER NOT NULL, "
         "coil TEXT, "
-        "density REAL, "
-        "avg_speed REAL, "
-        "std_speed REAL, "
-        "counts INTEGER)");
+        "density_vpk REAL, "
+        "avg_speed_kph REAL, "
+        "std_speed_kph REAL, "
+        "counts INTEGER, "
+        "queue_length INTEGER)");
 
     spdlog::info("Initialized road_data table in the database.");
   }
@@ -1764,6 +1823,7 @@ namespace dsf::mobility {
       std::optional<double> avgSpeed;
       std::optional<double> stdSpeed;
       std::optional<std::size_t> counts;
+      std::size_t queueLength;
     };
     tbb::concurrent_vector<StreetDataRecord> streetDataRecords;
 
@@ -1833,6 +1893,7 @@ namespace dsf::mobility {
                       record.avgSpeed = speedMeasure.mean * 3.6;  // to kph
                       record.stdSpeed = speedMeasure.std * 3.6;
                     }
+                    record.queueLength = pStreet->nExitingAgents();
                     streetDataRecords.push_back(record);
                   }
                 }
@@ -1864,8 +1925,8 @@ namespace dsf::mobility {
         SQLite::Statement insertStmt(
             *this->database(),
             "INSERT INTO road_data (datetime, time_step, simulation_id, street_id, "
-            "coil, density, avg_speed, std_speed, counts) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            "coil, density_vpk, avg_speed_kph, std_speed_kph, counts, queue_length) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         for (auto const& record : streetDataRecords) {
           insertStmt.bind(1, this->strDateTime());
@@ -1890,6 +1951,7 @@ namespace dsf::mobility {
           } else {
             insertStmt.bind(9);
           }
+          insertStmt.bind(10, static_cast<std::int64_t>(record.queueLength));
           insertStmt.exec();
           insertStmt.reset();
         }
