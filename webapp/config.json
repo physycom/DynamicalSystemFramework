@@ -1,6 +1,0 @@
-{
-  "serverRoot": "/path/to/your/server/root",
-  "edges": "/path/to/your/server/root/edges.csv",
-  "densities": "/path/to/your/server/root/densities.csv",
-  "data": "/path/to/your/server/root/data.csv"
-}
