@@ -97,6 +97,9 @@ namespace dsf {
     inline void connectDataBase(std::string const& dbPath) {
       m_database = std::make_unique<SQLite::Database>(
           dbPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
+      // Enable WAL mode for better concurrency and set busy timeout
+      m_database->exec("PRAGMA journal_mode = WAL;");
+      m_database->exec("PRAGMA busy_timeout = 5000;");  // 5 seconds
     }
 
     /// @brief Get the graph
