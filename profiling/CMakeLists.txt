@@ -18,14 +18,14 @@ string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -Os")
 set(EXECUTABLE_OUTPUT_PATH ../)
 
 include(FetchContent)
-# Get rapidcsv
+# Get csv-parser
 FetchContent_Declare(
-  rapidcsv
-  GIT_REPOSITORY https://github.com/d99kris/rapidcsv
-  GIT_TAG v8.89)
-FetchContent_GetProperties(rapidcsv)
-if(NOT rapidcsv_POPULATED)
-  FetchContent_MakeAvailable(rapidcsv)
+  csv-parser
+  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser
+  GIT_TAG 2.4.1)
+FetchContent_GetProperties(csv-parser)
+if(NOT csv-parser_POPULATED)
+  FetchContent_MakeAvailable(csv-parser)
 endif()
 
 file(GLOB SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp"
@@ -33,13 +33,13 @@ file(GLOB SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp"
 
 # Define the executable
 add_executable(prof.out main.cpp ${SOURCES})
-target_include_directories(prof.out PRIVATE ../src/ ${rapidcsv_SOURCE_DIR}/src)
+target_include_directories(prof.out PRIVATE ../src/ ${csv-parser_SOURCE_DIR}/single_include)
 target_link_libraries(prof.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog
                                        simdjson::simdjson)
 target_compile_options(prof.out PRIVATE -pg)
 target_link_options(prof.out PRIVATE -pg)
 add_executable(mem.out main.cpp ${SOURCES})
-target_include_directories(mem.out PRIVATE ../src/ ${rapidcsv_SOURCE_DIR}/src)
+target_include_directories(mem.out PRIVATE ../src/ ${csv-parser_SOURCE_DIR}/single_include)
 target_link_libraries(mem.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog
                                       simdjson::simdjson)
 add_executable(parse_massif.out parse_massif.cpp)
