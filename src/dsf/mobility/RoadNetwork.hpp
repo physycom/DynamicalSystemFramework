@@ -55,8 +55,9 @@ namespace dsf::mobility {
 
     void m_updateMaxAgentCapacity();
 
-    void m_csvEdgesImporter(std::ifstream& file, const char separator = ';');
-    void m_csvNodePropertiesImporter(std::ifstream& file, const char separator = ';');
+    void m_csvEdgesImporter(const std::string& fileName, const char separator = ';');
+    void m_csvNodePropertiesImporter(const std::string& fileName,
+                                     const char separator = ';');
 
     void m_jsonEdgesImporter(std::ifstream& file);
 
@@ -285,7 +286,7 @@ namespace dsf::mobility {
     switch (fileExtMap.at(fileExt)) {
       case FileExt::CSV:
         spdlog::debug("Importing nodes from CSV file: {}", fileName);
-        this->m_csvEdgesImporter(file, std::forward<TArgs>(args)...);
+        this->m_csvEdgesImporter(fileName, std::forward<TArgs>(args)...);
         break;
       case FileExt::GEOJSON:
       case FileExt::JSON:
@@ -318,7 +319,7 @@ namespace dsf::mobility {
     switch (fileExtMap.at(fileExt)) {
       case FileExt::CSV:
         spdlog::debug("Importing node properties from CSV file: {}", fileName);
-        this->m_csvNodePropertiesImporter(file, std::forward<TArgs>(args)...);
+        this->m_csvNodePropertiesImporter(fileName, std::forward<TArgs>(args)...);
         break;
       case FileExt::JSON:
       case FileExt::GEOJSON:

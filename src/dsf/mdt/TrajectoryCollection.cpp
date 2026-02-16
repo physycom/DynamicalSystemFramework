@@ -3,7 +3,7 @@
 #include <format>
 #include <fstream>
 
-#include <rapidcsv.h>
+#include <csv.hpp>
 #include <spdlog/spdlog.h>
 
 #include <tbb/parallel_for_each.h>
@@ -58,8 +58,9 @@ namespace dsf::mdt {
       std::unordered_map<std::string, std::string> const& column_mapping,
       char const sep,
       std::array<double, 4> const& bbox) {
-    rapidcsv::Document doc(
-        fileName, rapidcsv::LabelParams(0, -1), rapidcsv::SeparatorParams(sep));
+    csv::CSVFormat csvFormat;
+    csvFormat.delimiter(sep);
+    csv::CSVReader reader(fileName, csvFormat);
 
     std::unordered_map<std::string, std::string> column_names = {
         {"uid", "uid"}, {"timestamp", "timestamp"}, {"lat", "lat"}, {"lon", "lon"}};
@@ -71,14 +72,26 @@ namespace dsf::mdt {
       column_names[key] = value;
     }
 
+    std::vector<Id> uids;
+    std::vector<std::time_t> timestamps;
+    std::vector<double> lats;
+    std::vector<double> lons;
+    for (auto& row : reader) {
+      uids.push_back(static_cast<Id>(row[column_names.at("uid")].get<long long>()));
+      timestamps.push_back(
+          static_cast<std::time_t>(row[column_names.at("timestamp")].get<long long>()));
+      lats.push_back(row[column_names.at("lat")].get<double>());
+      lons.push_back(row[column_names.at("lon")].get<double>());
+    }
+
     std::unordered_map<
         std::string,
         std::variant<std::vector<Id>, std::vector<std::time_t>, std::vector<double>>>
         dataframe;
-    dataframe["uid"] = doc.GetColumn<Id>(column_names.at("uid"));
-    dataframe["timestamp"] = doc.GetColumn<std::time_t>(column_names.at("timestamp"));
-    dataframe["lat"] = doc.GetColumn<double>(column_names.at("lat"));
-    dataframe["lon"] = doc.GetColumn<double>(column_names.at("lon"));
+    dataframe["uid"] = std::move(uids);
+    dataframe["timestamp"] = std::move(timestamps);
+    dataframe["lat"] = std::move(lats);
+    dataframe["lon"] = std::move(lons);
     *this = TrajectoryCollection(std::move(dataframe), bbox);
   }
 

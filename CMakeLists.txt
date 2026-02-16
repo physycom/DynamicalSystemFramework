@@ -95,14 +95,14 @@ file(
   "src/dsf/mdt/*.cpp")
 
 include(FetchContent)
-# Get rapidcsv
+# Get csv-parser
 FetchContent_Declare(
-  rapidcsv
-  GIT_REPOSITORY https://github.com/d99kris/rapidcsv
-  GIT_TAG v8.89)
-FetchContent_GetProperties(rapidcsv)
-if(NOT rapidcsv_POPULATED)
-  FetchContent_MakeAvailable(rapidcsv)
+  csv-parser
+  GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser
+  GIT_TAG 2.4.1)
+FetchContent_GetProperties(csv-parser)
+if(NOT csv-parser_POPULATED)
+  FetchContent_MakeAvailable(csv-parser)
 endif()
 # Get spdlog
 set(SPDLOG_USE_STD_FORMAT
@@ -131,7 +131,7 @@ endif()
 FetchContent_Declare(
   simdjson
   GIT_REPOSITORY https://github.com/simdjson/simdjson
-  GIT_TAG v4.2.3)
+  GIT_TAG v4.2.4)
 FetchContent_GetProperties(simdjson)
 if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
@@ -163,9 +163,9 @@ target_include_directories(
   dsf PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
              $<INSTALL_INTERFACE:include>)
 
-target_include_directories(dsf PRIVATE ${rapidcsv_SOURCE_DIR}/src)
+target_include_directories(dsf PRIVATE ${csv-parser_SOURCE_DIR}/single_include)
 
-# Link other libraries - no csv dependency needed now
+# Link other libraries
 target_link_libraries(dsf PUBLIC TBB::tbb SQLiteCpp PRIVATE simdjson::simdjson spdlog::spdlog)
 
 # Install dsf library
@@ -243,8 +243,7 @@ if(DSF_TESTS)
     target_include_directories(${testname}
                                PRIVATE ../src/ ../src/dsf/utility/TypeTraits/)
     target_include_directories(
-      ${testname} SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest
-                                 ${rapidcsv_SOURCE_DIR}/src)
+      ${testname} SYSTEM PRIVATE ${doctest_SOURCE_DIR}/doctest)
     target_compile_definitions(${testname} PRIVATE SPDLOG_USE_STD_FORMAT)
     target_link_libraries(${testname} PRIVATE dsf TBB::tbb simdjson::simdjson spdlog::spdlog)
     # Put test binaries under build/tests so they are easy to find. Use
