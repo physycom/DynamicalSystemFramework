@@ -161,23 +161,18 @@ namespace dsf::mobility {
     return pAgent;
   }
 
-  int Street::nAgents() const {
-    auto nAgents{static_cast<int>(m_movingAgents.size())};
+  std::size_t Street::nAgents() const {
+    auto nAgents{m_movingAgents.size()};
     for (const auto& queue : m_exitQueues) {
       nAgents += queue.size();
     }
     return nAgents;
   }
 
-  double Street::density(bool normalized) const {
-    return normalized ? nAgents() / static_cast<double>(m_capacity)
-                      : nAgents() / (m_length * m_nLanes);
-  }
-
-  int Street::nMovingAgents() const { return m_movingAgents.size(); }
+  std::size_t Street::nMovingAgents() const { return m_movingAgents.size(); }
   double Street::nExitingAgents(Direction direction, bool normalizeOnNLanes) const {
     double nAgents{0.};
-    int n{0};
+    std::size_t n{0};
     for (auto i{0}; i < m_nLanes; ++i) {
       if (direction == Direction::ANY) {
         nAgents += m_exitQueues[i].size();
