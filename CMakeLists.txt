@@ -99,7 +99,7 @@ include(FetchContent)
 FetchContent_Declare(
   csv-parser
   GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser
-  GIT_TAG 2.4.1)
+  GIT_TAG 2.4.2)
 FetchContent_GetProperties(csv-parser)
 if(NOT csv-parser_POPULATED)
   FetchContent_MakeAvailable(csv-parser)
@@ -199,7 +199,7 @@ if(BUILD_PYTHON_BINDINGS)
   FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
-    GIT_TAG v3.0.1)
+    GIT_TAG v3.0.2)
   FetchContent_GetProperties(pybind11)
   if(NOT pybind11_POPULATED)
     FetchContent_MakeAvailable(pybind11)
