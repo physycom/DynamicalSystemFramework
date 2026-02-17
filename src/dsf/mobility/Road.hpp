@@ -28,7 +28,7 @@ namespace dsf::mobility {
     double m_length;
     double m_maxSpeed;
     int m_nLanes;
-    int m_capacity;
+    std::size_t m_capacity;
     double m_transportCapacity;
     std::string m_name;
     bool m_hasPriority = false;
@@ -103,6 +103,13 @@ namespace dsf::mobility {
     /// @brief Get the road's capacity, in number of agents
     /// @return int The road's capacity, in number of agents
     inline auto capacity() const noexcept { return m_capacity; }
+    /// @brief Get the road's density in \f$m^{-1}\f$ or in \f$a.u.\f$, if normalized
+    /// @param normalized If true, the road's density is normalized by the road's capacity
+    /// @return double, The road's density
+    double density(bool normalized = false) const noexcept;
+    /// @brief Check if the road is full
+    /// @return bool, True if the road is full, false otherwise
+    inline bool isFull() const final { return this->nAgents() == this->capacity(); }
     /// @brief Get the road's transport capacity, in number of agents
     /// @return double The road's transport capacity, in number of agents
     inline auto transportCapacity() const noexcept { return m_transportCapacity; }
@@ -134,10 +141,7 @@ namespace dsf::mobility {
     ///          - LEFT (delta is positive and not covered by the above conditions)
     Direction turnDirection(double const& previousStreetAngle) const;
 
-    virtual int nAgents() const = 0;
-    virtual int nMovingAgents() const = 0;
-    virtual double nExitingAgents(Direction direction, bool normalizeOnNLanes) const = 0;
-    virtual double density(bool normalized = false) const = 0;
+    virtual std::size_t nAgents() const = 0;
   };
 }  // namespace dsf::mobility
 

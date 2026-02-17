@@ -130,15 +130,8 @@ namespace dsf::mobility {
       return m_exitQueues;
     }
     /// @brief  Get the number of agents on the street
-    /// @return Size, The number of agents on the street
-    int nAgents() const final;
-    /// @brief Get the street's density in \f$m^{-1}\f$ or in \f$a.u.\f$, if normalized
-    /// @param normalized If true, the street's density is normalized by the street's capacity
-    /// @return double, The street's density
-    double density(bool normalized = false) const final;
-    /// @brief Check if the street is full
-    /// @return bool, True if the street is full, false otherwise
-    inline bool isFull() const final { return this->nAgents() == this->m_capacity; }
+    /// @return std::size_t, The number of agents on the street
+    std::size_t nAgents() const final;
     /// @brief Get the street's stationary weight
     /// @return double The street's stationary weight
     inline auto stationaryWeight() const noexcept { return m_stationaryWeight; }
@@ -162,14 +155,14 @@ namespace dsf::mobility {
       return m_movingAgents;
     }
     /// @brief Get the number of of moving agents, i.e. agents not yet enqueued
-    /// @return int The number of moving agents
-    int nMovingAgents() const final;
+    /// @return std::size_t The number of moving agents
+    std::size_t nMovingAgents() const;
     /// @brief Get the number of agents on all queues for a given direction
     /// @param direction The direction of the agents (default is ANY)
     /// @param normalizeOnNLanes If true, the number of agents is normalized by the number of lanes
     /// @return double The number of agents on all queues for a given direction
     double nExitingAgents(Direction direction = Direction::ANY,
-                          bool normalizeOnNLanes = false) const final;
+                          bool normalizeOnNLanes = false) const;
     /// @brief Get the mean speed of the agents that have passed through the street
     /// @param bReset If true, the average speed data is reset after the computation
     /// @return Measurement<double> The (mean, std) speed of the agents that have passed through the street
