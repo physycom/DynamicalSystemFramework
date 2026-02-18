@@ -2,13 +2,11 @@
 
 #include "../base/Node.hpp"
 
-#include "../utility/Typedef.hpp"
-
 #include <format>
 
 namespace dsf::mobility {
   class RoadJunction : public Node {
-    Size m_capacity;
+    std::size_t m_capacity;
     double m_transportCapacity;
 
   public:
@@ -27,20 +25,20 @@ namespace dsf::mobility {
 
     /// @brief Set the junction's capacity
     /// @param capacity The junction's capacity
-    virtual void setCapacity(Size capacity);
+    virtual void setCapacity(std::size_t const capacity);
     /// @brief Set the junction's transport capacity
     /// @param capacity The junction's transport capacity
     void setTransportCapacity(double capacity);
 
     /// @brief Get the junction's capacity
-    /// @return Size The junction's capacity
-    Size capacity() const;
+    /// @return std::size_t The junction's capacity
+    inline std::size_t capacity() const { return m_capacity; }
     /// @brief Get the junction's transport capacity
-    /// @return Size The junction's transport capacity
-    double transportCapacity() const;
+    /// @return double The junction's transport capacity
+    inline double transportCapacity() const { return m_transportCapacity; }
 
-    virtual double density() const;
-    virtual bool isFull() const;
+    virtual inline double density() const { return 0.; }
+    virtual inline bool isFull() const { return true; }
 
     virtual constexpr bool isIntersection() const noexcept { return false; }
     virtual constexpr bool isTrafficLight() const noexcept { return false; }

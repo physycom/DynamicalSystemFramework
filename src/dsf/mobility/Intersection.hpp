@@ -43,7 +43,7 @@ namespace dsf::mobility {
     /// @brief Set the node's capacity
     /// @param capacity The node's capacity
     /// @throws std::runtime_error if the capacity is smaller than the current queue size
-    void setCapacity(Size capacity) override;
+    void setCapacity(std::size_t const capacity) override;
 
     /// @brief Put an agent in the node
     /// @param agent A std::pair containing the agent's angle difference and id
@@ -79,14 +79,17 @@ namespace dsf::mobility {
       }
       m_streetPriorities.emplace(streetId);
     }
+    /// @brief Returns the number of agents currently in the node
+    /// @return std::size_t The number of agents currently in the node
+    inline auto nAgents() const noexcept { return m_agents.size(); }
     /// @brief Returns the node's density
     /// @return double The node's density
-    double density() const override {
-      return static_cast<double>(m_agents.size()) / this->capacity();
+    inline double density() const override {
+      return static_cast<double>(this->nAgents()) / this->capacity();
     }
     /// @brief Returns true if the node is full
     /// @return bool True if the node is full
-    bool isFull() const override { return m_agents.size() == this->capacity(); }
+    inline bool isFull() const override { return this->nAgents() == this->capacity(); }
 
     /// @brief Get the node's street priorities
     /// @details This function returns a std::set containing the node's street priorities.
@@ -97,9 +100,6 @@ namespace dsf::mobility {
     /// @brief Get the node's agent ids
     /// @return std::set<Id> A std::set containing the node's agent ids
     std::multimap<int16_t, std::unique_ptr<Agent>>& agents() { return m_agents; };
-    /// @brief Returns the number of agents currently in the node
-    /// @return Size The number of agents currently in the node
-    Size nAgents() const { return m_agents.size(); }
 
     constexpr bool isIntersection() const noexcept final { return true; }
   };

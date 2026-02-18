@@ -9,14 +9,9 @@ namespace dsf::mobility {
         m_capacity{other.m_capacity},
         m_transportCapacity{other.m_transportCapacity} {}
 
-  void RoadJunction::setCapacity(Size capacity) { m_capacity = capacity; }
+  void RoadJunction::setCapacity(std::size_t const capacity) { m_capacity = capacity; }
   void RoadJunction::setTransportCapacity(double capacity) {
     assert(capacity > 0.);
     m_transportCapacity = capacity;
   }
-
-  Size RoadJunction::capacity() const { return m_capacity; }
-  double RoadJunction::transportCapacity() const { return m_transportCapacity; }
-  double RoadJunction::density() const { return 0.; }
-  bool RoadJunction::isFull() const { return true; }
 }  // namespace dsf::mobility

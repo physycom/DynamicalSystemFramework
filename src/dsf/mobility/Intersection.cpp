@@ -3,12 +3,12 @@
 #include <stdexcept>
 
 namespace dsf::mobility {
-  void Intersection::setCapacity(Size capacity) {
-    if (capacity < m_agents.size()) {
+  void Intersection::setCapacity(std::size_t const capacity) {
+    if (capacity < this->nAgents()) {
       throw std::runtime_error(std::format(
           "Intersection capacity ({}) is smaller than the current queue size ({}).",
           capacity,
-          m_agents.size()));
+          this->nAgents()));
     }
     RoadJunction::setCapacity(capacity);
   }
