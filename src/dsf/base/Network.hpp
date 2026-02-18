@@ -1,7 +1,14 @@
 #pragma once
 
 #include <cassert>
+#include <cmath>
+#include <limits>
+#include <queue>
+#include <stack>
+#include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include "Edge.hpp"
 #include "Node.hpp"
@@ -88,6 +95,32 @@ namespace dsf {
     template <typename TEdge>
       requires(std::is_base_of_v<edge_t, TEdge>)
     TEdge& edge(Id edgeId);
+
+    /// @brief Compute betweenness centralities for all nodes using Brandes' algorithm
+    /// @tparam WeightFunc A callable type that takes a const reference to a unique_ptr<edge_t> and returns a double representing the edge weight
+    /// @param getEdgeWeight A callable that takes a const reference to a unique_ptr<edge_t> and returns a double (must be positive)
+    /// @details Implements Brandes' algorithm for directed weighted graphs.
+    ///          The computed centrality for each node v is:
+    ///          C_B(v) = sum_{s != v != t} sigma_st(v) / sigma_st
+    ///          where sigma_st is the number of shortest paths from s to t,
+    ///          and sigma_st(v) is the number of those paths passing through v.
+    ///          Results are stored via Node::setBetweennessCentrality.
+    template <typename WeightFunc>
+      requires(std::is_invocable_r_v<double, WeightFunc, std::unique_ptr<edge_t> const&>)
+    void computeBetweennessCentralities(WeightFunc getEdgeWeight);
+
+    /// @brief Compute edge betweenness centralities for all edges using Brandes' algorithm
+    /// @tparam WeightFunc A callable type that takes a const reference to a unique_ptr<edge_t> and returns a double representing the edge weight
+    /// @param getEdgeWeight A callable that takes a const reference to a unique_ptr<edge_t> and returns a double (must be positive)
+    /// @details Implements Brandes' algorithm for directed weighted graphs.
+    ///          The computed centrality for each edge e is:
+    ///          C_B(e) = sum_{s != t} sigma_st(e) / sigma_st
+    ///          where sigma_st is the number of shortest paths from s to t,
+    ///          and sigma_st(e) is the number of those paths using edge e.
+    ///          Results are stored via Edge::setBetweennessCentrality.
+    template <typename WeightFunc>
+      requires(std::is_invocable_r_v<double, WeightFunc, std::unique_ptr<edge_t> const&>)
+    void computeEdgeBetweennessCentralities(WeightFunc getEdgeWeight);
   };
   template <typename node_t, typename edge_t>
     requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
@@ -241,5 +274,177 @@ namespace dsf {
     requires(std::is_base_of_v<edge_t, TEdge>)
   TEdge& Network<node_t, edge_t>::edge(Id edgeId) {
     return dynamic_cast<TEdge&>(*edge(edgeId));
+  }
+
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  template <typename WeightFunc>
+    requires(std::is_invocable_r_v<double, WeightFunc, std::unique_ptr<edge_t> const&>)
+  void Network<node_t, edge_t>::computeBetweennessCentralities(WeightFunc getEdgeWeight) {
+    // Initialize all node betweenness centralities to 0
+    for (auto& [nodeId, pNode] : m_nodes) {
+      pNode->setBetweennessCentrality(0.0);
+    }
+
+    // Brandes' algorithm: run single-source Dijkstra from each node
+    for (auto const& [sourceId, sourceNode] : m_nodes) {
+      std::stack<Id> S;  // nodes in order of non-increasing distance
+      std::unordered_map<Id, std::vector<Id>> P;  // predecessors on shortest paths
+      std::unordered_map<Id, double> sigma;       // number of shortest paths
+      std::unordered_map<Id, double> dist;        // distance from source
+
+      for (auto const& [nId, _] : m_nodes) {
+        P[nId] = {};
+        sigma[nId] = 0.0;
+        dist[nId] = std::numeric_limits<double>::infinity();
+      }
+      sigma[sourceId] = 1.0;
+      dist[sourceId] = 0.0;
+
+      // Min-heap priority queue: (distance, nodeId)
+      std::priority_queue<std::pair<double, Id>,
+                          std::vector<std::pair<double, Id>>,
+                          std::greater<>>
+          pq;
+      pq.push({0.0, sourceId});
+
+      std::unordered_set<Id> visited;
+
+      while (!pq.empty()) {
+        auto [d, v] = pq.top();
+        pq.pop();
+
+        if (visited.contains(v)) {
+          continue;
+        }
+        visited.insert(v);
+        S.push(v);
+
+        for (auto const& edgeId : m_nodes.at(v)->outgoingEdges()) {
+          auto const& pEdge = m_edges.at(edgeId);
+          Id w = pEdge->target();
+          if (visited.contains(w)) {
+            continue;
+          }
+          double edgeWeight = getEdgeWeight(pEdge);
+          double newDist = dist[v] + edgeWeight;
+
+          if (newDist < dist[w]) {
+            dist[w] = newDist;
+            sigma[w] = sigma[v];
+            P[w] = {v};
+            pq.push({newDist, w});
+          } else if (std::abs(newDist - dist[w]) < 1e-12 * std::max(1.0, dist[w])) {
+            sigma[w] += sigma[v];
+            P[w].push_back(v);
+          }
+        }
+      }
+
+      // Dependency accumulation (backward pass)
+      std::unordered_map<Id, double> delta;
+      for (auto const& [nId, _] : m_nodes) {
+        delta[nId] = 0.0;
+      }
+
+      while (!S.empty()) {
+        Id w = S.top();
+        S.pop();
+        for (Id v : P[w]) {
+          delta[v] += (sigma[v] / sigma[w]) * (1.0 + delta[w]);
+        }
+        if (w != sourceId) {
+          auto currentBC = m_nodes.at(w)->betweennessCentrality();
+          m_nodes.at(w)->setBetweennessCentrality(*currentBC + delta[w]);
+        }
+      }
+    }
+  }
+
+  template <typename node_t, typename edge_t>
+    requires(std::is_base_of_v<Node, node_t> && std::is_base_of_v<Edge, edge_t>)
+  template <typename WeightFunc>
+    requires(std::is_invocable_r_v<double, WeightFunc, std::unique_ptr<edge_t> const&>)
+  void Network<node_t, edge_t>::computeEdgeBetweennessCentralities(
+      WeightFunc getEdgeWeight) {
+    // Initialize all edge betweenness centralities to 0
+    for (auto& [edgeId, pEdge] : m_edges) {
+      pEdge->setBetweennessCentrality(0.0);
+    }
+
+    // Brandes' algorithm: run single-source Dijkstra from each node
+    for (auto const& [sourceId, sourceNode] : m_nodes) {
+      std::stack<Id> S;  // nodes in order of non-increasing distance
+      // predecessors: P[w] = list of (predecessor node id, edge id from pred to w)
+      std::unordered_map<Id, std::vector<std::pair<Id, Id>>> P;
+      std::unordered_map<Id, double> sigma;  // number of shortest paths
+      std::unordered_map<Id, double> dist;   // distance from source
+
+      for (auto const& [nId, _] : m_nodes) {
+        P[nId] = {};
+        sigma[nId] = 0.0;
+        dist[nId] = std::numeric_limits<double>::infinity();
+      }
+      sigma[sourceId] = 1.0;
+      dist[sourceId] = 0.0;
+
+      // Min-heap priority queue: (distance, nodeId)
+      std::priority_queue<std::pair<double, Id>,
+                          std::vector<std::pair<double, Id>>,
+                          std::greater<>>
+          pq;
+      pq.push({0.0, sourceId});
+
+      std::unordered_set<Id> visited;
+
+      while (!pq.empty()) {
+        auto [d, v] = pq.top();
+        pq.pop();
+
+        if (visited.contains(v)) {
+          continue;
+        }
+        visited.insert(v);
+        S.push(v);
+
+        for (auto const& eId : m_nodes.at(v)->outgoingEdges()) {
+          auto const& pEdge = m_edges.at(eId);
+          Id w = pEdge->target();
+          if (visited.contains(w)) {
+            continue;
+          }
+          double edgeWeight = getEdgeWeight(pEdge);
+          double newDist = dist[v] + edgeWeight;
+
+          if (newDist < dist[w]) {
+            dist[w] = newDist;
+            sigma[w] = sigma[v];
+            P[w] = {{v, eId}};
+            pq.push({newDist, w});
+          } else if (std::abs(newDist - dist[w]) < 1e-12 * std::max(1.0, dist[w])) {
+            sigma[w] += sigma[v];
+            P[w].push_back({v, eId});
+          }
+        }
+      }
+
+      // Dependency accumulation (backward pass)
+      std::unordered_map<Id, double> delta;
+      for (auto const& [nId, _] : m_nodes) {
+        delta[nId] = 0.0;
+      }
+
+      while (!S.empty()) {
+        Id w = S.top();
+        S.pop();
+        for (auto const& [v, eId] : P[w]) {
+          double c = (sigma[v] / sigma[w]) * (1.0 + delta[w]);
+          delta[v] += c;
+          // Accumulate edge betweenness
+          auto currentBC = m_edges.at(eId)->betweennessCentrality();
+          m_edges.at(eId)->setBetweennessCentrality(*currentBC + c);
+        }
+      }
+    }
   }
 }  // namespace dsf

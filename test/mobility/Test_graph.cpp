@@ -1668,3 +1668,194 @@ TEST_CASE("Change Street Lanes") {
     }
   }
 }
+
+TEST_CASE("BetweennessCentrality") {
+  Road::setMeanVehicleLength(5.);
+  auto unitWeight = []([[maybe_unused]] auto const& pEdge) { return 1.0; };
+
+  SUBCASE("Linear chain: 0 -> 1 -> 2 -> 3") {
+    // In a linear chain, all shortest paths between non-adjacent nodes pass
+    // through the intermediate nodes. Node 1 and 2 should have BC > 0,
+    // while endpoints 0 and 3 should have BC = 0.
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    Street s12(1, std::make_pair(1, 2), 10.0);
+    Street s23(2, std::make_pair(2, 3), 10.0);
+    graph.addStreets(s01, s12, s23);
+
+    graph.computeBetweennessCentralities(unitWeight);
+
+    // Node 0: source only, never an intermediate -> BC = 0
+    REQUIRE(graph.node(0)->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.node(0)->betweennessCentrality(), doctest::Approx(0.0));
+
+    // Node 1: on path 0->2 and 0->3 -> BC = 2
+    REQUIRE(graph.node(1)->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.node(1)->betweennessCentrality(), doctest::Approx(2.0));
+
+    // Node 2: on path 0->3 and 1->3 -> BC = 2
+    REQUIRE(graph.node(2)->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.node(2)->betweennessCentrality(), doctest::Approx(2.0));
+
+    // Node 3: sink only, never an intermediate -> BC = 0
+    REQUIRE(graph.node(3)->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.node(3)->betweennessCentrality(), doctest::Approx(0.0));
+  }
+
+  SUBCASE("Star topology: center node") {
+    // Star: 0 -> 1, 0 -> 2, 0 -> 3
+    // No node is intermediate (all paths have length 1), so all BC = 0.
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    Street s02(1, std::make_pair(0, 2), 10.0);
+    Street s03(2, std::make_pair(0, 3), 10.0);
+    graph.addStreets(s01, s02, s03);
+
+    graph.computeBetweennessCentralities(unitWeight);
+
+    for (Id i = 0; i <= 3; ++i) {
+      REQUIRE(graph.node(i)->betweennessCentrality().has_value());
+      CHECK_EQ(*graph.node(i)->betweennessCentrality(), doctest::Approx(0.0));
+    }
+  }
+
+  SUBCASE("Diamond graph with different weights") {
+    /*     1
+          / \
+         0   3
+          \ /
+           2
+       0->1 weight 1, 1->3 weight 1 (total 2)
+       0->2 weight 1, 2->3 weight 3 (total 4)
+       Shortest path 0->3 goes through node 1 only */
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    Street s02(1, std::make_pair(0, 2), 10.0);
+    Street s13(2, std::make_pair(1, 3), 10.0);
+    Street s23(3, std::make_pair(2, 3), 30.0);
+    graph.addStreets(s01, s02, s13, s23);
+
+    graph.computeBetweennessCentralities(
+        [](auto const& pEdge) { return pEdge->length(); });
+
+    // Node 1 is on the only shortest path 0->3 -> BC = 1
+    REQUIRE(graph.node(1)->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.node(1)->betweennessCentrality(), doctest::Approx(1.0));
+
+    // Node 2 is not on any shortest path between other pairs -> BC = 0
+    REQUIRE(graph.node(2)->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.node(2)->betweennessCentrality(), doctest::Approx(0.0));
+  }
+
+  SUBCASE("Single edge") {
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    graph.addStreet(std::move(s01));
+
+    graph.computeBetweennessCentralities(unitWeight);
+
+    REQUIRE(graph.node(0)->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.node(0)->betweennessCentrality(), doctest::Approx(0.0));
+    REQUIRE(graph.node(1)->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.node(1)->betweennessCentrality(), doctest::Approx(0.0));
+  }
+
+  SUBCASE("Disconnected graph") {
+    // Two separate components: 0->1, 2->3
+    // No intermediate nodes possible -> all BC = 0
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    Street s23(1, std::make_pair(2, 3), 10.0);
+    graph.addStreets(s01, s23);
+
+    graph.computeBetweennessCentralities(unitWeight);
+
+    for (Id i = 0; i <= 3; ++i) {
+      REQUIRE(graph.node(i)->betweennessCentrality().has_value());
+      CHECK_EQ(*graph.node(i)->betweennessCentrality(), doctest::Approx(0.0));
+    }
+  }
+}
+
+TEST_CASE("EdgeBetweennessCentrality") {
+  Road::setMeanVehicleLength(5.);
+  auto unitWeight = []([[maybe_unused]] auto const& pEdge) { return 1.0; };
+
+  SUBCASE("Linear chain: 0 -> 1 -> 2 -> 3") {
+    // Edge 0->1 (id=0): used by paths 0->1, 0->2, 0->3 => EBC = 3
+    // Edge 1->2 (id=1): used by paths 0->2, 1->2, 0->3, 1->3 => EBC = 4
+    // Edge 2->3 (id=2): used by paths 0->3, 1->3, 2->3 => EBC = 3
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    Street s12(1, std::make_pair(1, 2), 10.0);
+    Street s23(2, std::make_pair(2, 3), 10.0);
+    graph.addStreets(s01, s12, s23);
+
+    graph.computeEdgeBetweennessCentralities(unitWeight);
+
+    REQUIRE(graph.edge(static_cast<Id>(0))->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.edge(static_cast<Id>(0))->betweennessCentrality(),
+             doctest::Approx(3.0));
+
+    REQUIRE(graph.edge(static_cast<Id>(1))->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.edge(static_cast<Id>(1))->betweennessCentrality(),
+             doctest::Approx(4.0));
+
+    REQUIRE(graph.edge(static_cast<Id>(2))->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.edge(static_cast<Id>(2))->betweennessCentrality(),
+             doctest::Approx(3.0));
+  }
+
+  SUBCASE("Diamond graph with different weights") {
+    /*     1
+          / \
+         0   3
+          \ /
+           2
+       0->1 length 10, 1->3 length 10 (total 20)
+       0->2 length 10, 2->3 length 30 (total 40)
+       Shortest path 0->3 goes 0->1->3 */
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    Street s02(1, std::make_pair(0, 2), 10.0);
+    Street s13(2, std::make_pair(1, 3), 10.0);
+    Street s23(3, std::make_pair(2, 3), 30.0);
+    graph.addStreets(s01, s02, s13, s23);
+
+    graph.computeEdgeBetweennessCentralities(
+        [](auto const& pEdge) { return pEdge->length(); });
+
+    // Edge 0->1: used by 0->1 and 0->3 (via 0->1->3) => EBC = 2
+    REQUIRE(graph.edge(static_cast<Id>(0))->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.edge(static_cast<Id>(0))->betweennessCentrality(),
+             doctest::Approx(2.0));
+
+    // Edge 0->2: used only by 0->2 => EBC = 1
+    REQUIRE(graph.edge(static_cast<Id>(1))->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.edge(static_cast<Id>(1))->betweennessCentrality(),
+             doctest::Approx(1.0));
+
+    // Edge 1->3: used by 1->3 and 0->3 => EBC = 2
+    REQUIRE(graph.edge(static_cast<Id>(2))->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.edge(static_cast<Id>(2))->betweennessCentrality(),
+             doctest::Approx(2.0));
+
+    // Edge 2->3: used only by 2->3 => EBC = 1
+    REQUIRE(graph.edge(static_cast<Id>(3))->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.edge(static_cast<Id>(3))->betweennessCentrality(),
+             doctest::Approx(1.0));
+  }
+
+  SUBCASE("Single edge") {
+    RoadNetwork graph{};
+    Street s01(0, std::make_pair(0, 1), 10.0);
+    graph.addStreet(std::move(s01));
+
+    graph.computeEdgeBetweennessCentralities(unitWeight);
+
+    // Only one path: 0->1, using edge 0 => EBC = 1
+    REQUIRE(graph.edge(static_cast<Id>(0))->betweennessCentrality().has_value());
+    CHECK_EQ(*graph.edge(static_cast<Id>(0))->betweennessCentrality(),
+             doctest::Approx(1.0));
+  }
+}

@@ -554,14 +554,18 @@ namespace dsf::mobility {
     // Get current street information
     std::optional<Id> previousNodeId = std::nullopt;
     std::set<Id> forbiddenTurns;
-    double speedCurrent = 1.0;
+    double speedCurrent{1.0};
+    double lengthCurrent{1.0};
     double stationaryWeightCurrent = 1.0;
+    double bcCurrent{1.0};
     if (pAgent->streetId().has_value()) {
       auto const& pStreetCurrent{this->graph().edge(pAgent->streetId().value())};
       previousNodeId = pStreetCurrent->source();
       forbiddenTurns = pStreetCurrent->forbiddenTurns();
       speedCurrent = pStreetCurrent->maxSpeed();
+      lengthCurrent = pStreetCurrent->length();
       stationaryWeightCurrent = pStreetCurrent->stationaryWeight();
+      bcCurrent = pStreetCurrent->betweennessCentrality().value_or(1.0);
     }
 
     // Get path targets for non-random agents
@@ -597,10 +601,14 @@ namespace dsf::mobility {
 
       // Calculate base probability
       auto const speedNext{pStreetOut->maxSpeed()};
+      auto const lengthNext{pStreetOut->length()};
+      auto const bcNext{pStreetOut->betweennessCentrality().value_or(1.0)};
       double const stationaryWeightNext = pStreetOut->stationaryWeight();
       auto const weightRatio{stationaryWeightNext /
                              stationaryWeightCurrent};  // SQRT (p_i / p_j)
-      double probability = speedCurrent * speedNext * std::sqrt(weightRatio);
+      double probability =
+          std::sqrt((bcCurrent * bcNext) * (speedCurrent / lengthCurrent) *
+                    (speedNext / lengthNext) * weightRatio);
 
       // Apply error probability for non-random agents
       if (this->m_errorProbability.has_value() && !pathTargets.empty()) {
