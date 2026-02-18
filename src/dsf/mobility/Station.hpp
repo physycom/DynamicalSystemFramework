@@ -51,6 +51,6 @@ namespace dsf::mobility {
     bool isFull() const;
     /// @brief Check if the node is a station
     /// @return True
-    constexpr bool isStation() const noexcept final { return true; }
+    constexpr bool isStation() const noexcept /*final*/ { return true; }
   };
 }  // namespace dsf::mobility

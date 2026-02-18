@@ -23,7 +23,6 @@ TEST_CASE("Node basic") {
     CHECK_EQ(n1.name(), "");
     CHECK(n1.ingoingEdges().empty());
     CHECK(n1.outgoingEdges().empty());
-    CHECK_FALSE(n1.isStation());
 
     dsf::Node n2{6, dsf::geometry::Point{1.0, 2.0}};
     CHECK_EQ(n2.id(), 6);

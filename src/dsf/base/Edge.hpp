@@ -15,7 +15,8 @@ namespace dsf {
     geometry::PolyLine m_geometry;
     Id m_id;
     std::pair<Id, Id> m_nodePair;
-    std::optional<double> m_weight;
+    std::optional<double> m_betweennessCentrality{std::nullopt};
+    std::optional<double> m_weight{std::nullopt};
     double m_angle;
 
     void m_setAngle(geometry::Point srcNodeCoordinates,
@@ -35,6 +36,11 @@ namespace dsf {
     /// @brief Set the edge's geometry
     /// @param geometry dsf::geometry::PolyLine The edge's geometry, a vector of pairs of doubles representing the coordinates of the edge's geometry
     void setGeometry(geometry::PolyLine geometry);
+    /// @brief Set the edge's betweenness centrality
+    /// @param betweennessCentrality The edge's betweenness centrality
+    inline void setBetweennessCentrality(double const betweennessCentrality) {
+      m_betweennessCentrality = betweennessCentrality;
+    }
     /// @brief Set the edge's weight
     /// @param weight The edge's weight
     /// @throws std::invalid_argument if the weight is less or equal to 0
@@ -56,6 +62,9 @@ namespace dsf {
     /// @brief Get the edge's geometry
     /// @return dsf::geometry::PolyLine The edge's geometry, a vector of pairs of doubles representing the coordinates of the edge's geometry
     inline auto const& geometry() const { return m_geometry; }
+    /// @brief Get the edge's betweenness centrality
+    /// @return std::optional<double> The edge's betweenness centrality
+    inline auto const& betweennessCentrality() const { return m_betweennessCentrality; }
 
     /// @brief Get the edge's angle, in radians, between the source and target nodes
     /// @return double The edge's angle, in radians

@@ -31,6 +31,7 @@ namespace dsf {
     std::string m_name;
     std::vector<Id> m_ingoingEdges;
     std::vector<Id> m_outgoingEdges;
+    std::optional<double> m_betweennessCentrality{std::nullopt};
 
   public:
     /// @brief Construct a new Node object with capacity 1
@@ -47,7 +48,8 @@ namespace dsf {
           m_geometry{other.m_geometry},
           m_name{other.m_name},
           m_ingoingEdges{other.m_ingoingEdges},
-          m_outgoingEdges{other.m_outgoingEdges} {}
+          m_outgoingEdges{other.m_outgoingEdges},
+          m_betweennessCentrality{other.m_betweennessCentrality} {}
     virtual ~Node() = default;
 
     Node& operator=(Node const& other) {
@@ -57,6 +59,7 @@ namespace dsf {
         m_name = other.m_name;
         m_ingoingEdges = other.m_ingoingEdges;
         m_outgoingEdges = other.m_outgoingEdges;
+        m_betweennessCentrality = other.m_betweennessCentrality;
       }
       return *this;
     }
@@ -98,24 +101,31 @@ namespace dsf {
       }
       m_outgoingEdges.push_back(edgeId);
     }
+    /// @brief Set the node's betweenness centrality
+    /// @param betweennessCentrality The node's betweenness centrality
+    inline void setBetweennessCentrality(double const betweennessCentrality) noexcept {
+      m_betweennessCentrality = betweennessCentrality;
+    }
 
     /// @brief Get the node's id
     /// @return Id The node's id
-    inline Id id() const { return m_id; }
+    inline auto id() const { return m_id; }
     /// @brief Get the node's geometry
     /// @return std::optional<geometry::Point> A geometry::Point
-    inline std::optional<geometry::Point> const& geometry() const noexcept {
-      return m_geometry;
-    }
+    inline auto const& geometry() const noexcept { return m_geometry; }
     /// @brief Get the node's name
     /// @return std::string The node's name
-    inline std::string const& name() const noexcept { return m_name; }
-
-    inline std::vector<Id> const& ingoingEdges() const noexcept { return m_ingoingEdges; }
-    inline std::vector<Id> const& outgoingEdges() const noexcept {
-      return m_outgoingEdges;
+    inline auto const& name() const noexcept { return m_name; }
+    /// @brief Get the node's ingoing edges
+    /// @return std::vector<Id> A vector of the node's ingoing edge ids
+    inline auto const& ingoingEdges() const noexcept { return m_ingoingEdges; }
+    /// @brief Get the node's outgoing edges
+    /// @return std::vector<Id> A vector of the node's outgoing edge ids
+    inline auto const& outgoingEdges() const noexcept { return m_outgoingEdges; }
+    /// @brief Get the node's betweenness centrality
+    /// @return std::optional<double> The node's betweenness centrality, or std::nullopt if not set
+    inline auto const& betweennessCentrality() const noexcept {
+      return m_betweennessCentrality;
     }
-
-    virtual bool isStation() const noexcept { return false; }
   };
 };  // namespace dsf

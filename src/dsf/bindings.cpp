@@ -265,7 +265,88 @@ PYBIND11_MODULE(dsf_cpp, m) {
           "    threshold (float): A threshold value to consider alternative paths\n\n"
           "Returns:\n"
           "    PathCollection: A map where each key is a node id and the value is a "
-          "vector of next hop node ids toward the target");
+          "vector of next hop node ids toward the target")
+      .def(
+          "computeBetweennessCentralities",
+          [](dsf::mobility::RoadNetwork& self, const std::string& weight) {
+            auto weightFunc =
+                [&weight](const std::unique_ptr<dsf::mobility::Street>& street) {
+                  if (weight == "length") {
+                    return street->length();
+                  } else if (weight == "traveltime") {
+                    return street->length() / street->maxSpeed();
+                  } else if (weight == "weight") {
+                    return street->weight();
+                  } else {
+                    throw std::invalid_argument(
+                        "Invalid weight function: '" + weight +
+                        "'. Valid options are: 'length', 'traveltime', 'weight'.");
+                  }
+                };
+            self.computeBetweennessCentralities(weightFunc);
+          },
+          pybind11::arg("weight") = "length",
+          "Compute betweenness centralities for all nodes using Brandes' algorithm.\n\n"
+          "Args:\n"
+          "    weight (str): The weight function to use. Options are:\n"
+          "        - 'length': Use the street length as weight\n"
+          "        - 'traveltime': Use length / max_speed as weight\n"
+          "        - 'weight': Use the custom edge weight\n\n"
+          "The results are stored in each node's betweennessCentrality attribute.")
+      .def(
+          "computeEdgeBetweennessCentralities",
+          [](dsf::mobility::RoadNetwork& self, const std::string& weight) {
+            auto weightFunc =
+                [&weight](const std::unique_ptr<dsf::mobility::Street>& street) {
+                  if (weight == "length") {
+                    return street->length();
+                  } else if (weight == "traveltime") {
+                    return street->length() / street->maxSpeed();
+                  } else if (weight == "weight") {
+                    return street->weight();
+                  } else {
+                    throw std::invalid_argument(
+                        "Invalid weight function: '" + weight +
+                        "'. Valid options are: 'length', 'traveltime', 'weight'.");
+                  }
+                };
+            self.computeEdgeBetweennessCentralities(weightFunc);
+          },
+          pybind11::arg("weight") = "length",
+          "Compute edge betweenness centralities for all edges using Brandes' "
+          "algorithm.\n\n"
+          "Args:\n"
+          "    weight (str): The weight function to use. Options are:\n"
+          "        - 'length': Use the street length as weight\n"
+          "        - 'traveltime': Use length / max_speed as weight\n"
+          "        - 'weight': Use the custom edge weight\n\n"
+          "The results are stored in each edge's betweennessCentrality attribute.")
+      .def(
+          "nodeBetweennessCentralities",
+          [](const dsf::mobility::RoadNetwork& self) {
+            std::unordered_map<dsf::Id, std::optional<double>> result;
+            for (auto const& [nodeId, pNode] : self.nodes()) {
+              result[nodeId] = pNode->betweennessCentrality();
+            }
+            return result;
+          },
+          "Get the betweenness centrality values for all nodes.\n\n"
+          "Returns:\n"
+          "    dict[int, float | None]: A dictionary mapping node id to its "
+          "betweenness centrality value (None if not computed).")
+      .def(
+          "edgeBetweennessCentralities",
+          [](const dsf::mobility::RoadNetwork& self) {
+            std::unordered_map<dsf::Id, std::optional<double>> result;
+            for (auto const& [edgeId, pEdge] : self.edges()) {
+              result[edgeId] = pEdge->betweennessCentrality();
+            }
+            return result;
+          },
+          "Get the betweenness centrality values for all edges.\n\n"
+          "Returns:\n"
+          "    dict[int, float | None]: A dictionary mapping edge id to its "
+          "betweenness centrality value (None if not computed).");
 
   pybind11::class_<dsf::mobility::PathCollection>(mobility, "PathCollection")
       .def(pybind11::init<>(), "Create an empty PathCollection")
