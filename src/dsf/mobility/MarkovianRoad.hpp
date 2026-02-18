@@ -12,7 +12,6 @@ namespace dsf::mobility {
   class MarkovianRoad : public Road {
   private:
     dsf::queue<std::unique_ptr<Agent>> m_queue;
-    double m_stationaryWeight{1.0};
 
   public:
     // Use road constructors
