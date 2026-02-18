@@ -47,9 +47,8 @@ namespace dsf::mobility {
     /// @param pRoadFrom The road the agent is currently on (j)
     /// @param pRoadTo The road the agent would move to (i)
     /// @return double The unnormalized transition weight
-    static double m_transitionWeight(
-        std::unique_ptr<MarkovianRoad> const& pRoadFrom,
-        std::unique_ptr<MarkovianRoad> const& pRoadTo);
+    static double m_transitionWeight(std::unique_ptr<MarkovianRoad> const& pRoadFrom,
+                                     std::unique_ptr<MarkovianRoad> const& pRoadTo);
 
     /// @brief Attempt to move one agent from a road to an adjacent road
     /// @param pRoad The road to evolve
@@ -168,12 +167,11 @@ namespace dsf::mobility {
     pAgent->setStreetId(selectedRoadId);
     pAgent->incrementDistance(pRoad->length());
 
-    spdlog::debug(
-        "Agent {} moved from road {} to road {} at time {}",
-        pAgent->id(),
-        pRoad->id(),
-        selectedRoadId,
-        this->time_step());
+    spdlog::debug("Agent {} moved from road {} to road {} at time {}",
+                  pAgent->id(),
+                  pRoad->id(),
+                  selectedRoadId,
+                  this->time_step());
 
     pNextRoad->enqueue(std::move(pAgent));
   }
@@ -183,8 +181,7 @@ namespace dsf::mobility {
       return;
     }
 
-    std::uniform_int_distribution<std::size_t> roadDist{
-        0, m_edgeIndices.size() - 1};
+    std::uniform_int_distribution<std::size_t> roadDist{0, m_edgeIndices.size() - 1};
 
     for (auto it = m_pendingAgents.begin(); it != m_pendingAgents.end();) {
       auto const idx = roadDist(this->m_generator);
@@ -202,11 +199,11 @@ namespace dsf::mobility {
   inline void MarkovianDynamics::addAgentsUniformly(Size nAgents) {
     m_nAddedAgents += nAgents;
     if (this->nAgents() + nAgents > this->graph().capacity()) {
-      throw std::overflow_error(std::format(
-          "Cannot add {} agents. The network has {} agents with capacity {}.",
-          nAgents,
-          this->nAgents(),
-          this->graph().capacity()));
+      throw std::overflow_error(
+          std::format("Cannot add {} agents. The network has {} agents with capacity {}.",
+                      nAgents,
+                      this->nAgents(),
+                      this->graph().capacity()));
     }
 
     std::uniform_int_distribution<std::size_t> roadDist{0, m_edgeIndices.size() - 1};
@@ -227,8 +224,7 @@ namespace dsf::mobility {
   }
 
   inline void MarkovianDynamics::addRandomAgents(
-      std::size_t nAgents,
-      std::unordered_map<Id, double> const& spawnWeights) {
+      std::size_t nAgents, std::unordered_map<Id, double> const& spawnWeights) {
     m_nAddedAgents += nAgents;
 
     if (spawnWeights.empty()) {
@@ -244,8 +240,9 @@ namespace dsf::mobility {
 
     // Weighted placement
     double totalWeight = std::accumulate(
-        spawnWeights.begin(), spawnWeights.end(), 0.,
-        [](double sum, auto const& p) { return sum + p.second; });
+        spawnWeights.begin(), spawnWeights.end(), 0., [](double sum, auto const& p) {
+          return sum + p.second;
+        });
 
     std::uniform_real_distribution<double> uniformDist{0., totalWeight};
 
@@ -292,9 +289,7 @@ namespace dsf::mobility {
     Dynamics<MarkovianRoadNetwork>::m_evolve();
   }
 
-  inline Size MarkovianDynamics::nAgents() const {
-    return m_nAgents.load();
-  }
+  inline Size MarkovianDynamics::nAgents() const { return m_nAgents.load(); }
 
   inline Measurement<double> MarkovianDynamics::roadMeanDensity(bool normalized) const {
     if (this->graph().edges().empty()) {
@@ -316,4 +311,3 @@ namespace dsf::mobility {
   }
 
 }  // namespace dsf::mobility
-

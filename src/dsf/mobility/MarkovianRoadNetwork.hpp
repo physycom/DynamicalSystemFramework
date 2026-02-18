@@ -98,4 +98,3 @@ namespace dsf::mobility {
        << "  Capacity: " << m_capacity << '\n';
   }
 }  // namespace dsf::mobility
-
