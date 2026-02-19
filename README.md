@@ -5,7 +5,7 @@
 [![TBB](https://img.shields.io/badge/TBB-2022.3.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
 [![SPDLOG](https://img.shields.io/badge/spdlog-1.17.0-blue.svg)](https://github.com/gabime/spdlog)
 [![CSV](https://img.shields.io/badge/csv_parser-2.4.2-blue.svg)](https://github.com/vincentlaucsb/csv-parser)
-[![JSON](https://img.shields.io/badge/simdjson-4.2.4-blue.svg)](https://github.com/simdjson/simdjson)
+[![JSON](https://img.shields.io/badge/simdjson-4.3.0-blue.svg)](https://github.com/simdjson/simdjson)
 [![SQLite](https://img.shields.io/badge/SQLiteCpp-3.3.3-blue.svg)](https://github.com/SRombauts/SQLiteCpp)
 [![codecov](https://codecov.io/gh/physycom/DynamicalSystemFramework/graph/badge.svg?token=JV53J6IUJ3)](https://codecov.io/gh/physycom/DynamicalSystemFramework)
 
