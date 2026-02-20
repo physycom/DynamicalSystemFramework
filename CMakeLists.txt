@@ -85,6 +85,11 @@ else() # Default to Debug settings
   endif()
 endif()
 
+# MSVC: make __cplusplus report the actual standard (needed by csv-parser)
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  add_compile_options(/Zc:__cplusplus)
+endif()
+
 file(
   GLOB
   SOURCES
