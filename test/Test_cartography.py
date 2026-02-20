@@ -5,7 +5,7 @@ Tests for cartography module.
 import pytest
 import networkx as nx
 import folium
-from dsf.python.cartography import (
+from dsf.cartography import (
     get_cartography,
     graph_to_gdfs,
     graph_from_gdfs,
