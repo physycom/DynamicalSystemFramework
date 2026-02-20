@@ -99,7 +99,7 @@ include(FetchContent)
 FetchContent_Declare(
   csv-parser
   GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser
-  GIT_TAG 2.4.2)
+  GIT_TAG 2.5.0)
 FetchContent_GetProperties(csv-parser)
 if(NOT csv-parser_POPULATED)
   FetchContent_MakeAvailable(csv-parser)
