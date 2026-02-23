@@ -1,0 +1,19 @@
+name: "CD: Validate Zenodo Metadata"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v6
+
+      - name: 🛡️ Validate Zenodo Metadata
+        uses: vsoch/zenodo-validator@main 
+        with:
+          path: '.zenodo.json'
