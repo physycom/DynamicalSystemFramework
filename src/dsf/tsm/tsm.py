@@ -139,7 +139,7 @@ class TSM:
             "delta_t_s",
             F.when(
                 F.col("prev_timestamp").isNotNull(),
-                F.col("timestamp").cast("long") - F.col("prev_timestamp").cast("long"),
+                F.unix_timestamp(F.col("timestamp")) - F.unix_timestamp(F.col("prev_timestamp")),
             ),
         ).drop("prev_timestamp")
 
@@ -185,19 +185,19 @@ class TSM:
         if lanes_df is not None:
             result = result.join(lanes_df, on=group, how="left").withColumn(
                 "density",
-                F.col("num_vehicles") / F.col("cluster_len_km") / F.col("n_lanes"),
+                F.try_divide(F.col("num_vehicles"), F.col("cluster_len_km") * F.col("n_lanes")),
             ).withColumn(
                 "flow",
-                F.col("num_vehicles") * 3.6e3 / F.col("cluster_dt_s") / F.col("n_lanes"),
+                F.try_divide(F.col("num_vehicles") * 3.6e3, F.col("cluster_dt_s") * F.col("n_lanes")),
             )
         else:
             # Without lane info assume 1 lane
             result = result.withColumn(
                 "density",
-                F.col("num_vehicles") / F.col("cluster_len_km"),
+                F.try_divide(F.col("num_vehicles"), F.col("cluster_len_km")),
             ).withColumn(
                 "flow",
-                F.col("num_vehicles") * 3.6e3 / F.col("cluster_dt_s"),
+                F.try_divide(F.col("num_vehicles") * 3.6e3, F.col("cluster_dt_s")),
             )
 
         self._result = result.orderBy(*group, "cluster_local_id")
