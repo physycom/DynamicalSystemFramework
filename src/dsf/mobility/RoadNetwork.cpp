@@ -42,13 +42,13 @@ namespace dsf::mobility {
         (std::find(colNames.begin(), colNames.end(), "customWeight") != colNames.end());
 
     for (auto& row : reader) {
-      auto const sourceId = static_cast<Id>(row["source"].get<long long>());
-      auto const targetId = static_cast<Id>(row["target"].get<long long>());
+      auto const sourceId = row["source"].get<Id>();
+      auto const targetId = row["target"].get<Id>();
       if (sourceId == targetId) {
         spdlog::warn("Skipping self-loop edge {}->{}", sourceId, targetId);
         continue;
       }
-      auto const streetId = static_cast<Id>(row["id"].get<long long>());
+      auto const streetId = row["id"].get<Id>();
       auto const dLength = row["length"].get<double>();
       auto const name = row["name"].get<std::string>();
       auto strType = row["type"].get<std::string>();
@@ -154,7 +154,7 @@ namespace dsf::mobility {
     csv::CSVReader reader(fileName, format);
 
     for (auto& row : reader) {
-      auto const nodeId = static_cast<Id>(row["id"].get<long long>());
+      auto const nodeId = row["id"].get<Id>();
       if (m_nodes.find(nodeId) == m_nodes.end()) {
         spdlog::warn("Node {} not found in the network. Skipping properties import.",
                      nodeId);
