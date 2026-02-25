@@ -552,5 +552,8 @@ setup(
         "geopandas",
         "shapely",
         "folium",
+        "pyspark",
+        "matplotlib",
+        "pandas"
     ],
 )
