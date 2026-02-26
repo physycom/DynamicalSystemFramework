@@ -40,6 +40,8 @@ namespace dsf::mobility {
         (std::find(colNames.begin(), colNames.end(), "coilcode") != colNames.end());
     bool const bHasCustomWeight =
         (std::find(colNames.begin(), colNames.end(), "customWeight") != colNames.end());
+    bool const bHasPriority =
+        (std::find(colNames.begin(), colNames.end(), "priority") != colNames.end());
 
     for (auto& row : reader) {
       auto const sourceId = row["source"].get<Id>();
@@ -102,6 +104,16 @@ namespace dsf::mobility {
           edge(streetId)->setRoadType(RoadType::TERTIARY);
         } else if (strType.find("residential") != std::string::npos) {
           edge(streetId)->setRoadType(RoadType::RESIDENTIAL);
+        }
+      }
+
+      if (bHasPriority) {
+        try {
+          if (row["priority"].get<bool>()) {
+            edge(streetId)->setPriority();
+          }
+        } catch (...) {
+          spdlog::warn("Invalid priority for edge {}.", streetId);
         }
       }
 
@@ -327,6 +339,26 @@ namespace dsf::mobility {
         } else {
           spdlog::warn("Invalid coilcode for edge {}, adding default", edge_id);
           addCoil(edge_id);
+        }
+      }
+      // Check if there is custom weight property
+      if (!edge_properties.at_key("customWeight").error()) {
+        auto const& epCustomWeight = edge_properties["customWeight"];
+        if (epCustomWeight.is_number()) {
+          edge(edge_id)->setWeight(epCustomWeight.get_double());
+        } else {
+          spdlog::warn("Invalid custom weight for edge {}, keeping default", edge_id);
+        }
+      }
+      // Check if there is priority property
+      if (!edge_properties.at_key("priority").error()) {
+        auto const& epPriority = edge_properties["priority"];
+        if (epPriority.is_bool()) {
+          if (epPriority.get_bool()) {
+            edge(edge_id)->setPriority();
+          }
+        } else {
+          spdlog::warn("Invalid priority for edge {}, keeping default", edge_id);
         }
       }
     }
