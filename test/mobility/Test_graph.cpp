@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <sstream>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
@@ -216,6 +217,93 @@ TEST_CASE("RoadNetwork") {
           CHECK_EQ(graph.nIntersections(), 11100);
           CHECK_EQ(graph.nRoundabouts(), 17);
           CHECK_EQ(graph.nTrafficLights(), 30);
+        }
+      }
+
+      WHEN("We import edges from CSV with priority field") {
+        auto const tmpCsvPath =
+            std::filesystem::temp_directory_path() / "dsf_priority_edges_test.csv";
+        {
+          std::ofstream tmpCsv(tmpCsvPath);
+          REQUIRE(tmpCsv.is_open());
+          tmpCsv << "id;source;target;oneway;length;geometry;travel_time;maxspeed;nlanes;"
+                    "type;name;priority\n";
+          tmpCsv << "100;1;2;False;100.0;LINESTRING (8.0 45.0, 8.1 45.1);12.0;30.0;1;"
+                    "residential;priority_street_true;1\n";
+          tmpCsv << "101;2;3;False;120.0;LINESTRING (8.1 45.1, 8.2 45.2);14.4;30.0;1;"
+                    "residential;priority_street_false;0\n";
+        }
+
+        RoadNetwork graphWithPriority;
+        graphWithPriority.importEdges(tmpCsvPath.string());
+
+        THEN("Priority is correctly imported from CSV") {
+          REQUIRE(graphWithPriority.edge(static_cast<Id>(100)));
+          REQUIRE(graphWithPriority.edge(static_cast<Id>(101)));
+          CHECK(graphWithPriority.edge(static_cast<Id>(100))->hasPriority());
+          CHECK_FALSE(graphWithPriority.edge(static_cast<Id>(101))->hasPriority());
+          std::filesystem::remove(tmpCsvPath);
+        }
+      }
+
+      WHEN("We import edges from GeoJSON with priority field") {
+        auto const tmpGeoJsonPath =
+            std::filesystem::temp_directory_path() / "dsf_priority_edges_test.geojson";
+        {
+          std::ofstream tmpGeoJson(tmpGeoJsonPath);
+          REQUIRE(tmpGeoJson.is_open());
+          tmpGeoJson << R"({
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 200,
+        "source": 10,
+        "target": 11,
+        "length": 50.0,
+        "maxspeed": 30.0,
+        "nlanes": 1,
+        "type": "residential",
+        "name": "geo_priority_true",
+        "priority": true
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[8.0, 45.0], [8.1, 45.1]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 201,
+        "source": 11,
+        "target": 12,
+        "length": 60.0,
+        "maxspeed": 30.0,
+        "nlanes": 1,
+        "type": "residential",
+        "name": "geo_priority_false",
+        "priority": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[8.1, 45.1], [8.2, 45.2]]
+      }
+    }
+  ]
+})";
+        }
+
+        RoadNetwork graphWithPriority;
+        graphWithPriority.importEdges(tmpGeoJsonPath.string());
+
+        THEN("Priority is correctly imported from GeoJSON") {
+          REQUIRE(graphWithPriority.edge(static_cast<Id>(200)));
+          REQUIRE(graphWithPriority.edge(static_cast<Id>(201)));
+          CHECK(graphWithPriority.edge(static_cast<Id>(200))->hasPriority());
+          CHECK_FALSE(graphWithPriority.edge(static_cast<Id>(201))->hasPriority());
+          std::filesystem::remove(tmpGeoJsonPath);
         }
       }
     }

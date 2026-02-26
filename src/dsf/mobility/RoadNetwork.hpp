@@ -123,6 +123,7 @@ namespace dsf::mobility {
     /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
     /// - coilcode: An integer code to identify the coil located on the street
     /// - customWeight: will be stored in the `weight` parameter of the Edge class. You can use it for the shortest path via dsf::weight_functions::customWeight.
+    /// - priority: boolean, whether the street is a priority road or not. This information can be used in the traffic light cycle generation.
     /// @param args Additional arguments
     template <typename... TArgs>
     void importEdges(const std::string& fileName, TArgs&&... args);
