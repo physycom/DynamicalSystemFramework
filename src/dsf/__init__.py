@@ -15,3 +15,5 @@ from .cartography import (
     create_manhattan_cartography as create_manhattan_cartography,
     to_folium_map as to_folium_map,
 )
+
+from .tsm import TSM as TSM
