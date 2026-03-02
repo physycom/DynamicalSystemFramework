@@ -82,6 +82,7 @@ class TSM:
                 )
 
         self._result: Optional[DataFrame] = None
+        self._result_intratimes: Optional[DataFrame] = None
 
     # ------------------------------------------------------------------
     # helpers
@@ -101,6 +102,7 @@ class TSM:
         self,
         min_vehicles: int = 5,
         gap_factor: float = 3.0,
+        intermediates=False
     ) -> "TSM":
         """Run the clustering pipeline.
 
@@ -168,7 +170,13 @@ class TSM:
             "cluster_local_id",
             F.sum("new_cluster").over(w_unbounded),
         )
-
+        df = df.withColumn(
+            "intra_cluster_intermediate_time_s",
+            F.when(F.lag("cluster_local_id").over(w) == F.col("cluster_local_id"), F.col("delta_t_s")).otherwise(None),
+        )
+        if intermediates:
+            self._result_intratimes = df.drop("new_cluster").drop("prev_timestamp")
+            
         # aggregate per cluster
         result = (
             df.groupBy(group + ["cluster_local_id"])
@@ -177,6 +185,7 @@ class TSM:
                 F.count("*").alias("num_vehicles"),
                 F.sum(F.col("distance_m") * 1e-3).alias("cluster_len_km"),
                 F.sum("delta_t_s").alias("cluster_dt_s"),
+                F.mean("intra_cluster_intermediate_time_s").alias("mean_intra_cluster_dt_s"),
             )
             .filter(F.col("num_vehicles") > min_vehicles)
         )
@@ -220,6 +229,19 @@ class TSM:
         return self._result
 
     @property
+    def result_intratimes(self) -> DataFrame:
+        """Return the intermediate times DataFrame.
+
+        Raises
+        ------
+        RuntimeError
+            If :meth:`clusterize` has not been called yet.
+        """
+        if self._result_intratimes is None:
+            raise RuntimeError("Call .clusterize() with intermediates=True before accessing .result_intratimes")
+        return self._result_intratimes
+
+    @property
     def df(self) -> DataFrame:
         """Alias for :attr:`result`."""
         return self.result
@@ -235,6 +257,19 @@ class TSM:
             Extra options forwarded to ``DataFrameWriter.csv()``.
         """
         self.result.write.option("header", "true").csv(str(path), **kwargs)
+
+    def to_csv_intratimes(self, path: str | Path, **kwargs) -> None:
+        """Write the intermediate times result to a CSV directory (Spark partitioned output).
+
+        Parameters
+        ----------
+        path : str or Path
+            Destination directory.  Spark writes one or more part-* files.
+        **kwargs
+            Extra options forwarded to ``DataFrameWriter.csv()``.
+        """
+        self.result_intratimes.write.option("header", "true").csv(str(path), **kwargs)
+
 
     def to_parquet(self, path: str | Path, **kwargs) -> None:
         """Write the result to a Parquet directory (Spark partitioned output).
