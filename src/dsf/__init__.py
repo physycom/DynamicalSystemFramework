@@ -1,3 +1,5 @@
+import sys
+
 from dsf_cpp import (
     __version__ as __version__,
     LogLevel as LogLevel,
@@ -15,3 +17,6 @@ from .cartography import (
     create_manhattan_cartography as create_manhattan_cartography,
     to_folium_map as to_folium_map,
 )
+
+sys.modules.setdefault(__name__ + ".mobility", mobility)
+sys.modules.setdefault(__name__ + ".mdt", mdt)
