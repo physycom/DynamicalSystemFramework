@@ -2,7 +2,12 @@
 
 namespace dsf::mobility {
   double FirstOrderDynamics::m_speedFactor(double const& density) const {
-    return (1. - m_alpha * density);
+    if (density < 0.3) {
+      return 1.0;
+    } else if (density > 0.8) {
+      return 1. - m_alpha;
+    }
+    return 1.106 - 1.238 * density;
   }
   double FirstOrderDynamics::m_streetEstimatedTravelTime(
       std::unique_ptr<Street> const& pStreet) const {
