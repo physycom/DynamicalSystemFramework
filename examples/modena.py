@@ -10,14 +10,12 @@ import numpy as np
 SEED = 42
 np.random.seed(SEED)
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 if __name__ == "__main__":
     logging.info("Getting data from OpenStreetMap...")
     # Get the cartography of Modena, Italy
     G, df_edges, df_nodes = get_cartography("Parma, Emilia-Romagna, Italy")
-    # set nlanes to 1 if 0
-    df_edges["nlanes"] = df_edges["nlanes"].replace(0, 1).fillna(1).astype(int)
 
     df_edges.to_csv("modena_edges.csv", sep=";", index=False)
     df_nodes.to_csv("modena_nodes.csv", sep=";", index=False)
