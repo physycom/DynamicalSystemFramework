@@ -22,6 +22,7 @@ def get_cartography(
     consolidate_intersections: bool | float = 10,
     dead_ends: bool = False,
     infer_speeds: bool = False,
+    custom_filter: str | list[str] | None = None,
 ) -> tuple[nx.DiGraph, gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """
     Retrieves and processes cartography data for a specified place using OpenStreetMap data.
@@ -44,6 +45,7 @@ def get_cartography(
         infer_speeds (bool, optional): Whether to infer edge speeds based on road types. Defaults to False.
             If True, calls ox.routing.add_edge_speeds using np.nanmedian as aggregation function.
             Finally, the "maxspeed" attribute is replaced with the inferred "speed_kph", and the "travel_time" attribute is computed.
+        custom_filter (str | list[str], optional): A custom OSM filter string or list of strings to apply when retrieving the graph. Defaults to None.
 
     Returns:
         tuple[nx.DiGraph, gpd.GeoDataFrame, gpd.GeoDataFrame]: Returns a tuple containing:
@@ -61,10 +63,19 @@ def get_cartography(
 
     # Retrieve the graph using OSMnx
     if place_name is not None:
-        G = ox.graph_from_place(place_name, network_type=network_type, simplify=False)
+        G = ox.graph_from_place(
+            place_name,
+            network_type=network_type,
+            simplify=False,
+            custom_filter=custom_filter,
+        )
     elif bbox is not None:
         G = ox.graph_from_bbox(
-            bbox, network_type=network_type, simplify=False, truncate_by_edge=True
+            bbox,
+            network_type=network_type,
+            simplify=False,
+            truncate_by_edge=True,
+            custom_filter=custom_filter,
         )
     else:
         raise ValueError("Either place_name or bbox must be provided.")
