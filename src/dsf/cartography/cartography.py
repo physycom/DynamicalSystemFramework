@@ -115,9 +115,11 @@ def get_cartography(
         if "lanes" in data:
             lanes_value = data["lanes"]
             if isinstance(lanes_value, list):
-                edge_updates["nlanes"] = min(lanes_value)
+                edge_updates["nlanes"] = max(
+                    min([int(v) for v in lanes_value]), 1
+                )  # Take max if list, ensure at least 1 lane
             else:
-                edge_updates["nlanes"] = lanes_value
+                edge_updates["nlanes"] = max(int(lanes_value), 1)
             edge_updates["_remove_lanes"] = True
         else:
             edge_updates["nlanes"] = 1
