@@ -77,7 +77,7 @@ namespace dsf::mobility {
     std::optional<double> m_timeToleranceFactor{std::nullopt};
     bool m_forcePriorities{false};
     // Saving variables
-    std::time_t m_savingInterval{0};
+    std::optional<std::time_t> m_savingInterval{std::nullopt};
     bool m_bSaveStreetData{false};
     bool m_bSaveTravelData{false};
     bool m_bSaveAverageStats{false};
@@ -268,7 +268,11 @@ namespace dsf::mobility {
     /// @brief Reset the turn counts map values to zero
     /// @throws std::runtime_error if the turn counts map is not initialized
     void resetTurnCounts();
-
+    /// @brief Enable data saving to the database
+    /// @param savingInterval The interval at which save the data (in time steps). If zero, saves data at the next time step and then disables saving (working like a manual trigger).
+    /// @param saveAverageStats If true, saves the average stats of the simulation (default is false)
+    /// @param saveStreetData If true, saves the street data (default is false)
+    /// @param saveTravelData If true, saves the travel data of the agents (default is false)
     void saveData(std::time_t const savingInterval,
                   bool const saveAverageStats = false,
                   bool const saveStreetData = false,
@@ -1820,8 +1824,10 @@ namespace dsf::mobility {
     std::atomic<double> mean_speed{0.}, mean_density{0.};
     std::atomic<double> std_speed{0.}, std_density{0.};
     std::atomic<std::size_t> nValidEdges{0};
-    bool const bComputeStats = this->database() != nullptr && m_savingInterval > 0 &&
-                               this->time_step() % m_savingInterval == 0;
+    bool const bComputeStats = this->database() != nullptr &&
+                               m_savingInterval.has_value() &&
+                               (m_savingInterval.value() == 0 ||
+                                this->time_step() % m_savingInterval.value() == 0);
 
     // Struct to collect street data for batch insert after parallel section
     struct StreetDataRecord {
@@ -2023,6 +2029,13 @@ namespace dsf::mobility {
         insertStmt.bind(8, mean_density);
         insertStmt.bind(9, std_density);
         insertStmt.exec();
+      }
+      // Special case: if m_savingInterval == 0, it was a triggered saveData() call, so we need to reset all flags
+      if (m_savingInterval.value() == 0) {
+        m_savingInterval.reset();
+        m_bSaveStreetData = false;
+        m_bSaveTravelData = false;
+        m_bSaveAverageStats = false;
       }
     }
 
