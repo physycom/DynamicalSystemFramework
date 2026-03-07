@@ -268,7 +268,11 @@ namespace dsf::mobility {
     /// @brief Reset the turn counts map values to zero
     /// @throws std::runtime_error if the turn counts map is not initialized
     void resetTurnCounts();
-
+    /// @brief Enable data saving to the database
+    /// @param savingInterval The interval at which save the data (in time steps). If zero, saves data at the next time step and then disables saving (working like a manual trigger).
+    /// @param saveAverageStats If true, saves the average stats of the simulation (default is false)
+    /// @param saveStreetData If true, saves the street data (default is false)
+    /// @param saveTravelData If true, saves the travel data of the agents (default is false)
     void saveData(std::time_t const savingInterval,
                   bool const saveAverageStats = false,
                   bool const saveStreetData = false,
