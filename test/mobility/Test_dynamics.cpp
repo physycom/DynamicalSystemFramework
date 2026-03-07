@@ -1287,6 +1287,45 @@ TEST_CASE("FirstOrderDynamics") {
 
         std::filesystem::remove(testDbPath);
       }
+
+      WHEN("We configure saveData with savingInterval == 0 (one-shot save)") {
+        dynamics.connectDataBase(testDbPath);
+        // interval=0 means: save exactly once on the next evolve(), then reset
+        dynamics.saveData(0, true, true, false);
+
+        // First evolve: should trigger the save and reset m_savingInterval
+        dynamics.evolve(true);
+
+        int rowsAfterFirstEvolve{0};
+        {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement q(db, "SELECT COUNT(*) FROM avg_stats");
+          REQUIRE(q.executeStep());
+          rowsAfterFirstEvolve = q.getColumn(0).getInt();
+        }
+
+        // Subsequent evolves: m_savingInterval has been reset, so no more rows
+        for (int i = 0; i < 5; ++i) {
+          dynamics.evolve(true);
+        }
+
+        THEN("Data is saved exactly once and no further rows are added") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+
+          // avg_stats must have been written exactly once
+          SQLite::Statement avgQ(db, "SELECT COUNT(*) FROM avg_stats");
+          REQUIRE(avgQ.executeStep());
+          CHECK_EQ(avgQ.getColumn(0).getInt(), rowsAfterFirstEvolve);
+          CHECK(rowsAfterFirstEvolve >= 1);
+
+          // road_data must also have been written exactly once (one entry per street)
+          SQLite::Statement roadQ(db, "SELECT COUNT(DISTINCT time_step) FROM road_data");
+          REQUIRE(roadQ.executeStep());
+          CHECK_EQ(roadQ.getColumn(0).getInt(), 1);
+        }
+
+        std::filesystem::remove(testDbPath);
+      }
     }
   }
   SUBCASE("Transition probabilities") {
