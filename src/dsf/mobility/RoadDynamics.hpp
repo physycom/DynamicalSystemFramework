@@ -24,6 +24,7 @@
 #include <sstream>
 #include <iostream>
 #include <thread>
+#include <tuple>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -51,6 +52,7 @@ namespace dsf::mobility {
     std::unordered_map<Id, std::shared_ptr<Itinerary>> m_itineraries;
     std::unordered_map<Id, double> m_originNodes;
     std::unordered_map<Id, double> m_destinationNodes;
+    std::vector<std::tuple<Id, Id, double>> m_ODs;
     tbb::concurrent_unordered_map<Id, std::size_t> m_originCounts;
     tbb::concurrent_unordered_map<Id, std::size_t> m_destinationCounts;
     std::atomic<std::size_t> m_nAgents{0}, m_nAddedAgents{0}, m_nInsertedAgents{0},
@@ -254,6 +256,9 @@ namespace dsf::mobility {
     /// @brief Set the destination nodes
     /// @param destinationNodes The destination nodes (as an initializer list)
     void setDestinationNodes(std::initializer_list<Id> destinationNodes);
+    /// @brief Set the origin-destination pairs with their associated weights
+    /// @param ODs A vector of tuples (origin node id, destination node id, weight)
+    void setODs(std::vector<std::tuple<Id, Id, double>> const& ODs);
     /// @brief Set the destination nodes
     /// @param destinationNodes A container of destination nodes ids
     /// @details The container must have a value_type convertible to Id and begin() and end() methods
@@ -1487,6 +1492,31 @@ namespace dsf::mobility {
                     this->m_destinationNodes[nodeId] = 1. / numNodes;
                     this->addItinerary(nodeId, nodeId);
                   });
+  }
+  template <typename delay_t>
+    requires(is_numeric_v<delay_t>)
+  void RoadDynamics<delay_t>::setODs(std::vector<std::tuple<Id, Id, double>> const& ODs) {
+    auto const sumWeights = std::accumulate(
+        ODs.begin(), ODs.end(), 0., [this](double sum, auto const& tuple) {
+          // Add itineraries while summing weights
+          if (!this->itineraries().contains(std::get<1>(tuple))) {
+            this->addItinerary(std::get<1>(tuple), std::get<1>(tuple));
+          }
+          return sum + std::get<2>(tuple);
+        });
+    if (sumWeights == 1.) {
+      std::copy(DSF_EXECUTION ODs.begin(), ODs.end(), std::back_inserter(m_ODs));
+      return;
+    }
+    // Copy but divide by weights sum
+    std::transform(DSF_EXECUTION ODs.begin(),
+                   ODs.end(),
+                   std::back_inserter(m_ODs),
+                   [sumWeights](auto const& tuple) {
+                     return std::make_tuple(std::get<0>(tuple),
+                                            std::get<1>(tuple),
+                                            std::get<2>(tuple) / sumWeights);
+                   });
   }
 
   template <typename delay_t>
