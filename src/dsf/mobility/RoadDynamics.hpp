@@ -705,8 +705,10 @@ namespace dsf::mobility {
           pStreet->enqueue(laneDist(this->m_generator));
           continue;
         }
-        throw std::runtime_error(std::format(
-            "No next street found for agent {} at node {}", *pAgent, pStreet->target()));
+        this->m_killAgent(pStreet->dequeueMovingAgent());
+        continue;
+        // throw std::runtime_error(std::format(
+        //     "No next street found for agent {} at node {}", *pAgent, pStreet->target()));
       }
       auto const& pNextStreet{this->graph().edge(nextStreetId.value())};
       pAgent->setNextStreetId(pNextStreet->id());

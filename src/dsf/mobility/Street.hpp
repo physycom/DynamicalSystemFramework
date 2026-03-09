@@ -175,6 +175,9 @@ namespace dsf::mobility {
     /// @param pAgent The agent to add to the street
     /// @param currentTime The current simulation time
     void addAgent(std::unique_ptr<Agent> pAgent, std::time_t const currentTime);
+    /// @brief Remove the top agent from the street's moving agents priority queue
+    /// @return std::unique_ptr<Agent> The agent removed from the street's moving agents priority queue
+    std::unique_ptr<Agent> dequeueMovingAgent();
     /// @brief Add an agent to the street's queue
     /// @param queueId The id of the queue
     /// @throw std::runtime_error If the street's queue is full

@@ -135,6 +135,12 @@ namespace dsf::mobility {
       ++(*m_counter);
     }
   }
+  std::unique_ptr<Agent> Street::dequeueMovingAgent() {
+    assert(!m_movingAgents.empty());
+    auto pAgent{std::move(const_cast<std::unique_ptr<Agent>&>(m_movingAgents.top()))};
+    m_movingAgents.pop();
+    return pAgent;
+  }
   void Street::enqueue(std::size_t const& queueId) {
     assert(!m_movingAgents.empty());
     m_movingAgents.top()->incrementDistance(m_length);

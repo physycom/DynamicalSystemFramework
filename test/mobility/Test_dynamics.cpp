@@ -621,6 +621,35 @@ TEST_CASE("FirstOrderDynamics") {
       }
       // spdlog::set_level(spdlog::level::info);
     }
+    GIVEN("A non-random agent at a dead-end node with no valid next street") {
+      Street s0{0, std::make_pair(0, 1), 13.8888888889};
+      RoadNetwork graph2;
+      graph2.addStreets(s0);
+      FirstOrderDynamics dynamics{graph2, false, 69, 0., dsf::PathWeight::LENGTH};
+      // Manually construct an itinerary whose path leads through node 1, but
+      // node 1 has no outgoing edges. m_nextStreetId will return nullopt and
+      // the agent must be killed instead of throwing an exception.
+      auto itinerary = std::make_shared<Itinerary>(0, 2);
+      PathCollection path{{0, {1}}, {1, {2}}};
+      itinerary->setPath(path);
+      dynamics.addItinerary(itinerary);
+      dynamics.addAgent(dynamics.itineraries().at(0), 0);
+      WHEN("We evolve the dynamics until the agent reaches the dead-end") {
+        dynamics.evolve(false);  // Agent enters intersection at node 0
+        dynamics.evolve(false);  // Agent moves onto street 0
+        THEN("The agent is alive and on street 0") {
+          CHECK_EQ(dynamics.nAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(0)->nMovingAgents(), 1);
+          CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 1);
+        }
+        dynamics.evolve(false);  // Agent reaches dead-end at node 1: killed
+        THEN("The agent is killed instead of throwing an exception") {
+          CHECK_EQ(dynamics.nAgents(), 0);
+          CHECK_EQ(dynamics.graph().edge(0)->nMovingAgents(), 0);
+          CHECK_EQ(dynamics.graph().edge(0)->nAgents(), 0);
+        }
+      }
+    }
   }
   SUBCASE("TrafficLights") {
     TrafficLight::setAllowFreeTurns(false);
