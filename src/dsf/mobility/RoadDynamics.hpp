@@ -30,6 +30,7 @@
 #include <vector>
 
 #include <tbb/tbb.h>
+#include <tbb/global_control.h>
 #include <spdlog/spdlog.h>
 
 #include "../base/Dynamics.hpp"
@@ -1890,6 +1891,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::evolve(bool const reinsert_agents,
                                      std::size_t const n_threads) {
+    tbb::global_control gc(tbb::global_control::max_allowed_parallelism, n_threads);
     std::atomic<double> mean_speed{0.}, mean_density{0.};
     std::atomic<double> std_speed{0.}, std_density{0.};
     std::atomic<std::size_t> nValidEdges{0};
