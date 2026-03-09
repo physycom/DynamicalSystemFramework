@@ -215,18 +215,18 @@ TEST_CASE("FirstOrderDynamics") {
       WHEN("We add agents for existing itineraries") {
         std::unordered_map<dsf::Id, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
         std::unordered_map<dsf::Id, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
-        std::vector<dsf::Id> destinations{14, 102, 107};
+        // std::vector<dsf::Id> destinations{14, 102, 107};
         dynamics.setOriginNodes(src);
-        dynamics.setDestinationNodes(destinations);
+        dynamics.setDestinationNodes(dst);
         dynamics.updatePaths();
         dynamics.addAgents(3, AgentInsertionMethod::RANDOM_ODS);
         THEN("The agents are correctly set") {
           CHECK_EQ(dynamics.nAgents(), 3);
-          CHECK_EQ(dynamics.agents().at(0)->itinerary()->destination(), 14);
+          CHECK_EQ(dynamics.agents().at(0)->itinerary()->destination(), 107);
           CHECK_EQ(dynamics.agents().at(0)->srcNodeId().value(), 27);
-          CHECK_EQ(dynamics.agents().at(1)->itinerary()->destination(), 107);
+          CHECK_EQ(dynamics.agents().at(1)->itinerary()->destination(), 14);
           CHECK_EQ(dynamics.agents().at(1)->srcNodeId().value(), 1);
-          CHECK_EQ(dynamics.agents().at(2)->itinerary()->destination(), 107);
+          CHECK_EQ(dynamics.agents().at(2)->itinerary()->destination(), 14);
           CHECK_EQ(dynamics.agents().at(2)->srcNodeId().value(), 118);
         }
       }
