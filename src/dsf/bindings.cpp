@@ -595,7 +595,6 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def("evolve",
            &dsf::mobility::FirstOrderDynamics::evolve,
            pybind11::arg("reinsert_agents") = false,
-           pybind11::arg("n_threads") = tbb::info::default_concurrency(),
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::evolve").c_str())
       .def("optimizeTrafficLights",
            &dsf::mobility::FirstOrderDynamics::optimizeTrafficLights,
