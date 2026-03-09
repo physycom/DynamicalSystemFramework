@@ -560,6 +560,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("destinationNodes"),
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setDestinationNodes").c_str())
+      .def("setODs",
+           &dsf::mobility::FirstOrderDynamics::setODs,
+           pybind11::arg("ods"),
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setODs").c_str())
       .def("initTurnCounts",
            &dsf::mobility::FirstOrderDynamics::initTurnCounts,
            dsf::g_docstrings.at("dsf::mobility::RoadDynamics::initTurnCounts").c_str())
@@ -573,11 +577,16 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("nAgents"),
           pybind11::arg("itineraryId") = std::nullopt,
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgentsUniformly").c_str())
-      .def("addAgents",
-           &dsf::mobility::FirstOrderDynamics::addAgents,
-           pybind11::arg("nAgents"),
-           pybind11::arg("insertionMethod") = dsf::mobility::AgentInsertionMethod::RANDOM,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgents").c_str())
+      .def(
+          "addAgents",
+          [](dsf::mobility::FirstOrderDynamics& self,
+             std::size_t nAgents,
+             dsf::mobility::AgentInsertionMethod insertionMethod) {
+            self.addAgents(nAgents, insertionMethod);
+          },
+          pybind11::arg("nAgents"),
+          pybind11::arg("insertionMethod"),
+          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgents").c_str())
       .def("evolve",
            &dsf::mobility::FirstOrderDynamics::evolve,
            pybind11::arg("reinsert_agents") = false,

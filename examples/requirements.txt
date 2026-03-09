@@ -1,4 +1,4 @@
-dsf_mobility==5.1.1
-networkx==3.6.1
-numpy==2.4.2
-tqdm==4.67.3
+dsf_mobility
+networkx
+numpy
+tqdm
