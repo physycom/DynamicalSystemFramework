@@ -30,7 +30,6 @@
 #include <vector>
 
 #include <tbb/tbb.h>
-#include <tbb/global_control.h>
 #include <spdlog/spdlog.h>
 
 #include "../base/Dynamics.hpp"
@@ -346,10 +345,7 @@ namespace dsf::mobility {
     /// If the agent is in the destination node, it is removed from the simulation (and then reinserted if reinsert_agents is true)
     /// - Cycle over agents and update their times
     /// @param reinsert_agents If true, the agents are reinserted in the simulation after they reach their destination
-    /// @param n_threads The number of threads to use for the evolution (default is the maximum available concurrency)
-    void evolve(bool const reinsert_agents = false,
-                std::size_t const n_threads =
-                    static_cast<std::size_t>(tbb::info::default_concurrency()));
+    void evolve(bool const reinsert_agents = false);
     /// @brief Optimize the traffic lights by changing the green and red times
     /// @param optimizationType TrafficLightOptimization, The type of optimization. Default is DOUBLE_TAIL
     /// @param logFile The file into which write the logs (default is empty, meaning no logging)
@@ -1889,12 +1885,9 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::evolve(bool const reinsert_agents,
-                                     std::size_t const n_threads) {
-    auto const effectiveThreads = std::max<std::size_t>(1, n_threads);
-    this->m_configureTaskArena(effectiveThreads);
-    tbb::global_control gc(tbb::global_control::max_allowed_parallelism,
-                 effectiveThreads);
+  void RoadDynamics<delay_t>::evolve(bool const reinsert_agents) {
+    auto const n_threads{
+        static_cast<std::size_t>(std::max(1, this->m_taskArena.max_concurrency()))};
     std::atomic<double> mean_speed{0.}, mean_density{0.};
     std::atomic<double> std_speed{0.}, std_density{0.};
     std::atomic<std::size_t> nValidEdges{0};
@@ -1924,7 +1917,7 @@ namespace dsf::mobility {
 
     // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
     const auto grainSize = static_cast<std::size_t>(
-      std::max(1., std::floor(static_cast<double>(numNodes) / effectiveThreads)));
+        std::max(1., std::floor(static_cast<double>(numNodes) / n_threads)));
     this->m_taskArena.execute([&] {
       tbb::parallel_for(
           tbb::blocked_range<std::size_t>(0, numNodes, grainSize),
