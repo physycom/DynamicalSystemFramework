@@ -135,12 +135,14 @@ namespace dsf::mobility {
       ++(*m_counter);
     }
   }
+  std::unique_ptr<Agent> Street::dequeueMovingAgent() {
+    assert(!m_movingAgents.empty());
+    return m_movingAgents.extract_top();
+  }
   void Street::enqueue(std::size_t const& queueId) {
     assert(!m_movingAgents.empty());
     m_movingAgents.top()->incrementDistance(m_length);
-    m_exitQueues[queueId].push(
-        std::move(const_cast<std::unique_ptr<Agent>&>(m_movingAgents.top())));
-    m_movingAgents.pop();
+    m_exitQueues[queueId].push(m_movingAgents.extract_top());
     if (m_counter.has_value() && m_counterPosition == CounterPosition::MIDDLE) {
       ++(*m_counter);
     }
@@ -148,13 +150,12 @@ namespace dsf::mobility {
   std::unique_ptr<Agent> Street::dequeue(std::size_t const& index,
                                          std::time_t const currentTime) {
     assert(!m_exitQueues[index].empty());
-    auto pAgent{std::move(m_exitQueues[index].front())};
+    auto pAgent{m_exitQueues[index].extract_front()};
     // Keep track of average speed
     m_avgSpeeds.push_back(m_length /
                           (currentTime - m_agentsInsertionTimes[pAgent->id()]));
     m_agentsInsertionTimes.erase(pAgent->id());
 
-    m_exitQueues[index].pop();
     if (m_counter.has_value() && m_counterPosition == CounterPosition::EXIT) {
       ++(*m_counter);
     }
