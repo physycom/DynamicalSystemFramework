@@ -93,6 +93,9 @@ namespace dsf {
     /// @brief Set the initial time as epoch time
     /// @param timeEpoch The initial time as epoch time
     inline void setInitTime(std::time_t timeEpoch) { m_timeInit = timeEpoch; };
+    /// @brief Set the maximum number of threads to use for parallel execution
+    /// @param concurrency The maximum number of threads to use for parallel execution
+    void setConcurrency(std::size_t const concurrency);
 
     inline void connectDataBase(std::string const& dbPath) {
       m_database = std::make_unique<SQLite::Database>(
@@ -147,9 +150,8 @@ namespace dsf {
       m_generator.seed(*seed);
     }
     m_taskArena.initialize(static_cast<std::size_t>(tbb::info::default_concurrency()));
-    m_taskArena
-        // Take the current time and set id as YYYYMMDDHHMMSS
-        auto const now = std::chrono::system_clock::now();
+    // Take the current time and set id as YYYYMMDDHHMMSS
+    auto const now = std::chrono::system_clock::now();
 #ifdef __APPLE__
     std::time_t const t = std::chrono::system_clock::to_time_t(now);
     std::ostringstream oss;
@@ -162,5 +164,22 @@ namespace dsf {
             std::chrono::current_zone()->to_local(std::chrono::system_clock::from_time_t(
                 std::chrono::system_clock::to_time_t(now))))));
 #endif
+  }
+
+  template <typename network_t>
+  void Dynamics<network_t>::setConcurrency(std::size_t const concurrency) {
+    m_taskArena.terminate();
+    auto const maxConcurrency =
+        static_cast<std::size_t>(tbb::info::default_concurrency());
+    if (concurrency == 0 || concurrency > maxConcurrency) {
+      spdlog::warn(
+          "Requested concurrency ({}) is invalid. Using maximum available concurrency "
+          "({}).",
+          static_cast<int>(concurrency),
+          static_cast<int>(maxConcurrency));
+      m_taskArena.initialize(maxConcurrency);
+      return;
+    }
+    m_taskArena.initialize(concurrency);
   }
 };  // namespace dsf
