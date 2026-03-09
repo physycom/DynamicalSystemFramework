@@ -24,6 +24,14 @@ namespace dsf {
 
     T& operator[](size_t i) { return *(this->c.begin() + i); }
     const T& operator[](size_t i) const { return *(this->c.begin() + i); }
+
+    /// @brief Extract the top element from the queue and remove it from the queue
+    /// @return T The top element of the queue
+    inline auto extract_front() {
+      auto top{std::move(const_cast<T&>(this->front()))};
+      this->pop();
+      return top;
+    }
   };
 
   template <typename T,
@@ -48,6 +56,14 @@ namespace dsf {
 
     T& operator[](size_t i) { return *(this->c.begin() + i); }
     const T& operator[](size_t i) const { return *(this->c.begin() + i); }
+
+    /// @brief Extract the top element from the priority queue and remove it from the queue
+    /// @return T The top element of the priority queue
+    inline auto extract_top() {
+      auto top{std::move(const_cast<T&>(this->top()))};
+      this->pop();
+      return top;
+    }
   };
 
 };  // namespace dsf

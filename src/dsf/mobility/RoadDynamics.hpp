@@ -507,6 +507,7 @@ namespace dsf::mobility {
     m_travelDTs.push_back({pAgent->distance(),
                            static_cast<double>(this->time_step() - pAgent->spawnTime())});
     --m_nAgents;
+    ++m_nKilledAgents;
     auto const& streetId = pAgent->streetId();
     if (streetId.has_value()) {
       auto const& pStreet{this->graph().edge(streetId.value())};
@@ -707,6 +708,9 @@ namespace dsf::mobility {
         }
         this->m_killAgent(pStreet->dequeueMovingAgent());
         continue;
+        // Grufoony - 09/03/2026
+        // The agent is now killed. The old behavior (throw exception) is kept here:
+        //
         // throw std::runtime_error(std::format(
         //     "No next street found for agent {} at node {}", *pAgent, pStreet->target()));
       }
@@ -791,7 +795,6 @@ namespace dsf::mobility {
                 timeDiff);
             // Kill the agent
             this->m_killAgent(pStreet->dequeue(queueIndex, this->time_step()));
-            ++m_nKilledAgents;
             continue;
           }
         }
