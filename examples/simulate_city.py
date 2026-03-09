@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 
 from dsf.cartography import get_cartography
-from dsf.mobility import RoadNetwork, Dynamics
+from dsf.mobility import RoadNetwork, Dynamics, AgentInsertionMethod
 
 from tqdm import trange
 import numpy as np
@@ -96,7 +96,9 @@ if __name__ == "__main__":
             dynamics.updatePaths()
         # Add agents every 10 seconds
         if time_step % 10 == 0:
-            dynamics.addAgentsRandomly(vehicle_input[time_step // 10])
+            dynamics.addAgents(
+                vehicle_input[time_step // 10], AgentInsertionMethod.RANDOM_ODS
+            )
         dynamics.evolve(False)
 
     dynamics.summary()
