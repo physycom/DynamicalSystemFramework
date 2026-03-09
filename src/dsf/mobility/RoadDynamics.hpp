@@ -1528,8 +1528,8 @@ namespace dsf::mobility {
           return sum + pair.second;
         });
     if (sumWeights <= 0.) {
-      throw std::invalid_argument(std::format(
-          "The sum of the weights ({}) must be positive", sumWeights));
+      throw std::invalid_argument(
+          std::format("The sum of the weights ({}) must be positive", sumWeights));
     }
     if (sumWeights == 1.) {
       std::copy(
@@ -1558,8 +1558,8 @@ namespace dsf::mobility {
                     this->addItinerary(pair.first, pair.first);
                   });
     if (sumWeights <= 0.) {
-      throw std::invalid_argument(std::format(
-          "The sum of the weights ({}) must be positive", sumWeights));
+      throw std::invalid_argument(
+          std::format("The sum of the weights ({}) must be positive", sumWeights));
     }
     if (sumWeights == 1.) {
       std::copy(destinationNodes.begin(),
@@ -1685,8 +1685,8 @@ namespace dsf::mobility {
           return sum + std::get<2>(tuple);
         });
     if (sumWeights <= 0.) {
-      throw std::invalid_argument(std::format(
-          "The sum of the weights ({}) must be positive", sumWeights));
+      throw std::invalid_argument(
+          std::format("The sum of the weights ({}) must be positive", sumWeights));
     }
     if (sumWeights == 1.) {
       std::copy(ODs.begin(), ODs.end(), std::back_inserter(m_ODs));
