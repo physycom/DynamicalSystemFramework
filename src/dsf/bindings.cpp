@@ -27,6 +27,13 @@ PYBIND11_MODULE(dsf_cpp, m) {
                              "Bindings for movement data tools (MDT) related classes and "
                              "functions, under the dsf::mdt C++ namespace.");
 
+  // Bind AgentInsertionMethod enum
+  pybind11::enum_<dsf::mobility::AgentInsertionMethod>(mobility, "AgentInsertionMethod")
+      .value("ODS", dsf::mobility::AgentInsertionMethod::ODS)
+      .value("RANDOM", dsf::mobility::AgentInsertionMethod::RANDOM)
+      .value("RANDOM_ODS", dsf::mobility::AgentInsertionMethod::RANDOM_ODS)
+      .export_values();
+
   // Bind PathWeight enum
   pybind11::enum_<dsf::PathWeight>(mobility, "PathWeight")
       .value("LENGTH", dsf::PathWeight::LENGTH)
@@ -566,42 +573,11 @@ PYBIND11_MODULE(dsf_cpp, m) {
           pybind11::arg("nAgents"),
           pybind11::arg("itineraryId") = std::nullopt,
           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgentsUniformly").c_str())
-      .def(
-          "addRandomAgents",
-          [](dsf::mobility::FirstOrderDynamics& self, std::size_t nAgents) {
-            self.addRandomAgents(nAgents);
-          },
-          pybind11::arg("nAgents"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addRandomAgents").c_str())
-      .def(
-          "addRandomAgents",
-          [](dsf::mobility::FirstOrderDynamics& self,
-             std::size_t nAgents,
-             const std::unordered_map<dsf::Id, double>& src_weights) {
-            self.addRandomAgents(nAgents, src_weights);
-          },
-          pybind11::arg("nAgents"),
-          pybind11::arg("src_weights"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addRandomAgents").c_str())
-      .def(
-          "addAgentsRandomly",
-          [](dsf::mobility::FirstOrderDynamics& self, dsf::Size nAgents) {
-            self.addAgentsRandomly(nAgents);
-          },
-          pybind11::arg("nAgents"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgentsRandomly").c_str())
-      .def(
-          "addAgentsRandomly",
-          [](dsf::mobility::FirstOrderDynamics& self,
-             dsf::Size nAgents,
-             const std::unordered_map<dsf::Id, double>& src_weights,
-             const std::unordered_map<dsf::Id, double>& dst_weights) {
-            self.addAgentsRandomly(nAgents, src_weights, dst_weights);
-          },
-          pybind11::arg("nAgents"),
-          pybind11::arg("src_weights"),
-          pybind11::arg("dst_weights"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgentsRandomly").c_str())
+      .def("addAgents",
+           &dsf::mobility::FirstOrderDynamics::addAgents,
+           pybind11::arg("nAgents"),
+           pybind11::arg("insertionMethod") = dsf::mobility::AgentInsertionMethod::RANDOM,
+           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgents").c_str())
       .def("evolve",
            &dsf::mobility::FirstOrderDynamics::evolve,
            pybind11::arg("reinsert_agents") = false,

@@ -202,9 +202,10 @@ TEST_CASE("FirstOrderDynamics") {
       WHEN("We add one agent for existing itinerary") {
         std::unordered_map<dsf::Id, double> src{{0, 1.}};
         std::unordered_map<dsf::Id, double> dst{{2, 1.}};
-        dynamics.addItinerary(2, 2);
+        dynamics.setOriginNodes(src);
+        dynamics.setDestinationNodes(dst);
         dynamics.updatePaths();
-        dynamics.addAgentsRandomly(1, src, dst);
+        dynamics.addAgents(1, AgentInsertionMethod::RANDOM_ODS);
         THEN("The agents are correctly set") {
           CHECK_EQ(dynamics.nAgents(), 1);
           CHECK_EQ(dynamics.agents().at(0)->itinerary()->destination(), 2);
@@ -215,17 +216,63 @@ TEST_CASE("FirstOrderDynamics") {
         std::unordered_map<dsf::Id, double> src{{1, 0.3}, {27, 0.3}, {118, 0.4}};
         std::unordered_map<dsf::Id, double> dst{{14, 0.3}, {102, 0.3}, {107, 0.4}};
         std::vector<dsf::Id> destinations{14, 102, 107};
+        dynamics.setOriginNodes(src);
         dynamics.setDestinationNodes(destinations);
         dynamics.updatePaths();
-        dynamics.addAgentsRandomly(3, src, dst);
+        dynamics.addAgents(3, AgentInsertionMethod::RANDOM_ODS);
         THEN("The agents are correctly set") {
           CHECK_EQ(dynamics.nAgents(), 3);
-          CHECK_EQ(dynamics.agents().at(0)->itinerary()->destination(), 107);
+          CHECK_EQ(dynamics.agents().at(0)->itinerary()->destination(), 14);
           CHECK_EQ(dynamics.agents().at(0)->srcNodeId().value(), 27);
-          CHECK_EQ(dynamics.agents().at(1)->itinerary()->destination(), 14);
+          CHECK_EQ(dynamics.agents().at(1)->itinerary()->destination(), 107);
           CHECK_EQ(dynamics.agents().at(1)->srcNodeId().value(), 1);
-          CHECK_EQ(dynamics.agents().at(2)->itinerary()->destination(), 14);
+          CHECK_EQ(dynamics.agents().at(2)->itinerary()->destination(), 107);
           CHECK_EQ(dynamics.agents().at(2)->srcNodeId().value(), 118);
+        }
+      }
+    }
+  }
+  SUBCASE("addAgentsODs") {
+    GIVEN("A graph object") {
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69, 0., dsf::PathWeight::LENGTH};
+      WHEN("We add agents with a single OD pair") {
+        std::vector<std::tuple<dsf::Id, dsf::Id, double>> ods{{0, 2, 1.}};
+        dynamics.setODs(ods);
+        dynamics.updatePaths();
+        dynamics.addAgents(3, AgentInsertionMethod::ODS);
+        THEN("All agents follow that single OD pair") {
+          CHECK_EQ(dynamics.nAgents(), 3);
+          for (size_t i = 0; i < 3; ++i) {
+            CHECK_EQ(dynamics.agents().at(i)->itinerary()->destination(), 2);
+            CHECK_EQ(dynamics.agents().at(i)->srcNodeId().value(), 0);
+          }
+        }
+      }
+      WHEN("We add agents with multiple OD pairs") {
+        std::vector<std::tuple<dsf::Id, dsf::Id, double>> ods{{1, 14, 0.5},
+                                                              {27, 107, 0.5}};
+        dynamics.setODs(ods);
+        dynamics.updatePaths();
+        dynamics.addAgents(4, AgentInsertionMethod::ODS);
+        THEN("The agents are assigned to the correct OD pairs") {
+          CHECK_EQ(dynamics.nAgents(), 4);
+          for (size_t i = 0; i < dynamics.agents().size(); ++i) {
+            auto const& agent = dynamics.agents().at(i);
+            auto dest = agent->itinerary()->destination();
+            auto src = agent->srcNodeId().value();
+            CHECK((dest == 14 || dest == 107));
+            if (dest == 14) {
+              CHECK_EQ(src, 1);
+            } else {
+              CHECK_EQ(src, 27);
+            }
+          }
+        }
+      }
+      WHEN("We add agents with no OD pairs") {
+        THEN("An exception is thrown") {
+          CHECK_THROWS_AS(dynamics.addAgents(1, AgentInsertionMethod::ODS),
+                          std::runtime_error);
         }
       }
     }
@@ -255,7 +302,7 @@ TEST_CASE("FirstOrderDynamics") {
       dynamics.setInitTime(epochStart);
       dynamics.setPassageProbability(p);
       WHEN("We add some agent") {
-        dynamics.addAgents(n);
+        dynamics.addAgents(n, AgentInsertionMethod::RANDOM);
         THEN("The number of agents is correct") { CHECK_EQ(dynamics.nAgents(), 100); }
         THEN("If we evolve the dynamics agent disappear gradually") {
           auto constexpr nSteps = 1000;
@@ -299,7 +346,7 @@ TEST_CASE("FirstOrderDynamics") {
         }
       }
       WHEN("We add 69 agents") {
-        dynamics.addAgents(69);
+        dynamics.addAgents(69, AgentInsertionMethod::RANDOM);
         THEN("The number of agents is 69") { CHECK_EQ(dynamics.nAgents(), 69); }
       }
     }
@@ -1155,7 +1202,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.saveData(1, true, false, false);
 
         // Add agents and evolve
-        dynamics.addRandomAgents(10);
+        dynamics.addAgents(10, AgentInsertionMethod::RANDOM);
         for (int iter = 0; iter < 10; ++iter) {
           dynamics.evolve(true);
         }
@@ -1186,7 +1233,7 @@ TEST_CASE("FirstOrderDynamics") {
         dynamics.saveData(1, true, true, true);
 
         // Add agents and evolve until some reach destination
-        dynamics.addRandomAgents(10);
+        dynamics.addAgents(10, AgentInsertionMethod::RANDOM);
         for (int iter = 0; iter < 1000 && dynamics.nAgents() > 0; ++iter) {
           dynamics.evolve(true);
         }
@@ -1377,7 +1424,7 @@ TEST_CASE("FirstOrderDynamics") {
 
       WHEN("We add multiple random agents and evolve the system") {
         // spdlog::set_level(spdlog::level::debug);
-        dynamics.addRandomAgents(6);
+        dynamics.addAgents(6, AgentInsertionMethod::RANDOM);
         CHECK_EQ(dynamics.nAgents(), 6);
         // Evolve to get agents onto street 0
         dynamics.evolve(false);
@@ -1425,7 +1472,7 @@ TEST_CASE("FirstOrderDynamics") {
       dynamics.setOriginNodes({{0, 1.0}});
 
       WHEN("We add multiple random agents and evolve the system") {
-        dynamics.addRandomAgents(6);
+        dynamics.addAgents(6, AgentInsertionMethod::RANDOM);
         CHECK_EQ(dynamics.nAgents(), 6);
         // Evolve to get agents onto street 0
         dynamics.evolve(false);
@@ -1653,7 +1700,7 @@ TEST_CASE("RoadDynamics Configuration") {
     }
     dynamics.setOriginNodes(origins);
 
-    dynamics.addRandomAgents(10);
+    dynamics.addAgents(10, AgentInsertionMethod::RANDOM);
 
     const auto& agents = dynamics.agents();
     CHECK(agents.size() == 10);
@@ -1672,7 +1719,7 @@ TEST_CASE("RoadDynamics Configuration") {
     }
     dynamics.setOriginNodes(origins);
 
-    dynamics.addRandomAgents(10);
+    dynamics.addAgents(10, AgentInsertionMethod::RANDOM);
 
     const auto& agents = dynamics.agents();
     CHECK(agents.size() == 10);
