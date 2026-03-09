@@ -25,12 +25,12 @@ namespace dsf {
     T& operator[](size_t i) { return *(this->c.begin() + i); }
     const T& operator[](size_t i) const { return *(this->c.begin() + i); }
 
-    /// @brief Extract the top element from the queue and remove it from the queue
-    /// @return T The top element of the queue
+    /// @brief Extract the front element from the queue and remove it from the queue
+    /// @return T The front element of the queue
     inline auto extract_front() {
-      auto top{std::move(const_cast<T&>(this->front()))};
+      auto front{std::move(const_cast<T&>(this->front()))};
       this->pop();
-      return top;
+      return front;
     }
   };
 
