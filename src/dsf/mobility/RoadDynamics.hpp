@@ -1891,7 +1891,10 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::evolve(bool const reinsert_agents,
                                      std::size_t const n_threads) {
-    tbb::global_control gc(tbb::global_control::max_allowed_parallelism, n_threads);
+    auto const effectiveThreads = std::max<std::size_t>(1, n_threads);
+    this->m_configureTaskArena(effectiveThreads);
+    tbb::global_control gc(tbb::global_control::max_allowed_parallelism,
+                 effectiveThreads);
     std::atomic<double> mean_speed{0.}, mean_density{0.};
     std::atomic<double> std_speed{0.}, std_density{0.};
     std::atomic<std::size_t> nValidEdges{0};
@@ -1921,7 +1924,7 @@ namespace dsf::mobility {
 
     // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
     const auto grainSize = static_cast<std::size_t>(
-        std::max(1., std::floor(static_cast<double>(numNodes) / n_threads)));
+      std::max(1., std::floor(static_cast<double>(numNodes) / effectiveThreads)));
     this->m_taskArena.execute([&] {
       tbb::parallel_for(
           tbb::blocked_range<std::size_t>(0, numNodes, grainSize),

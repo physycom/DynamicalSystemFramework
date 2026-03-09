@@ -53,10 +53,24 @@ namespace dsf {
 
   protected:
     tbb::task_arena m_taskArena;
+    std::size_t m_taskArenaConcurrency{1};
     std::mt19937_64 m_generator;
 
   protected:
     inline void m_evolve() { ++m_timeStep; };
+
+    inline void m_configureTaskArena(std::size_t concurrency) {
+      concurrency = std::max<std::size_t>(1, concurrency);
+      if (m_taskArena.is_active() &&
+          m_taskArena.max_concurrency() == static_cast<int>(concurrency)) {
+        return;
+      }
+      if (m_taskArena.is_active()) {
+        m_taskArena.terminate();
+      }
+      m_taskArena.initialize(static_cast<int>(concurrency));
+      m_taskArenaConcurrency = concurrency;
+    }
 
     /// @brief Get a safe date-time string for filenames (YYYYMMDD_HHMMSS)
     /// @return std::string, The safe date-time string
@@ -146,7 +160,7 @@ namespace dsf {
     if (seed.has_value()) {
       m_generator.seed(*seed);
     }
-    m_taskArena.initialize();
+    m_configureTaskArena(static_cast<std::size_t>(tbb::info::default_concurrency()));
     // Take the current time and set id as YYYYMMDDHHMMSS
     auto const now = std::chrono::system_clock::now();
 #ifdef __APPLE__
