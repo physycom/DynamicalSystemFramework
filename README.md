@@ -120,15 +120,14 @@ for f in ./*.out ; do ./$f ; done
 ## Citing
 
 ```BibTex
-@software{berselli_2026_18887225,
+@software{berselli_2026_18745492,
   author       = {Berselli, Gregorio},
   title        = {DynamicalSystemFramework},
   month        = mar,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {5.1.1},
-  doi          = {10.5281/zenodo.18887225},
-  url          = {https://doi.org/10.5281/zenodo.18887225},
+  doi          = {10.5281/zenodo.18745492},
+  url          = {https://doi.org/10.5281/zenodo.18745492},
 }
 ```
 
