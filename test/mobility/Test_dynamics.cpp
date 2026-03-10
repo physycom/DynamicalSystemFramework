@@ -34,6 +34,8 @@ TEST_CASE("Measurement") {
     Measurement<float> m(data);
     CHECK_EQ(m.mean, 49.5f);
     CHECK_EQ(m.std, doctest::Approx(28.8661f));
+    CHECK_EQ(m.n, 100);
+    CHECK(m.is_valid);
   }
   SUBCASE("STL array") {
     std::array<float, 100> data;
@@ -42,6 +44,8 @@ TEST_CASE("Measurement") {
     Measurement<float> m(data);
     CHECK_EQ(m.mean, 49.5f);
     CHECK_EQ(m.std, doctest::Approx(28.8661f));
+    CHECK_EQ(m.n, 100);
+    CHECK(m.is_valid);
   }
   SUBCASE("STL span") {
     auto p = std::make_unique_for_overwrite<float[]>(100);
@@ -51,6 +55,8 @@ TEST_CASE("Measurement") {
     Measurement<float> m(data);
     CHECK_EQ(m.mean, 49.5f);
     CHECK_EQ(m.std, doctest::Approx(28.8661f));
+    CHECK_EQ(m.n, 100);
+    CHECK(m.is_valid);
   }
 }
 
@@ -1285,7 +1291,9 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(roadColumns.count("density_vpk") == 1);
           CHECK(roadColumns.count("avg_speed_kph") == 1);
           CHECK(roadColumns.count("std_speed_kph") == 1);
+          CHECK(roadColumns.count("n_observations") == 1);
           CHECK(roadColumns.count("counts") == 1);
+          CHECK(roadColumns.count("queue_length") == 1);
 
           // Check avg_stats table
           SQLite::Statement avgQuery(db, "SELECT COUNT(*) FROM avg_stats");
