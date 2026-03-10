@@ -1915,9 +1915,14 @@ namespace dsf::mobility {
     auto const numNodes{this->graph().nNodes()};
     auto const numEdges{this->graph().nEdges()};
 
-    // Calculate a grain size to partition the nodes into roughly "concurrency" blocks
-    const auto grainSize = static_cast<std::size_t>(
-        std::max(1., std::floor(static_cast<double>(numNodes) / n_threads)));
+    // Adaptive grain: if fewer active agents than threads, collapse to one block
+    // (effectively serial) to avoid TBB scheduling overhead on a nearly empty network.
+    const auto nCurrentAgents = static_cast<std::size_t>(this->nAgents());
+    const auto grainSize =
+        (nCurrentAgents < n_threads)
+            ? numNodes
+            : static_cast<std::size_t>(
+                  std::max(1., std::floor(static_cast<double>(numNodes) / n_threads)));
     this->m_taskArena.execute([&] {
       tbb::parallel_for(
           tbb::blocked_range<std::size_t>(0, numNodes, grainSize),

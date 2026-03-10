@@ -5,6 +5,7 @@
 #include "dsf/mobility/Intersection.hpp"
 #include "dsf/mobility/Agent.hpp"
 
+#include <tbb/tbb.h>
 #include <SQLiteCpp/SQLiteCpp.h>
 
 #include <chrono>
@@ -12,6 +13,7 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <set>
 #include <sstream>
 
@@ -110,6 +112,29 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(summaryStr.find("Number of added agents") != std::string::npos);
           CHECK(summaryStr.find("Number of killed agents") != std::string::npos);
           CHECK(summaryStr.find("Current number of agents: 0") != std::string::npos);
+        }
+      }
+    }
+  }
+  SUBCASE("setConcurrency") {
+    GIVEN("A dynamics object") {
+      FirstOrderDynamics dynamics{defaultNetwork, false, 69};
+      WHEN("We set concurrency to 2") {
+        dynamics.setConcurrency(2);
+        THEN("The concurrency is 2") { CHECK_EQ(dynamics.concurrency(), 2UL); }
+      }
+      WHEN("We set concurrency to 0 (invalid)") {
+        dynamics.setConcurrency(0);
+        THEN("The concurrency falls back to max") {
+          CHECK_EQ(dynamics.concurrency(),
+                   static_cast<std::size_t>(tbb::info::default_concurrency()));
+        }
+      }
+      WHEN("We set concurrency to SIZE_MAX (invalid)") {
+        dynamics.setConcurrency(std::numeric_limits<std::size_t>::max());
+        THEN("The concurrency falls back to max") {
+          CHECK_EQ(dynamics.concurrency(),
+                   static_cast<std::size_t>(tbb::info::default_concurrency()));
         }
       }
     }
