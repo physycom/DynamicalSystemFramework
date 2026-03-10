@@ -151,6 +151,8 @@ namespace dsf::mobility {
     ///
     /// - std_speed_kph: The standard deviation of the speed in kilometers per hour
     ///
+    /// - n_observations: The number of speed observations used to compute avg/std (0 if none)
+    ///
     /// - counts: The counts of the coil sensor (can be null)
     ///
     /// - queue_length: The length of the queue on the street
@@ -1315,6 +1317,7 @@ namespace dsf::mobility {
         "density_vpk REAL, "
         "avg_speed_kph REAL, "
         "std_speed_kph REAL, "
+        "n_observations INTEGER, "
         "counts INTEGER, "
         "queue_length INTEGER)");
 
@@ -1902,6 +1905,7 @@ namespace dsf::mobility {
       double density;
       std::optional<double> avgSpeed;
       std::optional<double> stdSpeed;
+      std::optional<size_t> nObservations;
       std::optional<std::size_t> counts;
       std::size_t queueLength;
     };
@@ -1914,9 +1918,6 @@ namespace dsf::mobility {
     auto const numNodes{this->graph().nNodes()};
     auto const numEdges{this->graph().nEdges()};
 
-    // Adaptive grain: if fewer active agents than threads, collapse to one block
-    // (effectively serial) to avoid TBB scheduling overhead on a nearly empty network.
-    const auto nCurrentAgents = static_cast<std::size_t>(this->nAgents());
     const auto grainSize = std::max<std::size_t>(1, numNodes / n_threads);
     this->m_taskArena.execute([&] {
       tbb::parallel_for(
@@ -1974,6 +1975,7 @@ namespace dsf::mobility {
                     if (speedMeasure.is_valid) {
                       record.avgSpeed = speedMeasure.mean * 3.6;  // to kph
                       record.stdSpeed = speedMeasure.std * 3.6;
+                      record.nObservations = speedMeasure.n;
                     }
                     record.queueLength = pStreet->nExitingAgents();
                     streetDataRecords.push_back(record);
@@ -2007,8 +2009,9 @@ namespace dsf::mobility {
         SQLite::Statement insertStmt(
             *this->database(),
             "INSERT INTO road_data (datetime, time_step, simulation_id, street_id, "
-            "coil, density_vpk, avg_speed_kph, std_speed_kph, counts, queue_length) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            "coil, density_vpk, avg_speed_kph, std_speed_kph, n_observations, counts, "
+            "queue_length) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         for (auto const& record : streetDataRecords) {
           insertStmt.bind(1, this->strDateTime());
@@ -2028,12 +2031,13 @@ namespace dsf::mobility {
             insertStmt.bind(7);
             insertStmt.bind(8);
           }
+          insertStmt.bind(9, static_cast<std::int64_t>(record.nObservations.value_or(0)));
           if (record.counts.has_value()) {
-            insertStmt.bind(9, static_cast<std::int64_t>(record.counts.value()));
+            insertStmt.bind(10, static_cast<std::int64_t>(record.counts.value()));
           } else {
-            insertStmt.bind(9);
+            insertStmt.bind(10);
           }
-          insertStmt.bind(10, static_cast<std::int64_t>(record.queueLength));
+          insertStmt.bind(11, static_cast<std::int64_t>(record.queueLength));
           insertStmt.exec();
           insertStmt.reset();
         }
@@ -2596,7 +2600,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::meanTravelDistance(bool clearData) {
     if (m_travelDTs.empty()) {
-      return Measurement(0., 0.);
+      return Measurement<double>();
     }
     std::vector<double> travelDistances;
     travelDistances.reserve(m_travelDTs.size());
@@ -2666,7 +2670,7 @@ namespace dsf::mobility {
     requires(is_numeric_v<delay_t>)
   Measurement<double> RoadDynamics<delay_t>::streetMeanDensity(bool normalized) const {
     if (this->graph().edges().empty()) {
-      return Measurement(0., 0.);
+      return Measurement<double>();
     }
     std::vector<double> densities;
     densities.reserve(this->graph().nEdges());
@@ -2681,10 +2685,10 @@ namespace dsf::mobility {
         sum += pStreet->length();
       }
       if (sum == 0) {
-        return Measurement(0., 0.);
+        return Measurement<double>();
       }
       auto meanDensity{std::accumulate(densities.begin(), densities.end(), 0.) / sum};
-      return Measurement(meanDensity, 0.);
+      return Measurement<double>(meanDensity, 0., densities.size());
     }
     return Measurement<double>(densities);
   }

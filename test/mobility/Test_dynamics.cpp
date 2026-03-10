@@ -1285,7 +1285,9 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(roadColumns.count("density_vpk") == 1);
           CHECK(roadColumns.count("avg_speed_kph") == 1);
           CHECK(roadColumns.count("std_speed_kph") == 1);
+          CHECK(roadColumns.count("n_observations") == 1);
           CHECK(roadColumns.count("counts") == 1);
+          CHECK(roadColumns.count("queue_length") == 1);
 
           // Check avg_stats table
           SQLite::Statement avgQuery(db, "SELECT COUNT(*) FROM avg_stats");
