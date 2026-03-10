@@ -8,7 +8,6 @@
 #include <pybind11/numpy.h>       // For numpy array support
 
 #include <spdlog/spdlog.h>  // For logging functionality
-#include <tbb/tbb.h>        // For TBB task parallelism
 
 PYBIND11_MODULE(dsf_cpp, m) {
   m.doc() = "Python bindings for the DSF library";
