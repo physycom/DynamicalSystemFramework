@@ -1905,7 +1905,7 @@ namespace dsf::mobility {
       double density;
       std::optional<double> avgSpeed;
       std::optional<double> stdSpeed;
-      std::optional<size_t> nObservations;
+      std::optional<std::size_t> nObservations;
       std::optional<std::size_t> counts;
       std::size_t queueLength;
     };

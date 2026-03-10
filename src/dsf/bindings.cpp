@@ -74,16 +74,23 @@ PYBIND11_MODULE(dsf_cpp, m) {
 
   // Bind Measurement to main module (can be used across different contexts)
   pybind11::class_<dsf::Measurement<double>>(m, "Measurement")
-      .def(pybind11::init<double, double>(),
+      .def(pybind11::init<double, double, std::size_t>(),
            pybind11::arg("mean"),
            pybind11::arg("std"),
+           pybind11::arg("n"),
            dsf::g_docstrings.at("dsf::Measurement::Measurement").c_str())
       .def_readwrite("mean",
                      &dsf::Measurement<double>::mean,
                      dsf::g_docstrings.at("dsf::Measurement::mean").c_str())
       .def_readwrite("std",
                      &dsf::Measurement<double>::std,
-                     dsf::g_docstrings.at("dsf::Measurement::std").c_str());
+                     dsf::g_docstrings.at("dsf::Measurement::std").c_str())
+      .def_readwrite("n",
+                     &dsf::Measurement<double>::n,
+                     dsf::g_docstrings.at("dsf::Measurement::n").c_str())
+      .def_readwrite("is_valid",
+                     &dsf::Measurement<double>::is_valid,
+                     dsf::g_docstrings.at("dsf::Measurement::is_valid").c_str());
 
   // Bind mobility-related classes to mobility submodule
   pybind11::class_<dsf::mobility::RoadNetwork>(mobility, "RoadNetwork")

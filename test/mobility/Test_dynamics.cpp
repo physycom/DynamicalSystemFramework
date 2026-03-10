@@ -34,6 +34,8 @@ TEST_CASE("Measurement") {
     Measurement<float> m(data);
     CHECK_EQ(m.mean, 49.5f);
     CHECK_EQ(m.std, doctest::Approx(28.8661f));
+    CHECK_EQ(m.n, 100);
+    CHECK(m.is_valid);
   }
   SUBCASE("STL array") {
     std::array<float, 100> data;
@@ -42,6 +44,8 @@ TEST_CASE("Measurement") {
     Measurement<float> m(data);
     CHECK_EQ(m.mean, 49.5f);
     CHECK_EQ(m.std, doctest::Approx(28.8661f));
+    CHECK_EQ(m.n, 100);
+    CHECK(m.is_valid);
   }
   SUBCASE("STL span") {
     auto p = std::make_unique_for_overwrite<float[]>(100);
@@ -51,6 +55,8 @@ TEST_CASE("Measurement") {
     Measurement<float> m(data);
     CHECK_EQ(m.mean, 49.5f);
     CHECK_EQ(m.std, doctest::Approx(28.8661f));
+    CHECK_EQ(m.n, 100);
+    CHECK(m.is_valid);
   }
 }
 
