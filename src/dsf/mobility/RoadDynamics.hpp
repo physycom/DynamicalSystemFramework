@@ -1886,8 +1886,7 @@ namespace dsf::mobility {
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
   void RoadDynamics<delay_t>::evolve(bool const reinsert_agents) {
-    auto const n_threads{
-        static_cast<std::size_t>(std::max(1, this->m_taskArena.max_concurrency()))};
+    auto const n_threads{std::max<std::size_t>(1, this->concurrency())};
     std::atomic<double> mean_speed{0.}, mean_density{0.};
     std::atomic<double> std_speed{0.}, std_density{0.};
     std::atomic<std::size_t> nValidEdges{0};
@@ -1918,11 +1917,7 @@ namespace dsf::mobility {
     // Adaptive grain: if fewer active agents than threads, collapse to one block
     // (effectively serial) to avoid TBB scheduling overhead on a nearly empty network.
     const auto nCurrentAgents = static_cast<std::size_t>(this->nAgents());
-    const auto grainSize =
-        (nCurrentAgents < n_threads)
-            ? numNodes
-            : static_cast<std::size_t>(
-                  std::max(1., std::floor(static_cast<double>(numNodes) / n_threads)));
+    const auto grainSize = std::max<std::size_t>(1, numNodes / n_threads);
     this->m_taskArena.execute([&] {
       tbb::parallel_for(
           tbb::blocked_range<std::size_t>(0, numNodes, grainSize),

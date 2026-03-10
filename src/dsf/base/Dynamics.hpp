@@ -179,9 +179,9 @@ namespace dsf {
     spdlog::info("Setting concurrency to {} threads.", concurrency);
     auto const maxConcurrency =
         static_cast<std::size_t>(tbb::info::default_concurrency());
-    auto const actualConcurrency =
-        (concurrency == 0 || concurrency > maxConcurrency) ? maxConcurrency : concurrency;
+    auto actualConcurrency = concurrency;
     if (concurrency == 0 || concurrency > maxConcurrency) {
+      actualConcurrency = maxConcurrency;
       spdlog::warn(
           "Requested concurrency ({}) is invalid. Using maximum available concurrency "
           "({}).",
