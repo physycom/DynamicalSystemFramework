@@ -467,6 +467,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("datetime"),
           dsf::g_docstrings.at("dsf::Dynamics::setInitTime").c_str())
+      .def("setConcurrency",
+           &dsf::mobility::FirstOrderDynamics::setConcurrency,
+           pybind11::arg("concurrency"),
+           dsf::g_docstrings.at("dsf::Dynamics::setConcurrency").c_str())
       .def("connectDataBase",
            &dsf::mobility::FirstOrderDynamics::connectDataBase,
            pybind11::arg("dbPath"),
