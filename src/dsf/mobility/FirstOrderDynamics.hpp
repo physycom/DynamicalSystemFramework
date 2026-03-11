@@ -448,11 +448,13 @@ namespace dsf::mobility {
           throw std::invalid_argument(std::format(
               "Linear speed function requires exactly one argument, but {} were provided",
               sizeof...(args)));
-        } else if constexpr (!std::is_same_v<std::tuple_element_t<0, std::tuple<TArgs...>>,
-                                             double>) {
+        } else if constexpr (!std::is_convertible_v<
+                                 std::tuple_element_t<0, std::tuple<TArgs...>>,
+                                 double>) {
           throw std::invalid_argument(std::format(
               "Linear speed function requires a double argument, but {} was provided",
-              typeid(std::tuple_element_t<0, std::tuple<TArgs...>>).name()));
+              typeid(std::remove_cvref_t<std::tuple_element_t<0, std::tuple<TArgs...>>>)
+                  .name()));
         } else {
           double alpha = std::get<0>(std::forward_as_tuple(args...));
           if (alpha < 0. || alpha > 1.) {
