@@ -5,20 +5,26 @@ from typing import Dict, Optional
 
 from pyspark.sql import DataFrame, SparkSession, Window
 import pyspark.sql.functions as F
-import pyspark.sql.types as T
 
 
-def _get_or_create_spark() -> SparkSession:
+def _get_or_create_spark(
+    master: str = "local[*]",
+    driver_memory: str = "128g",
+    executor_memory: str = "128g",
+    shuffle_partitions: int = 1600,
+    adaptive_enabled: bool = True,
+    adaptive_coalesce_enabled: bool = True,
+)  -> SparkSession:
     """Return the active SparkSession or create a local one."""
     return (
         SparkSession.builder
-        .master("local[*]")
+        .master(master)
         .appName("TSM")
-        .config("spark.driver.memory", "128g") \
-        .config("spark.executor.memory", "128g") \
-        .config("spark.sql.shuffle.partitions", "1600") \
-        .config("spark.sql.adaptive.enabled", "true") \
-        .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
+        .config("spark.driver.memory", driver_memory) \
+        .config("spark.executor.memory", executor_memory) \
+        .config("spark.sql.shuffle.partitions", str(shuffle_partitions)) \
+        .config("spark.sql.adaptive.enabled", str(adaptive_enabled).lower()) \
+        .config("spark.sql.adaptive.coalescePartitions.enabled", str(adaptive_coalesce_enabled).lower()) \
         .getOrCreate()
     )
 
@@ -124,12 +130,12 @@ class TSM:
         # --- lanes sub-table (only when lane info is available) -----------
         lanes_df: Optional[DataFrame] = None
         if self._has_lane:
-            lanes_df = self._df.groupBy(group).agg(
+            lanes_df = self._df.groupBy(*group).agg(
                 F.count_distinct("lane").alias("n_lanes")
             )
 
         # --- window for per-detector and direction in ordered operations ----------------------
-        w = Window.partitionBy(group).orderBy("timestamp")
+        w = Window.partitionBy(*group).orderBy("timestamp")
 
         # --- main pipeline ------------------------------------------------
         df = self._df
@@ -141,7 +147,7 @@ class TSM:
             "delta_t_s",
             F.when(
                 F.col("prev_timestamp").isNotNull(),
-                F.unix_timestamp(F.col("timestamp")) - F.unix_timestamp(F.col("prev_timestamp")),
+                F.unix_timestamp(F.col("timestamp")).cast("double") - F.unix_timestamp(F.col("prev_timestamp")).cast("double"),
             ),
         ).drop("prev_timestamp")
 
@@ -162,7 +168,7 @@ class TSM:
 
         # cluster_local_id: cumulative sum of new_cluster within each detector and direction
         w_unbounded = (
-            Window.partitionBy(group)
+            Window.partitionBy(*group)
             .orderBy("timestamp")
             .rowsBetween(Window.unboundedPreceding, Window.currentRow)
         )
@@ -179,7 +185,7 @@ class TSM:
             
         # aggregate per cluster
         result = (
-            df.groupBy(group + ["cluster_local_id"])
+            df.groupBy(*(group + ["cluster_local_id"]))
             .agg(
                 F.mean("speed_kph").alias("mean_speed_kph"),
                 F.count("*").alias("num_vehicles"),
