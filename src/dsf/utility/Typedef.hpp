@@ -17,7 +17,6 @@
 namespace dsf {
 
   using Id = uint64_t;
-  using Size = uint32_t;
   using Delay = uint16_t;
 
   enum class PathWeight : uint8_t { LENGTH = 0, TRAVELTIME = 1, WEIGHT = 2 };

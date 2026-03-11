@@ -120,12 +120,12 @@ namespace dsf::mobility {
     void resetCounter();
 
     /// @brief Get the street's queue
-    /// @return dsf::queue<Size>, The street's queue
+    /// @return const dsf::queue<std::unique_ptr<Agent>>&, The street's queue
     const dsf::queue<std::unique_ptr<Agent>>& queue(size_t const& index) const {
       return m_exitQueues[index];
     }
     /// @brief Get the street's queues
-    /// @return std::vector<dsf::queue<Size>> The street's queues
+    /// @return std::vector<dsf::queue<std::unique_ptr<Agent>>> The street's queues
     std::vector<dsf::queue<std::unique_ptr<Agent>>> const& exitQueues() const {
       return m_exitQueues;
     }
