@@ -20,6 +20,7 @@ namespace dsf {
   using Delay = uint16_t;
 
   enum class PathWeight : uint8_t { LENGTH = 0, TRAVELTIME = 1, WEIGHT = 2 };
+  enum class SpeedFunction : uint8_t { CUSTOM = 0, LINEAR = 1 };
   enum Direction : uint8_t {
     RIGHT = 0,     // delta < 0
     STRAIGHT = 1,  // delta == 0

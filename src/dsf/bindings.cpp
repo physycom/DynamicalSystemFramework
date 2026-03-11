@@ -47,6 +47,12 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .value("DOUBLE_TAIL", dsf::TrafficLightOptimization::DOUBLE_TAIL)
       .export_values();
 
+  // Bind SpeedFunction enum
+  pybind11::enum_<dsf::SpeedFunction>(mobility, "SpeedFunction")
+      .value("CUSTOM", dsf::SpeedFunction::CUSTOM)
+      .value("LINEAR", dsf::SpeedFunction::LINEAR)
+      .export_values();
+
   // Bind RoadStatus enum
   pybind11::enum_<dsf::mobility::RoadStatus>(mobility, "RoadStatus")
       .value("OPEN", dsf::mobility::RoadStatus::OPEN)
@@ -441,22 +447,42 @@ PYBIND11_MODULE(dsf_cpp, m) {
   pybind11::class_<dsf::mobility::FirstOrderDynamics>(mobility, "Dynamics")
       //     // Constructors are not directly exposed due to the template nature and complexity.
       //     // Users should use derived classes like FirstOrderDynamics.
-      .def(pybind11::init<dsf::mobility::RoadNetwork&,
-                          bool,
-                          std::optional<unsigned int>,
-                          double,
-                          dsf::PathWeight,
-                          std::optional<double>>(),
-           pybind11::arg("graph"),
-           pybind11::arg("useCache") = false,
-           pybind11::arg("seed") = std::nullopt,
-           pybind11::arg("alpha") = 0.,
-           pybind11::arg("weightFunction") = dsf::PathWeight::TRAVELTIME,
-           pybind11::arg("weightThreshold") = std::nullopt,
-           pybind11::keep_alive<1, 2>(),
-           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::FirstOrderDynamics")
-               .c_str())
-      // Note: Constructors with std::function parameters are not exposed to avoid stub generation issues
+      .def(
+          pybind11::init<dsf::mobility::RoadNetwork&, bool, std::optional<unsigned int>>(),
+          pybind11::arg("graph"),
+          pybind11::arg("useCache") = false,
+          pybind11::arg("seed") = std::nullopt,
+          pybind11::keep_alive<1, 2>(),
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::FirstOrderDynamics")
+              .c_str())
+      .def(
+          "setSpeedFunction",
+          [](dsf::mobility::FirstOrderDynamics& self,
+             dsf::SpeedFunction speedFunction,
+             pybind11::object arg) {
+            if (speedFunction == dsf::SpeedFunction::LINEAR) {
+              double alpha = arg.cast<double>();
+              self.setSpeedFunction(dsf::SpeedFunction::LINEAR, alpha);
+            } else if (speedFunction == dsf::SpeedFunction::CUSTOM) {
+              auto pyFunc = arg.cast<std::function<double(double, double, double)>>();
+              self.setSpeedFunction(
+                  dsf::SpeedFunction::CUSTOM,
+                  [pyFunc](
+                      std::unique_ptr<dsf::mobility::Street> const& pStreet) -> double {
+                    return pyFunc(
+                        pStreet->maxSpeed(), pStreet->density(true), pStreet->length());
+                  });
+            }
+          },
+          pybind11::arg("speedFunction"),
+          pybind11::arg("arg"),
+          "Set the speed function for agents.\n\n"
+          "Args:\n"
+          "    speedFunction (SpeedFunction): The speed function type (LINEAR or "
+          "CUSTOM)\n"
+          "    arg: For LINEAR, a float alpha in [0., 1.]. "
+          "For CUSTOM, a callable(max_speed: float, density: float, length: float) -> "
+          "float")
       .def("setName",
            &dsf::mobility::FirstOrderDynamics::setName,
            pybind11::arg("name"),
