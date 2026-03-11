@@ -43,11 +43,9 @@
 
 namespace dsf::mobility {
   /// @brief The RoadNetwork class represents a graph in the network.
-  /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
-  /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
   class RoadNetwork : public Network<RoadJunction, Street> {
   private:
-    unsigned long long m_capacity;
+    std::size_t m_capacity;
 
     /// @brief If every node has coordinates, set the street angles
     /// @details The street angles are set using the node's coordinates.
@@ -239,7 +237,7 @@ namespace dsf::mobility {
     const std::unique_ptr<Street>* street(Id source, Id destination) const;
 
     /// @brief Get the maximum agent capacity
-    /// @return unsigned long long The maximum agent capacity of the graph
+    /// @return std::size_t The maximum agent capacity of the graph
     inline auto capacity() const noexcept { return m_capacity; }
 
     /// @brief Perform a global Dijkstra search to a target node from all other nodes in the graph

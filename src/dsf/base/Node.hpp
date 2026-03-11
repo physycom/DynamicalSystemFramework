@@ -22,8 +22,6 @@
 
 namespace dsf {
   /// @brief The Node class represents the concept of a node in the network.
-  /// @tparam Id The type of the node's id
-  /// @tparam Size The type of the node's capacity
   class Node {
   protected:
     Id m_id;

@@ -15,8 +15,6 @@
 
 namespace dsf::mobility {
   /// @brief The Roundabout class represents a roundabout node in the network.
-  /// @tparam Id The type of the node's id
-  /// @tparam Size The type of the node's capacity
   class Roundabout : public RoadJunction {
   protected:
     dsf::queue<std::unique_ptr<Agent>> m_agents;

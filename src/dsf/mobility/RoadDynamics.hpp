@@ -305,7 +305,8 @@ namespace dsf::mobility {
     /// @param nAgents The number of agents to add
     /// @param itineraryId The id of the itinerary to use (default is std::nullopt)
     /// @throw std::runtime_error If there are no itineraries
-    void addAgentsUniformly(Size nAgents, std::optional<Id> itineraryId = std::nullopt);
+    void addAgentsUniformly(std::size_t nAgents,
+                            std::optional<Id> itineraryId = std::nullopt);
 
     /// @brief Add an agent to the simulation
     /// @param agent std::unique_ptr to the agent
@@ -390,8 +391,8 @@ namespace dsf::mobility {
       return m_agents;
     }
     /// @brief Get the number of agents currently in the simulation
-    /// @return Size The number of agents
-    Size nAgents() const;
+    /// @return std::size_t The number of agents
+    inline auto nAgents() const { return m_nAgents.load(); };
 
     /// @brief Get the mean travel time of the agents in \f$s\f$
     /// @param clearData If true, the travel times are cleared after the computation
@@ -1753,7 +1754,7 @@ namespace dsf::mobility {
 
   template <typename delay_t>
     requires(is_numeric_v<delay_t>)
-  void RoadDynamics<delay_t>::addAgentsUniformly(Size nAgents,
+  void RoadDynamics<delay_t>::addAgentsUniformly(std::size_t nAgents,
                                                  std::optional<Id> optItineraryId) {
     m_nAddedAgents += nAgents;
     if (m_timeToleranceFactor.has_value() && !m_agents.empty()) {
@@ -1773,10 +1774,9 @@ namespace dsf::mobility {
     bool const bRandomItinerary{!optItineraryId.has_value() &&
                                 !this->itineraries().empty()};
     std::shared_ptr<Itinerary> pItinerary;
-    std::uniform_int_distribution<Size> itineraryDist{
-        0, static_cast<Size>(this->itineraries().size() - 1)};
-    std::uniform_int_distribution<Size> streetDist{
-        0, static_cast<Size>(this->graph().nEdges() - 1)};
+    std::uniform_int_distribution<std::size_t> itineraryDist{
+        0, this->itineraries().size() - 1};
+    std::uniform_int_distribution<std::size_t> streetDist{0, this->graph().nEdges() - 1};
     if (this->nAgents() + nAgents > this->graph().capacity()) {
       throw std::overflow_error(std::format(
           "Cannot add {} agents. The graph has currently {} with a maximum capacity of "
@@ -1785,7 +1785,7 @@ namespace dsf::mobility {
           this->nAgents(),
           this->graph().capacity()));
     }
-    for (Size i{0}; i < nAgents; ++i) {
+    for (std::size_t i{0}; i < nAgents; ++i) {
       if (bRandomItinerary) {
         auto itineraryIt{this->itineraries().cbegin()};
         std::advance(itineraryIt, itineraryDist(this->m_generator));
@@ -1793,7 +1793,7 @@ namespace dsf::mobility {
       }
       auto streetIt = this->graph().edges().begin();
       while (true) {
-        Size step = streetDist(this->m_generator);
+        auto step = streetDist(this->m_generator);
         std::advance(streetIt, step);
         if (!(streetIt->second->isFull())) {
           break;
@@ -2573,12 +2573,6 @@ namespace dsf::mobility {
     if (logStream.has_value()) {
       logStream->close();
     }
-  }
-
-  template <typename delay_t>
-    requires(is_numeric_v<delay_t>)
-  Size RoadDynamics<delay_t>::nAgents() const {
-    return m_nAgents;
   }
 
   template <typename delay_t>
