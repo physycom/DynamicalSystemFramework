@@ -8,6 +8,7 @@ on:
 
 env:
   BUILD_TYPE: Release
+  DSF_OPTIMIZE_ARCH: "OFF"
 
 jobs:
   check-version:

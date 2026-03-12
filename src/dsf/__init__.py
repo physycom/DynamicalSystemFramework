@@ -1,3 +1,5 @@
+import sys
+
 from dsf_cpp import (
     __version__ as __version__,
     LogLevel as LogLevel,
@@ -17,3 +19,5 @@ from .cartography import (
 )
 
 from .tsm import TSM as TSM
+sys.modules.setdefault(__name__ + ".mobility", mobility)
+sys.modules.setdefault(__name__ + ".mdt", mdt)

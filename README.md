@@ -1,6 +1,8 @@
 # DynamicalSystemFramework
 [![Latest Release](https://img.shields.io/github/v/release/physycom/DynamicalSystemFramework)](https://github.com/physycom/DynamicalSystemFramework/releases/latest)
 [![PyPI version](https://img.shields.io/pypi/v/dsf-mobility)](https://pypi.org/project/dsf-mobility/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18745492.svg)](https://doi.org/10.5281/zenodo.18745492)
+
 [![Standard](https://img.shields.io/badge/C%2B%2B-20/23-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B#Standardization)
 [![TBB](https://img.shields.io/badge/TBB-2022.3.0-blue.svg)](https://github.com/oneapi-src/oneTBB)
 [![SPDLOG](https://img.shields.io/badge/spdlog-1.17.0-blue.svg)](https://github.com/gabime/spdlog)
@@ -118,13 +120,14 @@ for f in ./*.out ; do ./$f ; done
 ## Citing
 
 ```BibTex
-@misc{DSF,
-  author = {Berselli, Gregorio and Balducci, Simone},
-  title = {Framework for modelling dynamical complex systems.},
-  year = {2023},
-  url = {https://github.com/physycom/DynamicalSystemFramework},
-  publisher = {GitHub},
-  howpublished = {\url{https://github.com/physycom/DynamicalSystemFramework}}
+@software{berselli_2026_18745492,
+  author       = {Berselli, Gregorio},
+  title        = {DynamicalSystemFramework},
+  month        = mar,
+  year         = 2026,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.18745492},
+  url          = {https://doi.org/10.5281/zenodo.18745492},
 }
 ```
 

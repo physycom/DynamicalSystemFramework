@@ -30,6 +30,8 @@ examples/sctl*
 examples/scrb*
 examples/*.csv
 examples/*.txt
+examples/*.log
+examples/*.db
 
 # Utils generated files
 utils/*.csv

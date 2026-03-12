@@ -120,12 +120,12 @@ namespace dsf::mobility {
     void resetCounter();
 
     /// @brief Get the street's queue
-    /// @return dsf::queue<Size>, The street's queue
+    /// @return const dsf::queue<std::unique_ptr<Agent>>&, The street's queue
     const dsf::queue<std::unique_ptr<Agent>>& queue(size_t const& index) const {
       return m_exitQueues[index];
     }
     /// @brief Get the street's queues
-    /// @return std::vector<dsf::queue<Size>> The street's queues
+    /// @return std::vector<dsf::queue<std::unique_ptr<Agent>>> The street's queues
     std::vector<dsf::queue<std::unique_ptr<Agent>>> const& exitQueues() const {
       return m_exitQueues;
     }
@@ -175,6 +175,9 @@ namespace dsf::mobility {
     /// @param pAgent The agent to add to the street
     /// @param currentTime The current simulation time
     void addAgent(std::unique_ptr<Agent> pAgent, std::time_t const currentTime);
+    /// @brief Remove the top agent from the street's moving agents priority queue
+    /// @return std::unique_ptr<Agent> The agent removed from the street's moving agents priority queue
+    std::unique_ptr<Agent> dequeueMovingAgent();
     /// @brief Add an agent to the street's queue
     /// @param queueId The id of the queue
     /// @throw std::runtime_error If the street's queue is full

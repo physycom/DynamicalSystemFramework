@@ -40,15 +40,17 @@ namespace dsf::mobility {
         (std::find(colNames.begin(), colNames.end(), "coilcode") != colNames.end());
     bool const bHasCustomWeight =
         (std::find(colNames.begin(), colNames.end(), "customWeight") != colNames.end());
+    bool const bHasPriority =
+        (std::find(colNames.begin(), colNames.end(), "priority") != colNames.end());
 
     for (auto& row : reader) {
-      auto const sourceId = static_cast<Id>(row["source"].get<long long>());
-      auto const targetId = static_cast<Id>(row["target"].get<long long>());
+      auto const sourceId = row["source"].get<Id>();
+      auto const targetId = row["target"].get<Id>();
       if (sourceId == targetId) {
         spdlog::warn("Skipping self-loop edge {}->{}", sourceId, targetId);
         continue;
       }
-      auto const streetId = static_cast<Id>(row["id"].get<long long>());
+      auto const streetId = row["id"].get<Id>();
       auto const dLength = row["length"].get<double>();
       auto const name = row["name"].get<std::string>();
       auto strType = row["type"].get<std::string>();
@@ -105,6 +107,16 @@ namespace dsf::mobility {
         }
       }
 
+      if (bHasPriority) {
+        try {
+          if (row["priority"].get<bool>()) {
+            edge(streetId)->setPriority();
+          }
+        } catch (...) {
+          spdlog::warn("Invalid priority for edge {}.", streetId);
+        }
+      }
+
       if (bHasCoilcode) {
         auto strCoilCode = row["coilcode"].get<std::string>();
         // Make this lowercase
@@ -154,7 +166,7 @@ namespace dsf::mobility {
     csv::CSVReader reader(fileName, format);
 
     for (auto& row : reader) {
-      auto const nodeId = static_cast<Id>(row["id"].get<long long>());
+      auto const nodeId = row["id"].get<Id>();
       if (m_nodes.find(nodeId) == m_nodes.end()) {
         spdlog::warn("Node {} not found in the network. Skipping properties import.",
                      nodeId);
@@ -327,6 +339,26 @@ namespace dsf::mobility {
         } else {
           spdlog::warn("Invalid coilcode for edge {}, adding default", edge_id);
           addCoil(edge_id);
+        }
+      }
+      // Check if there is custom weight property
+      if (!edge_properties.at_key("customWeight").error()) {
+        auto const& epCustomWeight = edge_properties["customWeight"];
+        if (epCustomWeight.is_number()) {
+          edge(edge_id)->setWeight(epCustomWeight.get_double());
+        } else {
+          spdlog::warn("Invalid custom weight for edge {}, keeping default", edge_id);
+        }
+      }
+      // Check if there is priority property
+      if (!edge_properties.at_key("priority").error()) {
+        auto const& epPriority = edge_properties["priority"];
+        if (epPriority.is_bool()) {
+          if (epPriority.get_bool()) {
+            edge(edge_id)->setPriority();
+          }
+        } else {
+          spdlog::warn("Invalid priority for edge {}, keeping default", edge_id);
         }
       }
     }

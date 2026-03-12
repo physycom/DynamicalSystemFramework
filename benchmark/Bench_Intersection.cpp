@@ -51,7 +51,7 @@ static void BM_Intersection_nAgents(benchmark::State& state) {
     intersection.addAgent(std::move(agent));
   }
   for (auto _ : state) {
-    dsf::Size n = intersection.nAgents();
+    auto n = intersection.nAgents();
     benchmark::DoNotOptimize(n);
   }
 }

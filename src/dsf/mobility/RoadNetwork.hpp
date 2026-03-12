@@ -43,11 +43,9 @@
 
 namespace dsf::mobility {
   /// @brief The RoadNetwork class represents a graph in the network.
-  /// @tparam Id, The type of the graph's id. It must be an unsigned integral type.
-  /// @tparam Size, The type of the graph's capacity. It must be an unsigned integral type.
   class RoadNetwork : public Network<RoadJunction, Street> {
   private:
-    unsigned long long m_capacity;
+    std::size_t m_capacity;
 
     /// @brief If every node has coordinates, set the street angles
     /// @details The street angles are set using the node's coordinates.
@@ -123,6 +121,7 @@ namespace dsf::mobility {
     /// - forbiddenTurns: The forbidden turns of the street, encoding information about street into which the street cannot output agents. The format is a string "sourceId1-targetid1, sourceId2-targetid2,..."
     /// - coilcode: An integer code to identify the coil located on the street
     /// - customWeight: will be stored in the `weight` parameter of the Edge class. You can use it for the shortest path via dsf::weight_functions::customWeight.
+    /// - priority: boolean, whether the street is a priority road or not. This information can be used in the traffic light cycle generation.
     /// @param args Additional arguments
     template <typename... TArgs>
     void importEdges(const std::string& fileName, TArgs&&... args);
@@ -238,7 +237,7 @@ namespace dsf::mobility {
     const std::unique_ptr<Street>* street(Id source, Id destination) const;
 
     /// @brief Get the maximum agent capacity
-    /// @return unsigned long long The maximum agent capacity of the graph
+    /// @return std::size_t The maximum agent capacity of the graph
     inline auto capacity() const noexcept { return m_capacity; }
 
     /// @brief Perform a global Dijkstra search to a target node from all other nodes in the graph

@@ -13,8 +13,6 @@ namespace dsf::mobility {
 
   std::unique_ptr<Agent> Roundabout::dequeue() {
     assert(!m_agents.empty());
-    std::unique_ptr<Agent> pAgent{std::move(m_agents.front())};
-    m_agents.pop();
-    return pAgent;
+    return m_agents.extract_front();
   }
 }  // namespace dsf::mobility

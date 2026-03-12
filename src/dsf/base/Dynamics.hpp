@@ -35,6 +35,7 @@
 #include <sstream>
 #endif
 
+#include <spdlog/spdlog.h>
 #include <tbb/tbb.h>
 #include <SQLiteCpp/SQLiteCpp.h>
 
@@ -50,6 +51,7 @@ namespace dsf {
     std::time_t m_timeInit = 0;
     std::time_t m_timeStep = 0;
     std::unique_ptr<SQLite::Database> m_database;
+    std::unique_ptr<tbb::global_control> m_globalControl;
 
   protected:
     tbb::task_arena m_taskArena;
@@ -93,6 +95,14 @@ namespace dsf {
     /// @brief Set the initial time as epoch time
     /// @param timeEpoch The initial time as epoch time
     inline void setInitTime(std::time_t timeEpoch) { m_timeInit = timeEpoch; };
+    /// @brief Set the maximum number of threads to use for parallel execution
+    /// @param concurrency The maximum number of threads to use for parallel execution
+    void setConcurrency(std::size_t const concurrency);
+    /// @brief Get the current concurrency (number of threads configured in the task arena)
+    /// @return std::size_t, The current concurrency
+    inline auto concurrency() const {
+      return static_cast<std::size_t>(m_taskArena.max_concurrency());
+    }
 
     inline void connectDataBase(std::string const& dbPath) {
       m_database = std::make_unique<SQLite::Database>(
@@ -146,7 +156,7 @@ namespace dsf {
     if (seed.has_value()) {
       m_generator.seed(*seed);
     }
-    m_taskArena.initialize();
+    m_taskArena.initialize(static_cast<std::size_t>(tbb::info::default_concurrency()));
     // Take the current time and set id as YYYYMMDDHHMMSS
     auto const now = std::chrono::system_clock::now();
 #ifdef __APPLE__
@@ -161,5 +171,28 @@ namespace dsf {
             std::chrono::current_zone()->to_local(std::chrono::system_clock::from_time_t(
                 std::chrono::system_clock::to_time_t(now))))));
 #endif
+  }
+
+  template <typename network_t>
+  void Dynamics<network_t>::setConcurrency(std::size_t const concurrency) {
+    m_taskArena.terminate();
+    spdlog::info("Setting concurrency to {} threads.", concurrency);
+    auto const maxConcurrency =
+        static_cast<std::size_t>(tbb::info::default_concurrency());
+    auto actualConcurrency = concurrency;
+    if (concurrency == 0 || concurrency > maxConcurrency) {
+      actualConcurrency = maxConcurrency;
+      spdlog::warn(
+          "Requested concurrency ({}) is invalid. Using maximum available concurrency "
+          "({}).",
+          concurrency,
+          maxConcurrency);
+    }
+    // Limit the TBB global thread pool so the OS spawns only actualConcurrency
+    // worker threads, rather than the full hardware_concurrency() count.
+    m_globalControl.reset();
+    m_globalControl = std::make_unique<tbb::global_control>(
+        tbb::global_control::max_allowed_parallelism, actualConcurrency);
+    m_taskArena.initialize(actualConcurrency);
   }
 };  // namespace dsf
