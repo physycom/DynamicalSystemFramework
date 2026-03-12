@@ -62,6 +62,7 @@ namespace dsf::mobility {
     std::atomic<std::size_t> m_nAgents{0}, m_nAddedAgents{0}, m_nInsertedAgents{0},
         m_nKilledAgents{0}, m_nArrivedAgents{0};
     std::function<double(std::unique_ptr<Street> const&)> m_speedFunction;
+    std::string m_speedFunctionDescription;
 
   protected:
     std::unordered_map<Id, std::unordered_map<Id, size_t>> m_turnCounts;
@@ -167,6 +168,26 @@ namespace dsf::mobility {
     /// - travel_time_s: The travel time of the agent in seconds
     void m_initTravelDataTable() const;
 
+    /// @brief Dump simulation metadata into the database.
+    /// @details Ensures the `simulations` table exists and inserts one row with the
+    /// current simulation configuration. If no database is connected, this function
+    /// returns immediately.
+    ///
+    /// Stored fields are:
+    /// - id
+    /// - name
+    /// - speed_function (identified by a string description, e.g. "LINEAR(alpha=0.5)" or "CUSTOM")
+    /// - weight_function
+    /// - weight_threshold
+    /// - error_probability
+    /// - passage_probability
+    /// - mean_travel_distance_m
+    /// - mean_travel_time_s
+    /// - stagnant_tolerance_factor
+    /// - force_priorities
+    /// - save_avg_stats
+    /// - save_road_data
+    /// - save_travel_data
     void m_dumpSimInfo() const;
 
     void m_dumpNetwork() const;
@@ -440,6 +461,7 @@ namespace dsf::mobility {
               "double(std::unique_ptr<Street> const&)");
         } else {
           m_speedFunction = std::get<0>(std::forward_as_tuple(args...));
+          m_speedFunctionDescription = "CUSTOM";
         }
         break;
       case SpeedFunction::LINEAR:
@@ -464,6 +486,7 @@ namespace dsf::mobility {
           m_speedFunction = [alpha](std::unique_ptr<Street> const& pStreet) {
             return pStreet->maxSpeed() * (1. - alpha * pStreet->density(true));
           };
+          m_speedFunctionDescription = std::format("LINEAR(alpha={})", alpha);
         }
         break;
     }

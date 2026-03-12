@@ -12,23 +12,19 @@ from dsf.mobility import (
 )
 
 from tqdm import trange
+from numba import cfunc, float64
 import numpy as np
 import networkx as nx
+
+@cfunc(float64(float64, float64), nopython=True, cache=True)
+def custom_speed(max_speed, density):
+    if density < 0.35:
+        return max_speed * (0.9 - 0.1 * density)
+    return max_speed * (1.2 - 0.7 * density)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
-from numba import cfunc, float64
-
-
-@cfunc(float64(float64, float64, float64))
-def nico_speed(max_speed, density, length):
-    if density < 0.35:
-        return max_speed * (0.9 - 0.1 * density)
-    else:
-        return max_speed * (1.2 - 0.7 * density)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -94,7 +90,9 @@ if __name__ == "__main__":
     # Create a dynamics model for the road network
     dynamics = Dynamics(road_network, seed=args.seed)
     dynamics.setWeightFunction(PathWeight.TRAVELTIME)
-    dynamics.setSpeedFunction(SpeedFunction.CUSTOM, nico_speed.address)
+    dynamics.setSpeedFunction(SpeedFunction.LINEAR, 0.8)
+    # To use a custom speed function, you must pass the pointer to the compiled function using the address attribute
+    # dynamics.setSpeedFunction(SpeedFunction.CUSTOM, custom_speed.address)
     # Get epoch time of today at midnight
     epoch_time = int(
         datetime.combine(datetime.today(), datetime.min.time()).timestamp()

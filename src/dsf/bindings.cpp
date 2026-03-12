@@ -460,35 +460,25 @@ PYBIND11_MODULE(dsf_cpp, m) {
           [](dsf::mobility::FirstOrderDynamics& self,
              dsf::SpeedFunction speedFunction,
              pybind11::object arg) {
-            if (speedFunction == dsf::SpeedFunction::LINEAR) {
-              double alpha = arg.cast<double>();
-              self.setSpeedFunction(dsf::SpeedFunction::LINEAR, alpha);
-            } else if (speedFunction == dsf::SpeedFunction::CUSTOM) {
-              if (pybind11::isinstance<pybind11::int_>(arg)) {
+            switch (speedFunction) {
+              case dsf::SpeedFunction::LINEAR:
+                self.setSpeedFunction(dsf::SpeedFunction::LINEAR, arg.cast<double>());
+                break;
+              case dsf::SpeedFunction::CUSTOM: {
                 // Numba cfunc path: raw C function pointer, zero Python overhead
-                auto ptr_addr = arg.cast<uintptr_t>();
                 auto* func_ptr =
-                    reinterpret_cast<double (*)(double, double, double)>(ptr_addr);
+                    reinterpret_cast<double (*)(double, double)>(arg.cast<uintptr_t>());
                 self.setSpeedFunction(
                     dsf::SpeedFunction::CUSTOM,
                     [func_ptr](
                         std::unique_ptr<dsf::mobility::Street> const& pStreet) -> double {
                       // No GIL needed — this is pure C
-                      return func_ptr(
-                          pStreet->maxSpeed(), pStreet->density(true), pStreet->length());
+                      return func_ptr(pStreet->maxSpeed(), pStreet->density(true));
                     });
-              } else {
-                // Fallback: slow Python callable path (keep for flexibility)
-                auto pyFunc = arg.cast<std::function<double(double, double, double)>>();
-                self.setSpeedFunction(
-                    dsf::SpeedFunction::CUSTOM,
-                    [pyFunc](
-                        std::unique_ptr<dsf::mobility::Street> const& pStreet) -> double {
-                      pybind11::gil_scoped_acquire gil;
-                      return pyFunc(
-                          pStreet->maxSpeed(), pStreet->density(true), pStreet->length());
-                    });
+                break;
               }
+              default:
+                throw std::invalid_argument("Invalid speed function type");
             }
           },
           pybind11::arg("speedFunction"),
@@ -630,14 +620,10 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::mobility::FirstOrderDynamics::initTurnCounts,
            dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::initTurnCounts")
                .c_str())
-      .def(
-          "updatePaths",
-          [](dsf::mobility::FirstOrderDynamics& self, bool throw_on_empty) {
-            pybind11::gil_scoped_release release;
-            self.updatePaths(throw_on_empty);
-          },
-          pybind11::arg("throw_on_empty") = true,
-          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::updatePaths").c_str())
+      .def("updatePaths",
+           &dsf::mobility::FirstOrderDynamics::updatePaths,
+           pybind11::arg("throw_on_empty") = true,
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::updatePaths").c_str())
       .def("addAgentsUniformly",
            &dsf::mobility::FirstOrderDynamics::addAgentsUniformly,
            pybind11::arg("nAgents"),
@@ -649,20 +635,15 @@ PYBIND11_MODULE(dsf_cpp, m) {
           [](dsf::mobility::FirstOrderDynamics& self,
              std::size_t nAgents,
              dsf::mobility::AgentInsertionMethod insertionMethod) {
-            pybind11::gil_scoped_release release;
             self.addAgents(nAgents, insertionMethod);
           },
           pybind11::arg("nAgents"),
           pybind11::arg("insertionMethod"),
           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::addAgents").c_str())
-      .def(
-          "evolve",
-          [](dsf::mobility::FirstOrderDynamics& self, bool reinsert_agents) {
-            pybind11::gil_scoped_release release;  // release before simulation step
-            self.evolve(reinsert_agents);
-          },
-          pybind11::arg("reinsert_agents") = false,
-          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::evolve").c_str())
+      .def("evolve",
+           &dsf::mobility::FirstOrderDynamics::evolve,
+           pybind11::arg("reinsert_agents") = false,
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::evolve").c_str())
       .def(
           "optimizeTrafficLights",
           &dsf::mobility::FirstOrderDynamics::optimizeTrafficLights,

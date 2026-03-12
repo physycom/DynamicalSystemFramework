@@ -1395,8 +1395,7 @@ TEST_CASE("FirstOrderDynamics") {
           }
           CHECK(simColumns.count("id") == 1);
           CHECK(simColumns.count("name") == 1);
-          CHECK(simColumns.count("alpha") == 1);
-          CHECK(simColumns.count("speed_fluctuation_std") == 1);
+          CHECK(simColumns.count("speed_function") == 1);
           CHECK(simColumns.count("weight_function") == 1);
           CHECK(simColumns.count("weight_threshold") == 1);
           CHECK(simColumns.count("error_probability") == 1);
