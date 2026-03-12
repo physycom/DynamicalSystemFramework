@@ -97,8 +97,7 @@ int main(int argc, char** argv) {
 
   std::cout << "Creating dynamics...\n";
 
-  Dynamics dynamics{graph, false, SEED, 0.6};
-
+  Dynamics dynamics{graph, false, SEED};
   {
     std::vector<dsf::Id> destinationNodes;
     for (auto const& [nodeId, pNode] : dynamics.graph().nodes()) {
@@ -114,7 +113,6 @@ int main(int argc, char** argv) {
   dynamics.setErrorProbability(0.05);
   dynamics.setPassageProbability(0.7707);
   // dynamics.setForcePriorities(true);
-  dynamics.setSpeedFluctuationSTD(0.1);
 
   // Connect database for saving data
   dynamics.connectDataBase(OUT_FOLDER + "simulation_data.db");

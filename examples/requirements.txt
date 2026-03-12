@@ -1,4 +1,4 @@
 dsf_mobility
 networkx
-numpy
+numba
 tqdm

@@ -47,6 +47,12 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .value("DOUBLE_TAIL", dsf::TrafficLightOptimization::DOUBLE_TAIL)
       .export_values();
 
+  // Bind SpeedFunction enum
+  pybind11::enum_<dsf::SpeedFunction>(mobility, "SpeedFunction")
+      .value("CUSTOM", dsf::SpeedFunction::CUSTOM)
+      .value("LINEAR", dsf::SpeedFunction::LINEAR)
+      .export_values();
+
   // Bind RoadStatus enum
   pybind11::enum_<dsf::mobility::RoadStatus>(mobility, "RoadStatus")
       .value("OPEN", dsf::mobility::RoadStatus::OPEN)
@@ -441,22 +447,49 @@ PYBIND11_MODULE(dsf_cpp, m) {
   pybind11::class_<dsf::mobility::FirstOrderDynamics>(mobility, "Dynamics")
       //     // Constructors are not directly exposed due to the template nature and complexity.
       //     // Users should use derived classes like FirstOrderDynamics.
-      .def(pybind11::init<dsf::mobility::RoadNetwork&,
-                          bool,
-                          std::optional<unsigned int>,
-                          double,
-                          dsf::PathWeight,
-                          std::optional<double>>(),
-           pybind11::arg("graph"),
-           pybind11::arg("useCache") = false,
-           pybind11::arg("seed") = std::nullopt,
-           pybind11::arg("alpha") = 0.,
-           pybind11::arg("weightFunction") = dsf::PathWeight::TRAVELTIME,
-           pybind11::arg("weightThreshold") = std::nullopt,
-           pybind11::keep_alive<1, 2>(),
-           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::FirstOrderDynamics")
-               .c_str())
-      // Note: Constructors with std::function parameters are not exposed to avoid stub generation issues
+      .def(
+          pybind11::init<dsf::mobility::RoadNetwork&, bool, std::optional<unsigned int>>(),
+          pybind11::arg("graph"),
+          pybind11::arg("useCache") = false,
+          pybind11::arg("seed") = std::nullopt,
+          pybind11::keep_alive<1, 2>(),
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::FirstOrderDynamics")
+              .c_str())
+      .def(
+          "setSpeedFunction",
+          [](dsf::mobility::FirstOrderDynamics& self,
+             dsf::SpeedFunction speedFunction,
+             pybind11::object arg) {
+            switch (speedFunction) {
+              case dsf::SpeedFunction::LINEAR:
+                self.setSpeedFunction(dsf::SpeedFunction::LINEAR, arg.cast<double>());
+                break;
+              case dsf::SpeedFunction::CUSTOM: {
+                // Numba cfunc path: raw C function pointer, zero Python overhead
+                auto* func_ptr =
+                    reinterpret_cast<double (*)(double, double)>(arg.cast<uintptr_t>());
+                self.setSpeedFunction(
+                    dsf::SpeedFunction::CUSTOM,
+                    [func_ptr](
+                        std::unique_ptr<dsf::mobility::Street> const& pStreet) -> double {
+                      // No GIL needed — this is pure C
+                      return func_ptr(pStreet->maxSpeed(), pStreet->density(true));
+                    });
+                break;
+              }
+              default:
+                throw std::invalid_argument("Invalid speed function type");
+            }
+          },
+          pybind11::arg("speedFunction"),
+          pybind11::arg("arg"),
+          "Set the speed function for agents.\n\n"
+          "Args:\n"
+          "    speedFunction (SpeedFunction): The speed function type (LINEAR or "
+          "CUSTOM)\n"
+          "    arg: For LINEAR, a float alpha in [0., 1.). "
+          "For CUSTOM, an integer address (uintptr_t) of a C function with signature "
+          "double(double max_speed, double density).")
       .def("setName",
            &dsf::mobility::FirstOrderDynamics::setName,
            pybind11::arg("name"),
@@ -482,44 +515,47 @@ PYBIND11_MODULE(dsf_cpp, m) {
            &dsf::mobility::FirstOrderDynamics::connectDataBase,
            pybind11::arg("dbPath"),
            dsf::g_docstrings.at("dsf::Dynamics::connectDataBase").c_str())
-      .def(
-          "setForcePriorities",
-          &dsf::mobility::FirstOrderDynamics::setForcePriorities,
-          pybind11::arg("forcePriorities"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setForcePriorities").c_str())
+      .def("setForcePriorities",
+           &dsf::mobility::FirstOrderDynamics::setForcePriorities,
+           pybind11::arg("forcePriorities"),
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setForcePriorities")
+               .c_str())
       .def(
           "setDataUpdatePeriod",
           [](dsf::mobility::FirstOrderDynamics& self, int dataUpdatePeriod) {
             self.setDataUpdatePeriod(static_cast<dsf::Delay>(dataUpdatePeriod));
           },
           pybind11::arg("dataUpdatePeriod"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setDataUpdatePeriod").c_str())
-      .def("setMeanTravelDistance",
-           &dsf::mobility::FirstOrderDynamics::setMeanTravelDistance,
-           pybind11::arg("meanDistance"),
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setMeanTravelDistance")
-               .c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setDataUpdatePeriod")
+              .c_str())
+      .def(
+          "setMeanTravelDistance",
+          &dsf::mobility::FirstOrderDynamics::setMeanTravelDistance,
+          pybind11::arg("meanDistance"),
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setMeanTravelDistance")
+              .c_str())
       .def(
           "setMeanTravelTime",
           [](dsf::mobility::FirstOrderDynamics& self, uint64_t meanTravelTime) {
             self.setMeanTravelTime(static_cast<std::time_t>(meanTravelTime));
           },
           pybind11::arg("meanTravelTime"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setMeanTravelTime").c_str())
-      .def(
-          "setErrorProbability",
-          &dsf::mobility::FirstOrderDynamics::setErrorProbability,
-          pybind11::arg("errorProbability"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setErrorProbability").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setMeanTravelTime")
+              .c_str())
+      .def("setErrorProbability",
+           &dsf::mobility::FirstOrderDynamics::setErrorProbability,
+           pybind11::arg("errorProbability"),
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setErrorProbability")
+               .c_str())
       .def("setWeightFunction",
            &dsf::mobility::FirstOrderDynamics::setWeightFunction,
            pybind11::arg("weightFunction"),
            pybind11::arg("weightThreshold") = std::nullopt)
-      .def(
-          "killStagnantAgents",
-          &dsf::mobility::FirstOrderDynamics::killStagnantAgents,
-          pybind11::arg("timeToleranceFactor") = 3.,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::killStagnantAgents").c_str())
+      .def("killStagnantAgents",
+           &dsf::mobility::FirstOrderDynamics::killStagnantAgents,
+           pybind11::arg("timeToleranceFactor") = 3.,
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::killStagnantAgents")
+               .c_str())
       .def(
           "setDestinationNodes",
           [](dsf::mobility::FirstOrderDynamics& self,
@@ -527,7 +563,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
             self.setDestinationNodes(destinationNodes);
           },
           pybind11::arg("destinationNodes"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setDestinationNodes").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setDestinationNodes")
+              .c_str())
       .def(
           "setOriginNodes",
           [](dsf::mobility::FirstOrderDynamics& self,
@@ -535,7 +572,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
             self.setOriginNodes(originNodes);
           },
           pybind11::arg("originNodes") = std::unordered_map<dsf::Id, double>(),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setOriginNodes").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setOriginNodes")
+              .c_str())
       .def(
           "setOriginNodes",
           [](dsf::mobility::FirstOrderDynamics& self,
@@ -550,7 +588,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
             self.setOriginNodes(nodeWeights);
           },
           pybind11::arg("originNodes"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setOriginNodes").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setOriginNodes")
+              .c_str())
       .def(
           "setDestinationNodes",
           [](dsf::mobility::FirstOrderDynamics& self,
@@ -562,7 +601,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
             self.setDestinationNodes(nodes);
           },
           pybind11::arg("destinationNodes"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setDestinationNodes").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setDestinationNodes")
+              .c_str())
       .def(
           "setDestinationNodes",
           [](dsf::mobility::FirstOrderDynamics& self,
@@ -570,24 +610,26 @@ PYBIND11_MODULE(dsf_cpp, m) {
             self.setDestinationNodes(destinationNodes);
           },
           pybind11::arg("destinationNodes"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setDestinationNodes").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setDestinationNodes")
+              .c_str())
       .def("setODs",
            &dsf::mobility::FirstOrderDynamics::setODs,
            pybind11::arg("ods"),
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::setODs").c_str())
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::setODs").c_str())
       .def("initTurnCounts",
            &dsf::mobility::FirstOrderDynamics::initTurnCounts,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::initTurnCounts").c_str())
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::initTurnCounts")
+               .c_str())
       .def("updatePaths",
            &dsf::mobility::FirstOrderDynamics::updatePaths,
            pybind11::arg("throw_on_empty") = true,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::updatePaths").c_str())
-      .def(
-          "addAgentsUniformly",
-          &dsf::mobility::FirstOrderDynamics::addAgentsUniformly,
-          pybind11::arg("nAgents"),
-          pybind11::arg("itineraryId") = std::nullopt,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgentsUniformly").c_str())
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::updatePaths").c_str())
+      .def("addAgentsUniformly",
+           &dsf::mobility::FirstOrderDynamics::addAgentsUniformly,
+           pybind11::arg("nAgents"),
+           pybind11::arg("itineraryId") = std::nullopt,
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::addAgentsUniformly")
+               .c_str())
       .def(
           "addAgents",
           [](dsf::mobility::FirstOrderDynamics& self,
@@ -597,26 +639,27 @@ PYBIND11_MODULE(dsf_cpp, m) {
           },
           pybind11::arg("nAgents"),
           pybind11::arg("insertionMethod"),
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::addAgents").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::addAgents").c_str())
       .def("evolve",
            &dsf::mobility::FirstOrderDynamics::evolve,
            pybind11::arg("reinsert_agents") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::evolve").c_str())
-      .def("optimizeTrafficLights",
-           &dsf::mobility::FirstOrderDynamics::optimizeTrafficLights,
-           pybind11::arg("optimizationType") = dsf::TrafficLightOptimization::DOUBLE_TAIL,
-           pybind11::arg("logFile") = "",
-           pybind11::arg("threshold") = 0.,
-           pybind11::arg("ratio") = 1.3,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::optimizeTrafficLights")
-               .c_str())
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::evolve").c_str())
+      .def(
+          "optimizeTrafficLights",
+          &dsf::mobility::FirstOrderDynamics::optimizeTrafficLights,
+          pybind11::arg("optimizationType") = dsf::TrafficLightOptimization::DOUBLE_TAIL,
+          pybind11::arg("logFile") = "",
+          pybind11::arg("threshold") = 0.,
+          pybind11::arg("ratio") = 1.3,
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::optimizeTrafficLights")
+              .c_str())
       .def("graph",
            &dsf::mobility::FirstOrderDynamics::graph,
            pybind11::return_value_policy::reference_internal,
            dsf::g_docstrings.at("dsf::Dynamics::graph").c_str())
       .def("nAgents",
            &dsf::mobility::FirstOrderDynamics::nAgents,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::nAgents").c_str())
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::nAgents").c_str())
       .def("time",
            &dsf::mobility::FirstOrderDynamics::time,
            dsf::g_docstrings.at("dsf::Dynamics::time").c_str())
@@ -629,16 +672,18 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def("meanTravelTime",
            &dsf::mobility::FirstOrderDynamics::meanTravelTime,
            pybind11::arg("clearData") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanTravelTime").c_str())
-      .def(
-          "meanTravelDistance",
-          &dsf::mobility::FirstOrderDynamics::meanTravelDistance,
-          pybind11::arg("clearData") = false,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanTravelDistance").c_str())
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::meanTravelTime")
+               .c_str())
+      .def("meanTravelDistance",
+           &dsf::mobility::FirstOrderDynamics::meanTravelDistance,
+           pybind11::arg("clearData") = false,
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::meanTravelDistance")
+               .c_str())
       .def("meanTravelSpeed",
            &dsf::mobility::FirstOrderDynamics::meanTravelSpeed,
            pybind11::arg("clearData") = false,
-           dsf::g_docstrings.at("dsf::mobility::RoadDynamics::meanTravelSpeed").c_str())
+           dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::meanTravelSpeed")
+               .c_str())
       .def(
           "turnCounts",
           [](const dsf::mobility::FirstOrderDynamics& self) {
@@ -653,7 +698,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
             }
             return py_result;
           },
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::turnCounts").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::turnCounts").c_str())
       .def(
           "normalizedTurnCounts",
           [](const dsf::mobility::FirstOrderDynamics& self) {
@@ -668,7 +713,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
             }
             return py_result;
           },
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::normalizedTurnCounts")
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::normalizedTurnCounts")
               .c_str())
       .def(
           "originCounts",
@@ -681,7 +726,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
             return py_result;
           },
           pybind11::arg("reset") = true,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::originCounts").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::originCounts").c_str())
       .def(
           "destinationCounts",
           [](dsf::mobility::FirstOrderDynamics& self, bool reset) {
@@ -693,7 +738,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
             return py_result;
           },
           pybind11::arg("reset") = true,
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::destinationCounts").c_str())
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::destinationCounts")
+              .c_str())
       .def("saveData",
            &dsf::mobility::FirstOrderDynamics::saveData,
            pybind11::arg("saving_interval"),
@@ -713,7 +759,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
           [](dsf::mobility::FirstOrderDynamics& self) {
             self.summary();  // Uses default std::cout
           },
-          dsf::g_docstrings.at("dsf::mobility::RoadDynamics::summary").c_str());
+          dsf::g_docstrings.at("dsf::mobility::FirstOrderDynamics::summary").c_str());
 
   // Bind TrajectoryCollection class to mdt submodule
   pybind11::class_<dsf::mdt::TrajectoryCollection>(mdt, "TrajectoryCollection")
