@@ -220,6 +220,9 @@ namespace dsf::mobility {
     /// @param weightThreshold The weight threshold for updating the paths (default is std::nullopt)
     void setWeightFunction(PathWeight const pathWeight,
                            std::optional<double> weightThreshold = std::nullopt);
+    /// @brief Set the speed function. Options are:
+    /// - (LINEAR, alpha): speed = max_speed * (1 - alpha * density), where alpha is a parameter in [0, 1)
+    /// - (CUSTOM, func): speed = func(pointer to a street), where func is a callable provided by the user that takes the street's pointer.
     template <typename... TArgs>
     void setSpeedFunction(SpeedFunction const speedFunction, TArgs&&... args);
     /// @brief Set the force priorities flag
@@ -479,9 +482,9 @@ namespace dsf::mobility {
                   .name()));
         } else {
           double alpha = std::get<0>(std::forward_as_tuple(args...));
-          if (alpha < 0. || alpha > 1.) {
+          if (alpha < 0. || alpha >= 1.) {
             throw std::invalid_argument(
-                std::format("The alpha parameter ({}) must be in [0., 1]", alpha));
+                std::format("The alpha parameter ({}) must be in [0., 1)", alpha));
           }
           m_speedFunction = [alpha](std::unique_ptr<Street> const& pStreet) {
             return pStreet->maxSpeed() * (1. - alpha * pStreet->density(true));

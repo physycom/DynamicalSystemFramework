@@ -8,6 +8,9 @@ namespace dsf::mobility {
                                          bool useCache,
                                          std::optional<unsigned int> seed)
       : Dynamics<RoadNetwork>(graph, seed), m_bCacheEnabled{useCache} {
+    // Set defaults for weight and speed functions
+    this->setWeightFunction(PathWeight::TRAVELTIME);
+    this->setSpeedFunction(SpeedFunction::LINEAR, 0.8);
     if (m_bCacheEnabled) {
       if (!std::filesystem::exists(CACHE_FOLDER)) {
         std::filesystem::create_directory(CACHE_FOLDER);

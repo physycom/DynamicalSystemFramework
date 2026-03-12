@@ -487,9 +487,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
           "Args:\n"
           "    speedFunction (SpeedFunction): The speed function type (LINEAR or "
           "CUSTOM)\n"
-          "    arg: For LINEAR, a float alpha in [0., 1.]. "
-          "For CUSTOM, a callable(max_speed: float, density: float, length: float) -> "
-          "float")
+          "    arg: For LINEAR, a float alpha in [0., 1.). "
+          "For CUSTOM, an integer address (uintptr_t) of a C function with signature "
+          "double(double max_speed, double density).")
       .def("setName",
            &dsf::mobility::FirstOrderDynamics::setName,
            pybind11::arg("name"),

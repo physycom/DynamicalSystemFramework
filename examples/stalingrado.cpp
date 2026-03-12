@@ -77,8 +77,7 @@ int main() {
   auto const& coil = graph.edge(19);
 
   // Create the dynamics
-  FirstOrderDynamics dynamics{graph, false, 69, 0.6};
-  dynamics.setSpeedFluctuationSTD(0.2);
+  FirstOrderDynamics dynamics{graph, false, 69};
   dynamics.addItinerary(4, 4);
   dynamics.updatePaths();
 
