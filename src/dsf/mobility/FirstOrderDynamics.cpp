@@ -58,7 +58,9 @@ namespace dsf::mobility {
     m_travelDTs.push_back({pAgent->distance(),
                            static_cast<double>(this->time_step() - pAgent->spawnTime())});
     --m_nAgents;
-    ++m_nKilledAgents;
+    if (pAgent->isRandom() && !pAgent->hasArrived(this->time_step())) {
+      ++m_nKilledAgents;
+    }
     auto const& streetId = pAgent->streetId();
     if (streetId.has_value()) {
       auto const& pStreet{this->graph().edge(streetId.value())};
