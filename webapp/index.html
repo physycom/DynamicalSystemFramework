@@ -76,6 +76,15 @@
 
     <!-- Legend container -->
     <div class="legend-container">
+      <div class="legend-controls">
+        <label for="edgeColorObservableSelector">Edge color by</label>
+        <select id="edgeColorObservableSelector">
+          <option value="density">density</option>
+          <option value="speed">speed</option>
+          <option value="traveltime">traveltime</option>
+          <option value="queue_length">queue_length</option>
+        </select>
+      </div>
       <div class="legend-title">Density</div>
       <div class="legend-bar"></div>
       <div class="legend-labels">
