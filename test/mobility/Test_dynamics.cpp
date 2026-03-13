@@ -556,6 +556,35 @@ TEST_CASE("FirstOrderDynamics") {
     }
   }
   SUBCASE("Evolve") {
+    GIVEN("A dynamics object with one non-random agent that reaches its destination") {
+      Street s1{0, std::make_pair(0, 1), 13.8888888889};
+      Street s2{1, std::make_pair(1, 0), 13.8888888889};
+      RoadNetwork graph2;
+      graph2.addStreets(s1, s2);
+      FirstOrderDynamics dynamics{graph2, false, 69};
+      dynamics.setWeightFunction(dsf::PathWeight::LENGTH);
+      dynamics.setSpeedFunction(dsf::SpeedFunction::LINEAR, 0.8);
+      dynamics.addItinerary(1, 1);
+      dynamics.updatePaths();
+      dynamics.addAgent(dynamics.itineraries().at(1), 0);
+
+      WHEN("We evolve until the agent reaches the destination") {
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+        dynamics.evolve(false);
+
+        THEN("The summary counts the agent as arrived but not killed") {
+          std::ostringstream oss;
+          dynamics.summary(oss);
+          const auto summaryStr = oss.str();
+
+          CHECK(summaryStr.find("Number of arrived agents: 1") != std::string::npos);
+          CHECK(summaryStr.find("Number of killed agents: 0") != std::string::npos);
+          CHECK(summaryStr.find("Current number of agents: 0") != std::string::npos);
+        }
+      }
+    }
     GIVEN("A dynamics object and an itinerary") {
       Street s1{0, std::make_pair(0, 1), 2.};
       Street s2{1, std::make_pair(1, 2), 5.};
