@@ -18,5 +18,6 @@ from .cartography import (
     to_folium_map as to_folium_map,
 )
 
+from .tsm import TSM as TSM
 sys.modules.setdefault(__name__ + ".mobility", mobility)
 sys.modules.setdefault(__name__ + ".mdt", mdt)
