@@ -1,25 +1,29 @@
+"""Run a 24-hour traffic simulation on a synthetic Manhattan-style grid.
+
+This script generates grid cartography CSV files, builds a road network,
+configures the dynamics engine, and simulates agent flow with a 1-second
+integration step and 10-second agent insertion cadence.
+"""
+
 import argparse
 from datetime import datetime
 import logging
 
 from dsf.cartography import create_manhattan_cartography
-from dsf.cartography.cartography import get_cartography
 from dsf.mobility import (
     RoadNetwork,
     Dynamics,
     AgentInsertionMethod,
-    PathWeight,
-    SpeedFunction,
 )
 
 from tqdm import trange
 from numba import cfunc, float64
 import numpy as np
-import networkx as nx
 
 
 @cfunc(float64(float64, float64), nopython=True, cache=True)
 def custom_speed(max_speed, density):
+    """Compute a density-aware speed multiplier for custom speed modeling."""
     if density < 0.35:
         return max_speed * (0.9 - 0.1 * density)
     return max_speed * (1.2 - 0.7 * density)
