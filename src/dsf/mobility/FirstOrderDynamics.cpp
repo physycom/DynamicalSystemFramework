@@ -1429,7 +1429,6 @@ namespace dsf::mobility {
       std::optional<std::string> coilName;
       double density;
       std::optional<double> avgSpeed;
-      std::optional<double> avgTravelTime;
       std::optional<double> stdSpeed;
       std::optional<std::size_t> nObservations;
       std::optional<std::size_t> counts;

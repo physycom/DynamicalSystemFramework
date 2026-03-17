@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dim", type=str, default="12x12", help="Dimensions of the grid (e.g., 10x10)"
     )
-    parser.add_argument("--amp", type=int, help="Amplitude of the vehicle input")
+    parser.add_argument("--amp", type=int, required=True, help="Amplitude of the vehicle input")
     args = parser.parse_args()
     np.random.seed(args.seed)
 
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     road_network.autoInitTrafficLights()
     road_network.describe()
 
-    # Generaate a random vector of integer values for vehicle input
+    # Generate a random vector of integer values for vehicle input
     # We want values to have a 10s entry for a whole day
     vehicle_input = np.random.normal(args.amp, args.amp * 0.1, size=8640)
     vehicle_input = np.clip(vehicle_input, 0, None).astype(int)
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     dynamics.connectDataBase(f"grid_{args.dim}.db")
     dynamics.saveData(300, True, True, True)
 
-    # Simulate traffic for 24 hours with a time step of 10 seconds
+    # Simulate traffic for 24 hours with a time step of 1 seconds
     for time_step in trange(86400):
         # Update paths every 5 minutes (300 seconds)
         if time_step % 300 == 0:
