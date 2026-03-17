@@ -1,3 +1,10 @@
+"""Run a 24-hour traffic simulation using OpenStreetMap city cartography.
+
+This script downloads city data, builds network CSV assets, configures origins
+and destinations, initializes the dynamics engine, and runs a full-day
+simulation while periodically updating shortest paths.
+"""
+
 import argparse
 from datetime import datetime
 import logging
@@ -19,6 +26,7 @@ import networkx as nx
 
 @cfunc(float64(float64, float64), nopython=True, cache=True)
 def custom_speed(max_speed, density):
+    """Compute a density-aware speed multiplier for custom speed modeling."""
     if density < 0.35:
         return max_speed * (0.9 - 0.1 * density)
     return max_speed * (1.2 - 0.7 * density)

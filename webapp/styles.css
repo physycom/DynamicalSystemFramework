@@ -290,6 +290,25 @@ body, html {
     font-family: sans-serif;
     font-size: 12px;
   }
+
+  .legend-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .legend-controls label {
+    font-weight: bold;
+  }
+
+  .legend-controls select {
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    background: white;
+    font-size: 12px;
+  }
   
   .legend-title {
     font-weight: bold;

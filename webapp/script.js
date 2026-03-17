@@ -822,6 +822,26 @@ let highlightedNode = null;
 let chart;
 let db = null;
 let selectedSimulationId = null;
+let edgeObservableData = {
+  density: [],
+  speed: [],
+  traveltime: [],
+  queue_length: []
+};
+let edgeObservableDomains = {
+  density: [0, MAX_DENSITY],
+  speed: [0, 1],
+  traveltime: [0, 1],
+  queue_length: [0, 1]
+};
+let selectedEdgeColorObservable = 'density';
+
+const EDGE_OBSERVABLE_CONFIG = {
+  density: { label: 'Density' },
+  speed: { label: 'Speed', reverseColorScale: true },
+  traveltime: { label: 'Travel Time' },
+  queue_length: { label: 'Queue Length' }
+};
 
 function formatTime(date) {
   const year = date.getFullYear();
@@ -831,11 +851,6 @@ function formatTime(date) {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
-
-// Create a color scale for density values using three color stops
-const colorScale = d3.scaleLinear()
-  .domain([0, MAX_DENSITY / 2, MAX_DENSITY])
-  .range(["green", "yellow", "red"]);
 
 // Update node highlight position
 function updateNodeHighlight() {
@@ -906,73 +921,239 @@ function loadEdgesFromDB() {
   });
 }
 
-// Load road_data from SQLite for selected simulation and transform to density format
-function loadRoadDataFromDB() {
-  // Get edge IDs in order
-  const edgeIds = edges.map(e => e.id);
-  
-  // Single query to get all data ordered by datetime and street_id
-  const result = db.exec(
-    `SELECT datetime, street_id, density_vpk FROM road_data WHERE simulation_id = ${selectedSimulationId} ORDER BY datetime, street_id`
-  );
+function getRoadDataColumns() {
+  const result = db.exec('PRAGMA table_info(road_data)');
   if (result.length === 0) return [];
-  
+  return result[0].values.map(row => row[1]);
+}
+
+function getTravelTimeExpression() {
+  const columns = getRoadDataColumns();
+
+  if (columns.includes('traveltime')) return 'r.traveltime';
+  if (columns.includes('travel_time')) return 'r.travel_time';
+  if (columns.includes('travel_time_s')) return 'r.travel_time_s';
+
+  // Fallback: estimate travel time [s] from edge length [m] and avg speed [km/h].
+  return 'CASE WHEN r.avg_speed_kph > 0 THEN e.length / (r.avg_speed_kph / 3.6) ELSE 0 END';
+}
+
+function computeObservableDomain(observableRows) {
+  const values = observableRows
+    .flatMap(row => row.values)
+    .map(v => +v)
+    .filter(v => Number.isFinite(v));
+
+  if (values.length === 0) return [0, 1];
+
+  let minValue = values[0];
+  let maxValue = values[0];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] < minValue) minValue = values[i];
+    if (values[i] > maxValue) maxValue = values[i];
+  }
+
+  if (minValue === maxValue) {
+    maxValue = minValue + 1;
+  }
+
+  return [minValue, maxValue];
+}
+
+// Load road_data from SQLite for selected simulation and transform to edge-wise time series
+function loadRoadDataFromDB() {
+  const edgeIds = edges.map(e => e.id);
+  const travelTimeExpression = getTravelTimeExpression();
+
+  const result = db.exec(
+    `SELECT r.datetime,
+            r.street_id,
+            r.density_vpk,
+            r.avg_speed_kph,
+            ${travelTimeExpression} AS traveltime,
+            r.queue_length
+     FROM road_data r
+     LEFT JOIN edges e ON e.id = r.street_id
+     WHERE r.simulation_id = ${selectedSimulationId}
+     ORDER BY r.datetime, r.street_id`
+  );
+
+  if (result.length === 0) {
+    return {
+      densities: [],
+      observables: {
+        density: [],
+        speed: [],
+        traveltime: [],
+        queue_length: []
+      },
+      domains: {
+        density: [0, 1],
+        speed: [0, 1],
+        traveltime: [0, 1],
+        queue_length: [0, 1]
+      }
+    };
+  }
+
   const densityData = [];
+  const speedData = [];
+  const travelTimeData = [];
+  const queueLengthData = [];
+
   let currentTs = null;
-  let currentMap = {};
-  
+  let currentDensityMap = {};
+  let currentSpeedMap = {};
+  let currentTravelTimeMap = {};
+  let currentQueueLengthMap = {};
+
   for (const row of result[0].values) {
-    const [ts, streetId, density] = row;
+    const [ts, streetId, density, speed, travelTime, queueLength] = row;
+
     if (ts !== currentTs) {
       if (currentTs !== null) {
-        // Build densities array in same order as edges for previous timestamp
-        const densityArray = edgeIds.map(id => currentMap[id] || 0);
+        const densityArray = edgeIds.map(id => +currentDensityMap[id] || 0);
+        const speedArray = edgeIds.map(id => +currentSpeedMap[id] || 0);
+        const travelTimeArray = edgeIds.map(id => +currentTravelTimeMap[id] || 0);
+        const queueLengthArray = edgeIds.map(id => +currentQueueLengthMap[id] || 0);
+
         densityData.push({
           datetime: new Date(currentTs),
           densities: densityArray
         });
+        speedData.push({
+          datetime: new Date(currentTs),
+          values: speedArray
+        });
+        travelTimeData.push({
+          datetime: new Date(currentTs),
+          values: travelTimeArray
+        });
+        queueLengthData.push({
+          datetime: new Date(currentTs),
+          values: queueLengthArray
+        });
       }
+
       currentTs = ts;
-      currentMap = {};
+      currentDensityMap = {};
+      currentSpeedMap = {};
+      currentTravelTimeMap = {};
+      currentQueueLengthMap = {};
     }
-    currentMap[streetId] = density;
+
+    currentDensityMap[streetId] = density;
+    currentSpeedMap[streetId] = speed;
+    currentTravelTimeMap[streetId] = travelTime;
+    currentQueueLengthMap[streetId] = queueLength;
   }
-  
-  // Handle the last timestamp
+
   if (currentTs !== null) {
-    const densityArray = edgeIds.map(id => currentMap[id] || 0);
+    const densityArray = edgeIds.map(id => +currentDensityMap[id] || 0);
+    const speedArray = edgeIds.map(id => +currentSpeedMap[id] || 0);
+    const travelTimeArray = edgeIds.map(id => +currentTravelTimeMap[id] || 0);
+    const queueLengthArray = edgeIds.map(id => +currentQueueLengthMap[id] || 0);
+
     densityData.push({
       datetime: new Date(currentTs),
       densities: densityArray
     });
+    speedData.push({
+      datetime: new Date(currentTs),
+      values: speedArray
+    });
+    travelTimeData.push({
+      datetime: new Date(currentTs),
+      values: travelTimeArray
+    });
+    queueLengthData.push({
+      datetime: new Date(currentTs),
+      values: queueLengthArray
+    });
   }
-  
-  return densityData;
+
+  const observables = {
+    density: densityData.map(row => ({ datetime: row.datetime, values: row.densities })),
+    speed: speedData,
+    traveltime: travelTimeData,
+    queue_length: queueLengthData
+  };
+
+  const domains = {
+    density: computeObservableDomain(observables.density),
+    speed: computeObservableDomain(observables.speed),
+    traveltime: computeObservableDomain(observables.traveltime),
+    queue_length: computeObservableDomain(observables.queue_length)
+  };
+
+  return {
+    densities: densityData,
+    observables,
+    domains
+  };
 }
 
-// Load global data (aggregated statistics per timestamp)
+// Load global data (aggregated statistics per timestamp) from avg-stats table.
 function loadGlobalDataFromDB() {
-  // Calculate mean density, avg_speed, etc. per timestamp for selected simulation
+  const tablesResult = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
+  const tableNames = tablesResult.length > 0 ? tablesResult[0].values.map(r => r[0]) : [];
+
+  // Support both historical names.
+  const avgStatsTable = tableNames.includes('avg_stats')
+    ? 'avg_stats'
+    : (tableNames.includes('avgstats') ? 'avgstats' : null);
+
+  if (!avgStatsTable) {
+    // Fallback for legacy DBs without avg-stats table.
+    const result = db.exec(`
+      SELECT datetime,
+             AVG(density_vpk) as mean_density_vpk,
+             AVG(avg_speed_kph) as mean_speed_kph,
+             SUM(counts) as total_counts
+      FROM road_data
+      WHERE simulation_id = ${selectedSimulationId}
+      GROUP BY datetime
+      ORDER BY datetime
+    `);
+
+    if (result.length === 0) return [];
+
+    const columns = result[0].columns;
+    const values = result[0].values;
+
+    return values.map(row => {
+      const data = { datetime: new Date(row[0]) };
+      for (let i = 1; i < columns.length; i++) {
+        data[columns[i]] = +row[i] || 0;
+      }
+      return data;
+    });
+  }
+
+  const colsResult = db.exec(`PRAGMA table_info(${avgStatsTable})`);
+  if (colsResult.length === 0) return [];
+
+  const allColumns = colsResult[0].values.map(row => row[1]);
+  const metricColumns = allColumns.filter(
+    col => !['id', 'simulation_id', 'datetime', 'time_step'].includes(col)
+  );
+
+  if (metricColumns.length === 0) return [];
+
   const result = db.exec(`
-    SELECT datetime, 
-           AVG(density_vpk) as mean_density_vpk,
-           AVG(avg_speed_kph) as mean_speed_kph,
-           SUM(counts) as total_counts
-    FROM road_data 
+    SELECT datetime, ${metricColumns.join(', ')}
+    FROM ${avgStatsTable}
     WHERE simulation_id = ${selectedSimulationId}
-    GROUP BY datetime 
     ORDER BY datetime
   `);
-  
+
   if (result.length === 0) return [];
-  
-  const columns = result[0].columns;
+
   const values = result[0].values;
-  
   return values.map(row => {
     const data = { datetime: new Date(row[0]) };
-    for (let i = 1; i < columns.length; i++) {
-      data[columns[i]] = +row[i] || 0;
+    for (let i = 0; i < metricColumns.length; i++) {
+      data[metricColumns[i]] = +row[i + 1] || 0;
     }
     return data;
   });
@@ -993,7 +1174,10 @@ function getSimulations() {
 function initializeApp() {
   // Load data from database
   edges = loadEdgesFromDB();
-  densities = loadRoadDataFromDB();
+  const roadDataBundle = loadRoadDataFromDB();
+  densities = roadDataBundle.densities;
+  edgeObservableData = roadDataBundle.observables;
+  edgeObservableDomains = roadDataBundle.domains;
   globalData = loadGlobalDataFromDB();
 
   console.log("Loaded edges:", edges.length);
@@ -1034,6 +1218,44 @@ function initializeApp() {
     // Create Canvas layer for edges
     const canvasEdges = new L.CanvasEdges(edges);
     canvasEdges.addTo(map);
+
+    const edgeColorObservableSelector = document.getElementById('edgeColorObservableSelector');
+    selectedEdgeColorObservable = edgeColorObservableSelector.value || 'density';
+
+    function formatLegendValue(value) {
+      const numeric = +value;
+      if (!Number.isFinite(numeric)) return 'N/A';
+      if (Math.abs(numeric) >= 100) return numeric.toFixed(0);
+      if (Math.abs(numeric) >= 10) return numeric.toFixed(1);
+      return numeric.toFixed(2);
+    }
+
+    function updateLegend() {
+      const config = EDGE_OBSERVABLE_CONFIG[selectedEdgeColorObservable] || EDGE_OBSERVABLE_CONFIG.density;
+      const title = document.querySelector('.legend-title');
+      const labels = document.querySelectorAll('.legend-labels span');
+      const legendBar = document.querySelector('.legend-bar');
+      const domain = edgeObservableDomains[selectedEdgeColorObservable] || [0, 1];
+      const middleValue = (domain[0] + domain[1]) / 2;
+
+      title.textContent = config.label;
+      if (legendBar) {
+        legendBar.style.background = config.reverseColorScale
+          ? 'linear-gradient(to right, red, yellow, green)'
+          : 'linear-gradient(to right, green, yellow, red)';
+      }
+      if (labels.length >= 3) {
+        labels[0].textContent = formatLegendValue(domain[0]);
+        labels[1].textContent = formatLegendValue(middleValue);
+        labels[2].textContent = formatLegendValue(domain[1]);
+      }
+    }
+
+    edgeColorObservableSelector.onchange = () => {
+      selectedEdgeColorObservable = edgeColorObservableSelector.value;
+      updateLegend();
+      updateDensityVisualization();
+    };
 
     let currentChartColumn = 'mean_density_vpk';
 
@@ -1199,29 +1421,42 @@ function initializeApp() {
     }
 
     map.on("zoomend", update);
-    update(); // Initial render
 
-    // Update edge colors based on the current time step density data
+    // Update edge colors based on the selected time step and observable
     function updateDensityVisualization() {
-      const currentDensityRow = densities.find(d => d.datetime.getTime() === timeStamp.getTime());
-      if (!currentDensityRow) {
-        console.error("No density data for time step:", timeStamp);
+      const currentIndex = densities.findIndex(d => d.datetime.getTime() === timeStamp.getTime());
+      if (currentIndex < 0) {
+        console.error("No road data for time step:", timeStamp);
         return;
       }
-      const currentDensities = currentDensityRow.densities;
+
+      const currentDensities = densities[currentIndex].densities;
+      const observableRows = edgeObservableData[selectedEdgeColorObservable] || edgeObservableData.density;
+      const currentObservableValues = observableRows[currentIndex]?.values || currentDensities;
+      const domain = edgeObservableDomains[selectedEdgeColorObservable] || [0, MAX_DENSITY];
+      const colorConfig = EDGE_OBSERVABLE_CONFIG[selectedEdgeColorObservable] || EDGE_OBSERVABLE_CONFIG.density;
+      const colorRange = colorConfig.reverseColorScale
+        ? ['red', 'yellow', 'green']
+        : ['green', 'yellow', 'red'];
+      const colorScale = d3.scaleLinear()
+        .domain([domain[0], (domain[0] + domain[1]) / 2, domain[1]])
+        .range(colorRange);
 
       const colors = edges.map((edge, index) => {
-        let density = currentDensities[index];
-        if (density === undefined || isNaN(density)) {
-          density = 0;
+        let value = currentObservableValues[index];
+        if (value === undefined || isNaN(value)) {
+          value = 0;
         }
-        const rgb = d3.rgb(colorScale(density));
+        const rgb = d3.rgb(colorScale(value));
         return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.69)`;
       });
 
       canvasEdges.setColors(colors);
       canvasEdges.setDensities(currentDensities);
     }
+
+    updateLegend();
+    update(); // Initial render
 
     // Set up the time slider based on the density data's maximum time value
     const timeSlider = document.getElementById('timeSlider');

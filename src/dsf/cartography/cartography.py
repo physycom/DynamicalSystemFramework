@@ -342,6 +342,7 @@ def create_manhattan_cartography(
         n_x (int): Number of nodes in the x-direction (longitude). Defaults to 10.
         n_y (int): Number of nodes in the y-direction (latitude). Defaults to 10.
         spacing (float): Distance between nodes in meters. Defaults to 2000.0.
+        maxspeed (float): Maximum speed for all edges in km/h. Defaults to 50.0.
         center_lat (float): Latitude of the network center. Defaults to 0.0.
         center_lon (float): Longitude of the network center. Defaults to 0.0.
 

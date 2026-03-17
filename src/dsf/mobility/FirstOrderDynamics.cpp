@@ -870,7 +870,9 @@ namespace dsf::mobility {
         "mean_speed_kph REAL, "
         "std_speed_kph REAL, "
         "mean_density_vpk REAL NOT NULL, "
-        "std_density_vpk REAL NOT NULL)");
+        "std_density_vpk REAL NOT NULL, "
+        "mean_travel_time_s REAL, "
+        "mean_queue_length REAL NOT NULL)");
 
     spdlog::info("Initialized avg_stats table in the database.");
   }
@@ -1412,7 +1414,8 @@ namespace dsf::mobility {
 
   void FirstOrderDynamics::evolve(bool const reinsert_agents) {
     auto const n_threads{std::max<std::size_t>(1, this->concurrency())};
-    std::atomic<double> mean_speed{0.}, mean_density{0.};
+    std::atomic<double> mean_speed{0.}, mean_density{0.}, mean_traveltime{0.},
+        mean_queue_length{0.};
     std::atomic<double> std_speed{0.}, std_density{0.};
     std::atomic<std::size_t> nValidEdges{0};
     bool const bComputeStats = this->database() != nullptr &&
@@ -1466,6 +1469,7 @@ namespace dsf::mobility {
                 m_evolveStreet(pStreet, reinsert_agents);
                 if (bComputeStats) {
                   auto const& density{pStreet->density() * 1e3};
+                  auto const& queueLength{pStreet->nExitingAgents()};
 
                   auto const speedMeasure = pStreet->meanSpeed(true);
                   if (speedMeasure.is_valid) {
@@ -1475,13 +1479,15 @@ namespace dsf::mobility {
                       mean_speed.fetch_add(speed, std::memory_order_relaxed);
                       std_speed.fetch_add(speed * speed + speed_std * speed_std,
                                           std::memory_order_relaxed);
-
+                      mean_traveltime.fetch_add(pStreet->length() / speedMeasure.mean,
+                                                std::memory_order_relaxed);
                       ++nValidEdges;
                     }
                   }
                   if (m_bSaveAverageStats) {
                     mean_density.fetch_add(density, std::memory_order_relaxed);
                     std_density.fetch_add(density * density, std::memory_order_relaxed);
+                    mean_queue_length.fetch_add(queueLength, std::memory_order_relaxed);
                   }
 
                   if (m_bSaveStreetData) {
@@ -1499,7 +1505,7 @@ namespace dsf::mobility {
                       record.stdSpeed = speedMeasure.std * 3.6;
                       record.nObservations = speedMeasure.n;
                     }
-                    record.queueLength = pStreet->nExitingAgents();
+                    record.queueLength = queueLength;
                     streetDataRecords.push_back(record);
                   }
                 }
@@ -1589,6 +1595,8 @@ namespace dsf::mobility {
       if (m_bSaveAverageStats) {  // Average Stats Table
         mean_speed.store(mean_speed.load() / nValidEdges.load());
         mean_density.store(mean_density.load() / numEdges);
+        mean_traveltime.store(mean_traveltime.load() / nValidEdges.load());
+        mean_queue_length.store(mean_queue_length.load() / numEdges);
         {
           double std_speed_val = std_speed.load();
           double mean_speed_val = mean_speed.load();
@@ -1605,8 +1613,9 @@ namespace dsf::mobility {
             *this->database(),
             "INSERT INTO avg_stats ("
             "simulation_id, datetime, time_step, n_ghost_agents, n_agents, "
-            "mean_speed_kph, std_speed_kph, mean_density_vpk, std_density_vpk) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            "mean_speed_kph, std_speed_kph, mean_density_vpk, std_density_vpk, "
+            "mean_travel_time_s, mean_queue_length) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         insertStmt.bind(1, static_cast<std::int64_t>(this->id()));
         insertStmt.bind(2, this->strDateTime());
         insertStmt.bind(3, static_cast<std::int64_t>(this->time_step()));
@@ -1621,6 +1630,8 @@ namespace dsf::mobility {
         }
         insertStmt.bind(8, mean_density);
         insertStmt.bind(9, std_density);
+        insertStmt.bind(10, mean_traveltime);
+        insertStmt.bind(11, mean_queue_length);
         insertStmt.exec();
       }
       // Special case: if m_savingInterval == 0, it was a triggered saveData() call, so we need to reset all flags
