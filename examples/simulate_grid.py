@@ -41,7 +41,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dim", type=str, default="12x12", help="Dimensions of the grid (e.g., 10x10)"
     )
-    parser.add_argument("--amp", type=int, required=True, help="Amplitude of the vehicle input")
+    parser.add_argument(
+        "--amp", type=int, required=True, help="Amplitude of the vehicle input"
+    )
     args = parser.parse_args()
     np.random.seed(args.seed)
 
