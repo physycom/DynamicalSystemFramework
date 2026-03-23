@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -78,6 +79,11 @@ class CMakeBuild(build_ext):
             "-DBUILD_PYTHON_BINDINGS=ON",
         ]
 
+        # Forward generic CMake args from environment (e.g. CI overrides).
+        env_cmake_args = os.environ.get("CMAKE_ARGS", "").strip()
+        if env_cmake_args:
+            cmake_args.extend(shlex.split(env_cmake_args))
+
         # Optional HPC release profile for source builds/wheels.
         if os.environ.get("DSF_HPC_BUILD", "").lower() in {
             "1",
@@ -85,7 +91,13 @@ class CMakeBuild(build_ext):
             "true",
             "yes",
         }:
-            cmake_args.extend(["-DDSF_HPC_RELEASE=ON", "-DDSF_OPTIMIZE_ARCH=OFF"])
+            cmake_args.extend(
+                [
+                    "-DDSF_HPC_RELEASE=ON",
+                    "-DDSF_OPTIMIZE_ARCH=OFF",
+                    "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+                ]
+            )
 
         if platform.system() == "Windows":
             cmake_args += [f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"]
