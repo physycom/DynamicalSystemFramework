@@ -279,12 +279,19 @@ jobs:
     - name: Delete existing TestPyPI version (on PR)
       if: github.event_name == 'pull_request' && needs.check-version.outputs.version_exists == 'true'
       env:
-        PYPI_CLEANUP_PASSWORD: ${{ secrets.TEST_PYPI }}
+        TEST_PYPI_CLEANUP_USERNAME: ${{ secrets.TEST_PYPI_CLEANUP_USERNAME }}
+        PYPI_CLEANUP_PASSWORD: ${{ secrets.TEST_PYPI_CLEANUP_PASSWORD }}
       run: |
         VERSION="${{ needs.check-version.outputs.version }}"
         # Replace behavior for TestPyPI: remove current version, then upload fresh artifacts.
+
+        if [ -z "${TEST_PYPI_CLEANUP_USERNAME}" ] || [ -z "${PYPI_CLEANUP_PASSWORD}" ]; then
+          echo "ERROR: TEST_PYPI_CLEANUP_USERNAME and TEST_PYPI_CLEANUP_PASSWORD secrets are required for delete/replace on TestPyPI."
+          exit 1
+        fi
+
         pypi-cleanup \
-          --username __token__ \
+          --username "${TEST_PYPI_CLEANUP_USERNAME}" \
           --host https://test.pypi.org/ \
           --package dsf-mobility \
           --version-regex "^${VERSION}$" \
