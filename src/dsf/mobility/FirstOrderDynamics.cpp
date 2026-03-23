@@ -1216,14 +1216,6 @@ namespace dsf::mobility {
       m_initTravelDataTable();
     }
 
-    if (this->database()) {
-      // Tune SQLite for sustained write throughput in periodic batch inserts.
-      this->database()->exec("PRAGMA journal_mode=WAL;");
-      this->database()->exec("PRAGMA synchronous=NORMAL;");
-      this->database()->exec("PRAGMA temp_store=MEMORY;");
-      this->database()->exec("PRAGMA cache_size=-20000;");
-    }
-
     this->m_dumpSimInfo();
     this->m_dumpNetwork();
 
