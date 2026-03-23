@@ -1216,6 +1216,14 @@ namespace dsf::mobility {
       m_initTravelDataTable();
     }
 
+    if (this->database()) {
+      // Tune SQLite for sustained write throughput in periodic batch inserts.
+      this->database()->exec("PRAGMA journal_mode=WAL;");
+      this->database()->exec("PRAGMA synchronous=NORMAL;");
+      this->database()->exec("PRAGMA temp_store=MEMORY;");
+      this->database()->exec("PRAGMA cache_size=-20000;");
+    }
+
     this->m_dumpSimInfo();
     this->m_dumpNetwork();
 
@@ -1531,9 +1539,21 @@ namespace dsf::mobility {
     this->m_evolveAgents();
 
     if (bComputeStats) {
+      auto const datetime = this->strDateTime();
+      auto const step = static_cast<std::int64_t>(this->time_step());
+      auto const simulationId = static_cast<std::int64_t>(this->id());
+
+      bool const hasWritePayload = (m_bSaveStreetData && !streetDataRecords.empty()) ||
+                                   (m_bSaveTravelData && !m_travelDTs.empty()) ||
+                                   m_bSaveAverageStats;
+
+      std::optional<SQLite::Transaction> transaction;
+      if (hasWritePayload) {
+        transaction.emplace(*this->database());
+      }
+
       // Batch insert street data collected during parallel section
-      if (m_bSaveStreetData) {
-        SQLite::Transaction transaction(*this->database());
+      if (m_bSaveStreetData && !streetDataRecords.empty()) {
         SQLite::Statement insertStmt(
             *this->database(),
             "INSERT INTO road_data (datetime, time_step, simulation_id, street_id, "
@@ -1542,9 +1562,9 @@ namespace dsf::mobility {
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         for (auto const& record : streetDataRecords) {
-          insertStmt.bind(1, this->strDateTime());
-          insertStmt.bind(2, static_cast<std::int64_t>(this->time_step()));
-          insertStmt.bind(3, static_cast<std::int64_t>(this->id()));
+          insertStmt.bind(1, datetime);
+          insertStmt.bind(2, step);
+          insertStmt.bind(3, simulationId);
           insertStmt.bind(4, static_cast<std::int64_t>(record.streetId));
           if (record.coilName.has_value()) {
             insertStmt.bind(5, record.coilName.value());
@@ -1569,46 +1589,34 @@ namespace dsf::mobility {
           insertStmt.exec();
           insertStmt.reset();
         }
-        transaction.commit();
       }
 
-      if (m_bSaveTravelData) {  // Begin transaction for better performance
-        SQLite::Transaction transaction(*this->database());
+      if (m_bSaveTravelData && !m_travelDTs.empty()) {
         SQLite::Statement insertStmt(*this->database(),
                                      "INSERT INTO travel_data (datetime, time_step, "
                                      "simulation_id, distance_m, travel_time_s) "
                                      "VALUES (?, ?, ?, ?, ?)");
 
         for (auto const& [distance, time] : m_travelDTs) {
-          insertStmt.bind(1, this->strDateTime());
-          insertStmt.bind(2, static_cast<int64_t>(this->time_step()));
-          insertStmt.bind(3, static_cast<int64_t>(this->id()));
+          insertStmt.bind(1, datetime);
+          insertStmt.bind(2, step);
+          insertStmt.bind(3, simulationId);
           insertStmt.bind(4, distance);
           insertStmt.bind(5, time);
           insertStmt.exec();
           insertStmt.reset();
         }
-        transaction.commit();
         m_travelDTs.clear();
       }
 
       if (m_bSaveAverageStats) {  // Average Stats Table
-        mean_speed.store(mean_speed.load() / nValidEdges.load());
-        mean_density.store(mean_density.load() / numEdges);
-        mean_traveltime.store(mean_traveltime.load() / nValidEdges.load());
-        mean_queue_length.store(mean_queue_length.load() / numEdges);
-        {
-          double std_speed_val = std_speed.load();
-          double mean_speed_val = mean_speed.load();
-          std_speed.store(std::sqrt(std_speed_val / nValidEdges.load() -
-                                    mean_speed_val * mean_speed_val));
-        }
-        {
-          double std_density_val = std_density.load();
-          double mean_density_val = mean_density.load();
-          std_density.store(std::sqrt(std_density_val / numEdges -
-                                      mean_density_val * mean_density_val));
-        }
+        auto const validEdges = nValidEdges.load();
+        auto const edgeCount = static_cast<double>(numEdges);
+        auto const meanDensity = mean_density.load() / edgeCount;
+        auto const meanQueueLength = mean_queue_length.load() / edgeCount;
+        auto const densityVariance =
+            std::max(0.0, std_density.load() / edgeCount - meanDensity * meanDensity);
+
         SQLite::Statement insertStmt(
             *this->database(),
             "INSERT INTO avg_stats ("
@@ -1616,24 +1624,36 @@ namespace dsf::mobility {
             "mean_speed_kph, std_speed_kph, mean_density_vpk, std_density_vpk, "
             "mean_travel_time_s, mean_queue_length) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        insertStmt.bind(1, static_cast<std::int64_t>(this->id()));
-        insertStmt.bind(2, this->strDateTime());
-        insertStmt.bind(3, static_cast<std::int64_t>(this->time_step()));
+        insertStmt.bind(1, simulationId);
+        insertStmt.bind(2, datetime);
+        insertStmt.bind(3, step);
         insertStmt.bind(4, static_cast<std::int64_t>(m_agents.size()));
         insertStmt.bind(5, static_cast<std::int64_t>(this->nAgents()));
-        if (nValidEdges.load() > 0) {
-          insertStmt.bind(6, mean_speed);
-          insertStmt.bind(7, std_speed);
+
+        if (validEdges > 0) {
+          auto const validEdgeCount = static_cast<double>(validEdges);
+          auto const meanSpeed = mean_speed.load() / validEdgeCount;
+          auto const meanTravelTime = mean_traveltime.load() / validEdgeCount;
+          auto const speedVariance =
+              std::max(0.0, std_speed.load() / validEdgeCount - meanSpeed * meanSpeed);
+          insertStmt.bind(6, meanSpeed);
+          insertStmt.bind(7, std::sqrt(speedVariance));
+          insertStmt.bind(10, meanTravelTime);
         } else {
           insertStmt.bind(6);
           insertStmt.bind(7);
+          insertStmt.bind(10);
         }
-        insertStmt.bind(8, mean_density);
-        insertStmt.bind(9, std_density);
-        insertStmt.bind(10, mean_traveltime);
-        insertStmt.bind(11, mean_queue_length);
+        insertStmt.bind(8, meanDensity);
+        insertStmt.bind(9, std::sqrt(densityVariance));
+        insertStmt.bind(11, meanQueueLength);
         insertStmt.exec();
       }
+
+      if (transaction.has_value()) {
+        transaction->commit();
+      }
+
       // Special case: if m_savingInterval == 0, it was a triggered saveData() call, so we need to reset all flags
       if (m_savingInterval.value() == 0) {
         m_savingInterval.reset();
