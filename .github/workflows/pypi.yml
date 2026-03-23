@@ -17,6 +17,7 @@ jobs:
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       version: ${{ steps.extract.outputs.version }}
+      publish_version: ${{ steps.plan.outputs.publish_version }}
     
     steps:
     - name: Checkout repository
@@ -32,19 +33,36 @@ jobs:
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
         echo "Extracted version: ${VERSION}"
 
-    - name: Check if version exists on PyPI or TestPyPI
+    - name: Plan publish version
+      id: plan
+      run: |
+        BASE_VERSION="${{ steps.extract.outputs.version }}"
+
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          # TestPyPI only: use a numeric dev suffix so the version is PEP 440 compliant.
+          # Concatenating run id and attempt keeps it unique across PRs and re-runs.
+          PUBLISH_VERSION="${BASE_VERSION}.dev${GITHUB_RUN_ID}${GITHUB_RUN_ATTEMPT}"
+        else
+          # PyPI: publish the exact release version with no run-id suffix.
+          PUBLISH_VERSION="${BASE_VERSION}"
+        fi
+
+        echo "publish_version=${PUBLISH_VERSION}" >> "$GITHUB_OUTPUT"
+        echo "Planned publish version: ${PUBLISH_VERSION}"
+
+    - name: Check publish policy for PyPI
       id: check
       run: |
-        VERSION="${{ steps.extract.outputs.version }}"
-        
-        # Determine which PyPI to check based on event type
+        VERSION="${{ steps.plan.outputs.publish_version }}"
+
         if [ "${{ github.event_name }}" = "pull_request" ]; then
-          PYPI_URL="https://test.pypi.org/pypi/dsf-mobility/${VERSION}/json"
-          PYPI_NAME="TestPyPI"
-        else
-          PYPI_URL="https://pypi.org/pypi/dsf-mobility/${VERSION}/json"
-          PYPI_NAME="PyPI"
+          echo "PR build uses unique TestPyPI version ${VERSION}; skipping existence check."
+          echo "should_build=true" >> "$GITHUB_OUTPUT"
+          exit 0
         fi
+
+        PYPI_URL="https://pypi.org/pypi/dsf-mobility/${VERSION}/json"
+        PYPI_NAME="PyPI"
         
         echo "Checking if dsf-mobility version ${VERSION} exists on ${PYPI_NAME}..."
         
@@ -53,7 +71,8 @@ jobs:
         
         if [ "$HTTP_STATUS" = "200" ]; then
           echo "Version ${VERSION} already exists on ${PYPI_NAME}"
-          echo "should_build=false" >> $GITHUB_OUTPUT
+          echo "ERROR: Refusing to overwrite an existing version on PyPI."
+          exit 1
         else
           echo "Version ${VERSION} does not exist on ${PYPI_NAME} (HTTP ${HTTP_STATUS})"
           echo "should_build=true" >> $GITHUB_OUTPUT
@@ -90,6 +109,7 @@ jobs:
     - name: Build wheel
       env:
         CMAKE_ARGS: "-DDSF_OPTIMIZE_ARCH=OFF"
+        DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
       run: |
         rm -rf dist wheelhouse
         python -m build --wheel
@@ -145,6 +165,7 @@ jobs:
     - name: Build wheel
       env:
         CMAKE_ARGS: "-DDSF_OPTIMIZE_ARCH=OFF"
+        DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
       run: python -m build --wheel
 
     - name: Repair wheel (bundle libraries)
@@ -195,6 +216,7 @@ jobs:
     - name: Build wheel
       env:
         CMAKE_ARGS: "-DDSF_OPTIMIZE_ARCH=OFF"
+        DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
       run: python -m build --wheel
 
     - name: Upload wheels as artifacts
@@ -229,6 +251,8 @@ jobs:
         python -m pip install build
 
     - name: Build source distribution
+      env:
+        DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
       run: python -m build --sdist
 
     - name: Upload sdist as artifact

@@ -1677,14 +1677,15 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDbBtn.disabled = true;
     
     try {
+      // Snapshot and read the selected file first so later async work cannot invalidate access.
+      const fileSnapshot = file.slice(0, file.size);
+      const arrayBuffer = await fileSnapshot.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+
       // Initialize sql.js
       const SQL = await initSqlJs({
         locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
       });
-      
-      // Read the file
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
       
       // Open the database
       db = new SQL.Database(uint8Array);
@@ -1721,7 +1722,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error('Database loading error:', error);
       dbStatus.className = 'db-status error';
-      dbStatus.textContent = `Error: ${error.message}`;
+      if (error instanceof DOMException && error.name === 'NotReadableError') {
+        dbStatus.textContent = 'Error: Could not read the selected file. Re-select it, or move it to a local folder you own and try again.';
+      } else {
+        dbStatus.textContent = `Error: ${error.message}`;
+      }
       loadDbBtn.disabled = false;
     }
   });

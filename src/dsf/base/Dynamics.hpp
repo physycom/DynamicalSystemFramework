@@ -103,13 +103,17 @@ namespace dsf {
     inline auto concurrency() const {
       return static_cast<std::size_t>(m_taskArena.max_concurrency());
     }
-
-    inline void connectDataBase(std::string const& dbPath) {
+    /// @brief Connect to a SQLite database, creating it if it doesn't exist, and executing optional initialization queries
+    /// @param dbPath The path to the SQLite database file
+    /// @param queries Optional SQL queries to execute upon connecting to the database (default is a set of pragmas for performance optimization : "PRAGMA busy_timeout = 5000;PRAGMA journal_mode = WAL;PRAGMA synchronous=NORMAL;PRAGMA temp_store=MEMORY;PRAGMA cache_size=-20000;")
+    inline void connectDataBase(
+        std::string const& dbPath,
+        std::string const& queries =
+            "PRAGMA busy_timeout = 5000;PRAGMA journal_mode = WAL;PRAGMA "
+            "synchronous=NORMAL;PRAGMA temp_store=MEMORY;PRAGMA cache_size=-20000;") {
       m_database = std::make_unique<SQLite::Database>(
           dbPath, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
-      // Enable WAL mode for better concurrency and set busy timeout
-      m_database->exec("PRAGMA journal_mode = WAL;");
-      m_database->exec("PRAGMA busy_timeout = 5000;");  // 5 seconds
+      m_database->exec(queries);
     }
 
     /// @brief Get the graph

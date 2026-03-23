@@ -514,6 +514,9 @@ PYBIND11_MODULE(dsf_cpp, m) {
       .def("connectDataBase",
            &dsf::mobility::FirstOrderDynamics::connectDataBase,
            pybind11::arg("dbPath"),
+           pybind11::arg("queries") =
+               "PRAGMA busy_timeout = 5000;PRAGMA journal_mode = WAL;PRAGMA "
+               "synchronous=NORMAL;PRAGMA temp_store=MEMORY;PRAGMA cache_size=-20000;",
            dsf::g_docstrings.at("dsf::Dynamics::connectDataBase").c_str())
       .def("setForcePriorities",
            &dsf::mobility::FirstOrderDynamics::setForcePriorities,

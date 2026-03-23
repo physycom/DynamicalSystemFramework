@@ -485,8 +485,8 @@ if Path("README.md").exists():
     with open("README.md", "r", encoding="utf-8") as f:
         LONG_DESCRIPTION = f.read()
 
-# Get version from header file
-PROJECT_VERSION = get_version_from_header()
+# Get version from header file, unless explicitly overridden for CI pre-releases.
+PROJECT_VERSION = os.environ.get("DSF_PACKAGE_VERSION", get_version_from_header())
 
 setup(
     name="dsf-mobility",
