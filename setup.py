@@ -78,6 +78,15 @@ class CMakeBuild(build_ext):
             "-DBUILD_PYTHON_BINDINGS=ON",
         ]
 
+        # Optional HPC release profile for source builds/wheels.
+        if os.environ.get("DSF_HPC_BUILD", "").lower() in {
+            "1",
+            "on",
+            "true",
+            "yes",
+        }:
+            cmake_args.extend(["-DDSF_HPC_RELEASE=ON", "-DDSF_OPTIMIZE_ARCH=OFF"])
+
         if platform.system() == "Windows":
             cmake_args += [f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{cfg.upper()}={extdir}"]
             if "CMAKE_TOOLCHAIN_FILE" in os.environ:
@@ -553,4 +562,9 @@ setup(
         "shapely",
         "folium",
     ],
+    extras_require={
+        # Reserved marker extra for HPC-oriented deployments.
+        # Build-time behavior is driven through DSF_HPC_BUILD env/CMAKE args.
+        "hpc": [],
+    },
 )

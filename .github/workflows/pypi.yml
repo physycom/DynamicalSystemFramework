@@ -130,6 +130,56 @@ jobs:
         name: wheel-linux-${{ matrix.python-version }}
         path: wheelhouse/*.whl
 
+  build-wheels-linux-hpc:
+    name: Build wheel on Ubuntu HPC profile (Python 3.12)
+    needs: [check-version]
+    runs-on: ubuntu-latest
+    if: needs.check-version.outputs.should_build == 'true'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake build-essential doxygen libtbb-dev
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build wheel setuptools pybind11-stubgen
+
+    - name: Build Ubuntu HPC wheel (-O3 only)
+      env:
+        CMAKE_ARGS: "-DDSF_HPC_RELEASE=ON -DDSF_OPTIMIZE_ARCH=OFF"
+        DSF_HPC_BUILD: "ON"
+        DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
+      run: |
+        rm -rf dist wheelhouse
+        python -m build --wheel
+
+    - name: Prepare wheel artifact
+      run: |
+        mkdir -p wheelhouse
+        cp dist/*.whl wheelhouse/
+
+    - name: Test wheel installation
+      run: |
+        python -m pip install wheelhouse/*.whl
+        python -c "import dsf; print('DSF Ubuntu HPC wheel installation successful')"
+
+    - name: Upload Ubuntu HPC wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheel-linux-hpc-3.12
+        path: wheelhouse/*.whl
+
   build-wheels-macos:
     name: Build wheels on macOS (Python ${{ matrix.python-version }})
     needs: [check-version]
@@ -263,7 +313,7 @@ jobs:
 
   publish:
     name: Publish to PyPI
-    needs: [check-version, build-wheels-linux, build-wheels-macos, build-wheels-windows, build-sdist]
+    needs: [check-version, build-wheels-linux, build-wheels-linux-hpc, build-wheels-macos, build-wheels-windows, build-sdist]
     runs-on: ubuntu-latest
     if: needs.check-version.outputs.should_build == 'true'
     
