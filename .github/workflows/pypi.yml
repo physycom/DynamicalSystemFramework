@@ -78,9 +78,55 @@ jobs:
           echo "should_build=true" >> $GITHUB_OUTPUT
         fi
 
+  uv-validate:
+    name: Validate uv workflows
+    needs: [check-version]
+    runs-on: ubuntu-latest
+    if: needs.check-version.outputs.should_build == 'true'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake build-essential doxygen libtbb-dev
+
+    - name: Validate uv build
+      env:
+        DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
+      run: uv build
+
+    - name: Validate uv source install
+      env:
+        DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
+      run: |
+        uv venv .venv-uv-install
+        source .venv-uv-install/bin/activate
+        uv pip install .
+        python -c "import dsf; print(dsf.__version__)"
+
+    - name: Validate uv editable install
+      env:
+        DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
+      run: |
+        uv venv .venv-uv-editable
+        source .venv-uv-editable/bin/activate
+        uv pip install -e .
+        python -c "import dsf; print(dsf.__version__)"
+
   build-wheels-linux:
     name: Build wheels on Linux (Python ${{ matrix.python-version }})
-    needs: [check-version]
+    needs: [check-version, uv-validate]
     runs-on: ubuntu-latest
     if: needs.check-version.outputs.should_build == 'true'
     strategy:
@@ -132,7 +178,7 @@ jobs:
 
   build-wheels-macos:
     name: Build wheels on macOS (Python ${{ matrix.python-version }})
-    needs: [check-version]
+    needs: [check-version, uv-validate]
     runs-on: macos-latest
     if: needs.check-version.outputs.should_build == 'true'
     strategy:
@@ -181,7 +227,7 @@ jobs:
 
   build-wheels-windows:
     name: Build wheels on Windows (Python ${{ matrix.python-version }})
-    needs: [check-version]
+    needs: [check-version, uv-validate]
     runs-on: windows-latest
     if: needs.check-version.outputs.should_build == 'true'
     strategy:
@@ -227,7 +273,7 @@ jobs:
 
   build-sdist:
     name: Build source distribution
-    needs: [check-version]
+    needs: [check-version, uv-validate]
     runs-on: ubuntu-latest
     if: needs.check-version.outputs.should_build == 'true'
     
@@ -263,7 +309,7 @@ jobs:
 
   publish:
     name: Publish to PyPI
-    needs: [check-version, build-wheels-linux, build-wheels-macos, build-wheels-windows, build-sdist]
+    needs: [check-version, uv-validate, build-wheels-linux, build-wheels-macos, build-wheels-windows, build-sdist]
     runs-on: ubuntu-latest
     if: needs.check-version.outputs.should_build == 'true'
     

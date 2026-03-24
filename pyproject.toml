@@ -1,3 +1,64 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "pybind11-stubgen"]
+requires = ["setuptools>=77.0.0", "wheel", "cmake>=3.16", "pybind11-stubgen"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "dsf-mobility"
+description = "DSF C++ core with Python bindings via pybind11"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10"
+license = "CC-BY-NC-SA-4.0"
+authors = [
+	{ name = "Grufoony", email = "gregorio.berselli@studio.unibo.it" },
+]
+keywords = [
+	"traffic",
+	"simulation",
+	"dynamics",
+	"network",
+	"modeling",
+	"transportation",
+	"mobility",
+	"congestion",
+	"flow",
+	"optimization",
+]
+classifiers = [
+	"Development Status :: 4 - Beta",
+	"Intended Audience :: Science/Research",
+	"Intended Audience :: Developers",
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.12",
+	"Programming Language :: C++",
+	"Topic :: Scientific/Engineering :: Physics",
+	"Topic :: Scientific/Engineering :: Information Analysis",
+	"Topic :: Software Development :: Libraries :: Python Modules",
+	"Operating System :: POSIX :: Linux",
+	"Operating System :: MacOS",
+]
+dependencies = [
+	"osmnx>=2.0.6",
+	"networkx>=3",
+	"numpy",
+	"geopandas",
+	"shapely",
+	"folium",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/physycom/DynamicalSystemFramework"
+Documentation = "https://physycom.github.io/DynamicalSystemFramework/"
+Repository = "https://github.com/physycom/DynamicalSystemFramework"
+Issues = "https://github.com/physycom/DynamicalSystemFramework/issues"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dsf*"]
+namespaces = true
+
+[tool.setuptools.package-data]
+dsf = ["*.pyi", "py.typed", "**/*.pyi"]
