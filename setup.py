@@ -15,12 +15,17 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-from setuptools import setup, Extension, find_namespace_packages
+from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
 
 def get_version_from_header():
-    """Extract version from C++ header file"""
+    """Extract version from C++ header file.
+
+    Raises RuntimeError if version cannot be extracted, unless
+    DSF_PACKAGE_VERSION env var is set (CI builds) or
+    DSF_ALLOW_MISSING_VERSION is set to allow local dev fallback.
+    """
     header_path = Path(__file__).parent / "src" / "dsf" / "dsf.hpp"
     try:
         with open(header_path, "r", encoding="UTF-8") as header_file:
@@ -34,10 +39,22 @@ def get_version_from_header():
             return (
                 f"{major_match.group(1)}.{minor_match.group(1)}.{patch_match.group(1)}"
             )
-        return "unknown"
-    except (FileNotFoundError, AttributeError):
-        # Fallback version if header can't be read
-        return "unknown"
+
+        # Version regex failed to match
+        error_msg = (
+            f"Failed to extract version from {header_path}. "
+            "Expected DSF_VERSION_MAJOR, DSF_VERSION_MINOR, DSF_VERSION_PATCH defines."
+        )
+        if os.environ.get("DSF_ALLOW_MISSING_VERSION"):
+            print(f"WARNING: {error_msg}. Using 0.0.0.dev0 for local build.")
+            return "0.0.0.dev0"
+        raise RuntimeError(error_msg)
+    except FileNotFoundError as e:
+        error_msg = f"Version header file not found: {header_path}"
+        if os.environ.get("DSF_ALLOW_MISSING_VERSION"):
+            print(f"WARNING: {error_msg}. Using 0.0.0.dev0 for local build.")
+            return "0.0.0.dev0"
+        raise RuntimeError(error_msg) from e
 
 
 class CMakeExtension(Extension):  # pylint: disable=too-few-public-methods
@@ -479,78 +496,12 @@ class CMakeBuild(build_ext):
             shutil.copy2(py_typed_src, py_typed_dest)
 
 
-# Read long description from README.md if available
-LONG_DESCRIPTION = ""
-if Path("README.md").exists():
-    with open("README.md", "r", encoding="utf-8") as f:
-        LONG_DESCRIPTION = f.read()
-
 # Get version from header file, unless explicitly overridden for CI pre-releases.
 PROJECT_VERSION = os.environ.get("DSF_PACKAGE_VERSION", get_version_from_header())
 
+
 setup(
-    name="dsf-mobility",
     version=PROJECT_VERSION,
-    author="Grufoony",
-    author_email="gregorio.berselli@studio.unibo.it",
-    description="DSF C++ core with Python bindings via pybind11",
-    long_description=LONG_DESCRIPTION,
-    long_description_content_type="text/markdown",
-    license="CC-BY-NC-SA-4.0",
-    url="https://github.com/physycom/DynamicalSystemFramework",
-    project_urls={
-        "Homepage": "https://github.com/physycom/DynamicalSystemFramework",
-        "Documentation": "https://physycom.github.io/DynamicalSystemFramework/",
-        "Repository": "https://github.com/physycom/DynamicalSystemFramework",
-        "Issues": "https://github.com/physycom/DynamicalSystemFramework/issues",
-    },
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Science/Research",
-        "Intended Audience :: Developers",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: C++",
-        "Topic :: Scientific/Engineering :: Physics",
-        "Topic :: Scientific/Engineering :: Information Analysis",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-        "Operating System :: POSIX :: Linux",
-        "Operating System :: MacOS",
-    ],
-    keywords=[
-        "traffic",
-        "simulation",
-        "dynamics",
-        "network",
-        "modeling",
-        "transportation",
-        "mobility",
-        "congestion",
-        "flow",
-        "optimization",
-    ],
     ext_modules=[CMakeExtension("dsf_cpp")],
-    # Use namespace-aware discovery under the `src/` directory so any subpackages
-    # (including implicit/namespace packages) such as `dsf.mobility` are picked up
-    # automatically for distribution.
-    # packages=find_packages(where="src", include=["dsf", "dsf.mobility"]),
-    packages=find_namespace_packages(where="src"),
-    package_dir={"": "src"},
     cmdclass={"build_ext": CMakeBuild},
-    package_data={
-        "dsf": ["*.pyi", "py.typed", "**/*.pyi"],
-        "": ["*.pyi"],
-    },
-    include_package_data=True,
-    zip_safe=False,
-    python_requires=">=3.10",
-    install_requires=[
-        "pybind11-stubgen",
-        "osmnx>=2.0.6",
-        "networkx>=3",
-        "numpy",
-        "geopandas",
-        "shapely",
-        "folium",
-    ],
 )
