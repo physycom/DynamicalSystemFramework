@@ -28,7 +28,7 @@ jobs:
           brew install tbb
         fi
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Build DSF with examples and install
       working-directory: ${{github.workspace}}

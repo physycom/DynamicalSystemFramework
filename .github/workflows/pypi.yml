@@ -21,7 +21,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Extract version from dsf.hpp
       id: extract
@@ -86,10 +86,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: "3.12"
 
@@ -135,10 +135,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -171,7 +171,7 @@ jobs:
         python -c "import dsf; print('DSF wheel installation successful')"
 
     - name: Upload wheels as artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: wheel-linux-${{ matrix.python-version }}
         path: wheelhouse/*.whl
@@ -187,10 +187,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -220,7 +220,7 @@ jobs:
         delocate-wheel -w wheelhouse -v --require-archs $(uname -m) dist/*.whl
 
     - name: Upload wheels as artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: wheel-macos-${{ matrix.python-version }}
         path: wheelhouse/*.whl
@@ -236,10 +236,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -266,7 +266,7 @@ jobs:
       run: python -m build --wheel
 
     - name: Upload wheels as artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: wheel-windows-${{ matrix.python-version }}
         path: dist/*.whl
@@ -279,10 +279,10 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: "3.12"
 
@@ -302,7 +302,7 @@ jobs:
       run: python -m build --sdist
 
     - name: Upload sdist as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: sdist
         path: dist/*.tar.gz
@@ -328,7 +328,7 @@ jobs:
         ls -la dist/
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: "3.12"
 
