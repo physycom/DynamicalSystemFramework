@@ -74,7 +74,11 @@ If you want to use the library from Python, you can build the Python bindings us
 sudo apt install doxygen libtbb-dev
 ```
 
-Then, the installation is automatic via `pip`:
+Then, the installation is automatic via `uv`:
+```shell
+uv build
+```
+or you can just use the classic `pip`:
 ```shell
 pip install .
 ```
