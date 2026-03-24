@@ -103,6 +103,8 @@ jobs:
 
     - name: Validate uv build
       env:
+        CMAKE_ARGS: "-DDSF_OPTIMIZE_ARCH=OFF"
+        DSF_OPTIMIZE_ARCH: "OFF"
         DSF_PACKAGE_VERSION: ${{ needs.check-version.outputs.publish_version }}
       run: uv build
 

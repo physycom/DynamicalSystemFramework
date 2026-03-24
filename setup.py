@@ -20,7 +20,12 @@ from setuptools.command.build_ext import build_ext
 
 
 def get_version_from_header():
-    """Extract version from C++ header file."""
+    """Extract version from C++ header file.
+
+    Raises RuntimeError if version cannot be extracted, unless
+    DSF_PACKAGE_VERSION env var is set (CI builds) or
+    DSF_ALLOW_MISSING_VERSION is set to allow local dev fallback.
+    """
     header_path = Path(__file__).parent / "src" / "dsf" / "dsf.hpp"
     try:
         with open(header_path, "r", encoding="UTF-8") as header_file:
@@ -34,9 +39,22 @@ def get_version_from_header():
             return (
                 f"{major_match.group(1)}.{minor_match.group(1)}.{patch_match.group(1)}"
             )
-        return "0.0.0"
-    except (FileNotFoundError, AttributeError):
-        return "0.0.0"
+
+        # Version regex failed to match
+        error_msg = (
+            f"Failed to extract version from {header_path}. "
+            "Expected DSF_VERSION_MAJOR, DSF_VERSION_MINOR, DSF_VERSION_PATCH defines."
+        )
+        if os.environ.get("DSF_ALLOW_MISSING_VERSION"):
+            print(f"WARNING: {error_msg}. Using 0.0.0.dev0 for local build.")
+            return "0.0.0.dev0"
+        raise RuntimeError(error_msg)
+    except FileNotFoundError as e:
+        error_msg = f"Version header file not found: {header_path}"
+        if os.environ.get("DSF_ALLOW_MISSING_VERSION"):
+            print(f"WARNING: {error_msg}. Using 0.0.0.dev0 for local build.")
+            return "0.0.0.dev0"
+        raise RuntimeError(error_msg) from e
 
 
 class CMakeExtension(Extension):  # pylint: disable=too-few-public-methods
