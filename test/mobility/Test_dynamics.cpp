@@ -1305,6 +1305,50 @@ TEST_CASE("FirstOrderDynamics") {
         std::filesystem::remove(testDbPath);
       }
 
+      WHEN("We connect a database and configure saveData with agent data") {
+        dynamics.connectDataBase(testDbPath);
+        // Configure saving: interval=1, saveAgentData=true
+        dynamics.saveData(1, false, false, false, true);
+
+        // Evolve a few times to generate edge crossing events
+        for (int iter = 0; iter < 50; ++iter) {
+          dynamics.evolve(true);
+        }
+
+        THEN("The agent_data table is created with correct data") {
+          SQLite::Database db(testDbPath, SQLite::OPEN_READONLY);
+          SQLite::Statement query(db, "SELECT COUNT(*) FROM agent_data");
+          REQUIRE(query.executeStep());
+          CHECK(query.getColumn(0).getInt() >= 1);
+
+          SQLite::Statement schema(db, "PRAGMA table_info(agent_data)");
+          std::set<std::string> columns;
+          while (schema.executeStep()) {
+            columns.insert(schema.getColumn(1).getString());
+          }
+          CHECK(columns.count("id") == 1);
+          CHECK(columns.count("simulation_id") == 1);
+          CHECK(columns.count("agent_id") == 1);
+          CHECK(columns.count("edge_id") == 1);
+          CHECK(columns.count("time_step_in") == 1);
+          CHECK(columns.count("time_step_out") == 1);
+
+          SQLite::Statement rows(
+              db,
+              "SELECT simulation_id, agent_id, edge_id, time_step_in, time_step_out "
+              "FROM agent_data");
+          while (rows.executeStep()) {
+            CHECK(rows.getColumn(0).getInt() >= 0);
+            CHECK(rows.getColumn(1).getInt() >= 0);
+            CHECK(rows.getColumn(2).getInt() >= 0);
+            CHECK(rows.getColumn(3).getInt64() >= 0);
+            CHECK(rows.getColumn(4).getInt64() >= rows.getColumn(3).getInt64());
+          }
+        }
+
+        std::filesystem::remove(testDbPath);
+      }
+
       WHEN("We connect a database and configure saveData with average stats") {
         dynamics.connectDataBase(testDbPath);
         // Configure saving: interval=1, saveAverageStats=true
@@ -1339,7 +1383,7 @@ TEST_CASE("FirstOrderDynamics") {
       WHEN("We configure saveData with all options enabled") {
         dynamics.connectDataBase(testDbPath);
         // Configure saving: interval=1, all data types enabled
-        dynamics.saveData(1, true, true, true);
+        dynamics.saveData(1, true, true, true, true);
 
         // Add agents and evolve until some reach destination
         dynamics.addAgents(10, AgentInsertionMethod::RANDOM);
@@ -1411,6 +1455,23 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(travelColumns.count("distance_m") == 1);
           CHECK(travelColumns.count("travel_time_s") == 1);
 
+          // Check agent_data table
+          SQLite::Statement agentQuery(db, "SELECT COUNT(*) FROM agent_data");
+          REQUIRE(agentQuery.executeStep());
+          CHECK(agentQuery.getColumn(0).getInt() >= 1);
+
+          SQLite::Statement agentSchema(db, "PRAGMA table_info(agent_data)");
+          std::set<std::string> agentColumns;
+          while (agentSchema.executeStep()) {
+            agentColumns.insert(agentSchema.getColumn(1).getString());
+          }
+          CHECK(agentColumns.count("id") == 1);
+          CHECK(agentColumns.count("simulation_id") == 1);
+          CHECK(agentColumns.count("agent_id") == 1);
+          CHECK(agentColumns.count("edge_id") == 1);
+          CHECK(agentColumns.count("time_step_in") == 1);
+          CHECK(agentColumns.count("time_step_out") == 1);
+
           // Check simulations table
           SQLite::Statement simQuery(
               db,
@@ -1436,6 +1497,7 @@ TEST_CASE("FirstOrderDynamics") {
           CHECK(simColumns.count("save_avg_stats") == 1);
           CHECK(simColumns.count("save_road_data") == 1);
           CHECK(simColumns.count("save_travel_data") == 1);
+          CHECK(simColumns.count("save_agent_data") == 1);
 
           // Check edges table exists
           SQLite::Statement edgesQuery(
