@@ -5,6 +5,11 @@
 #include <spdlog/spdlog.h>
 
 namespace dsf::mobility {
+  std::optional<
+      tbb::concurrent_unordered_map<Id,
+                                    std::vector<std::tuple<Id, std::time_t, std::time_t>>>>
+      Street::m_agentData = std::nullopt;
+
   void Street::m_updateLaneMapping(int const nLanes) {
     m_laneMapping.clear();
     switch (nLanes) {
@@ -152,9 +157,13 @@ namespace dsf::mobility {
     assert(!m_exitQueues[index].empty());
     auto pAgent{m_exitQueues[index].extract_front()};
     // Keep track of average speed
-    m_avgSpeeds.push_back(m_length /
-                          (currentTime - m_agentsInsertionTimes[pAgent->id()]));
+    auto const insertionTime{m_agentsInsertionTimes[pAgent->id()]};
+    m_avgSpeeds.push_back(m_length / (currentTime - insertionTime));
     m_agentsInsertionTimes.erase(pAgent->id());
+    if (m_agentData.has_value()) {
+      m_agentData->operator[](m_id).emplace_back(
+          pAgent->id(), insertionTime, currentTime);
+    }
 
     if (m_counter.has_value() && m_counterPosition == CounterPosition::EXIT) {
       ++(*m_counter);

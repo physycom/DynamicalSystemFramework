@@ -89,6 +89,7 @@ namespace dsf::mobility {
     bool m_bSaveStreetData{false};
     bool m_bSaveTravelData{false};
     bool m_bSaveAverageStats{false};
+    bool m_bSaveAgentData{false};
 
   private:
     /// @brief Kill an agent
@@ -167,6 +168,15 @@ namespace dsf::mobility {
     /// - distance_m: The distance travelled by the agent in meters
     /// - travel_time_s: The travel time of the agent in seconds
     void m_initTravelDataTable() const;
+    /// @brief Initialize the agent data table.
+    /// This table contains the agent data of the agents. Columns are:
+    /// - id: The entry id (auto-incremented)
+    /// - simulation_id: The simulation id
+    /// - agent_id: The id of the agent
+    /// - edge_id: The id of the edge
+    /// - time_step_in: The time step of the data entry
+    /// - time_step_out: The time step of the data entry
+    void m_initAgentDataTable() const;
 
     /// @brief Dump simulation metadata into the database.
     /// @details Ensures the `simulations` table exists and inserts one row with the
@@ -282,10 +292,12 @@ namespace dsf::mobility {
     /// @param saveAverageStats If true, saves the average stats of the simulation (default is false)
     /// @param saveStreetData If true, saves the street data (default is false)
     /// @param saveTravelData If true, saves the travel data of the agents (default is false)
+    /// @param saveIndividualData If true, saves the individual data of the agents (default is false)
     void saveData(std::time_t const savingInterval,
                   bool const saveAverageStats = false,
                   bool const saveStreetData = false,
-                  bool const saveTravelData = false);
+                  bool const saveTravelData = false,
+                  bool const saveIndividualData = false);
 
     /// @brief Update the paths of the itineraries based on the given weight function
     /// @param throw_on_empty If true, throws an exception if an itinerary has an empty path (default is true)

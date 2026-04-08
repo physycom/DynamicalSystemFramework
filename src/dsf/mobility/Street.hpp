@@ -29,6 +29,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <tbb/concurrent_unordered_map.h>
+
 namespace dsf::mobility {
 
   class AgentComparator {
@@ -58,6 +60,10 @@ namespace dsf::mobility {
     std::optional<Counter> m_counter;
     CounterPosition m_counterPosition{CounterPosition::EXIT};
     double m_stationaryWeight{1.0};
+    static std::optional<tbb::concurrent_unordered_map<
+        Id,
+        std::vector<std::tuple<Id, std::time_t, std::time_t>>>>
+        m_agentData;
 
     /// @brief Update the street's lane mapping
     /// @param nLanes The street's number of lanes
@@ -87,6 +93,11 @@ namespace dsf::mobility {
     Street(Street const&) = delete;
     bool operator==(Street const& other) const;
 
+    static inline void acquireAgentData() {
+      m_agentData = tbb::concurrent_unordered_map<
+          Id,
+          std::vector<std::tuple<Id, std::time_t, std::time_t>>>();
+    };
     /// @brief Set the street's lane mapping
     /// @param laneMapping The street's lane mapping
     void setLaneMapping(std::vector<Direction> const& laneMapping);
@@ -153,6 +164,13 @@ namespace dsf::mobility {
                                AgentComparator>&
     movingAgents() {
       return m_movingAgents;
+    }
+    static inline auto agentData() {
+      if (!m_agentData.has_value()) {
+        throw std::runtime_error(
+            "agentData not initialized. Please call acquireAgentData() first.");
+      }
+      return std::move(m_agentData.value());
     }
     /// @brief Get the number of of moving agents, i.e. agents not yet enqueued
     /// @return std::size_t The number of moving agents
