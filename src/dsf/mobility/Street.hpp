@@ -170,7 +170,7 @@ namespace dsf::mobility {
         throw std::runtime_error(
             "agentData not initialized. Please call acquireAgentData() first.");
       }
-      return std::move(m_agentData.value());
+      return std::move(*m_agentData);
     }
     /// @brief Get the number of of moving agents, i.e. agents not yet enqueued
     /// @return std::size_t The number of moving agents

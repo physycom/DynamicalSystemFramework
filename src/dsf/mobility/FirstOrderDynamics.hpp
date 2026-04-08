@@ -292,12 +292,12 @@ namespace dsf::mobility {
     /// @param saveAverageStats If true, saves the average stats of the simulation (default is false)
     /// @param saveStreetData If true, saves the street data (default is false)
     /// @param saveTravelData If true, saves the travel data of the agents (default is false)
-    /// @param saveIndividualData If true, saves the individual data of the agents (default is false)
+    /// @param saveAgentData If true, saves the individual data of the agents (default is false)
     void saveData(std::time_t const savingInterval,
                   bool const saveAverageStats = false,
                   bool const saveStreetData = false,
                   bool const saveTravelData = false,
-                  bool const saveIndividualData = false);
+                  bool const saveAgentData = false);
 
     /// @brief Update the paths of the itineraries based on the given weight function
     /// @param throw_on_empty If true, throws an exception if an itinerary has an empty path (default is true)
