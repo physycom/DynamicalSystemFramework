@@ -1638,8 +1638,8 @@ namespace dsf::mobility {
             insertStmt.bind(1, simulationId);
             insertStmt.bind(2, static_cast<std::int64_t>(agent_id));
             insertStmt.bind(3, static_cast<std::int64_t>(edge_id));
-            insertStmt.bind(4, ts_in);
-            insertStmt.bind(5, ts_out);
+            insertStmt.bind(4, static_cast<std::int64_t>(ts_in));
+            insertStmt.bind(5, static_cast<std::int64_t>(ts_out));
             insertStmt.exec();
             insertStmt.reset();
           }
