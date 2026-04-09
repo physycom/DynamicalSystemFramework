@@ -104,7 +104,7 @@ include(FetchContent)
 FetchContent_Declare(
   csv-parser
   GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser
-  GIT_TAG 2.5.1)
+  GIT_TAG 3.1.0)
 FetchContent_GetProperties(csv-parser)
 if(NOT csv-parser_POPULATED)
   FetchContent_MakeAvailable(csv-parser)
@@ -168,10 +168,9 @@ target_include_directories(
   dsf PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
              $<INSTALL_INTERFACE:include>)
 
-target_include_directories(dsf PRIVATE ${csv-parser_SOURCE_DIR}/single_include)
-
 # Link other libraries
-target_link_libraries(dsf PUBLIC TBB::tbb SQLiteCpp PRIVATE simdjson::simdjson spdlog::spdlog)
+target_link_libraries(dsf PUBLIC TBB::tbb SQLiteCpp 
+                          PRIVATE simdjson::simdjson spdlog::spdlog $<BUILD_INTERFACE:csv>)
 
 # Install dsf library
 install(
