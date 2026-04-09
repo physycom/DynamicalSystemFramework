@@ -749,6 +749,7 @@ PYBIND11_MODULE(dsf_cpp, m) {
            pybind11::arg("save_average_stats") = false,
            pybind11::arg("save_street_data") = false,
            pybind11::arg("save_travel_data") = false,
+           pybind11::arg("save_agent_data") = false,
            "Configure data saving during simulation.\n\n"
            "Args:\n"
            "    saving_interval: Interval in time steps between data saves\n"
@@ -756,7 +757,8 @@ PYBIND11_MODULE(dsf_cpp, m) {
            "flow)\n"
            "    save_street_data: Whether to save per-street data (density, speed, coil "
            "counts)\n"
-           "    save_travel_data: Whether to save travel data (distance, travel time)")
+           "    save_travel_data: Whether to save travel data (distance, travel time)\n"
+           "    save_agent_data: Whether to save per-agent edge traversal data")
       .def(
           "summary",
           [](dsf::mobility::FirstOrderDynamics& self) {

@@ -893,6 +893,23 @@ namespace dsf::mobility {
 
     spdlog::info("Initialized travel_data table in the database.");
   }
+  void FirstOrderDynamics::m_initAgentDataTable() const {
+    if (!this->database()) {
+      throw std::runtime_error(
+          "No database connected. Call connectDataBase() before saving data.");
+    }
+    // Create table if it doesn't exist
+    this->database()->exec(
+        "CREATE TABLE IF NOT EXISTS agent_data ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "simulation_id INTEGER NOT NULL, "
+        "agent_id INTEGER NOT NULL, "
+        "edge_id INTEGER NOT NULL, "
+        "time_step_in INTEGER NOT NULL, "
+        "time_step_out INTEGER NOT NULL)");
+
+    spdlog::info("Initialized agent_data table in the database.");
+  }
   void FirstOrderDynamics::m_dumpSimInfo() const {
     // Dump simulation info (parameters) to the database, if connected
     if (!this->database()) {
@@ -914,7 +931,8 @@ namespace dsf::mobility {
                                       "force_priorities BOOLEAN, "
                                       "save_avg_stats BOOLEAN, "
                                       "save_road_data BOOLEAN, "
-                                      "save_travel_data BOOLEAN)");
+                                      "save_travel_data BOOLEAN, "
+                                      "save_agent_data BOOLEAN)");
     createTableStmt.exec();
     // Insert simulation parameters into the simulations table
     SQLite::Statement insertSimStmt(
@@ -922,8 +940,9 @@ namespace dsf::mobility {
         "INSERT INTO simulations (id, name, speed_function, weight_function, "
         "weight_threshold, error_probability, passage_probability, "
         "mean_travel_distance_m, mean_travel_time_s, stagnant_tolerance_factor, "
-        "force_priorities, save_avg_stats, save_road_data, save_travel_data) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        "force_priorities, save_avg_stats, save_road_data, save_travel_data, "
+        "save_agent_data) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     insertSimStmt.bind(1, static_cast<std::int64_t>(this->id()));
     insertSimStmt.bind(2, this->name());
     insertSimStmt.bind(3, this->m_speedFunctionDescription);
@@ -968,6 +987,7 @@ namespace dsf::mobility {
     insertSimStmt.bind(12, this->m_bSaveAverageStats);
     insertSimStmt.bind(13, this->m_bSaveStreetData);
     insertSimStmt.bind(14, this->m_bSaveTravelData);
+    insertSimStmt.bind(15, this->m_bSaveAgentData);
     insertSimStmt.exec();
   }
   void FirstOrderDynamics::m_dumpNetwork() const {
@@ -1199,11 +1219,13 @@ namespace dsf::mobility {
   void FirstOrderDynamics::saveData(std::time_t const savingInterval,
                                     bool const saveAverageStats,
                                     bool const saveStreetData,
-                                    bool const saveTravelData) {
+                                    bool const saveTravelData,
+                                    bool const saveAgentData) {
     m_savingInterval = savingInterval;
     m_bSaveAverageStats = saveAverageStats;
     m_bSaveStreetData = saveStreetData;
     m_bSaveTravelData = saveTravelData;
+    m_bSaveAgentData = saveAgentData;
 
     // Initialize the required tables
     if (saveStreetData) {
@@ -1215,17 +1237,21 @@ namespace dsf::mobility {
     if (saveTravelData) {
       m_initTravelDataTable();
     }
-
+    if (saveAgentData) {
+      m_initAgentDataTable();
+      Street::acquireAgentData();
+    }
     this->m_dumpSimInfo();
     this->m_dumpNetwork();
 
     spdlog::info(
         "Data saving configured: interval={}s, avg_stats={}, street_data={}, "
-        "travel_data={}",
+        "travel_data={}, agent_data={}",
         savingInterval,
         saveAverageStats,
         saveStreetData,
-        saveTravelData);
+        saveTravelData,
+        saveAgentData);
   }
 
   void FirstOrderDynamics::setDestinationNodes(
@@ -1601,6 +1627,25 @@ namespace dsf::mobility {
         m_travelDTs.clear();
       }
 
+      if (m_bSaveAgentData) {
+        auto agentData = Street::agentData();
+        SQLite::Statement insertStmt(*this->database(),
+                                     "INSERT INTO agent_data (simulation_id, "
+                                     "agent_id, edge_id, time_step_in, time_step_out)"
+                                     "VALUES (?, ?, ?, ?, ?)");
+        for (auto const& [edge_id, data] : agentData) {
+          for (auto const& [agent_id, ts_in, ts_out] : data) {
+            insertStmt.bind(1, simulationId);
+            insertStmt.bind(2, static_cast<std::int64_t>(agent_id));
+            insertStmt.bind(3, static_cast<std::int64_t>(edge_id));
+            insertStmt.bind(4, static_cast<std::int64_t>(ts_in));
+            insertStmt.bind(5, static_cast<std::int64_t>(ts_out));
+            insertStmt.exec();
+            insertStmt.reset();
+          }
+        }
+      }
+
       if (m_bSaveAverageStats) {  // Average Stats Table
         auto const validEdges = nValidEdges.load();
         auto const edgeCount = static_cast<double>(numEdges);
@@ -1652,6 +1697,7 @@ namespace dsf::mobility {
         m_bSaveStreetData = false;
         m_bSaveTravelData = false;
         m_bSaveAverageStats = false;
+        m_bSaveAgentData = false;
       }
     }
 
