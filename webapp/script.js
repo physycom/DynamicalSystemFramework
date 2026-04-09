@@ -903,7 +903,7 @@ function parseGeometry(geometryStr) {
 
 // Load edges from SQLite database
 function loadEdgesFromDB() {
-  const result = db.exec("SELECT id, source, target, length, maxspeed, name, nlanes, geometry FROM edges");
+  const result = db.exec("SELECT id, source, target, length, maxspeed, name, nlanes, geometry, coilcode FROM edges");
   if (result.length === 0) return [];
   
   const columns = result[0].columns;
@@ -918,6 +918,7 @@ function loadEdgesFromDB() {
     edge.maxspeed = +edge.maxspeed || 0;
     edge.nlanes = +edge.nlanes || 1;
     edge.length = +edge.length || 0;
+    edge.coilcode = edge.coilcode || null;
     return edge;
   });
 }

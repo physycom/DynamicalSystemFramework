@@ -1020,6 +1020,7 @@ namespace dsf::mobility {
         "maxspeed REAL NOT NULL, "
         "name TEXT, "
         "nlanes INTEGER NOT NULL, "
+        "coilcode TEXT, "
         "geometry TEXT NOT NULL)");
     // Create nodes table
     this->database()->exec(
@@ -1031,8 +1032,8 @@ namespace dsf::mobility {
     // Insert edges
     SQLite::Statement insertEdgeStmt(*this->database(),
                                      "INSERT INTO edges (id, source, target, length, "
-                                     "maxspeed, name, nlanes, geometry) "
-                                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?);");
+                                     "maxspeed, name, nlanes, coilcode, geometry) "
+                                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);");
     for (const auto& [edgeId, pEdge] : this->graph().edges()) {
       insertEdgeStmt.bind(1, static_cast<std::int64_t>(edgeId));
       insertEdgeStmt.bind(2, static_cast<std::int64_t>(pEdge->source()));
@@ -1041,7 +1042,13 @@ namespace dsf::mobility {
       insertEdgeStmt.bind(5, pEdge->maxSpeed());
       insertEdgeStmt.bind(6, pEdge->name());
       insertEdgeStmt.bind(7, pEdge->nLanes());
-      insertEdgeStmt.bind(8, std::format("{}", pEdge->geometry()));
+      auto const& counterName{pEdge->counterName()};
+      if (counterName != "N/A") {
+        insertEdgeStmt.bind(8, counterName);
+      } else {
+        insertEdgeStmt.bind(8);
+      }
+      insertEdgeStmt.bind(9, std::format("{}", pEdge->geometry()));
       insertEdgeStmt.exec();
       insertEdgeStmt.reset();
     }
