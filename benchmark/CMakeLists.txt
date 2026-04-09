@@ -22,7 +22,7 @@ set(BENCHMARK_ENABLE_TESTING OFF)
 FetchContent_Declare(
     benchmark
     GIT_REPOSITORY https://github.com/google/benchmark
-    GIT_TAG v1.9.4
+    GIT_TAG v1.9.5
 )
 FetchContent_MakeAvailable(benchmark)
 
@@ -37,6 +37,6 @@ foreach(SOURCE ${SOURCES})
     get_filename_component(EXE_NAME ${SOURCE} NAME_WE)
     add_executable(${EXE_NAME}.out ${SOURCE})
     target_compile_definitions(${EXE_NAME}.out PRIVATE SPDLOG_USE_STD_FORMAT)
-    target_link_libraries(${EXE_NAME}.out PRIVATE dsf TBB::tbb simdjson::simdjson spdlog::spdlog benchmark::benchmark)
+    target_link_libraries(${EXE_NAME}.out PRIVATE dsf TBB::tbb $<BUILD_INTERFACE:simdjson::simdjson> spdlog::spdlog benchmark::benchmark)
     target_include_directories(${EXE_NAME}.out PRIVATE $<INSTALL_INTERFACE:include>)
 endforeach()

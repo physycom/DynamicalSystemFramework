@@ -22,7 +22,7 @@ include(FetchContent)
 FetchContent_Declare(
   csv-parser
   GIT_REPOSITORY https://github.com/vincentlaucsb/csv-parser
-  GIT_TAG 2.4.1)
+  GIT_TAG 3.1.0)
 FetchContent_GetProperties(csv-parser)
 if(NOT csv-parser_POPULATED)
   FetchContent_MakeAvailable(csv-parser)
@@ -33,13 +33,13 @@ file(GLOB SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp"
 
 # Define the executable
 add_executable(prof.out main.cpp ${SOURCES})
-target_include_directories(prof.out PRIVATE ../src/ ${csv-parser_SOURCE_DIR}/single_include)
+target_include_directories(prof.out PRIVATE ../src/)
 target_link_libraries(prof.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog
-                                       simdjson::simdjson)
+                                       $<BUILD_INTERFACE:simdjson::simdjson> $<BUILD_INTERFACE:csv>)
 target_compile_options(prof.out PRIVATE -pg)
 target_link_options(prof.out PRIVATE -pg)
 add_executable(mem.out main.cpp ${SOURCES})
-target_include_directories(mem.out PRIVATE ../src/ ${csv-parser_SOURCE_DIR}/single_include)
+target_include_directories(mem.out PRIVATE ../src/)
 target_link_libraries(mem.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog
-                                      simdjson::simdjson)
+                                      $<BUILD_INTERFACE:simdjson::simdjson> $<BUILD_INTERFACE:csv>)
 add_executable(parse_massif.out parse_massif.cpp)
