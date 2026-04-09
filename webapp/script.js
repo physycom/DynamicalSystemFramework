@@ -10,7 +10,8 @@ const MAX_DENSITY_INVERTED = 1 / MAX_DENSITY;
 // Add OpenStreetMap tile layer with inverted grayscale effect
 const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-  crossOrigin: true
+  crossOrigin: true,
+  referrerPolicy: 'strict-origin-when-cross-origin'
 }).addTo(map);
 tileLayer.getContainer().style.filter = 'grayscale(100%) invert(100%)';
 
