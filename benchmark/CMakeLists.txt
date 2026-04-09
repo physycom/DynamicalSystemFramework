@@ -22,7 +22,7 @@ set(BENCHMARK_ENABLE_TESTING OFF)
 FetchContent_Declare(
     benchmark
     GIT_REPOSITORY https://github.com/google/benchmark
-    GIT_TAG v1.9.4
+    GIT_TAG v1.9.5
 )
 FetchContent_MakeAvailable(benchmark)
 
