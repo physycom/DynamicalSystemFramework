@@ -35,11 +35,11 @@ file(GLOB SOURCES "../src/dsf/base/*.cpp" "../src/dsf/mobility/*.cpp"
 add_executable(prof.out main.cpp ${SOURCES})
 target_include_directories(prof.out PRIVATE ../src/)
 target_link_libraries(prof.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog
-                                       simdjson::simdjson $<BUILD_INTERFACE:csv>)
+                                       $<BUILD_INTERFACE:simdjson::simdjson> $<BUILD_INTERFACE:csv>)
 target_compile_options(prof.out PRIVATE -pg)
 target_link_options(prof.out PRIVATE -pg)
 add_executable(mem.out main.cpp ${SOURCES})
 target_include_directories(mem.out PRIVATE ../src/)
 target_link_libraries(mem.out PRIVATE TBB::tbb fmt::fmt spdlog::spdlog
-                                      simdjson::simdjson $<BUILD_INTERFACE:csv>)
+                                      $<BUILD_INTERFACE:simdjson::simdjson> $<BUILD_INTERFACE:csv>)
 add_executable(parse_massif.out parse_massif.cpp)

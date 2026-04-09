@@ -136,7 +136,7 @@ endif()
 FetchContent_Declare(
   simdjson
   GIT_REPOSITORY https://github.com/simdjson/simdjson
-  GIT_TAG v4.3.0)
+  GIT_TAG v4.6.1)
 FetchContent_GetProperties(simdjson)
 if(NOT simdjson_POPULATED)
   FetchContent_MakeAvailable(simdjson)
@@ -170,7 +170,7 @@ target_include_directories(
 
 # Link other libraries
 target_link_libraries(dsf PUBLIC TBB::tbb SQLiteCpp 
-                          PRIVATE simdjson::simdjson spdlog::spdlog $<BUILD_INTERFACE:csv>)
+                          PRIVATE $<BUILD_INTERFACE:simdjson::simdjson> spdlog::spdlog $<BUILD_INTERFACE:csv>)
 
 # Install dsf library
 install(
